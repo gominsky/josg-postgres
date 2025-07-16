@@ -69,7 +69,7 @@ router.post('/', (req, res) => {
         VALUES (?, ?, ?, ?, 'qr')
       `;
 
-      db.run(insertSQL, [alumno_id, evento_id, fecha, hora, tipo], function (err) {
+      db.run(insertSQL, [alumno_id, evento_id, fecha, hora], function (err) {
         if (err) return res.status(500).json({ error: 'Error al registrar la asistencia' });
         res.json({ success: true, mensaje: 'Asistencia registrada correctamente' });
       });
@@ -77,43 +77,4 @@ router.post('/', (req, res) => {
   });
 });
 
-// Ruta 4: Firma manual (por parte del profesor)
-router.post('/manual', (req, res) => {
-  const { alumno_id, evento_id } = req.body;
-
-  // Validar que el alumno pertenece al grupo del evento
-  const sql = `
-    SELECT 1
-    FROM eventos e
-    JOIN alumno_grupo ag ON ag.grupo_id = e.grupo_id
-    WHERE e.id = ? AND ag.alumno_id = ?
-  `;
-
-  db.get(sql, [evento_id, alumno_id], (err, row) => {
-    if (err || !row) {
-      return res.status(403).json({ error: 'El alumno no pertenece al grupo del evento' });
-    }
-
-    // Verificar si ya firmó
-    const checkSQL = `SELECT * FROM asistencias WHERE alumno_id = ? AND evento_id = ?`;
-    db.get(checkSQL, [alumno_id, evento_id], (err, asistenciaExistente) => {
-      if (asistenciaExistente) {
-        return res.status(400).json({ error: 'Ya se ha firmado asistencia para este evento' });
-      }
-
-      const fecha = new Date().toISOString().split('T')[0];
-      const hora = new Date().toLocaleTimeString();
-
-      const insertSQL = `
-        INSERT INTO asistencias (alumno_id, evento_id, fecha, hora, tipo)
-        VALUES (?, ?, ?, ?, 'manual')
-      `;
-
-      db.run(insertSQL, [alumno_id, evento_id, fecha, hora], function (err) {
-        if (err) return res.status(500).json({ error: 'Error al registrar asistencia manual' });
-        res.json({ success: true, mensaje: 'Asistencia manual registrada' });
-      });
-    });
-  });
-});
 module.exports = router;
