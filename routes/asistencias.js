@@ -69,7 +69,7 @@ router.post('/', (req, res) => {
         VALUES (?, ?, ?, ?, 'qr')
       `;
 
-      db.run(insertSQL, [alumno_id, evento_id, fecha, hora], function (err) {
+      db.run(insertSQL, [alumno_id, evento_id, fecha, hora, tipo], function (err) {
         if (err) return res.status(500).json({ error: 'Error al registrar la asistencia' });
         res.json({ success: true, mensaje: 'Asistencia registrada correctamente' });
       });
