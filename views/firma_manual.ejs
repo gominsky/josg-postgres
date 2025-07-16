@@ -1,0 +1,42 @@
+<% title = 'Firmas Manuales' %>
+<% hero = false %>
+
+<div class="container mt-4">
+  <h1 class="h1-titulo mb-4 text-center">Firmas manuales para: <%= evento.titulo %></h1>
+
+  <p class="text-center mb-3"><strong>Fecha:</strong> 
+    <%= new Date(evento.fecha_inicio).toLocaleDateString('es-ES') %>, 
+    <strong>Hora:</strong> <%= evento.hora_inicio %> - <%= evento.hora_fin %>
+  </p>
+
+  <form method="POST" action="/eventos/<%= evento.id %>/firma_manual" class="bg-light p-4 rounded shadow-sm">
+    <div class="mb-3">
+      <label class="form-label fw-bold">Selecciona los alumnos presentes:</label>
+      <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 g-2">
+        <% alumnos.forEach(alumno => { %>
+          <div class="form-check">
+            <input 
+              class="form-check-input" 
+              type="checkbox" 
+              name="alumnosFirmados" 
+              value="<%= alumno.id %>"
+              id="alumno_<%= alumno.id %>"
+              <%= firmados.includes(alumno.id) ? 'checked' : '' %>
+            >
+            <label class="form-check-label" for="alumno_<%= alumno.id %>">
+              <%= alumno.apellidos %>, <%= alumno.nombre %>
+            </label>
+          </div>
+        <% }) %>
+      </div>
+    </div>
+
+    <div class="text-center mt-4">
+      <button type="submit" class="btn-main-verde fw-bold px-4 py-2">Guardar Asistencias</button>
+      <a href="/eventos" class="btn btn-secondary ms-2">← Volver</a>
+    </div>
+  </form>
+</div>
+
+
+

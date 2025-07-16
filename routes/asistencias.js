@@ -116,5 +116,4 @@ router.post('/manual', (req, res) => {
     });
   });
 });
-
 module.exports = router;

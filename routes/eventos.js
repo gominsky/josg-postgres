@@ -206,4 +206,62 @@ router.get('/:id/qr', (req, res) => {
   });
 });
 
+// Mostrar formulario de firma manual
+router.get('/:id/firma_manual', (req, res) => {
+  const eventoId = req.params.id;
+
+  const eventoSQL = `SELECT * FROM eventos WHERE id = ?`;
+  const alumnosSQL = `
+    SELECT a.*
+    FROM alumnos a
+    JOIN alumno_grupo ag ON ag.alumno_id = a.id
+    WHERE ag.grupo_id = ? AND a.activo = 1
+    ORDER BY a.apellidos, a.nombre
+  `;
+  const asistenciasSQL = `
+    SELECT alumno_id FROM asistencias WHERE evento_id = ?
+  `;
+
+  db.get(eventoSQL, [eventoId], (err, evento) => {
+    if (err || !evento) return res.status(500).send('Error cargando evento');
+
+    db.all(alumnosSQL, [evento.grupo_id], (err, alumnos) => {
+      if (err) return res.status(500).send('Error cargando alumnos');
+
+      db.all(asistenciasSQL, [eventoId], (err, asistencias) => {
+        if (err) return res.status(500).send('Error cargando asistencias');
+
+        const firmados = asistencias.map(a => a.alumno_id);
+        res.render('firma_manual', { evento, alumnos, firmados });
+      });
+    });
+  });
+});
+
+
+
+router.post('/:id/firma_manual', (req, res) => {
+  const eventoId = req.params.id;
+  const { alumnosFirmados } = req.body; // array de IDs
+
+  const fecha = new Date().toISOString().split('T')[0];
+  const hora = new Date().toTimeString().split(' ')[0];
+
+  const ids = Array.isArray(alumnosFirmados) ? alumnosFirmados : [alumnosFirmados];
+
+  const insert = db.prepare(`
+    INSERT INTO asistencias (alumno_id, evento_id, fecha, hora, tipo)
+    VALUES (?, ?, ?, ?, 'manual')
+  `);
+
+  ids.forEach(id => {
+    insert.run(id, eventoId, fecha, hora);
+  });
+
+  insert.finalize(err => {
+    if (err) return res.status(500).send('Error al guardar firmas');
+    res.redirect(`/eventos/${eventoId}/firma_manual`);
+  });
+});
+
 module.exports = router;
