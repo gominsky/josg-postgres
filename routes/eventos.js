@@ -6,7 +6,7 @@ const QRCode = require('qrcode');
 // Listado JSON para FullCalendar
 router.get('/listado', (req, res) => {
   const sql = `
-    SELECT eventos.id, eventos.titulo, eventos.descripcion, eventos.fecha_inicio, eventos.fecha_fin, eventos.grupo_id, grupos.nombre AS grupo_nombre
+    SELECT eventos.id, eventos.titulo, eventos.descripcion, eventos.fecha_inicio, eventos.fecha_fin, eventos.grupo_id, eventos.activo, grupos.nombre AS grupo_nombre
     FROM eventos
     LEFT JOIN grupos ON eventos.grupo_id = grupos.id
   `;
@@ -21,6 +21,7 @@ router.get('/listado', (req, res) => {
       descripcion: row.descripcion,
       grupo_id: row.grupo_id,
       grupo: row.grupo_nombre,
+      activo: row.activo,
       backgroundColor: '#2a4b7c',
       borderColor: '#2a4b7c'
     }));
@@ -58,10 +59,10 @@ router.get('/', (req, res) => {
 
 // Crear evento
 router.post('/', (req, res) => {
-  const { titulo, descripcion, fecha_inicio, fecha_fin, grupo_id } = req.body;
-  const sql = `INSERT INTO eventos (titulo, descripcion, fecha_inicio, fecha_fin, grupo_id) VALUES (?, ?, ?, ?, ?)`;
-  const params = [titulo, descripcion, fecha_inicio, fecha_fin, grupo_id];
-
+  const { titulo, descripcion, fecha_inicio, fecha_fin, grupo_id, activo } = req.body;
+  const activoValue = activo === '1' ? 1 : 0;
+  const sql = `INSERT INTO eventos (titulo, descripcion, fecha_inicio, fecha_fin, grupo_id, activo) VALUES (?, ?, ?, ?, ?, ?)`;
+  const params = [titulo, descripcion, fecha_inicio, fecha_fin, grupo_id, activoValue];
   db.run(sql, params, function (err) {
     if (err) return res.status(500).json({ error: 'Error al guardar evento' });
     res.json({ id: this.lastID });
@@ -70,13 +71,14 @@ router.post('/', (req, res) => {
 
 // Actualizar evento
 router.put('/:id', (req, res) => {
-  const { titulo, descripcion, fecha_inicio, fecha_fin, grupo_id } = req.body;
-  const sql = `
-    UPDATE eventos
-    SET titulo = ?, descripcion = ?, fecha_inicio = ?, fecha_fin = ?, grupo_id = ?
-    WHERE id = ?
-  `;
-  db.run(sql, [titulo, descripcion, fecha_inicio, fecha_fin, grupo_id, req.params.id], function (err) {
+  const { titulo, descripcion, fecha_inicio, fecha_fin, grupo_id, activo } = req.body;
+const activoValue = activo === '1' ? 1 : 0;
+const sql = `
+  UPDATE eventos
+  SET titulo = ?, descripcion = ?, fecha_inicio = ?, fecha_fin = ?, grupo_id = ?, activo = ?
+  WHERE id = ?
+`;
+db.run(sql, [titulo, descripcion, fecha_inicio, fecha_fin, grupo_id, activoValue, req.params.id], function (err) {
     if (err) return res.status(500).json({ error: 'Error al actualizar evento' });
     res.json({ updated: true });
   });
@@ -94,10 +96,22 @@ router.delete('/:id', (req, res) => {
 router.get('/:id/qr', (req, res) => {
   const eventoId = req.params.id;
 
-  const sql = `SELECT id, token, titulo, fecha_inicio FROM eventos WHERE id = ?`;
+  const sql = `SELECT id, token, titulo, fecha_inicio, activo FROM eventos WHERE id = ?`;
   db.get(sql, [eventoId], async (err, evento) => {
     if (err || !evento) return res.status(404).send('Evento no encontrado');
 
+    if (!evento.activo) {
+      return res.status(403).send(`
+        <html>
+          <head><title>QR desactivado</title></head>
+          <body style="font-family: sans-serif; text-align: center; padding: 2rem;">
+            <h2>QR desactivado</h2>
+            <p>Este evento no tiene activo el sistema de escaneo QR.</p>
+            <a href="/eventos/${evento.id}" style="text-decoration:none;color:#007bff;">Volver al evento</a>
+          </body>
+        </html>
+      `);
+    }
     const payload = {
       evento_id: evento.id,
       token: evento.token
