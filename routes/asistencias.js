@@ -47,7 +47,7 @@ router.post('/login', (req, res) => {
 
 // Ruta 3: Firma de asistencia con QR
 router.post('/', (req, res) => {
-  const { alumno_id, evento_id, token, ubicacion } = req.body;
+  const { alumno_id, evento_id, token } = req.body;
 
   // Validar evento y token
   const eventoSQL = `SELECT * FROM eventos WHERE id = ? AND token = ? AND activo = 1`;
