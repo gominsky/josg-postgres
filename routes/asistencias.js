@@ -65,11 +65,11 @@ router.post('/', (req, res) => {
       const hora = new Date().toLocaleTimeString();
 
       const insertSQL = `
-        INSERT INTO asistencias (alumno_id, evento_id, fecha, hora, ubicacion, tipo)
+        INSERT INTO asistencias (alumno_id, evento_id, fecha, hora, tipo)
         VALUES (?, ?, ?, ?, ?, 'qr')
       `;
 
-      db.run(insertSQL, [alumno_id, evento_id, fecha, hora, ubicacion], function (err) {
+      db.run(insertSQL, [alumno_id, evento_id, fecha, hora], function (err) {
         if (err) return res.status(500).json({ error: 'Error al registrar la asistencia' });
         res.json({ success: true, mensaje: 'Asistencia registrada correctamente' });
       });
