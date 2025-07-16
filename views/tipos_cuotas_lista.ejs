@@ -1,0 +1,30 @@
+<% title = 'Tipos de Cuota' %>
+<% hero = false %>
+
+<div class="encabezado-lista">
+  <h1 class="h1-titulo">Listado de Tipos de Cuota</h1>
+  <div style="text-align: center; margin-top: 1rem;">
+    <a href="/tipos_cuotas/nueva" class="btn-main">+ Añadir tipo de cuota</a>
+  </div>
+</div>
+
+<% if (tipos_cuota.length === 0) { %>
+  <p class="enlace-final" style="text-align: center; margin-top: 2rem;">No hay tipos de cuota registrados.</p>
+<% } else { %>
+  <div class="dashboard-grid">
+    <% tipos_cuota.forEach(t => { %>
+      <a href="/tipos_cuotas/editar/<%= t.id %>" class="card-variacion" style="text-decoration: none;">
+        <div style="font-weight: 600; font-size: 1rem;"><%= t.tipo %></div>
+        <% if (t.descripcion) { %>
+          <div style="font-size: 0.85rem; color: #666; margin-top: 0.2rem;">
+            <%= t.descripcion %>
+          </div>
+        <% } %>
+      </a>
+    <% }) %>
+  </div>
+<% } %>
+
+<div class="volver-bloque-izquierda">
+  <a href="/cuotas" class="enlace-final">← Volver a cuotas</a>
+</div>

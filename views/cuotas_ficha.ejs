@@ -1,0 +1,48 @@
+<% title = cuota ? 'Editar Cuota' : 'Crear Cuota' %>
+<% hero = false %>
+<h1 class="h1-titulo"><%= title %></h1>
+<!-- Ficha de campos -->
+  <div class="dashboard-grid">
+   <form id="form-cuota" method="POST" action="<%= cuota ? '/cuotas/' + cuota.id + '?_method=PUT' : '/cuotas' %>" class="card-variacion2" style="width: 430px;
+  height: 300px; box-sizing: border-box; overflow: auto;">
+
+  <div><label for="nombre"><div style="font-weight: 600; font-size: 1rem;">Nombre</div></label>
+      <div><input type="text" name="nombre" required value="<%= cuota?.nombre || '' %>" required/></div>
+  </div>
+
+  <div><label for="precio"><div style="font-weight: 600; font-size: 1rem;">Precio (€):</div></label>
+      <div><input type="text" name="precio" required value="<%= cuota?.precio || '' %>" required/></div>
+  </div>
+
+  <div>
+      <label for="descripcion"><div style="font-weight: 600; font-size: 1rem;">Descripción</div></label>
+      <div><textarea id="descripcion" name="descripcion" rows="3"><%= cuota?.descripcion || '' %></textarea></div>
+  </div>
+  <div><div style="font-weight: 600; font-size: 1rem;">Tipo de cuota:</div></label>
+      <select name="tipo_id" required>
+        <% tipos.forEach(tipo => { %>
+          <option value="<%= tipo.id %>" <%= cuota?.tipo_id === tipo.id ? 'selected' : '' %>>
+            <%= tipo.tipo %>
+          </option>/div>
+        <% }) %> 
+      </select></div>  
+  </form>
+</div>
+<!-- Ficha de Guardar -->
+  <div class="dashboard-grid">
+    <a href="#" onclick="document.getElementById('form-cuota').submit(); return false;" class="card-variacion2"><div style="font-weight: 600; font-size: 1rem;">Guardar</div></a>
+    <% if (cuota) { %>
+    <a href="#"
+        onclick="if(confirm('¿Eliminar esta cuota?')) document.getElementById('delete-form').submit(); return false;"
+        class="card-eliminar"><div style="font-weight: 600; font-size: 1rem;">Eliminar</div>
+    </a>
+    <form id="delete-form" method="POST" action="/cuotas/<%=cuota.id %>?_method=DELETE" class="hidde" style="background-color: transparent;"></form>
+    <% } %>
+  </div>
+<!-- Enlace Volver -->
+<div class="volver-bloque-izquierda">
+  <a href="/cuotas" class="enlace-final">← Volver a lista de cuotas</a>
+</div>    
+
+
+

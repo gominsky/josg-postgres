@@ -1,0 +1,38 @@
+<% title = 'Cuotas Pendientes' %>
+<% hero = false %>
+
+<div class="container-fluid px-4 my-4">
+  <h1 class="text-center mb-4">Cuotas Pendientes</h1>
+
+  <div class="text-end mb-3">
+    <a href="/cuotas/pendientes/export" class="btn-main">Exportar a CSV</a>
+  </div>
+
+  <div class="table-responsive">
+    <table class="tabla-estilizada">
+      <thead>
+        <tr>
+          <th>Alumno</th>
+          <th>Cuota</th>
+          <th>Vencimiento</th>
+          <th>Retraso (días)</th>
+          <th class="text-center">Estado</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% cuotasPendientes.forEach(c => { %>
+          <tr>
+            <td><%= c.alumno %></td>
+            <td><%= c.cuota %></td>
+            <td><%= formatDate(c.fecha_vencimiento) %></td>
+            <td><%= Math.floor(c.dias_retraso) %></td>
+            <td class="text-center">
+              <span class="badge bg-danger">Pendiente</span>
+            </td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+</div>
+

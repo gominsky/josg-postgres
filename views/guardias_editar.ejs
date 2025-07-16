@@ -1,0 +1,64 @@
+<% title = 'Editar Guardia' %>
+<% hero = false %>
+<h1 class="h1-titulo">Editar Guardia</h1>
+
+<div class="dashboard-grid">
+  <form id="form-guardia" method="POST" action="/guardias/guardar" class="card-variacion2" style="width: 430px; height: auto; box-sizing: border-box; overflow: auto;">
+    <input type="hidden" name="id" value="<%= guardia.id %>">
+    <input type="hidden" name="evento_id" value="<%= guardia.evento_id %>">
+    <input type="hidden" name="curso" value="<%= guardia.curso %>">
+    <input type="hidden" name="desde" value="<%= desde %>">
+    <input type="hidden" name="hasta" value="<%= hasta %>">
+
+    <div>
+      <label><div style="font-weight: 600; font-size: 1rem;">Miembro 1</div></label>
+      <div>
+        <select name="alumno_id_1" required>
+          <% alumnos.filter(a => a.grupo_id === guardia.grupo_id).forEach(a => { %>
+            <option value="<%= a.alumno_id %>" <%= a.alumno_id == guardia.alumno_id_1 ? 'selected' : '' %>>
+              <%= a.apellidos %>, <%= a.nombre %>
+            </option>
+          <% }) %>
+        </select>
+      </div>
+    </div>
+
+    <div>
+      <label><div style="font-weight: 600; font-size: 1rem;">Miembro 2</div></label>
+      <div>
+        <select name="alumno_id_2" required>
+          <% alumnos.filter(a => a.grupo_id === guardia.grupo_id).forEach(a => { %>
+            <option value="<%= a.alumno_id %>" <%= a.alumno_id == guardia.alumno_id_2 ? 'selected' : '' %>>
+              <%= a.apellidos %>, <%= a.nombre %>
+            </option>
+          <% }) %>
+        </select>
+      </div>
+    </div>
+
+    <div>
+      <label><div style="font-weight: 600; font-size: 1rem;">Notas</div></label>
+      <div>
+        <textarea name="notas" rows="3"><%= guardia.notas || '' %></textarea>
+      </div>
+    </div>
+  </form>
+</div>
+
+<div class="dashboard-grid">
+  <a href="#" onclick="document.getElementById('form-guardia').submit(); return false;" class="card-variacion2">
+    <div style="font-weight: 600; font-size: 1rem;">Guardar</div>
+  </a>
+  <a href="#"
+     onclick="if(confirm('¿Eliminar esta guardia?')) document.getElementById('delete-form').submit(); return false;"
+     class="card-eliminar">
+    <div style="font-weight: 600; font-size: 1rem;">Eliminar</div>
+  </a>
+  <form id="delete-form" method="POST" action="/guardias/eliminar/<%= guardia.id %>?desde=<%= desde %>&hasta=<%= hasta %>" class="hidde" style="background-color: transparent;"></form>
+</div>
+
+<div class="volver-bloque-izquierda mt-3">
+  <a href="/guardias?<%= desde ? 'desde=' + desde + '&' : '' %><%= hasta ? 'hasta=' + hasta : '' %>" class="enlace-final">← Volver a listado</a>
+</div>
+
+

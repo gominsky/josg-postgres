@@ -1,0 +1,230 @@
+<% title = 'Agenda de Eventos' %>
+<% hero = false %>
+ <div class="container mt-4">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h1-titulo mb-0">Listado de Eventos</h1>
+    <a href="/guardias" class="btn-main fw-bold px-3 py-2">Guardias</a>
+  </div>
+</div>
+
+  <% if (eventos && eventos.length >= 0) { %>
+    <% if (eventos.length > 0) { %> 
+<div class="table-responsive mt-4">
+  <table class="tabla-estilizada">
+    <thead>
+      <tr>
+        <th>Título</th>
+        <th>Descripción</th>
+        <th>Grupo</th>
+        <th>Inicio</th>
+        <th>Fin</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% eventos.forEach(ev => { %>
+        <tr>
+          <td><strong><%= ev.titulo %></strong></td>
+          <td><%= ev.descripcion || '—' %></td>
+          <td><%= ev.grupo_nombre || '—' %></td>
+          <td><%= ev.fecha_inicio.replace('T', ' ').slice(0, 16) %></td>
+          <td><%= ev.fecha_fin.replace('T', ' ').slice(0, 16) %></td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+  <h5 class="text-center mb-3">Lista personalizada:</h5>
+  <form method="GET" action="/eventos" class="formulario-lista-customizada mt-4 p-3 rounded d-flex flex-wrap align-items-end gap-2">
+    
+    <div>
+      <label for="desde2" class="form-label mb-1">Desde</label>
+      <input type="date" name="desde" id="desde2" class="form-control form-control-sm" required>
+    </div>
+    <div>
+      <label for="hasta2" class="form-label mb-1">Hasta</label>
+      <input type="date" name="hasta" id="hasta2" class="form-control form-control-sm" required>
+    </div>
+    <div class="d-flex align-items-end">
+      <button type="submit" class="btn-main-verde btn-sm">Ver listado</button>
+    </div>
+  </form>
+</div>
+    <% } else { %>
+      <p class="text-center texto-base">No hay eventos registrados entre las fechas del calendario</p>
+      <div>
+        <h5 class="text-center mb-3">Lista personalizada:</h5>
+        <form method="GET" action="/eventos" class="formulario-lista-customizada mt-4 p-3 rounded d-flex flex-wrap align-items-end gap-2">
+          
+          <div>
+            <label for="desde2" class="form-label mb-1">Desde</label>
+            <input type="date" name="desde" id="desde2" class="form-control form-control-sm" required>
+          </div>
+          <div>
+            <label for="hasta2" class="form-label mb-1">Hasta</label>
+            <input type="date" name="hasta" id="hasta2" class="form-control form-control-sm" required>
+          </div>
+          <div class="d-flex align-items-end">
+            <button type="submit" class="btn-main-verde btn-sm">Ver listado</button>
+          </div>
+        </form>
+      </div>
+    <% } %>
+    <div class="volver-bloque-izquierda">
+  <a href="/eventos" class="enlace-final">← Volver al calendario</a>
+    </div>
+
+  <% } else { %>
+    <div id="calendar" class="bg-white p-4 rounded shadow" style="margin-top: 2rem;"></div>
+  <% } %>
+</div>
+
+<!-- Modal flotante para nuevo/editar evento -->
+<div class="modal fade" id="eventoModal" tabindex="-1" aria-labelledby="eventoModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <form id="eventoForm">
+        <input type="hidden" name="id">
+        <div class="modal-header">
+          <h5 class="modal-title" id="eventoModalLabel">Evento</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Título</label>
+            <input type="text" name="titulo" class="form-control" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Descripción</label>
+            <textarea name="descripcion" class="form-control"></textarea>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Grupos</label>
+            <select name="grupo_id" class="form-select" required>
+              <% grupos.forEach(a => { %>
+                <option value="<%= a.id %>"><%= a.nombre %></option>
+              <% }) %>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Fecha y hora de inicio</label>
+            <input type="datetime-local" name="fecha_inicio" class="form-control" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Fecha y hora de fin</label>
+            <input type="datetime-local" name="fecha_fin" class="form-control" required>
+          </div>
+        </div>
+        
+        
+        <div class="modal-footer">
+          <button type="submit" class="btn-main-verde">Guardar</button>
+          <button type="button" class="btn-main-rojo" id="btnEliminar" style="display: none;">Eliminar</button>
+          <button type="button" class="btn-main-negro" id="btnQR" style="display: none;">Ver QR</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+<!-- Scripts -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/locales-all.global.min.js"></script>
+
+<% if (!eventos) { %>
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const calendarEl = document.getElementById('calendar');
+    const modal = new bootstrap.Modal(document.getElementById('eventoModal'));
+    const form = document.getElementById('eventoForm');
+    const btnEliminar = document.getElementById('btnEliminar');
+
+    const calendar = new FullCalendar.Calendar(calendarEl, {
+      locale: 'es',
+      initialView: 'dayGridMonth',
+      headerToolbar: {
+        left: 'prev,next today',
+        center: 'title',
+        right: 'dayGridMonth,timeGridWeek,customList'
+      },
+      customButtons: {
+        customList: {
+          text: 'Lista',
+          click: function () {
+            const view = calendar.view;
+            const start = view.currentStart.toISOString().split('T')[0];
+            const end = view.currentEnd.toISOString().split('T')[0];
+            window.location.href = `/eventos?desde=${start}&hasta=${end}`;
+          }
+        }
+      },
+       buttonText: {
+        today: 'Hoy',
+        month: 'Mes',
+        week: 'Semana',
+        day: 'Día',
+        list: 'Lista'
+      },
+      events: '/eventos/listado',
+      dateClick: function (info) {
+        form.reset();
+        form.id.value = '';
+        btnEliminar.style.display = 'none';
+        form.fecha_inicio.value = info.dateStr + 'T09:00';
+        form.fecha_fin.value = info.dateStr + 'T10:00';
+        modal.show();
+      },
+      eventClick: function (info) {
+        const e = info.event;
+        btnQR.style.display = 'inline-block';
+        btnQR.onclick = () => {
+          const id = form.id.value;
+          window.open(`/eventos/${id}/qr`, '_blank');
+        };
+        form.id.value = e.id;
+        form.titulo.value = e.title.split(' - ')[0];
+        form.descripcion.value = e.extendedProps.descripcion || '';
+        form.grupo_id.value = e.extendedProps.grupo_id;
+        form.fecha_inicio.value = e.startStr.slice(0, 16);
+        form.fecha_fin.value = e.endStr ? e.endStr.slice(0, 16) : '';
+        btnEliminar.style.display = 'inline-block';
+        modal.show();
+      }
+    });
+
+    calendar.render();
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const data = new FormData(form);
+      const body = Object.fromEntries(data.entries());
+      const method = body.id ? 'PUT' : 'POST';
+      const url = body.id ? `/eventos/${body.id}` : '/eventos';
+
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+
+      if (res.ok) {
+        modal.hide();
+        calendar.refetchEvents();
+      } else {
+        alert('Error al guardar el evento');
+      }
+    });
+
+    btnEliminar.addEventListener('click', async () => {
+      if (confirm('¿Deseas eliminar este evento?')) {
+        const id = form.id.value;
+        const res = await fetch(`/eventos/${id}`, { method: 'DELETE' });
+        if (res.ok) {
+          modal.hide();
+          calendar.refetchEvents();
+        } else {
+          alert('Error al eliminar');
+        }
+      }
+    });
+  });
+</script>
+<% } %>

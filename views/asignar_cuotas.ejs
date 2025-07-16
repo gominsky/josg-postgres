@@ -1,0 +1,49 @@
+<% title = 'Asignar cuotas a grupos' %>
+<% hero = false %>
+
+<div class="formulario-alumno p-4 rounded" style="max-width: 600px; background-color: transparent;">
+  <h1 class="h1-titulo text-center">Asignar cuotas a grupos</h1>
+
+  <form action="/cuotas/asignar" method="POST" style="background-color: rgba(12, 233, 93, 1);font-weight: 600; font-size: 1rem;">
+    <div class="formulario-grupo mb-3">
+      <div class="d-flex flex-wrap gap-3">
+        <% if (grupos.length > 0) { %>
+          <% grupos.forEach(g => { %>
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" name="grupo_ids" value="<%= g.id %>" id="grupo_<%= g.id %>">
+              <label class="form-check-label" for="grupo_<%= g.id %>"><%= g.nombre %></label>
+            </div>
+          <% }) %>
+        <% } else { %>
+          <p>No hay grupos disponibles.</p>
+        <% } %>
+      </div>
+    </div>
+
+    <div class="formulario-grupo">
+      <label for="cuota_id" class="form-label">Tipo de cuota</label>
+      <select name="cuota_id" class="form-select" required>
+        <% cuotas.forEach(c => { %>
+          <option value="<%= c.id %>"><%= c.nombre %> - <%= c.precio %> €</option>
+        <% }) %>
+      </select>
+    </div>
+
+    <div class="formulario-grupo">
+      <label for="fecha_inicio" class="form-label">Desde</label>
+      <input type="date" name="fecha_inicio" class="form-control" required>
+    </div>
+
+    <div class="formulario-grupo">
+      <label for="fecha_fin" class="form-label">Hasta</label>
+      <input type="date" name="fecha_fin" class="form-control" required>
+    </div>
+      <div class="editar-centro">
+        <button type="submit" class="btn-main-verde">Asignar cuotas</button>
+      </div>
+    </div>
+  </form>
+  <div class="volver-bloque-izquierda mt-4">
+    <a href="/cuotas" class="enlace-final">← Volver</a>
+  </div>
+</div>

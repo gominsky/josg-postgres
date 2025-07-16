@@ -1,0 +1,70 @@
+<% title = 'Listado de Alumnos' %>
+<% hero = false %>
+<div>
+  <div>
+    <h1 class="h1-titulo">Listado de Alumnos</h1>
+    <a href="/alumnos/nuevo" class="btn-main" style="display: inline-block; font-size: 1rem; margin-left: 38rem;">+ Añadir alumno</a>
+  </div>
+
+<form method="GET" id="filtro-form" class="formulario-centrado">
+  <div class="campo-filtro">
+    <label for="estado">Estado</label>
+    <select id="estado" name="estado" class="form-centrado-select" onchange="document.getElementById('filtro-form').submit()">
+      <option value="todos" <%= estadoSeleccionado === 'todos' ? 'selected' : '' %>>Todos</option>
+      <option value="1" <%= estadoSeleccionado === '1' ? 'selected' : '' %>>Activos</option>
+      <option value="0" <%= estadoSeleccionado === '0' ? 'selected' : '' %>>Pasivos</option>
+    </select>
+  </div>
+
+  <div class="campo-filtro">
+    <label for="grupo_id">Grupo</label>
+    <select id="grupo_id" name="grupo_id" class="form-centrado-select" onchange="document.getElementById('filtro-form').submit()">
+      <option value="todos">Todos</option>
+      <% grupos.forEach(g => { %>
+        <option value="<%= g.id %>" <%= grupoId == g.id ? 'selected' : '' %>><%= g.nombre %></option>
+      <% }) %>
+    </select>
+  </div>
+
+  <div class="campo-filtro">
+    <label for="busqueda">Buscar</label>
+    <input id="busqueda-alumnos" type="text" class="form-centrado-select" placeholder="Nombre, apellidos, instrumentos...">
+  </div>
+</form>
+<% if (alumnos.length > 0) { %>
+  <div class="dashboard-grid" id="grid-alumnos">
+    <% alumnos.forEach(alumno => { %>
+      <a href="/alumnos/<%= alumno.id %>" class="card <%= alumno.activo === 0 ? 'pasivo' : 'activo' %>">
+        <div><%= alumno.nombre %> <%= alumno.apellidos %></div>
+        <% if (alumno.instrumentos) { %>
+          <div style="font-size: 0.85rem; color: #666; margin-top: 0.2rem;">
+            <%= alumno.instrumentos %>
+          </div>
+        <% } %>
+      </a>
+    <% }) %>
+  </div>
+<% } %>
+
+<div class="volver-bloque-izquierda">
+  <% if (
+    (busqueda && busqueda.trim() !== '') ||
+    (estadoSeleccionado && estadoSeleccionado !== 'todos') ||
+    (grupoId && grupoId !== 'todos')
+  ) { %>
+    <a href="/alumnos" class="enlace-final">← Volver</a>
+  <% } else { %>
+    <a href="/" class="enlace-final">Volver al inicio</a>
+  <% } %>
+</div>
+<script>
+  document.getElementById('busqueda-alumnos').addEventListener('input', function () {
+    const filtro = this.value.toLowerCase().trim();
+    const tarjetas = document.querySelectorAll('#grid-alumnos .card');
+
+    tarjetas.forEach(tarjeta => {
+      const texto = tarjeta.textContent.toLowerCase();
+      tarjeta.style.display = texto.includes(filtro) ? '' : 'none';
+    });
+  });
+</script>

@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Asistencia Escolar</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 2rem;
+      background-color: #f2f2f2;
+      text-align: center;
+    }
+    .container {
+      max-width: 400px;
+      margin: auto;
+      background: white;
+      padding: 2rem;
+      border-radius: 1rem;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    button {
+      width: 100%;
+      padding: 1rem;
+      margin-top: 1rem;
+      font-size: 1rem;
+      border: none;
+      border-radius: 0.5rem;
+      background-color: #007bff;
+      color: white;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div class="container" id="contenedor">
+    <h2>Bienvenido</h2>
+    <div id="desconectado">
+      <p>¿Eres alumno?</p>
+      <button onclick="location.href='login.html'">Iniciar sesión</button>
+      <button onclick="location.href='registro.html'">Registrarse</button>
+    </div>
+    <div id="conectado" style="display: none;">
+      <p>Sesión iniciada. Puedes firmar tu asistencia.</p>
+      <button onclick="location.href='firma.html'">Ir a firmar</button>
+      <button onclick="logout()">Cerrar sesión</button>
+    </div>
+  </div>
+
+  <script>
+    const alumno_id = localStorage.getItem('alumno_id');
+    if (alumno_id) {
+      document.getElementById('desconectado').style.display = 'none';
+      document.getElementById('conectado').style.display = 'block';
+    }
+
+    function logout() {
+      localStorage.removeItem('alumno_id');
+      location.reload();
+    }
+  </script>
+</body>
+</html>

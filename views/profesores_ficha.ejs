@@ -1,0 +1,61 @@
+<% title = 'Ficha de Profesor' %>
+<% hero = false %>
+<link rel="stylesheet" href="/styles.css">
+
+<div class="ficha-container">
+  <div class="ficha-header">
+    <h1 class="h1-titulo"><%= profesor.nombre %> <%= profesor.apellidos %></h1>
+  </div>
+
+  <div class="ficha-section ficha-info">
+    <h2>Información del docente</h2>
+    <div class="info-flex">
+      <% if (profesor.foto) { %>
+        <img src="/uploads/<%= profesor.foto %>" alt="Foto del profesor" class="foto-perfil">
+      <% } else { %>
+        <div class="foto-perfil d-flex align-items-center justify-content-center bg-light text-muted">
+          Sin foto
+        </div>
+      <% } %>
+
+      <div class="info-detalles info-grid">
+        <div><strong>Email:</strong> <%= profesor.email || '—' %></div>
+        <div><strong>Teléfono:</strong> <%= profesor.telefono || '—' %></div>
+        <div><strong>Dirección:</strong> <%= profesor.direccion || '—' %></div>
+        <div><strong>Fecha de nacimiento:</strong> <%= formatDate(profesor.fecha_nacimiento) %></div>
+        <div><strong>Estado:</strong>
+          <span class="badge bg-<%= profesor.activo ? 'success' : 'danger' %>">
+            <%= profesor.activo ? 'Activo' : 'No activo' %>
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <% if (instrumentos.length > 0) { %>
+    <div class="ficha-section">
+      <h2>Instrumentos</h2>
+      <% instrumentos.forEach(nombre => { %>
+        <span class="tag"><%= nombre %></span>
+      <% }) %>
+    </div>
+  <% } %>
+
+  <% if (grupos.length > 0) { %>
+    <div class="ficha-section">
+      <h2>Grupos</h2>
+      <% grupos.forEach(nombre => { %>
+        <span class="tag"><%= nombre %></span>
+      <% }) %>
+    </div>
+  <% } %>
+
+  <div class="acciones-finales">
+    <div class="volver-izquierda">
+      <a href="/profesores" class="enlace-final-verde">← Volver</a>
+    </div>
+    <div class="editar-centro">
+      <a href="/profesores/<%= profesor.id %>/editar" class="btn-main-verde">Editar</a>
+    </div>
+  </div>
+</div>

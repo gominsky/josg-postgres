@@ -1,0 +1,32 @@
+<% title = 'Cuotas' %>
+<% hero = false %>
+
+<div class="encabezado-lista">
+  <h1 class="h1-titulo">Listado de Cuotas</h1>
+  <div style="text-align: center; margin-top: 1rem;">
+    <a href="/cuotas/nueva" class="btn-main">+ Añadir cuota</a>
+    <a href="/tipos_cuotas" class="btn-main">Ver tipos de cuota</a>
+  </div>
+</div>
+<% if (cuotas.length === 0) { %>
+  <p class="enlace-final" style="text-align: center; margin-top: 2rem;">No hay cuotas registradas.</p>
+<% } else { %>
+  <div class="dashboard-grid">
+    <% cuotas.forEach(c => { %>
+      <a href="/cuotas/editar/<%= c.id %>" class="card-variacion2" style="text-decoration: none; color: inherit;">
+        <div style="font-weight: 600; font-size: 1rem;"><%= c.nombre %></div>
+        <div><strong><%= c.precio.toFixed(2) %> €</strong></div>
+      </a>
+    <% }) %>
+  </div>
+<% } %>
+<div style="display: flex; justify-content: center; gap: 1rem; margin-top: 2rem;">
+  <a href="/cuotas/asignar" class="btn-main" style="text-decoration: none; white-space: nowrap;">Asignar por grupos</a>
+  <a href="/cuotas/pendientes" class="btn-main" style="text-decoration: none; white-space: nowrap;">Pendientes de pago</a>
+</div>
+<div class="volver-bloque-izquierda">
+  <a href="/" class="enlace-final">← Volver al inicio</a>
+</div>
+
+
+

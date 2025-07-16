@@ -1,0 +1,25 @@
+<% title = 'Listado de Instrumentos' %>
+<% hero = false %>
+
+<div>
+  <h1 class="h1-titulo">Listado de Instrumentos</h1>
+  <div style="text-align: center; margin-top: 1rem;">
+    <a href="/instrumentos/nuevo" class="btn-main" style="max-width: 220px;">+ Añadir instrumento</a>
+  </div>
+
+  <% if (instrumentos.length === 0) { %>
+    <p class="enlace-final" style="text-align: center; margin-top: 2rem;">No hay instrumentos registrados.</p>
+  <% } else { %>
+    <div class="dashboard-grid" style="margin-top: 2rem;">
+      <% instrumentos.forEach(i => { %>
+        <a href="/instrumentos/<%= i.id %>/editar" class="card-variacion" style="text-decoration: none;">
+          <div style="font-weight: 600; font-size: 1rem;"><%= i.nombre %></div>
+        </a>
+      <% }) %>
+    </div>
+  <% } %>
+
+  <div class="volver-bloque-izquierda">
+    <a href="/" class="enlace-final">← Volver al inicio</a>
+  </div>
+</div>

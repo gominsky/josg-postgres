@@ -1,0 +1,98 @@
+<% title = profesor && profesor.id ? 'Editar Profesor' : 'Registrar Profesor' %>
+<h1 class="h1-titulo"><%= title %></h1>
+<% if (typeof error !== 'undefined') { %>
+  <div class="mensaje-error"><%= error %></div>
+<% } %>
+<form action="<%= profesor && profesor.id ? '/profesores/' + profesor.id + '?_method=PUT' : '/profesores' %>" method="POST" enctype="multipart/form-data" class="formulario-alumno">
+  <div class="grupo-campos">
+    <h2>Datos personales</h2>
+    <div class="form-grid-2">
+      <label>Nombre:
+        <input type="text" name="nombre" required value="<%= profesor?.nombre || '' %>">
+      </label>
+
+      <label>Apellidos:
+        <input type="text" name="apellidos" required value="<%= profesor?.apellidos || '' %>">
+      </label>
+
+      <label>Fecha de nacimiento:
+        <input type="date" name="fecha_nacimiento" value="<%= profesor?.fecha_nacimiento || '' %>">
+      </label>
+
+      <label>Dirección:
+        <input type="text" name="direccion" value="<%= profesor?.direccion || '' %>">
+      </label>
+
+      <label>Teléfono:
+        <input type="text" name="telefono" value="<%= profesor?.telefono || '' %>">
+      </label>
+
+      <label>Email:
+        <input type="email" name="email" value="<%= profesor?.email || '' %>">
+      </label>
+
+      <label>Contraseña:
+        <input type="text" name="password" value="<%= profesor?.password || '' %>">
+      </label>
+    </div>
+  </div>
+
+  <div class="grupo-campos">
+    <h2>Asignación</h2>
+    <div class="form-grid-2">
+      <div class="campo-label">
+        <label>Grupos:</label>
+        <select name="grupos" id="grupos" multiple>
+          <% grupos.forEach(grupo => { %>
+            <option value="<%= grupo.id %>" <%= gruposProfesor.includes(grupo.id) ? 'selected' : '' %>>
+              <%= grupo.nombre %>
+            </option>
+          <% }) %>
+        </select>
+      </div>
+
+      <div class="campo-label">
+        <label>Instrumentos:</label>
+        <select name="instrumentos" id="instrumentos" multiple>
+          <% instrumentos.forEach(inst => { %>
+            <option value="<%= inst.id %>" <%= instrumentosProfesor.includes(inst.id) ? 'selected' : '' %>>
+              <%= inst.nombre %>
+            </option>
+          <% }) %>
+        </select>
+      </div>
+
+      <label>Estado:
+        <select name="activo" required>
+          <option value="1" <%= profesor?.activo ? 'selected' : '' %>>Activo</option>
+          <option value="0" <%= profesor && !profesor.activo ? 'selected' : '' %>>No activo</option>
+        </select>
+      </label>
+    </div>
+  </div>
+
+  <div class="grupo-campos">
+    <h2>Foto</h2>
+    <label>Subir nueva:
+      <input type="file" name="foto" accept="image/*">
+    </label>
+
+    <% if (profesor?.foto) { %>
+      <div class="foto-actual">
+        <strong>Foto actual:</strong><br>
+        <img src="/uploads/<%= profesor.foto %>" alt="Foto del profesor" class="foto-perfil">
+      </div>
+    <% } %>
+  </div>
+
+  <div class="acciones-finales">
+    <div class="volver-izquierda">
+      <a href="/profesores" class="enlace-final-verde">← Volver</a>
+    </div>
+    <div class="editar-centro">
+      <button type="submit" class="btn-main-verde">
+       <%= profesor && profesor.id ? 'Actualizar' : 'Registrar' %>
+      </button>
+    </div>
+  </div>
+</form>

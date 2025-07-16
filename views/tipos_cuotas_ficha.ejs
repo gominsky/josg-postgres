@@ -1,0 +1,27 @@
+<% title = tipo ? 'Editar tipo de cuota' : 'Nuevo tipo de cuota' %>
+<% hero = false %>
+<h1 class="h1-titulo"><%= title %></h1>
+<!-- Ficha de campos -->
+<div class="dashboard-grid">
+  <form id="form-tipo_cuota" method="POST" action="<%= tipo ? '/tipos_cuotas/editar/' + tipo.id : '/tipos_cuotas' %>"class="card-variacion" style="width: 430px;
+  height: 150px; box-sizing: border-box; overflow: auto;">
+  <div><label for="nombre"><div style="font-weight: 600; font-size: 1rem;">Tipo de cuota</div></label>
+      <div><input type="text" name="tipo" value="<%= tipo?.tipo || '' %>" required/></div>
+  </div>
+  </form>
+</div>
+<!-- Ficha de Guardar -->
+  <div class="dashboard-grid">
+    <a href="#" onclick="document.getElementById('form-tipo_cuota').submit(); return false;" class="card-variacion"><div style="font-weight: 600; font-size: 1rem;">Guardar</div></a>
+    <% if (tipo) { %>
+    <a href="#"
+        onclick="if(confirm('¿Eliminar este tipo de cuota?')) document.getElementById('delete-form').submit(); return false;"
+        class="card-eliminar"><div style="font-weight: 600; font-size: 1rem;">Eliminar</div>
+    </a>
+    <form id="delete-form" method="POST" action="/tipos_cuotas/<%=tipo.id %>?_method=DELETE" class="hidden" style="background-color: transparent;"></form>
+    <% } %>
+  </div>
+<!-- Enlace Volver -->
+<div class="volver-bloque-izquierda">
+  <a href="/tipos_cuotas" class="enlace-final">← Volver a lista de tipos de cuota</a>
+</div>    

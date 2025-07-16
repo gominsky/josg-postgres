@@ -1,0 +1,29 @@
+<% title = 'Grupos' %>
+<% hero = false %>
+
+<div class="encabezado-lista">
+  <h1 class="h1-titulo">Grupos de trabajo</h1>
+    <div style="text-align: center; margin-top: 1rem;">
+  <a href="/grupos/nuevo" class="btn-main">+ Añadir grupo</a>
+</div>
+</div>
+
+<% if (grupos.length === 0) { %>
+  <p class="enlace-final" style="text-align: center; margin-top: 2rem;">No hay grupos registrados.</p>
+<% } else { %>
+  <div class="dashboard-grid">
+    <% grupos.forEach(i => { %>
+      <a href="/grupos/editar/<%= i.id %>" class="card-variacion2" style="text-decoration: none;">
+        <div style="font-weight: 600; font-size: 1rem;"><%= i.nombre %></div>
+      </a>
+    <% }) %>
+  </div>
+<% } %>
+
+<div class="volver-bloque-izquierda">
+  <a href="/" class="enlace-final">← Volver al inicio</a>
+</div>
+
+
+
+

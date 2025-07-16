@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Firmar Asistencia</title>
+  <script src="https://unpkg.com/html5-qrcode"></script>
+  <style>
+    body { font-family: sans-serif; background: #f2f2f2; padding: 1rem; text-align: center; }
+    .container {
+      max-width: 450px;
+      margin: auto;
+      background: white;
+      padding: 2rem;
+      border-radius: 1rem;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    #reader { width: 100%; margin-top: 1rem; }
+    .btn {
+      margin-top: 1rem;
+      padding: 0.75rem;
+      width: 100%;
+      border: none;
+      border-radius: 0.5rem;
+      font-size: 1rem;
+      cursor: pointer;
+    }
+    .btn-red { background: #dc3545; color: white; }
+    .success { color: green; font-weight: bold; margin-top: 1rem; }
+    .error { color: red; font-weight: bold; margin-top: 1rem; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Firmar Asistencia</h2>
+    <div id="reader"></div>
+    <p id="mensaje" class=""></p>
+    <button class="btn btn-red" onclick="logout()">Cerrar sesión</button>
+  </div>
+
+  <script>
+    const alumno_id = localStorage.getItem('alumno_id');
+    if (!alumno_id) {
+      alert("No has iniciado sesión.");
+      location.href = "index.html";
+    }
+
+    function logout() {
+      localStorage.removeItem('alumno_id');
+      location.href = 'index.html';
+    }
+
+    const mensaje = document.getElementById("mensaje");
+
+    function onScanSuccess(decodedText) {
+      try {
+        const datos = JSON.parse(decodedText);
+        const { evento_id, token } = datos;
+
+        if (!evento_id || !token) {
+          mensaje.className = "error";
+          mensaje.innerText = "QR inválido.";
+          return;
+        }
+
+        navigator.geolocation.getCurrentPosition(async (position) => {
+          const ubicacion = `${position.coords.latitude},${position.coords.longitude}`;
+
+          const res = await fetch("/asistencias", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ alumno_id, evento_id, token, ubicacion })
+          });
+
+          const data = await res.json();
+
+          if (data.success) {
+            mensaje.className = "success";
+            mensaje.innerText = data.mensaje;
+            qrScanner.clear();
+          } else {
+            mensaje.className = "error";
+            mensaje.innerText = data.error || "No se pudo registrar la asistencia";
+          }
+        }, () => {
+          mensaje.className = "error";
+          mensaje.innerText = "Ubicación no disponible";
+        });
+
+      } catch (e) {
+        mensaje.className = "error";
+        mensaje.innerText = "El QR no es válido.";
+      }
+    }
+
+    const qrScanner = new Html5Qrcode("reader");
+    qrScanner.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, onScanSuccess);
+  </script>
+</body>
+</html>
