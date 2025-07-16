@@ -66,7 +66,7 @@ router.post('/', (req, res) => {
 
       const insertSQL = `
         INSERT INTO asistencias (alumno_id, evento_id, fecha, hora, tipo)
-        VALUES (?, ?, ?, ?, ?, 'qr')
+        VALUES (?, ?, ?, ?, 'qr')
       `;
 
       db.run(insertSQL, [alumno_id, evento_id, fecha, hora], function (err) {
