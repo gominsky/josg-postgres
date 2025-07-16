@@ -17,14 +17,22 @@
           Sin foto
         </div>
       <% } %>
-
       <div class="info-detalles info-grid">
         <div><strong>Email:</strong> <%= alumno.email || '—' %></div>
         <div><strong>Teléfono:</strong> <%= alumno.telefono || '—' %></div>
         <div><strong>Dirección:</strong> <%= alumno.direccion || '—' %></div>
+        <div><strong>Código Postal:</strong> <%= alumno.codigo_postal || '—' %></div>
+        <div><strong>Municipio:</strong> <%= alumno.municipio || '—' %></div>
+        <div><strong>Provincia:</strong> <%= alumno.provincia || '—' %></div>
+        <div><strong>DNI:</strong> <%= alumno.DNI || '—' %></div>
+        <div><strong>Centro:</strong> <%= alumno.centro || '—' %></div>
+        <div><strong>Profesor del centro:</strong> <%= alumno.profesor_centro || '—' %></div>
         <div><strong>Fecha de nacimiento:</strong> <%= formatDate(alumno.fecha_nacimiento) %></div>
         <div><strong>Fecha de alta:</strong> <%= formatDate(alumno.fecha_matriculacion) %></div>
         <div><strong>Fecha de baja:</strong> <%= formatDate(alumno.fecha_baja) %></div>
+        <div><strong>Registrado en app:</strong> <%= alumno.registrado ? 'Sí' : 'No' %></div>
+        <div><strong>Guardias actuales:</strong> <%= alumno.guardias_actual || 0 %></div>
+        <div><strong>Guardias históricas:</strong> <%= alumno.guardias_hist || 0 %></div>
         <div><strong>Estado:</strong>
           <span class="badge bg-<%= alumno.activo ? 'success' : 'danger' %>">
             <%= alumno.activo ? 'Activo' : 'No activo' %>

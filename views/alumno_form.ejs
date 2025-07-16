@@ -17,61 +17,111 @@
         <input type="date" name="fecha_nacimiento" value="<%= alumno?.fecha_nacimiento || '' %>">
       </label>
 
+      <label>DNI:
+        <input type="text" name="DNI" value="<%= alumno?.DNI || '' %>">
+      </label>
+
       <label>Dirección:
         <input type="text" name="direccion" value="<%= alumno?.direccion || '' %>">
+      </label>
+
+      <label>Código Postal:
+        <input type="text" name="codigo_postal" value="<%= alumno?.codigo_postal || '' %>">
+      </label>
+
+      <label>Municipio:
+        <input type="text" name="municipio" value="<%= alumno?.municipio || '' %>">
+      </label>
+
+      <label>Provincia:
+        <input type="text" name="provincia" value="<%= alumno?.provincia || '' %>">
       </label>
     </div>
   </div>
 
-<div class="grupo-campos">
-  <h2>Contacto</h2>
-  <div class="form-grid-2">
-    <label>Teléfono:
-      <input type="text" name="telefono" value="<%= alumno?.telefono || '' %>">
-    </label>
+  <div class="grupo-campos">
+    <h2>Contacto</h2>
+    <div class="form-grid-2">
+      <label>Teléfono:
+        <input type="text" name="telefono" value="<%= alumno?.telefono || '' %>">
+      </label>
 
-    <label>Email:
-      <input type="email" name="email" value="<%= alumno?.email || '' %>">
-    </label>
+      <label>Email:
+        <input type="email" name="email" value="<%= alumno?.email || '' %>">
+      </label>
 
-    <label>Tutor:
-      <input type="text" name="tutor" value="<%= alumno?.tutor || '' %>">
-    </label>
-  </div>
-</div>
-
-<div class="grupo-campos">
-  <h2>Asignación</h2>
-  <div class="form-grid-2">
-    <div class="campo-label">
-      <label>Grupos:</label>
-      <select name="grupos" id="grupos" multiple>
-        <% grupos.forEach(grupo => { %>
-          <option value="<%= grupo.id %>" <%= gruposAlumno.includes(grupo.id) ? 'selected' : '' %>>
-            <%= grupo.nombre %>
-          </option>
-        <% }) %>
-      </select>
+      <label>Tutor:
+        <input type="text" name="tutor" value="<%= alumno?.tutor || '' %>">
+      </label>
     </div>
-
-    <div class="campo-label">
-      <label>Instrumentos:</label>
-      <select name="instrumentos" id="instrumentos" multiple>
-        <% instrumentos.forEach(inst => { %>
-          <option value="<%= inst.id %>" <%= instrumentosAlumno.includes(inst.id) ? 'selected' : '' %>>
-            <%= inst.nombre %>
-          </option>
-        <% }) %>
-      </select>
-    </div>
-    <label>Estado:
-  <select name="activo" required>
-    <option value="1" <%= alumno?.activo ? 'selected' : '' %>>Activo</option>
-    <option value="0" <%= alumno && !alumno.activo ? 'selected' : '' %>>No activo</option>
-  </select>
-</label>
   </div>
-</div>
+
+  <div class="grupo-campos">
+    <h2>Centro Educativo</h2>
+    <div class="form-grid-2">
+      <label>Centro:
+        <input type="text" name="centro" value="<%= alumno?.centro || '' %>">
+      </label>
+
+      <label>Profesor del centro:
+        <input type="text" name="profesor_centro" value="<%= alumno?.profesor_centro || '' %>">
+      </label>
+    </div>
+  </div>
+
+  <div class="grupo-campos">
+    <h2>Asignación</h2>
+    <div class="form-grid-2">
+      <div class="campo-label">
+        <label>Grupos:</label>
+        <select name="grupos" id="grupos" multiple>
+          <% grupos.forEach(grupo => { %>
+            <option value="<%= grupo.id %>" <%= gruposAlumno.includes(grupo.id) ? 'selected' : '' %>>
+              <%= grupo.nombre %>
+            </option>
+          <% }) %>
+        </select>
+      </div>
+
+      <div class="campo-label">
+        <label>Instrumentos:</label>
+        <select name="instrumentos" id="instrumentos" multiple>
+          <% instrumentos.forEach(inst => { %>
+            <option value="<%= inst.id %>" <%= instrumentosAlumno.includes(inst.id) ? 'selected' : '' %>>
+              <%= inst.nombre %>
+            </option>
+          <% }) %>
+        </select>
+      </div>
+
+      <label>Estado:
+        <select name="activo" required>
+          <option value="1" <%= alumno?.activo ? 'selected' : '' %>>Activo</option>
+          <option value="0" <%= alumno && !alumno.activo ? 'selected' : '' %>>No activo</option>
+        </select>
+      </label>
+    </div>
+  </div>
+
+  <div class="grupo-campos">
+    <h2>Opciones avanzadas</h2>
+    <div class="form-grid-2">
+      <label>Registrado:
+        <select name="registrado">
+          <option value="1" <%= alumno?.registrado === 1 ? 'selected' : '' %>>Sí</option>
+          <option value="0" <%= alumno?.registrado === 0 ? 'selected' : '' %>>No</option>
+        </select>
+      </label>
+
+      <label>Guardias actuales:
+        <input type="number" name="guardias_actual" value="<%= alumno?.guardias_actual || 0 %>">
+      </label>
+
+      <label>Guardias históricas:
+        <input type="number" name="guardias_hist" value="<%= alumno?.guardias_hist || 0 %>">
+      </label>
+    </div>
+  </div>
 
   <div class="grupo-campos">
     <h2>Foto</h2>
@@ -86,14 +136,15 @@
       </div>
     <% } %>
   </div>
-<div class="acciones-finales">
-  <div class="volver-izquierda">
-    <a href="/alumnos" class="enlace-final-verde">← Volver</a>
+
+  <div class="acciones-finales">
+    <div class="volver-izquierda">
+      <a href="/alumnos" class="enlace-final-verde">← Volver</a>
+    </div>
+    <div class="editar-centro">
+      <button type="submit" class="btn-main-verde">
+        <%= alumno ? 'Actualizar' : 'Registrar' %>
+      </button>
+    </div>
   </div>
-  <div class="editar-centro">
-    <button type="submit" class="btn-main-verde">
-      <%= alumno ? 'Actualizar' : 'Registrar' %>
-    </button>
-  </div>
-</div>
 </form>
