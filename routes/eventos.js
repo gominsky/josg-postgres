@@ -57,17 +57,38 @@ router.get('/', (req, res) => {
   }
 });
 
-// Crear evento
+// Crear evento con hora_inicio, hora_fin y token QR
 router.post('/', (req, res) => {
   const { titulo, descripcion, fecha_inicio, fecha_fin, grupo_id, activo } = req.body;
   const activoValue = activo === '1' ? 1 : 0;
-  const sql = `INSERT INTO eventos (titulo, descripcion, fecha_inicio, fecha_fin, grupo_id, activo) VALUES (?, ?, ?, ?, ?, ?)`;
-  const params = [titulo, descripcion, fecha_inicio, fecha_fin, grupo_id, activoValue];
+  // Extraer solo la hora de las fechas
+  const hora_inicio = fecha_inicio?.split('T')[1]?.slice(0, 5) || null; // formato "HH:MM"
+  const hora_fin = fecha_fin?.split('T')[1]?.slice(0, 5) || null;
+  // Generar token aleatorio
+  const token = Math.random().toString(36).substring(2, 10); // 8 caracteres
+  const sql = `
+    INSERT INTO eventos (titulo, descripcion, fecha_inicio, fecha_fin, grupo_id, activo, hora_inicio, hora_fin, token)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `;
+
+  const params = [
+    titulo,
+    descripcion,
+    fecha_inicio,
+    fecha_fin,
+    grupo_id,
+    activoValue,
+    hora_inicio,
+    hora_fin,
+    token
+  ];
+
   db.run(sql, params, function (err) {
     if (err) return res.status(500).json({ error: 'Error al guardar evento' });
     res.json({ id: this.lastID });
   });
 });
+
 
 // Actualizar evento
 router.put('/:id', (req, res) => {

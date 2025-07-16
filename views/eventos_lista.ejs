@@ -176,8 +176,7 @@
         btnEliminar.style.display = 'none';
         form.fecha_inicio.value = info.dateStr + 'T09:00';
         form.fecha_fin.value = info.dateStr + 'T10:00';
-        form.activo.checked = e.extendedProps.activo === 1;
-        modal.show();
+        modal.show(); 
       },
       eventClick: function (info) {
         const e = info.event;
@@ -202,8 +201,9 @@
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       const data = new FormData(form);
-      if (!form.activo.checked) form.activo.value = ''; // Envía vacío si no está marcado
       const body = Object.fromEntries(data.entries());
+      // Forzar valor booleano del checkbox "activo"
+      body.activo = form.activo.checked ? '1' : '0';
       const method = body.id ? 'PUT' : 'POST';
       const url = body.id ? `/eventos/${body.id}` : '/eventos';
       const res = await fetch(url, {
