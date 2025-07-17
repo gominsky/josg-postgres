@@ -1,30 +1,59 @@
-<% title = usuario ? 'Editar Usuario' : 'Nuevo Usuario' %>
+<% const esEdicion = typeof usuario !== 'undefined' && usuario !== null; %>
+<% title = esEdicion ? 'Editar Usuario' : 'Crear Usuario' %>
 <% hero = false %>
 
-<div class="container mt-5">
-  <h1 class="mb-4"><%= usuario ? 'Editar usuario' : 'Crear nuevo usuario' %></h1>
+<h1 class="h1-titulo"><%= title %></h1>
 
-  <form method="POST" action="<%= usuario ? `/usuarios/${usuario.id}/editar` : '/usuarios/nuevo' %>" class="bg-light p-4 rounded shadow-sm">
-    <div class="mb-3">
-      <label class="form-label fw-bold">Nombre</label>
-      <input type="text" name="nombre" class="form-control" value="<%= usuario?.nombre || '' %>" required>
+<!-- Ficha de campos -->
+<div class="dashboard-grid">
+  <form id="form-usuario"
+    method="POST"
+    action="<%= esEdicion ? '/usuarios/' + usuario.id + '/editar' : '/usuarios/nuevo' %>"
+    class="card-variacion2"
+    style="width: 430px; height: auto; box-sizing: border-box; overflow: auto;">
+
+    <div>
+      <label for="nombre"><div style="font-weight: 600; font-size: 1rem;">Nombre</div></label>
+      <div><input type="text" name="nombre" required value="<%= esEdicion ? usuario.nombre : '' %>"/></div>
     </div>
-    <div class="mb-3">
-      <label class="form-label fw-bold">Email</label>
-      <input type="email" name="email" class="form-control" value="<%= usuario?.email || '' %>" required>
+
+    <div>
+      <label for="email"><div style="font-weight: 600; font-size: 1rem;">Correo electrónico</div></label>
+      <div><input type="email" name="email" required value="<%= esEdicion ? usuario.email : '' %>"/></div>
     </div>
-    <div class="mb-3">
-      <label class="form-label fw-bold">Contraseña</label>
-      <input type="password" name="password" class="form-control" value="<%= usuario?.password || '' %>" required>
+
+    <div>
+      <label for="password"><div style="font-weight: 600; font-size: 1rem;">Contraseña</div></label>
+      <div><input type="password" name="password" <%= esEdicion ? '' : 'required' %> /></div>
+      <% if (esEdicion) { %>
+        <div class="form-text">Dejar en blanco para mantener la contraseña actual</div>
+      <% } %>
     </div>
-    <div class="mb-3">
-      <label class="form-label fw-bold">Rol</label>
-      <select name="rol" class="form-select" required>
-        <option value="admin" <%= usuario?.rol === 'admin' ? 'selected' : '' %>>Administrador</option>
-        <option value="docente" <%= usuario?.rol === 'docente' ? 'selected' : '' %>>Docente</option>
-      </select>
+      <div style="margin-top: 1rem;">
+        <label for="rol"><div style="font-weight: 600; font-size: 1rem;">Rol</div></label>
+        <select name="rol" required>
+          <option value="admin" <%= esEdicion && usuario.rol === 'admin' ? 'selected' : '' %>>Administrador</option>
+          <option value="docente" <%= esEdicion && usuario.rol === 'docente' ? 'selected' : '' %>>Docente</option>
+        </select> 
     </div>
-    <button type="submit" class="btn-main-verde px-4 py-2 fw-bold">Guardar</button>
   </form>
 </div>
 
+<!-- Ficha de Guardar y Eliminar -->
+<div class="dashboard-grid">
+  <a href="#" onclick="document.getElementById('form-usuario').submit(); return false;" class="card-variacion2">
+    <div style="font-weight: 600; font-size: 1rem;">Guardar</div>
+  </a>
+
+  <% if (esEdicion) { %>
+    <a href="#" onclick="if(confirm('¿Eliminar este usuario?')) document.getElementById('delete-form').submit(); return false;" class="card-eliminar">
+      <div style="font-weight: 600; font-size: 1rem;">Eliminar</div>
+    </a>
+    <form id="delete-form" method="POST" action="/usuarios/<%= usuario.id %>/eliminar" class="hidde" style="background-color: transparent;"></form>
+  <% } %>
+</div>
+
+<!-- Enlace Volver -->
+<div class="volver-bloque-izquierda">
+  <a href="/usuarios" class="enlace-final">← Volver a lista de usuarios</a>
+</div>

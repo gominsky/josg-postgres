@@ -59,7 +59,6 @@ db.run(`
   direccion TEXT,
   especialidad TEXT,
   foto TEXT,
-  password TEXT NOT NULL,
   activo INTEGER DEFAULT 1
   )
 `);

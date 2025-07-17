@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Mis Firmas - JOSG</title>
+  <link rel="stylesheet" href="estilos.css" />
+</head>
+<body>
+    <div class="navbar">
+        <div class="nav-left">
+          <img src="/uploads/logoJOSG.png" class="nav-logo" alt="Logo JOSG" />
+          <span class="nav-title">Control de Firmas</span>
+        </div>
+        <div class="nav-links">
+          <a href="eventos.html">Eventos</a>
+          <a href="asistencias.html">Firmas</a>
+          <a href="#" onclick="logout()">Salir</a>
+        </div>
+      </div>      
+  <div class="container">
+    <h2>Mis Firmas</h2>
+    <div id="listaFirmas">
+      <p>Cargando...</p>
+    </div>
+    <button class="btn" onclick="window.location.href='eventos.html'">← Volver</button>
+  </div>
+
+  <script>
+    const usuario_id = localStorage.getItem('usuario_id');
+    if (!usuario_id) window.location.href = 'login.html';
+
+    async function cargarFirmas() {
+      const res = await fetch('/control_firmas/api/asistencias?usuario_id=' + usuario_id);
+      const data = await res.json();
+      const contenedor = document.getElementById('listaFirmas');
+      contenedor.innerHTML = '';
+
+      if (data.length === 0) {
+        contenedor.innerHTML = '<p>No hay firmas registradas.</p>';
+        return;
+      }
+
+      data.forEach(firma => {
+        const div = document.createElement('div');
+        div.className = 'asistencia';
+        div.innerHTML = `
+          <strong>${firma.titulo}</strong><br>
+          Grupo: ${firma.grupo_nombre}<br>
+          Fecha: ${firma.fecha}<br>
+          Hora: ${firma.hora}
+        `;
+        contenedor.appendChild(div);
+      });
+    }
+
+    cargarFirmas();
+  </script>
+</body>
+</html>

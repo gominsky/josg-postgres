@@ -102,27 +102,6 @@
       </label>
     </div>
   </div>
-
-  <div class="grupo-campos">
-    <h2>Opciones avanzadas</h2>
-    <div class="form-grid-2">
-      <label>Registrado:
-        <select name="registrado">
-          <option value="1" <%= alumno?.registrado === 1 ? 'selected' : '' %>>Sí</option>
-          <option value="0" <%= alumno?.registrado === 0 ? 'selected' : '' %>>No</option>
-        </select>
-      </label>
-
-      <label>Guardias actuales:
-        <input type="number" name="guardias_actual" value="<%= alumno?.guardias_actual || 0 %>">
-      </label>
-
-      <label>Guardias históricas:
-        <input type="number" name="guardias_hist" value="<%= alumno?.guardias_hist || 0 %>">
-      </label>
-    </div>
-  </div>
-
   <div class="grupo-campos">
     <h2>Foto</h2>
     <label>Subir nueva:

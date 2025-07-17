@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Eventos - JOSG</title>
+  <link rel="stylesheet" href="estilos.css" />
+</head>
+<body>
+    <div class="navbar">
+        <div class="nav-left">
+          <img src="/uploads/logoJOSG.png" class="nav-logo" alt="Logo JOSG" />
+          <span class="nav-title">Control de Firmas</span>
+        </div>
+        <div class="nav-links">
+          <a href="eventos.html">Eventos</a>
+          <a href="asistencias.html">Firmas</a>
+          <a href="#" onclick="logout()">Salir</a>
+        </div>
+      </div>
+      
+  <div class="header">
+    <img src="/uploads/logoJOSG.png" class="logo" alt="Logo JOSG" />
+    <div class="saludo">Hola, <span id="nombre"></span></div>
+  </div>
+
+  <div class="eventos-container" id="listaEventos">
+    <p>Cargando eventos...</p>
+  </div>
+
+  <div style="text-align: center;">
+    <button class="btn btn-cerrar" onclick="logout()">Cerrar sesión</button>
+  </div>
+
+  <script>
+    const nombre = localStorage.getItem('nombre');
+    const usuario_id = localStorage.getItem('usuario_id');
+    document.getElementById('nombre').innerText = nombre || 'Profesor';
+
+    if (!usuario_id) {
+      window.location.href = 'login.html';
+    }
+
+    async function logout() {
+      localStorage.clear();
+      window.location.href = 'login.html';
+    }
+
+    async function cargarEventos() {
+      const res = await fetch('/control_firmas/api/eventos?usuario_id=' + usuario_id);
+      const data = await res.json();
+      const contenedor = document.getElementById('listaEventos');
+      contenedor.innerHTML = '';
+
+      if (data.length === 0) {
+        contenedor.innerHTML = '<p>No tienes eventos asignados.</p>';
+        return;
+      }
+
+      data.forEach(evento => {
+        const div = document.createElement('div');
+        div.className = 'evento';
+        div.innerHTML = `
+          <h3>${evento.titulo}</h3>
+          <p><strong>Fecha:</strong> ${evento.fecha_inicio}</p>
+          <p><strong>Grupo:</strong> ${evento.grupo_nombre}</p>
+          <a class="btn" href="evento_detalle.html?id=${evento.id}">Ver Detalle / Firmar</a>
+        `;
+        contenedor.appendChild(div);
+      });
+    }
+
+    cargarEventos();
+  </script>
+</body>
+</html>

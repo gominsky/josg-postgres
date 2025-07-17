@@ -1,0 +1,124 @@
+/* === VARIABLES GLOBALES === */
+:root {
+    --naranja: #f7941d;
+    --naranja-oscuro: #e07b00;
+    --gris-claro: #f2f2f2;
+    --rojo: #dc3545;
+    --texto: #333;
+    --blanco: #fff;
+    --fuente: 'Segoe UI', sans-serif;
+  }
+  
+  /* === BASE === */
+  body {
+    font-family: var(--fuente);
+    background: var(--gris-claro);
+    margin: 0;
+    padding: 1rem;
+  }
+  
+  /* === NAVBAR === */
+  .navbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: var(--naranja);
+    color: var(--blanco);
+    padding: 0.8rem 1rem;
+    border-bottom: 2px solid var(--naranja-oscuro);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  
+  .nav-left {
+    display: flex;
+    align-items: center;
+  }
+  
+  .nav-logo {
+    height: 40px;
+    margin-right: 0.5rem;
+  }
+  
+  .nav-title {
+    font-weight: bold;
+    font-size: 1.1rem;
+  }
+  
+  .nav-links a {
+    color: var(--blanco);
+    text-decoration: none;
+    margin-left: 1rem;
+    font-weight: bold;
+  }
+  
+  .nav-links a:hover {
+    text-decoration: underline;
+  }
+  
+  /* === CONTENEDOR PRINCIPAL === */
+  .container {
+    background: var(--blanco);
+    padding: 1.5rem;
+    border-radius: 1rem;
+    max-width: 500px;
+    margin: auto;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    margin-top: 1.5rem;
+  }
+  
+  /* === BOTONES === */
+  .btn {
+    display: block;
+    width: 100%;
+    padding: 1rem;
+    background: var(--naranja);
+    color: var(--blanco);
+    border: none;
+    border-radius: 0.5rem;
+    font-size: 1rem;
+    font-weight: bold;
+    cursor: pointer;
+    margin-top: 1rem;
+    text-align: center;
+    text-decoration: none;
+  }
+  
+  .btn-rojo {
+    background: var(--rojo);
+  }
+  
+  .btn:hover {
+    opacity: 0.9;
+  }
+  
+  /* === MENSAJES === */
+  .mensaje {
+    text-align: center;
+    margin-top: 1rem;
+    font-weight: bold;
+  }
+  
+  .success {
+    color: green;
+  }
+  
+  .error {
+    color: red;
+  }
+  
+  /* === LISTAS DE DATOS === */
+  .item {
+    padding: 1rem;
+    border-bottom: 1px solid #eee;
+  }
+  
+  .item:last-child {
+    border-bottom: none;
+  }
+  
+  .item strong {
+    color: var(--texto);
+  }
+  

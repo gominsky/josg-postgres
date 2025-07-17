@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Detalle de Evento - JOSG</title>
+  <link rel="stylesheet" href="estilos.css" />
+</head>
+<body>
+    <div class="navbar">
+        <div class="nav-left">
+          <img src="/uploads/logoJOSG.png" class="nav-logo" alt="Logo JOSG" />
+          <span class="nav-title">Control de Firmas</span>
+        </div>
+        <div class="nav-links">
+          <a href="eventos.html">Eventos</a>
+          <a href="asistencias.html">Firmas</a>
+          <a href="#" onclick="logout()">Salir</a>
+        </div>
+      </div>
+      
+  <div class="container">
+    <div class="titulo">
+      <h2 id="tituloEvento">Evento</h2>
+    </div>
+
+    <div class="campo"><strong>Fecha:</strong> <span id="fechaEvento"></span></div>
+    <div class="campo"><strong>Hora:</strong> <span id="horaEvento"></span></div>
+    <div class="campo"><strong>Grupo:</strong> <span id="grupoEvento"></span></div>
+
+    <button class="btn" onclick="firmar()">Firmar asistencia</button>
+
+    <div id="mensaje" class="mensaje"></div>
+
+    <button class="btn btn-rojo" onclick="window.location.href='eventos.html'">← Volver</button>
+  </div>
+
+  <script>
+    const usuario_id = localStorage.getItem('usuario_id');
+    const nombre = localStorage.getItem('nombre');
+    const params = new URLSearchParams(window.location.search);
+    const evento_id = params.get('id');
+
+    if (!usuario_id || !evento_id) {
+      alert("Acceso no válido");
+      window.location.href = 'login.html';
+    }
+
+    async function cargarEvento() {
+      const res = await fetch(`/control_firmas/api/eventos/${evento_id}`);
+      const data = await res.json();
+
+      document.getElementById('tituloEvento').innerText = data.titulo;
+      document.getElementById('fechaEvento').innerText = data.fecha_inicio;
+      document.getElementById('horaEvento').innerText = data.hora_inicio + ' - ' + data.hora_fin;
+      document.getElementById('grupoEvento').innerText = data.grupo_nombre;
+    }
+
+    async function firmar() {
+      const mensaje = document.getElementById('mensaje');
+      mensaje.innerText = '';
+      mensaje.className = 'mensaje';
+
+      const res = await fetch('/control_firmas/api/firmar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ usuario_id, evento_id })
+      });
+
+      const data = await res.json();
+
+      if (data.success) {
+        mensaje.innerText = 'Firma registrada con éxito';
+        mensaje.classList.add('success');
+      } else {
+        mensaje.innerText = data.error || 'Error al firmar';
+        mensaje.classList.add('error');
+      }
+    }
+
+    cargarEvento();
+  </script>
+</body>
+</html>

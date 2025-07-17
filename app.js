@@ -6,9 +6,9 @@ const path = require('path');
 const db = require('./database/db');
 const expressLayouts = require('express-ejs-layouts');
 const methodOverride = require('method-override');
-
+require('dotenv').config();
 app.use(session({
-  secret: 'clave-super-secreta',
+  secret: process.env.SESSION_SECRET,
   resave: false,
   saveUninitialized: false
 }));
@@ -84,8 +84,11 @@ const tipos_cuotasRoutes = require('./routes/tipos_cuotas');
 app.use('/tipos_cuotas', tipos_cuotasRoutes);
 
 const pagosRoutes = require('./routes/pagos');
-
 app.use('/pagos', pagosRoutes);
+
+const control_firmasRoutes = require('./routes/control_firmas');
+app.use('/control_firmas', control_firmasRoutes);
+
 app.use('/usuarios', isAdmin, usuariosRoutes);        // Solo admin
 app.use('/profesores', isAuthenticated, profesoresRoutes); // Admin y docentes
 app.use('/alumnos', isDocente, alumnosRoutes);        // Solo docentes

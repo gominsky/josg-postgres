@@ -40,21 +40,17 @@ router.post('/', upload.single('foto'), (req, res) => {
   const {
     nombre, apellidos, email, telefono,
     direccion, fecha_nacimiento, especialidad,
-    password, instrumentos, grupos
+    instrumentos, grupos
   } = req.body;
   const activo = req.body.activo === '1' ? 1 : 0;
   const foto = req.file ? req.file.filename : null;
 
-  // Validación de contraseña obligatoria
-  if (!password || password.trim() === '') {
-    return renderFormularioConError('La contraseña es obligatoria.');
-  }
 
   const query = `
-    INSERT INTO profesores (nombre, apellidos, email, telefono, direccion, fecha_nacimiento, especialidad, password, foto, activo)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO profesores (nombre, apellidos, email, telefono, direccion, fecha_nacimiento, especialidad, foto, activo)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
   `;
-  const params = [nombre, apellidos, email, telefono, direccion, fecha_nacimiento, especialidad, password, foto, activo];
+  const params = [nombre, apellidos, email, telefono, direccion, fecha_nacimiento, especialidad, foto, activo];
 
   db.run(query, params, function (err) {
     if (err) {
@@ -93,7 +89,7 @@ router.post('/', upload.single('foto'), (req, res) => {
           profesor: {
             nombre, apellidos, email, telefono,
             direccion, fecha_nacimiento, especialidad,
-            password, activo
+            activo
           },
           grupos: gruposAll,
           instrumentos: instrumentosAll,
@@ -154,7 +150,6 @@ router.put('/:id', upload.single('foto'), (req, res) => {
     direccion,
     fecha_nacimiento,
     especialidad,
-    password,
     instrumentos,
     grupos
   } = req.body;
@@ -186,12 +181,6 @@ router.put('/:id', upload.single('foto'), (req, res) => {
     campos.push('foto = ?');
     params.push(foto);
   }
-
-  if (password && password.trim() !== '') {
-    campos.push('password = ?');
-    params.push(password.trim());
-  }
-
   const query = `UPDATE profesores SET ${campos.join(', ')} WHERE id = ?`;
   params.push(id);
 

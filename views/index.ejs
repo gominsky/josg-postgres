@@ -8,13 +8,11 @@
   padding: 0;
   overflow: hidden; /* evitar scroll */
   }
-
   .hero-header {
     position: relative;
     height: 100vh;
     overflow: hidden;
   }
-
   .login-form-overlay,
   .panel-usuario-overlay {
     position: absolute;
@@ -35,12 +33,10 @@
     animation-delay: 0.3s;
     width: 90%;
   }
-
   .login-form-overlay {
     top: 25%;
     max-width: 320px;
   }
-
   .panel-usuario-overlay {
     top: 25%;
     max-width: 860px;
@@ -106,7 +102,6 @@
       <% if (error) { %>
         <div class="alert alert-danger"><%= error %></div>
       <% } %>
-
       <form method="POST" action="/login">
         <div class="mb-3">
           <label class="form-label fw-bold">Correo electrónico</label>
@@ -140,6 +135,7 @@
           <a href="/cuotas" class="card-index">Cuotas</a>
           <a href="/grupos" class="card-index">Grupos</a>
           <a href="/instrumentos" class="card-index">Instrumentos</a>
+          <a href="/usuarios" class="card-index">Usuarios</a>
         <% } %>
       </div>
     </div>

@@ -5,7 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Iniciar Sesión</title>
   <style>
-    body { font-family: sans-serif; background: #f2f2f2; padding: 2rem; }
+    body {
+      font-family: sans-serif;
+      background: #f2f2f2;
+      padding: 2rem;
+      margin: 0;
+    }
+
     .container {
       max-width: 400px;
       margin: auto;
@@ -13,25 +19,50 @@
       padding: 2rem;
       border-radius: 1rem;
       box-shadow: 0 0 10px rgba(0,0,0,0.1);
+      text-align: center;
     }
+
+    img {
+      max-width: 150px;
+      display: block;
+      margin: 0 auto 1rem;
+    }
+
+    h2 {
+      margin-bottom: 1.5rem;
+    }
+
     input, button {
       width: 100%;
       padding: 1rem;
       margin-top: 1rem;
       font-size: 1rem;
       border-radius: 0.5rem;
+      box-sizing: border-box;
+    }
+
+    input {
       border: 1px solid #ccc;
     }
+
     button {
-      background-color: #007bff;
+      background-color: #FF9501;
       color: white;
       border: none;
       cursor: pointer;
+      font-weight: bold;
+    }
+
+    #mensaje {
+      margin-top: 1rem;
+      font-weight: bold;
+      color: red;
     }
   </style>
 </head>
 <body>
   <div class="container">
+    <img src="/../imagenes/logoJOSG.png" alt="Logo JOSG">
     <h2>Iniciar Sesión</h2>
     <input type="email" id="email" placeholder="Email" required />
     <input type="password" id="password" placeholder="Contraseña" required />
@@ -63,3 +94,4 @@
   </script>
 </body>
 </html>
+
