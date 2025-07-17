@@ -2,41 +2,86 @@
 <% hero = false %>
 
 <div class="container mt-4">
-  <h1 class="h1-titulo mb-4 text-center">Firmas manuales para: <%= evento.titulo %></h1>
-
-  <p class="text-center mb-3"><strong>Fecha:</strong> 
-    <%= new Date(evento.fecha_inicio).toLocaleDateString('es-ES') %>, 
-    <strong>Hora:</strong> <%= evento.hora_inicio %> - <%= evento.hora_fin %>
-  </p>
-
-  <form method="POST" action="/eventos/<%= evento.id %>/firma_manual" class="bg-light p-4 rounded shadow-sm">
-    <div class="mb-3">
-      <label class="form-label fw-bold">Selecciona los alumnos presentes:</label>
-      <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 g-2">
-        <% alumnos.forEach(alumno => { %>
-          <div class="form-check">
-            <input 
-              class="form-check-input" 
-              type="checkbox" 
-              name="alumnosFirmados" 
-              value="<%= alumno.id %>"
-              id="alumno_<%= alumno.id %>"
-              <%= firmados.includes(alumno.id) ? 'checked' : '' %>
-            >
-            <label class="form-check-label" for="alumno_<%= alumno.id %>">
-              <%= alumno.apellidos %>, <%= alumno.nombre %>
-            </label>
-          </div>
-        <% }) %>
-      </div>
-    </div>
-
-    <div class="text-center mt-4">
-      <button type="submit" class="btn-main-verde fw-bold px-4 py-2">Guardar Asistencias</button>
-      <a href="/eventos" class="btn btn-secondary ms-2">← Volver</a>
-    </div>
-  </form>
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h1-titulo mb-0">Firmas manuales</h1>
+    <a href="/eventos" class="btn-main fw-bold px-3 py-2">Eventos</a>
+  </div>
 </div>
 
+<div class="container mt-4">
+    <div class="text-center">
+    <h5 class="mb-3">Evento: <%= evento.titulo %></h5>
+    <p class="mb-3">
+      <strong>Fecha:</strong>
+      <%= new Date(evento.fecha_inicio).toLocaleString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }) %>,
+      <strong>Hora:</strong> <%= evento.hora_inicio %> - <%= evento.hora_fin %>
+    </p>
 
+    <form method="POST" action="/eventos/<%= evento.id %>/firma_manual" style="background-color: transparent">
+            <table class="tabla-estilizada">
+        <thead>
+          <tr>
+            <th>Nombre completo</th>
+            <th>DNI</th>
+            <th>Firmado</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% alumnos.forEach(alumno => { %>
+            <tr>
+              <td class="text-start"><%= alumno.apellidos %>, <%= alumno.nombre %></td>
+              <td><%= alumno.DNI %></td>
+              <td>
+                <input 
+                  class="form-check-input" 
+                  type="checkbox" 
+                  name="alumnosFirmados" 
+                  value="<%= alumno.id %>"
+                  id="alumno_<%= alumno.id %>"
+                  <%= firmados.includes(alumno.id) ? 'checked' : '' %>
+                >
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
 
+      <div class="text-center mt-4">
+        <button type="submit" class="btn-main fw-bold px-4 py-2">Guardar cambios en firmas</button>
+      </div>
+    </form>
+
+    <div class="volver-bloque-izquierda mt-4">
+      <a href="/eventos" class="enlace-final">← Volver al calendario</a>
+    </div>
+  </div>
+</div>
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const checks = document.querySelectorAll('input[name="alumnosFirmados"]');
+
+    checks.forEach(chk => {
+      chk.addEventListener('change', () => {
+        const alumnoId = chk.value;
+        const firmado = chk.checked;
+        const eventoId = <%= evento.id %>;
+
+        fetch(`/eventos/${eventoId}/firma_manual/ajax`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ alumno_id: alumnoId, firmado })
+        })
+        .then(res => res.json())
+        .then(data => {
+          if (!data.success) alert('Error al actualizar firma');
+        })
+        .catch(err => {
+          console.error('Error:', err);
+          alert('Error en la solicitud');
+        });
+      });
+    });
+  });
+</script>

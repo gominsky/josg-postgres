@@ -1,0 +1,39 @@
+<% title = 'Usuarios' %>
+<% hero = false %>
+
+<div class="container mt-4">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h1-titulo mb-0">Gestión de Usuarios</h1>
+    <a href="/usuarios/nuevo" class="btn-main fw-bold">+ Nuevo Usuario</a>
+  </div>
+
+  <% if (usuarios && usuarios.length > 0) { %>
+    <table class="tabla-estilizada">
+      <thead>
+        <tr>
+          <th>Nombre</th>
+          <th>Email</th>
+          <th>Rol</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% usuarios.forEach(u => { %>
+          <tr>
+            <td><%= u.nombre %></td>
+            <td><%= u.email %></td>
+            <td><%= u.rol %></td>
+            <td>
+              <a href="/usuarios/<%= u.id %>/editar" class="btn btn-sm btn-outline-primary">Editar</a>
+              <form method="POST" action="/usuarios/<%= u.id %>/eliminar" style="display:inline;" onsubmit="return confirm('¿Eliminar este usuario?')">
+                <button class="btn btn-sm btn-outline-danger" type="submit">Eliminar</button>
+              </form>
+            </td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  <% } else { %>
+    <p>No hay usuarios registrados.</p>
+  <% } %>
+</div>

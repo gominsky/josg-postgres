@@ -8,6 +8,17 @@ const db = new sqlite3.Database(path.resolve(__dirname, 'josg.db'), (err) => {
 });
 
 // Crear tablas
+//Usuarios de la aplicación
+db.run(`
+  CREATE TABLE IF NOT EXISTS usuarios (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    nombre TEXT NOT NULL,
+    email TEXT UNIQUE NOT NULL,
+    password TEXT NOT NULL,
+    rol TEXT CHECK(rol IN ('admin', 'docente', 'usuario')) NOT NULL DEFAULT 'usuario',
+    creado_en DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+`);
 //Alumnos
 db.run(`
   CREATE TABLE IF NOT EXISTS alumnos (

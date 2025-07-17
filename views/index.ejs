@@ -1,20 +1,147 @@
 <% title = 'Inicio - JOSG' %>
 <% hero = true %>
 
-<header class="hero-header">
-  <div class="hero-overlay">
-    <h1>JOSG</h1>
-    <p>Asociación Joven Orquesta Sinfónica de Granada</p>
-  </div>
-</header>
+<style>
+  html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden; /* evitar scroll */
+  }
 
-<div id="menu-principal" class="dashboard-grid floating-grid">
-  <a href="/alumnos" class="card-index">Alumnos</a>
-  <a href="/profesores" class="card-index">Docentes</a>
-  <a href="/eventos" class="card-index">Eventos</a>
-  <a href="/guardias" class="card-index">Guardias</a>
-  <a href="/informes" class="card-index">Informes</a>
-  <a href="/cuotas" class="card-index">Cuotas</a>
-  <a href="/grupos" class="card-index">Grupos</a> 
-  <a href="/instrumentos" class="card-index">Instrumentos</a>
-</div>
+  .hero-header {
+    position: relative;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  .login-form-overlay,
+  .panel-usuario-overlay {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    background: linear-gradient(
+      rgba(255, 255, 255, 0.0),
+      rgb(228, 234, 233)
+    );
+    padding: 1.5rem;
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+    color: #333;
+    backdrop-filter: blur(4px);
+    animation: fadeIn 1.2s ease-in;
+    opacity: 0;
+    animation-fill-mode: forwards;
+    animation-delay: 0.3s;
+    width: 90%;
+  }
+
+  .login-form-overlay {
+    top: 25%;
+    max-width: 320px;
+  }
+
+  .panel-usuario-overlay {
+    top: 25%;
+    max-width: 860px;
+  }
+
+  .login-form-overlay h1,
+  .panel-usuario-overlay h1 {
+    font-weight: 700;
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+    text-align: center;
+  }
+
+  .login-form-overlay p,
+  .panel-usuario-overlay p {
+    font-size: 1rem;
+    text-align: center;
+    margin-bottom: 1rem;
+  }
+
+  .login-form-overlay form {
+    background-color: rgb(1, 95, 69);
+    color: rgb(227, 255, 0);
+    padding: 1rem;
+    border-radius: 6px;
+  }
+  @keyframes fadeIn {
+    to {
+      opacity: 1;
+    }
+  }
+
+  .dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 1rem;
+  }
+
+  .card-index {
+    background-color:rgba(1, 95, 69, 0.6);
+    text-align: center;
+    padding: 1rem;
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: bold;
+    color:  rgb(227, 255, 0);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s;
+  }
+
+  .card-index:hover {
+    transform: translateY(-5px);
+  }
+</style>
+
+<header class="hero-header">
+  <% if (!usuario) { %>
+    <div class="login-form-overlay">
+      <h1>JOSG</h1>
+      <p>Asociación Joven Orquesta Sinfónica de Granada</p>
+      <p>Acceso</p>
+
+      <% if (error) { %>
+        <div class="alert alert-danger"><%= error %></div>
+      <% } %>
+
+      <form method="POST" action="/login">
+        <div class="mb-3">
+          <label class="form-label fw-bold">Correo electrónico</label>
+          <input type="email" name="email" class="form-control" required>
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-bold">Contraseña</label>
+          <input type="password" name="password" class="form-control" required>
+        </div>
+        <div class="d-grid">
+          <button type="submit" class="btn-main btn">Entrar</button>
+        </div>
+      </form>
+    </div>
+
+  <% } else { %>
+    <div class="panel-usuario-overlay">
+      <h1>JOSG</h1>
+      <p>Bienvenido, <%= usuario.nombre %> (<%= usuario.rol %>)</p>
+      <div class="text-end mb-3">
+        <a href="/logout" class="btn-main btn-mini">Cerrar sesión</a>
+      </div>
+
+      <div id="menu-principal" class="dashboard-grid">
+        <% if (usuario.rol === 'admin' || usuario.rol === 'docente') { %>
+          <a href="/alumnos" class="card-index">Alumnos</a>
+          <a href="/profesores" class="card-index">Docentes</a>
+          <a href="/eventos" class="card-index">Eventos</a>
+          <a href="/guardias" class="card-index">Guardias</a>
+          <a href="/informes" class="card-index">Informes</a>
+          <a href="/cuotas" class="card-index">Cuotas</a>
+          <a href="/grupos" class="card-index">Grupos</a>
+          <a href="/instrumentos" class="card-index">Instrumentos</a>
+        <% } %>
+      </div>
+    </div>
+  <% } %>
+</header>

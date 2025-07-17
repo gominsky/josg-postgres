@@ -1,0 +1,222 @@
+<!-- Modal flotante para nuevo/editar evento -->
+<style>
+  #eventoForm label {
+    font-weight: bold;
+  }
+</style>
+<div class="modal fade" id="eventoModal" tabindex="-1" aria-labelledby="eventoModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content" style="background-color:rgb(227, 255, 0)">
+        <form id="eventoForm" style="background-color:rgb(227, 255, 0)">
+          <input type="hidden" name="id">
+          <div class="modal-header" style="background-color:rgb(227, 255, 0)">
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+          </div>
+          <div class="modal-body">
+            <div class="mb-3">
+              <label class="form-label">Título</label>
+              <input type="text" name="titulo" class="form-control" required>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Descripción</label>
+              <textarea name="descripcion" class="form-control"></textarea>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Grupos</label>
+              <select name="grupo_id" class="form-select" required>
+                <% if (grupos && grupos.length > 0) { %>
+                  <% grupos.forEach(a => { %>
+                    <option value="<%= a.id %>"><%= a.nombre %></option>
+                  <% }) %>
+                <% } else { %>
+                  <option disabled selected>No hay grupos disponibles</option>
+                <% } %>
+              </select>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Fecha y hora de inicio</label>
+              <input type="datetime-local" name="fecha_inicio" class="form-control" required>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Fecha y hora de fin</label>
+              <input type="datetime-local" name="fecha_fin" class="form-control" required>
+            </div>
+            <div class="form-check">
+              <input type="checkbox" name="activo" id="activo" class="form-check-input">
+              <label class="form-check-label" for="activo">Activar QR para este evento</label>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="submit" class="btn-main-negro">Guardar</button>
+            <button type="button" class="btn-main-rojo" id="btnEliminar" style="display: none;">Eliminar</button>
+            <button type="button" class="btn-main-negro" id="btnQR" style="display: none;">Ver QR</button>
+            <button type="button" class="btn-main-negro" id="btnFirmaManual" style="display: none;">Firmas manuales</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/locales-all.global.min.js"></script>
+  
+  <script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const form = document.getElementById('eventoForm');
+    const modalEl = document.getElementById('eventoModal');
+    const modal = new bootstrap.Modal(modalEl);
+    const btnEliminar = document.getElementById('btnEliminar');
+    const btnQR = document.getElementById('btnQR');
+    const btnFirmaManual = document.getElementById('btnFirmaManual');
+  
+    // Lógica para filas en modo lista
+    const filas = document.querySelectorAll('.evento-row');
+    filas.forEach(fila => {
+      fila.style.cursor = 'pointer';
+      fila.addEventListener('click', async () => {
+        const id = fila.dataset.id;
+        try {
+          const res = await fetch(`/eventos/${id}`);
+          if (!res.ok) return alert('Error al cargar el evento');
+          const evento = await res.json();
+  
+          form.reset();
+          form.id.value = evento.id;
+          form.titulo.value = evento.titulo || '';
+          form.descripcion.value = evento.descripcion || '';
+          form.grupo_id.value = evento.grupo_id || '';
+          form.fecha_inicio.value = evento.fecha_inicio.slice(0, 16);
+          form.fecha_fin.value = evento.fecha_fin.slice(0, 16);
+          form.activo.checked = evento.activo == 1;
+  
+          btnEliminar.style.display = 'inline-block';
+          btnQR.style.display = 'inline-block';
+          btnFirmaManual.style.display = 'inline-block';
+  
+          btnQR.onclick = () => window.open(`/eventos/${evento.id}/qr`, '_blank');
+          btnFirmaManual.onclick = () => window.location.href = `/eventos/${evento.id}/firma_manual`;
+  
+          modal.show();
+        } catch (err) {
+          alert('Error inesperado');
+        }
+      });
+    });
+  
+    // Lógica del calendario
+    if (typeof FullCalendar !== 'undefined') {
+      const calendarEl = document.getElementById('calendar');
+      const calendar = new FullCalendar.Calendar(calendarEl, {
+        locale: 'es',
+        initialView: 'dayGridMonth',
+        headerToolbar: {
+          left: 'prev,next today',
+          center: 'title',
+          right: 'dayGridMonth,timeGridWeek,customList'
+        },
+        customButtons: {
+          customList: {
+            text: 'Lista',
+            click: function () {
+              const view = calendar.view;
+              const start = view.currentStart.toISOString().split('T')[0];
+              const end = view.currentEnd.toISOString().split('T')[0];
+              window.location.href = `/eventos?desde=${start}&hasta=${end}`;
+            }
+          }
+        },
+        buttonText: {
+          today: 'Hoy',
+          month: 'Mes',
+          week: 'Semana',
+          day: 'Día',
+          list: 'Lista'
+        },
+        events: '/eventos/listado',
+        views: {
+          dayGridMonth: {
+          displayEventTime: false
+          }
+        },
+        dateClick: function (info) {
+          form.reset();
+          form.id.value = '';
+          form.titulo.value = '';
+          form.descripcion.value = '';
+          form.grupo_id.value = '';
+          form.fecha_inicio.value = info.dateStr + 'T09:00';
+          form.fecha_fin.value = info.dateStr + 'T10:00';
+          form.activo.checked = false;
+  
+          btnEliminar.style.display = 'none';
+          btnQR.style.display = 'none';
+          btnFirmaManual.style.display = 'none';
+  
+          modal.show();
+        },
+        eventClick: function (info) {
+          const e = info.event;
+          form.reset();
+          form.id.value = e.id;
+          form.titulo.value = e.extendedProps.titulo || '';
+          form.descripcion.value = e.extendedProps.descripcion || '';
+          form.grupo_id.value = e.extendedProps.grupo_id || '';
+          form.fecha_inicio.value = e.startStr?.slice(0, 16) || '';
+          form.fecha_fin.value = e.endStr?.slice(0, 16) || '';
+          form.activo.checked = e.extendedProps.activo == 1;
+  
+          btnEliminar.style.display = 'inline-block';
+          btnQR.style.display = 'inline-block';
+          btnFirmaManual.style.display = 'inline-block';
+  
+          btnQR.onclick = () => window.open(`/eventos/${e.id}/qr`, '_blank');
+          btnFirmaManual.onclick = () => window.location.href = `/eventos/${e.id}/firma_manual`;
+  
+          modal.show();
+        }
+      });
+      calendar.render();
+    }
+  
+    // Guardar evento
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const data = new FormData(form);
+      const body = Object.fromEntries(data.entries());
+      body.activo = form.activo.checked ? '1' : '0';
+  
+      const method = body.id ? 'PUT' : 'POST';
+      const url = body.id ? `/eventos/${body.id}` : '/eventos';
+  
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+  
+      if (res.ok) {
+        modal.hide();
+        location.reload();
+      } else {
+        alert('Error al guardar el evento');
+      }
+    });
+  
+    // Eliminar evento
+    btnEliminar.addEventListener('click', async () => {
+      if (confirm('¿Deseas eliminar este evento?')) {
+        const id = form.id.value;
+        const res = await fetch(`/eventos/${id}`, { method: 'DELETE' });
+        if (res.ok) {
+          modal.hide();
+          location.reload();
+        } else {
+          alert('Error al eliminar');
+        }
+      }
+    });
+  });
+  </script>
+  

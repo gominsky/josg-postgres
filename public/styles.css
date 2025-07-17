@@ -541,21 +541,12 @@ form {
 }
 
 .modal-header {
-  background-color: rgb(1, 95, 69);
-  color: white;
+  background-color:  rgba(12, 233, 93,1);
+  color:rgb(1, 95, 69);
   border-bottom: none;
   border-top-left-radius: 1rem;
   border-top-right-radius: 1rem;
 }
-
-.btn-primary {
-  background-color:  rgb(1, 95, 69);
-  border: none;
-}
-
-.btn-primary:hover {
-  background-color: rgba(1, 95, 6,0.8);
-} 
   /* FINANZAS */
 .finanzas-section {
   background-color: #f9f9fc;
@@ -625,17 +616,21 @@ form {
   color: rgb(1, 95, 69);
   font-weight: 600;
 }
-
+.fc-event {
+  cursor: pointer;
+}
 /* Números de los días en el mes */
 .fc .fc-daygrid-day-number {
   color: rgb(1, 95, 69);
   font-weight: bold;
 }
 .fc .fc-daygrid-day.fc-day-today a {
-  color: white !important;
+  color: rgb(3, 0, 0) !important;
   text-decoration: none !important;
 }
-
+.fc-daygrid-dot-event .fc-daygrid-event-dot {
+  display: none !important;
+}
 /* Fondo de los botones (hoy, siguiente, anterior) */
 .fc .fc-button {
   background-color: rgb(1, 95, 69);
@@ -649,19 +644,6 @@ form {
 /* Hover de botones */
 .fc .fc-button:hover {
   background-color: rgb(0, 80, 58);
-}
-
-/* Botón activo (por ejemplo, vista actual) */
-.fc .fc-button-primary:not(:disabled).fc-button-active,
-.fc .fc-button-primary:not(:disabled):active {
-  background-color: rgb(0, 80, 58);
-  border: none;
-}
-
-/* Día actual resaltado */
-.fc .fc-day-today {
-  background-color: rgba(1, 95, 69, 0.07);
-  border: 1px solid rgb(1, 95, 69);
 }
 /* Días de la semana*/
 #calendar .fc-col-header-cell {
@@ -701,14 +683,14 @@ form {
 /* Celdas de eventos */
 .fc-event {
   background-color: rgb(0, 80, 58) !important;
-  color: rgb(F,F,F);
+  color: white;
   border: none !important;
   border-radius: 0.4rem !important;
   font-size: 0.85rem;
   padding: 2px 6px;
 }
 #calendar td.fc-day-today a {
-  color: white !important;
+  color:rgb(1, 95, 69) !important;
 }
 /* FORMULARIOS */
 .formulario-alumno {
@@ -835,6 +817,7 @@ form {
 .tabla-estilizada td {
   padding: 12px;
   border-bottom: 1px solid #000;
+  text-align: left;
 }
 
 .tabla-estilizada tr:hover {

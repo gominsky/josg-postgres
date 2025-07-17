@@ -12,19 +12,28 @@ router.get('/listado', (req, res) => {
   `;
   db.all(sql, [], (err, rows) => {
     if (err) return res.status(500).json({ error: 'Error al obtener eventos' });
-
-    const eventos = rows.map(row => ({
-      id: row.id,
-      title: `${row.titulo} (${row.grupo_nombre || 'Sin grupo'})`,
-      start: row.fecha_inicio,
-      end: row.fecha_fin,
-      descripcion: row.descripcion,
-      grupo_id: row.grupo_id,
-      grupo: row.grupo_nombre,
-      activo: row.activo,
-      backgroundColor: '#2a4b7c',
-      borderColor: '#2a4b7c'
-    }));
+    const cleanText = (text) =>
+      (text || '').replace(/[\u0000-\u001F\u007F-\u009F\u200B]/g, '').trim();
+    
+      const eventos = rows.map((row) => {
+      const tituloLimpio = cleanText(row.titulo);
+      const grupoLimpio = cleanText(row.grupo_nombre || 'Sin grupo');
+      const descripcionLimpia = cleanText(row.descripcion || '');
+    
+      return {
+        id: row.id,
+        title: tituloLimpio ? `${tituloLimpio} (${grupoLimpio})` : `Evento sin título`,
+        start: row.fecha_inicio,
+        end: row.fecha_fin,
+        titulo: tituloLimpio,
+        descripcion: descripcionLimpia,
+        grupo_id: row.grupo_id,
+        grupo: grupoLimpio,
+        activo: row.activo,
+        backgroundColor: '#2a4b7c',
+        borderColor: '#2a4b7c'
+      };
+    });
 
     res.json(eventos);
   });
@@ -46,15 +55,33 @@ router.get('/', (req, res) => {
     `;
     db.all(query, [desde, hasta], (err, eventos) => {
       if (err) return res.status(500).send('Error al obtener eventos');
-      res.render('eventos_lista', { eventos, desde, hasta, grupos: [], hero: false });
+
+      // Cargamos los grupos también
+      db.all('SELECT * FROM grupos', (err, grupos) => {
+        if (err) return res.status(500).send('Error al cargar grupos');
+        res.render('eventos_lista', { eventos, desde, hasta, grupos, hero: false });
+      });
     });
   } else {
-    // Si no hay parámetros, mostrar calendario con grupos
+    // Si no hay fechas, mostrar solo el calendario
     db.all('SELECT * FROM grupos', (err, grupos) => {
       if (err) return res.status(500).send('Error al cargar grupos');
       res.render('eventos_lista', { eventos: null, desde: '', hasta: '', grupos, hero: false });
     });
   }
+});
+
+router.get('/:id', (req, res) => {
+  const id = req.params.id;
+  db.get('SELECT * FROM eventos WHERE id = ?', [id], (err, row) => {
+    if (err) {
+      console.error('Error al obtener el evento:', err);
+      return res.status(500).json({ error: 'Error interno del servidor' });
+    }
+    if (!row) return res.status(404).json({ error: 'Evento no encontrado' });
+
+    res.json(row);
+  });
 });
 
 // Crear evento con hora_inicio, hora_fin y token QR
@@ -88,7 +115,6 @@ router.post('/', (req, res) => {
     res.json({ id: this.lastID });
   });
 });
-
 
 // Actualizar evento
 router.put('/:id', (req, res) => {
@@ -211,22 +237,26 @@ router.get('/:id/firma_manual', (req, res) => {
   const eventoId = req.params.id;
 
   const eventoSQL = `SELECT * FROM eventos WHERE id = ?`;
-  const alumnosSQL = `
-    SELECT a.*
-    FROM alumnos a
-    JOIN alumno_grupo ag ON ag.alumno_id = a.id
-    WHERE ag.grupo_id = ? AND a.activo = 1
-    ORDER BY a.apellidos, a.nombre
-  `;
-  const asistenciasSQL = `
-    SELECT alumno_id FROM asistencias WHERE evento_id = ?
-  `;
+  const asistenciasSQL = `SELECT alumno_id FROM asistencias WHERE evento_id = ?`;
 
   db.get(eventoSQL, [eventoId], (err, evento) => {
     if (err || !evento) return res.status(500).send('Error cargando evento');
 
-    db.all(alumnosSQL, [evento.grupo_id], (err, alumnos) => {
-      if (err) return res.status(500).send('Error cargando alumnos');
+    const alumnosSQL = `
+      SELECT a.*
+      FROM alumnos a
+      JOIN alumno_grupo ag ON ag.alumno_id = a.id
+      WHERE ag.grupo_id = ?
+        AND DATE(a.fecha_matriculacion) <= DATE(?)
+        AND (a.fecha_baja IS NULL OR DATE(a.fecha_baja) >= DATE(?))
+      ORDER BY a.apellidos, a.nombre
+    `;
+
+    db.all(alumnosSQL, [evento.grupo_id, evento.fecha_inicio, evento.fecha_inicio], (err, alumnos) => {
+      if (err) {
+        console.error("Error SQL alumnos:", err.message);
+        return res.status(500).send('Error cargando alumnos');
+      }
 
       db.all(asistenciasSQL, [eventoId], (err, asistencias) => {
         if (err) return res.status(500).send('Error cargando asistencias');
@@ -238,29 +268,79 @@ router.get('/:id/firma_manual', (req, res) => {
   });
 });
 
-
-
 router.post('/:id/firma_manual', (req, res) => {
   const eventoId = req.params.id;
-  const { alumnosFirmados } = req.body; // array de IDs
+  const firmadosActuales = req.body.alumnosFirmados || [];
 
-  const fecha = new Date().toISOString().split('T')[0];
-  const hora = new Date().toTimeString().split(' ')[0];
+  // Normalizar a array (cuando solo hay uno, puede venir como string)
+  const nuevosFirmados = Array.isArray(firmadosActuales)
+    ? firmadosActuales.map(id => parseInt(id))
+    : [parseInt(firmadosActuales)];
 
-  const ids = Array.isArray(alumnosFirmados) ? alumnosFirmados : [alumnosFirmados];
+  // Primero obtenemos todos los firmados actuales en la BBDD
+  const getSQL = `SELECT alumno_id FROM asistencias WHERE evento_id = ?`;
+  db.all(getSQL, [eventoId], (err, registrosActuales) => {
+    if (err) return res.status(500).send('Error al obtener asistencias');
 
-  const insert = db.prepare(`
-    INSERT INTO asistencias (alumno_id, evento_id, fecha, hora, tipo)
-    VALUES (?, ?, ?, ?, 'manual')
-  `);
+    const actualesIds = registrosActuales.map(r => r.alumno_id);
 
-  ids.forEach(id => {
-    insert.run(id, eventoId, fecha, hora);
+    // Determinar cuáles eliminar y cuáles insertar
+    const aInsertar = nuevosFirmados.filter(id => !actualesIds.includes(id));
+    const aEliminar = actualesIds.filter(id => !nuevosFirmados.includes(id));
+
+    // Transacciones simples para insertar y eliminar
+    const insertSQL = `INSERT INTO asistencias (evento_id, alumno_id) VALUES (?, ?)`;
+    const deleteSQL = `DELETE FROM asistencias WHERE evento_id = ? AND alumno_id = ?`;
+
+    const tareas = [];
+
+    aInsertar.forEach(id => {
+      tareas.push(new Promise((resolve, reject) => {
+        db.run(insertSQL, [eventoId, id], err => {
+          if (err) reject(err);
+          else resolve();
+        });
+      }));
+    });
+
+    aEliminar.forEach(id => {
+      tareas.push(new Promise((resolve, reject) => {
+        db.run(deleteSQL, [eventoId, id], err => {
+          if (err) reject(err);
+          else resolve();
+        });
+      }));
+    });
+
+    // Ejecutar todas las tareas
+    Promise.all(tareas)
+      .then(() => res.redirect(`/eventos/${eventoId}/firma_manual`))
+      .catch(error => {
+        console.error("Error actualizando asistencias:", error);
+        res.status(500).send('Error actualizando asistencias');
+      });
   });
+});
 
-  insert.finalize(err => {
-    if (err) return res.status(500).send('Error al guardar firmas');
-    res.redirect(`/eventos/${eventoId}/firma_manual`);
+router.post('/:id/firma_manual/ajax', (req, res) => {
+  const eventoId = parseInt(req.params.id);
+  const alumnoId = parseInt(req.body.alumno_id);
+  const firmado = req.body.firmado === 'true';
+
+  if (!eventoId || !alumnoId) return res.status(400).json({ error: 'Datos inválidos' });
+
+  const insertSQL = `INSERT INTO asistencias (evento_id, alumno_id) VALUES (?, ?)`;
+  const deleteSQL = `DELETE FROM asistencias WHERE evento_id = ? AND alumno_id = ?`;
+
+  const sql = firmado ? insertSQL : deleteSQL;
+  const params = firmado ? [eventoId, alumnoId] : [eventoId, alumnoId];
+
+  db.run(sql, params, function (err) {
+    if (err) {
+      console.error(err);
+      return res.status(500).json({ error: 'Error actualizando firma' });
+    }
+    res.json({ success: true });
   });
 });
 
