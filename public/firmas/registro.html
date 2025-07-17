@@ -5,7 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Registro de Alumno</title>
   <style>
-    body { font-family: sans-serif; background: #f2f2f2; padding: 2rem; }
+    body {
+      font-family: sans-serif;
+      background: #f2f2f2;
+      padding: 2rem;
+    }
+
     .container {
       max-width: 400px;
       margin: auto;
@@ -13,30 +18,50 @@
       padding: 2rem;
       border-radius: 1rem;
       box-shadow: 0 0 10px rgba(0,0,0,0.1);
+      text-align: center;
     }
+
+    h2 {
+      margin-top: 0;
+    }
+
     input, button {
       width: 100%;
       padding: 1rem;
       margin-top: 1rem;
       font-size: 1rem;
       border-radius: 0.5rem;
+      box-sizing: border-box;
+    }
+
+    input {
       border: 1px solid #ccc;
     }
+
     button {
-      background-color: #28a745;
+      background-color: #FF9501;
       color: white;
       border: none;
       cursor: pointer;
+      font-weight: bold;
+    }
+
+    #mensaje {
+      margin-top: 1rem;
+      font-weight: bold;
+      color: red;
     }
   </style>
 </head>
 <body>
   <div class="container">
     <h2>Registro</h2>
-    <p>Introduce tu email, DNI y elige una contraseña para acceder.</p>
+    <h2 style="font-weight: normal; font-size: 1rem;">Introduce tu email, DNI y elige una contraseña para acceder.</h2>
+    
     <input type="email" id="email" placeholder="Email" required />
     <input type="text" id="dni" placeholder="DNI" required />
     <input type="password" id="password" placeholder="Contraseña" required />
+
     <button onclick="registrar()">Registrarme</button>
     <p id="mensaje"></p>
     <button onclick="location.href='index.html'">← Volver</button>
