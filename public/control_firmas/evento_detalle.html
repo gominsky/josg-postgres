@@ -3,82 +3,148 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Detalle de Evento - JOSG</title>
-  <link rel="stylesheet" href="estilos.css" />
+  <title>Firmas del evento</title>
+  <link rel="stylesheet" href="../estilos_app.css" />
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
 </head>
 <body>
-    <div class="navbar">
-        <div class="nav-left">
-          <img src="/uploads/logoJOSG.png" class="nav-logo" alt="Logo JOSG" />
-          <span class="nav-title">Control de Firmas</span>
-        </div>
-        <div class="nav-links">
-          <a href="eventos.html">Eventos</a>
-          <a href="asistencias.html">Firmas</a>
-          <a href="#" onclick="logout()">Salir</a>
-        </div>
-      </div>
-      
   <div class="container">
-    <div class="titulo">
-      <h2 id="tituloEvento">Evento</h2>
-    </div>
+    <h2 id="titulo">Firmar asistencia manual</h2>
+    <div id="info-evento"></div>
 
-    <div class="campo"><strong>Fecha:</strong> <span id="fechaEvento"></span></div>
-    <div class="campo"><strong>Hora:</strong> <span id="horaEvento"></span></div>
-    <div class="campo"><strong>Grupo:</strong> <span id="grupoEvento"></span></div>
+    <!-- Botón y contenedor QR -->
+    <button id="btn-qr" type="button" onclick="mostrarQR()">Mostrar QR</button>
+    <div id="qr-container" style="margin-top: 1rem; display: none;"></div>
 
-    <button class="btn" onclick="firmar()">Firmar asistencia</button>
 
-    <div id="mensaje" class="mensaje"></div>
+    <!-- Formulario de asistencias -->
+    <form id="form-asistencias">
+      <div id="lista-alumnos"></div>
+      <button type="submit">Guardar asistencias</button>
+    </form>
 
-    <button class="btn btn-rojo" onclick="window.location.href='eventos.html'">← Volver</button>
+    <p id="mensaje"></p>
+    <button onclick="location.href='eventos.html'">← Volver</button>
   </div>
 
   <script>
-    const usuario_id = localStorage.getItem('usuario_id');
-    const nombre = localStorage.getItem('nombre');
-    const params = new URLSearchParams(window.location.search);
+    const params = new URLSearchParams(location.search);
     const evento_id = params.get('id');
+    const usuario_id = localStorage.getItem('usuario_id');
+    let tokenQR = ''; // Aquí guardaremos el token para el QR
 
-    if (!usuario_id || !evento_id) {
-      alert("Acceso no válido");
-      window.location.href = 'login.html';
-    }
+    document.addEventListener('DOMContentLoaded', () => {
+      cargarEventoYAlumnos();
+      document.getElementById('form-asistencias').addEventListener('submit', guardarAsistencias);
+    });
 
-    async function cargarEvento() {
-      const res = await fetch(`/control_firmas/api/eventos/${evento_id}`);
-      const data = await res.json();
+    async function cargarEventoYAlumnos() {
+      try {
+        const eventoRes = await fetch(`/control_firmas/api/eventos/${evento_id}`);
+        const evento = await eventoRes.json();
 
-      document.getElementById('tituloEvento').innerText = data.titulo;
-      document.getElementById('fechaEvento').innerText = data.fecha_inicio;
-      document.getElementById('horaEvento').innerText = data.hora_inicio + ' - ' + data.hora_fin;
-      document.getElementById('grupoEvento').innerText = data.grupo_nombre;
-    }
+        tokenQR = evento.token; // ← Guardamos el token
 
-    async function firmar() {
-      const mensaje = document.getElementById('mensaje');
-      mensaje.innerText = '';
-      mensaje.className = 'mensaje';
+        document.getElementById('titulo').innerText = evento.titulo;
+        document.getElementById('info-evento').innerHTML = `
+          <p><strong>Grupo:</strong> ${evento.grupo_nombre}</p>
+          <p><strong>Inicio:</strong> ${formatearFecha(evento.fecha_inicio)}</p>
+        `;
 
-      const res = await fetch('/control_firmas/api/firmar', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ usuario_id, evento_id })
-      });
+        const alumnosRes = await fetch(`/control_firmas/api/eventos/${evento_id}/alumnos`);
+        const alumnos = await alumnosRes.json();
 
-      const data = await res.json();
-
-      if (data.success) {
-        mensaje.innerText = 'Firma registrada con éxito';
-        mensaje.classList.add('success');
-      } else {
-        mensaje.innerText = data.error || 'Error al firmar';
-        mensaje.classList.add('error');
+        const lista = alumnos.map(a => `
+          <div class="item-firma">
+            <div class="firma-check">
+              <input type="checkbox" name="alumno_id" value="${a.id}" ${a.asistio ? 'checked' : ''} />
+            </div>
+            <div class="firma-nombre">${a.nombre} ${a.apellidos}</div>
+            <input class="firma-observacion" type="text" name="observaciones_${a.id}" placeholder="Observaciones" value="${a.observaciones || ''}" />
+          </div>
+        `).join('');
+        document.getElementById('lista-alumnos').innerHTML = lista;
+      } catch (error) {
+        console.error("Error al cargar el evento o alumnos", error);
       }
     }
 
-    cargarEvento();
+    async function guardarAsistencias(e) {
+      e.preventDefault();
+      const mensaje = document.getElementById('mensaje');
+      mensaje.innerText = '';
+      mensaje.className = '';
+
+      const form = e.target;
+      const alumnos = form.querySelectorAll('input[type=checkbox]');
+      const registros = [];
+
+      alumnos.forEach(check => {
+        const alumno_id = check.value;
+        const observaciones = form.querySelector(`input[name="observaciones_${alumno_id}"]`).value;
+        registros.push({
+          alumno_id,
+          evento_id,
+          asistio: check.checked,
+          observaciones
+        });
+      });
+
+      const res = await fetch('/control_firmas/api/firmar-alumnos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ registros })
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        mensaje.className = 'success';
+        mensaje.innerText = 'Firmas actualizadas.';
+      } else {
+        mensaje.className = 'error';
+        mensaje.innerText = data.error || 'Error al guardar firmas.';
+      }
+    }
+
+    function mostrarQR() {
+  const container = document.getElementById('qr-container');
+  const boton = document.getElementById('btn-qr');
+
+  if (container.style.display === 'block') {
+    // Ocultar QR
+    container.style.display = 'none';
+    boton.innerText = 'Mostrar QR';
+  } else {
+    // Mostrar QR
+    container.innerHTML = ''; // Limpiar
+    const datosQR = {
+      evento_id: evento_id,
+      token: tokenQR
+    };
+
+    QRCode.toCanvas(JSON.stringify(datosQR), { width: 200 }, function (err, canvas) {
+      if (err) {
+        container.innerText = 'Error generando QR';
+      } else {
+        container.appendChild(canvas);
+      }
+    });
+
+    container.style.display = 'block';
+    boton.innerText = 'Ocultar QR';
+  }
+}
+  function formatearFecha(fechaISO) {
+    const fecha = new Date(fechaISO);
+    const dia = fecha.getDate().toString().padStart(2, '0');
+    const mes = (fecha.getMonth() + 1).toString().padStart(2, '0');
+    const año = fecha.getFullYear();
+    const horas = fecha.getHours().toString().padStart(2, '0');
+    const minutos = fecha.getMinutes().toString().padStart(2, '0');
+
+    return `${dia}/${mes}/${año} ${horas}:${minutos}`;
+}
+
   </script>
 </body>
 </html>

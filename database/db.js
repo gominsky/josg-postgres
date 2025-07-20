@@ -142,6 +142,7 @@ db.run(`
     fecha TEXT,
     hora TEXT,
     ubicacion TEXT,
+    observaciones TEXT,
     tipo TEXT DEFAULT 'qr',
     FOREIGN KEY (evento_id) REFERENCES eventos(id),
     FOREIGN KEY (alumno_id) REFERENCES alumnos(id)

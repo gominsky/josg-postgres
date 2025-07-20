@@ -5,37 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Firmar Asistencia</title>
   <script src="https://unpkg.com/html5-qrcode"></script>
-  <style>
-    body { font-family: sans-serif; background: #f2f2f2; padding: 1rem; text-align: center; }
-    .container {
-      max-width: 450px;
-      margin: auto;
-      background: white;
-      padding: 2rem;
-      border-radius: 1rem;
-      box-shadow: 0 0 10px rgba(0,0,0,0.1);
-    }
-    #reader { width: 100%; margin-top: 1rem; }
-    .btn {
-      margin-top: 1rem;
-      padding: 0.75rem;
-      width: 100%;
-      border: none;
-      border-radius: 0.5rem;
-      font-size: 1rem;
-      cursor: pointer;
-    }
-    .btn-red { background: #dc3545; color: white; }
-    .success { color: green; font-weight: bold; margin-top: 1rem; }
-    .error { color: red; font-weight: bold; margin-top: 1rem; }
-  </style>
-</head>
+  <link rel="stylesheet" href="../estilos_app.css" /></head>
 <body>
   <div class="container">
     <h2>Firmar Asistencia</h2>
     <div id="reader"></div>
     <p id="mensaje" class=""></p>
-    <button class="btn btn-red" onclick="logout()">Cerrar sesión</button>
+    <button onclick="logout()">Cerrar sesión</button>
   </div>
 
   <script>

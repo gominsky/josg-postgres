@@ -1,8 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../database/db');
+const bcrypt = require('bcrypt'); 
 
-// LOGIN DE PROFESORES (usando tabla usuarios con rol='profesor')
 router.post('/api/login', (req, res) => {
   const { email, password } = req.body;
 
@@ -10,26 +10,29 @@ router.post('/api/login', (req, res) => {
     return res.json({ success: false, error: 'Faltan credenciales' });
   }
 
-  const sql = `SELECT * FROM usuarios WHERE email = ? AND rol = 'profesor'`;
+  const sql = `SELECT * FROM usuarios WHERE email = ? AND rol IN ('docente', 'administrador')`;
 
   db.get(sql, [email], (err, user) => {
     if (err) return res.status(500).json({ success: false, error: 'Error de servidor' });
     if (!user) return res.json({ success: false, error: 'Usuario no encontrado o sin permiso' });
 
-    if (user.password !== password) {
-      return res.json({ success: false, error: 'Contraseña incorrecta' });
-    }
-
-    res.json({
-      success: true,
-      usuario_id: user.id,
-      nombre: user.nombre || 'Profesor',
-      rol: user.rol
+    // Comparar usando bcrypt
+    bcrypt.compare(password, user.password, (err, result) => {
+      if (err || !result) {
+        return res.json({ success: false, error: 'Contraseña incorrecta' });
+      }
+      
+      // Éxito
+      res.json({
+        success: true,
+        usuario_id: user.id,
+        nombre: user.nombre || 'docente',
+        rol: user.rol
+      });
     });
   });
 });
 
-// OBTENER EVENTOS ASIGNADOS AL PROFESOR
 router.get('/api/eventos', (req, res) => {
   const usuarioId = req.query.usuario_id;
   if (!usuarioId) return res.status(400).json([]);
@@ -47,52 +50,19 @@ router.get('/api/eventos', (req, res) => {
 
   db.all(sql, [usuarioId], (err, eventos) => {
     if (err) return res.status(500).json([]);
-    res.json(eventos);
+
+    // Adaptar formato para FullCalendar
+    const eventosAdaptados = eventos.map(e => ({
+      id: e.id,
+      title: `${e.titulo} (${e.grupo_nombre})`,
+      start: e.fecha_inicio,
+      end: e.fecha_fin
+    }));
+
+    res.json(eventosAdaptados);
   });
 });
-router.post('/api/firmar', (req, res) => {
-    const { usuario_id, evento_id } = req.body;
-    if (!usuario_id || !evento_id) return res.status(400).json({ success: false, error: 'Datos incompletos' });
-  
-    // 1. Obtener el ID del profesor asociado al usuario
-    const obtenerProfesorId = `
-      SELECT p.id FROM profesores p
-      JOIN usuarios u ON u.email = p.email
-      WHERE u.id = ?
-    `;
-  
-    db.get(obtenerProfesorId, [usuario_id], (err, profesor) => {
-      if (err || !profesor) return res.json({ success: false, error: 'Profesor no encontrado' });
-  
-      const profesorId = profesor.id;
-  
-      // 2. Verificar si ya firmó
-      const verificar = `
-        SELECT 1 FROM asistencias
-        WHERE evento_id = ? AND alumno_id = ? AND tipo = 'profesor'
-      `;
-  
-      db.get(verificar, [evento_id, profesorId], (err2, existente) => {
-        if (err2) return res.status(500).json({ success: false, error: 'Error al verificar firma' });
-  
-        if (existente) {
-          return res.json({ success: false, error: 'Ya has firmado este evento' });
-        }
-  
-        // 3. Insertar firma
-        const insertar = `
-          INSERT INTO asistencias (evento_id, alumno_id, fecha, hora, tipo, ubicacion)
-          VALUES (?, ?, DATE('now'), TIME('now'), 'profesor', 'firma manual')
-        `;
-  
-        db.run(insertar, [evento_id, profesorId], function (err3) {
-          if (err3) return res.json({ success: false, error: 'No se pudo guardar la firma' });
-          res.json({ success: true });
-        });
-      });
-    });
-  });  
-  
+
 router.get('/api/eventos/:id', (req, res) => {
   const eventoId = req.params.id;
 
@@ -108,26 +78,133 @@ router.get('/api/eventos/:id', (req, res) => {
     res.json(evento);
   });
 });
-// GET /control_firmas/api/asistencias?usuario_id=XX
-router.get('/api/asistencias', (req, res) => {
-    const usuarioId = req.query.usuario_id;
-    if (!usuarioId) return res.status(400).json([]);
-  
-    const sql = `
-      SELECT e.titulo, g.nombre AS grupo_nombre, a.fecha, a.hora
-      FROM asistencias a
-      JOIN eventos e ON a.evento_id = e.id
-      JOIN grupos g ON e.grupo_id = g.id
-      JOIN profesores p ON p.id = a.alumno_id
-      JOIN usuarios u ON u.email = p.email
-      WHERE u.id = ? AND a.tipo = 'profesor'
-      ORDER BY a.fecha DESC, a.hora DESC
-    `;
-  
-    db.all(sql, [usuarioId], (err, filas) => {
-      if (err) return res.status(500).json([]);
-      res.json(filas);
+
+router.get('/api/eventos/:id/alumnos', (req, res) => {
+  const eventoId = req.params.id;
+
+  const sql = `
+    SELECT a.id, a.nombre, a.apellidos,
+      CASE WHEN asi.id IS NOT NULL THEN 1 ELSE 0 END AS asistio,
+      asi.observaciones
+    FROM alumnos a
+    JOIN alumno_grupo ag ON ag.alumno_id = a.id
+    JOIN eventos e ON e.grupo_id = ag.grupo_id
+    LEFT JOIN asistencias asi ON asi.evento_id = e.id AND asi.alumno_id = a.id AND asi.tipo = 'manual'
+    WHERE e.id = ? AND a.activo = 1
+    ORDER BY a.apellidos, a.nombre
+  `;
+
+  db.all(sql, [eventoId], (err, rows) => {
+    if (err) return res.status(500).json([]);
+    res.json(rows);
+  });
+});
+
+router.post('/api/firmar-alumnos', (req, res) => {
+  const registros = req.body.registros;
+
+  if (!Array.isArray(registros) || registros.length === 0) {
+    return res.status(400).json({ success: false, error: 'No se han enviado asistencias' });
+  }
+
+  const insertados = [];
+  const errores = [];
+
+  const sqlVerificar = `
+    SELECT 1 FROM asistencias
+    WHERE evento_id = ? AND alumno_id = ? AND tipo = 'manual'
+  `;
+
+  const sqlInsertar = `
+    INSERT INTO asistencias (evento_id, alumno_id, fecha, hora, tipo, observaciones)
+    VALUES (?, ?, DATE('now'), TIME('now'), 'manual', ?)
+  `;
+
+  const stmtVerificar = db.prepare(sqlVerificar);
+  const stmtInsertar = db.prepare(sqlInsertar);
+
+  registros.forEach((reg, i) => {
+    const { evento_id, alumno_id, observaciones } = reg;
+
+    stmtVerificar.get([evento_id, alumno_id], (err, existe) => {
+      if (err) {
+        errores.push({ alumno_id, error: 'Error al verificar duplicado' });
+      } else if (existe) {
+        errores.push({ alumno_id, error: 'Ya firmado' });
+      } else {
+        stmtInsertar.run([evento_id, alumno_id, observaciones || ''], function (err2) {
+          if (err2) {
+            errores.push({ alumno_id, error: 'Error al insertar' });
+          } else {
+            insertados.push(alumno_id);
+          }
+
+          // Si es el último, devolvemos respuesta
+          if (insertados.length + errores.length === registros.length) {
+            if (insertados.length > 0) {
+              res.json({ success: true, insertados, errores });
+            } else {
+              res.json({ success: false, error: 'No se pudo registrar ninguna asistencia', errores });
+            }
+          }
+        });
+      }
     });
   });
-  
+});
+router.post('/api/firmar-alumnos', (req, res) => {
+  const registros = req.body.registros;
+
+  if (!Array.isArray(registros) || registros.length === 0) {
+    return res.status(400).json({ success: false, error: 'No se han enviado asistencias' });
+  }
+
+  let procesados = 0;
+  const errores = [];
+
+  registros.forEach(({ evento_id, alumno_id, asistio, observaciones }) => {
+    const verificarSQL = `SELECT id FROM asistencias WHERE evento_id = ? AND alumno_id = ? AND tipo = 'manual'`;
+
+    db.get(verificarSQL, [evento_id, alumno_id], (err, row) => {
+      if (err) {
+        errores.push({ alumno_id, error: 'Error de lectura' });
+        done();
+      } else if (asistio && !row) {
+        // Insertar si no existe
+        const insertSQL = `
+          INSERT INTO asistencias (evento_id, alumno_id, fecha, hora, tipo, observaciones)
+          VALUES (?, ?, DATE('now'), TIME('now'), 'manual', ?)
+        `;
+        db.run(insertSQL, [evento_id, alumno_id, observaciones || ''], err2 => {
+          if (err2) errores.push({ alumno_id, error: 'No se pudo insertar' });
+          done();
+        });
+      } else if (!asistio && row) {
+        // Eliminar si existe y está desmarcado
+        const deleteSQL = `DELETE FROM asistencias WHERE id = ?`;
+        db.run(deleteSQL, [row.id], err3 => {
+          if (err3) errores.push({ alumno_id, error: 'No se pudo eliminar' });
+          done();
+        });
+      } else if (asistio && row) {
+        // Actualizar observación
+        const updateSQL = `UPDATE asistencias SET observaciones = ? WHERE id = ?`;
+        db.run(updateSQL, [observaciones || '', row.id], err4 => {
+          if (err4) errores.push({ alumno_id, error: 'No se pudo actualizar' });
+          done();
+        });
+      } else {
+        done(); // Nada que hacer
+      }
+    });
+  });
+
+  function done() {
+    procesados++;
+    if (procesados === registros.length) {
+      res.json({ success: true, errores });
+    }
+  }
+});
+
 module.exports = router;
