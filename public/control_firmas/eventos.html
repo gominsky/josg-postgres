@@ -7,6 +7,44 @@
   <link rel="stylesheet" href="../estilos_app.css" />
   <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/locales-all.global.min.js"></script>
+  <style>
+    .calendar-container {
+      width: 100%;
+      overflow-x: auto;
+      margin-top: 1rem;
+    }
+
+    @media (max-width: 600px) {
+      .fc {
+        font-size: 1rem; /* Aumenta fuente general del calendario */
+      }
+
+      .fc-daygrid-day-number {
+        font-size: 1.1rem; /* Números de día más grandes */
+        padding: 0.5rem;
+      }
+
+      .fc .fc-toolbar {
+        flex-direction: column;
+        gap: 0.75rem;
+      }
+
+      .fc-toolbar-title {
+        font-size: 1.3rem;
+      }
+
+      .fc-button {
+        padding: 0.6rem 1rem;
+        font-size: 1rem;
+      }
+
+      .container {
+        padding: 1rem;
+        box-shadow: none;
+        border-radius: 0;
+      }
+    }
+  </style>
 </head>
 <body>
   <div class="container">

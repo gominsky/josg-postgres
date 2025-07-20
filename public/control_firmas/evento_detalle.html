@@ -12,12 +12,11 @@
     <h2 id="titulo">Firmar asistencia manual</h2>
     <div id="info-evento"></div>
 
-    <!-- Botón y contenedor QR -->
-    <button id="btn-qr" type="button" onclick="mostrarQR()">Mostrar QR</button>
+    <p id="qr-estado" class="subtitulo"></p>
+    <button id="btn-qr" type="button" onclick="mostrarQR()" style="display:none;">Mostrar QR</button>
+    <button id="btn-toggle-qr" type="button" onclick="toggleQR()" style="display:none;">Activar QR</button>
     <div id="qr-container" style="margin-top: 1rem; display: none;"></div>
 
-
-    <!-- Formulario de asistencias -->
     <form id="form-asistencias">
       <div id="lista-alumnos"></div>
       <button type="submit">Guardar asistencias</button>
@@ -28,10 +27,10 @@
   </div>
 
   <script>
-    const params = new URLSearchParams(location.search);
-    const evento_id = params.get('id');
-    const usuario_id = localStorage.getItem('usuario_id');
-    let tokenQR = ''; // Aquí guardaremos el token para el QR
+    let evento_id = new URLSearchParams(location.search).get('id');
+    let usuario_id = localStorage.getItem('usuario_id');
+    let tokenQR = '';
+    let qrActivo = false;
 
     document.addEventListener('DOMContentLoaded', () => {
       cargarEventoYAlumnos();
@@ -43,30 +42,42 @@
         const eventoRes = await fetch(`/control_firmas/api/eventos/${evento_id}`);
         const evento = await eventoRes.json();
 
-        tokenQR = evento.token; // ← Guardamos el token
-
         document.getElementById('titulo').innerText = evento.titulo;
         document.getElementById('info-evento').innerHTML = `
           <p><strong>Grupo:</strong> ${evento.grupo_nombre}</p>
           <p><strong>Inicio:</strong> ${formatearFecha(evento.fecha_inicio)}</p>
         `;
 
-        const alumnosRes = await fetch(`/control_firmas/api/eventos/${evento_id}/alumnos`);
-        const alumnos = await alumnosRes.json();
+        // Guardamos el token
+        tokenQR = evento.token;
+        qrActivo = evento.activo === 1;
 
-        const lista = alumnos.map(a => `
-          <div class="item-firma">
-            <div class="firma-check">
-              <input type="checkbox" name="alumno_id" value="${a.id}" ${a.asistio ? 'checked' : ''} />
-            </div>
-            <div class="firma-nombre">${a.nombre} ${a.apellidos}</div>
-            <input class="firma-observacion" type="text" name="observaciones_${a.id}" placeholder="Observaciones" value="${a.observaciones || ''}" />
-          </div>
-        `).join('');
-        document.getElementById('lista-alumnos').innerHTML = lista;
+        document.getElementById('qr-estado').innerText = qrActivo ? 'QR activo' : 'QR desactivado';
+        document.getElementById('btn-qr').style.display = qrActivo ? 'inline-block' : 'none';
+        document.getElementById('btn-toggle-qr').style.display = 'inline-block';
+        document.getElementById('btn-toggle-qr').innerText = qrActivo ? 'Desactivar QR' : 'Activar QR';
+
+        actualizarListaAlumnos(); // primera carga
       } catch (error) {
-        console.error("Error al cargar el evento o alumnos", error);
+        console.error('Error al cargar evento o alumnos', error);
       }
+    }
+
+    async function actualizarListaAlumnos() {
+      const alumnosRes = await fetch(`/control_firmas/api/eventos/${evento_id}/alumnos`);
+      const alumnos = await alumnosRes.json();
+
+      const lista = alumnos.map(a => `
+        <div class="item-firma">
+          <div class="firma-check">
+            <input type="checkbox" name="alumno_id" value="${a.id}" ${a.asistio ? 'checked' : ''} />
+          </div>
+          <div class="firma-nombre">${a.nombre} ${a.apellidos}</div>
+          <input class="firma-observacion" type="text" name="observaciones_${a.id}" placeholder="Observaciones" value="${a.observaciones || ''}" />
+        </div>
+      `).join('');
+
+      document.getElementById('lista-alumnos').innerHTML = lista;
     }
 
     async function guardarAsistencias(e) {
@@ -106,45 +117,61 @@
       }
     }
 
+    function formatearFecha(fechaISO) {
+      const fecha = new Date(fechaISO);
+      const dia = fecha.getDate().toString().padStart(2, '0');
+      const mes = (fecha.getMonth() + 1).toString().padStart(2, '0');
+      const año = fecha.getFullYear();
+      const horas = fecha.getHours().toString().padStart(2, '0');
+      const minutos = fecha.getMinutes().toString().padStart(2, '0');
+      return `${dia}/${mes}/${año} ${horas}:${minutos}`;
+    }
+
     function mostrarQR() {
-  const container = document.getElementById('qr-container');
-  const boton = document.getElementById('btn-qr');
+      const container = document.getElementById('qr-container');
+      const boton = document.getElementById('btn-qr');
 
-  if (container.style.display === 'block') {
-    // Ocultar QR
-    container.style.display = 'none';
-    boton.innerText = 'Mostrar QR';
-  } else {
-    // Mostrar QR
-    container.innerHTML = ''; // Limpiar
-    const datosQR = {
-      evento_id: evento_id,
-      token: tokenQR
-    };
-
-    QRCode.toCanvas(JSON.stringify(datosQR), { width: 200 }, function (err, canvas) {
-      if (err) {
-        container.innerText = 'Error generando QR';
+      if (container.style.display === 'block') {
+        container.style.display = 'none';
+        boton.innerText = 'Mostrar QR';
       } else {
-        container.appendChild(canvas);
+        container.innerHTML = '';
+        const datosQR = {
+          evento_id: evento_id,
+          token: tokenQR
+        };
+
+        QRCode.toCanvas(JSON.stringify(datosQR), { width: 200 }, function (err, canvas) {
+          if (err) {
+            container.innerText = 'Error generando QR';
+          } else {
+            container.appendChild(canvas);
+          }
+        });
+
+        container.style.display = 'block';
+        boton.innerText = 'Ocultar QR';
       }
-    });
+    }
 
-    container.style.display = 'block';
-    boton.innerText = 'Ocultar QR';
-  }
-}
-  function formatearFecha(fechaISO) {
-    const fecha = new Date(fechaISO);
-    const dia = fecha.getDate().toString().padStart(2, '0');
-    const mes = (fecha.getMonth() + 1).toString().padStart(2, '0');
-    const año = fecha.getFullYear();
-    const horas = fecha.getHours().toString().padStart(2, '0');
-    const minutos = fecha.getMinutes().toString().padStart(2, '0');
+    async function toggleQR() {
+      const nuevoEstado = !qrActivo;
+      const res = await fetch(`/control_firmas/api/eventos/${evento_id}/activar`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ activo: nuevoEstado })
+      });
 
-    return `${dia}/${mes}/${año} ${horas}:${minutos}`;
-}
-
+      const data = await res.json();
+      if (data.success) {
+        qrActivo = nuevoEstado;
+        document.getElementById('qr-estado').innerText = qrActivo ? 'QR activo' : 'QR desactivado';
+        document.getElementById('btn-qr').style.display = qrActivo ? 'inline-block' : 'none';
+        document.getElementById('btn-toggle-qr').innerText = qrActivo ? 'Desactivar QR' : 'Activar QR';
+      } else {
+        alert('Error al actualizar el estado del QR');
+      }
+    }
   </script>
 </body>
 </html>

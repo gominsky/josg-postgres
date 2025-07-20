@@ -10,7 +10,7 @@ router.post('/api/login', (req, res) => {
     return res.json({ success: false, error: 'Faltan credenciales' });
   }
 
-  const sql = `SELECT * FROM usuarios WHERE email = ? AND rol IN ('docente', 'administrador')`;
+  const sql = `SELECT * FROM usuarios WHERE email = ? AND rol IN ('docente', 'admin')`;
 
   db.get(sql, [email], (err, user) => {
     if (err) return res.status(500).json({ success: false, error: 'Error de servidor' });
@@ -107,58 +107,6 @@ router.post('/api/firmar-alumnos', (req, res) => {
     return res.status(400).json({ success: false, error: 'No se han enviado asistencias' });
   }
 
-  const insertados = [];
-  const errores = [];
-
-  const sqlVerificar = `
-    SELECT 1 FROM asistencias
-    WHERE evento_id = ? AND alumno_id = ? AND tipo = 'manual'
-  `;
-
-  const sqlInsertar = `
-    INSERT INTO asistencias (evento_id, alumno_id, fecha, hora, tipo, observaciones)
-    VALUES (?, ?, DATE('now'), TIME('now'), 'manual', ?)
-  `;
-
-  const stmtVerificar = db.prepare(sqlVerificar);
-  const stmtInsertar = db.prepare(sqlInsertar);
-
-  registros.forEach((reg, i) => {
-    const { evento_id, alumno_id, observaciones } = reg;
-
-    stmtVerificar.get([evento_id, alumno_id], (err, existe) => {
-      if (err) {
-        errores.push({ alumno_id, error: 'Error al verificar duplicado' });
-      } else if (existe) {
-        errores.push({ alumno_id, error: 'Ya firmado' });
-      } else {
-        stmtInsertar.run([evento_id, alumno_id, observaciones || ''], function (err2) {
-          if (err2) {
-            errores.push({ alumno_id, error: 'Error al insertar' });
-          } else {
-            insertados.push(alumno_id);
-          }
-
-          // Si es el último, devolvemos respuesta
-          if (insertados.length + errores.length === registros.length) {
-            if (insertados.length > 0) {
-              res.json({ success: true, insertados, errores });
-            } else {
-              res.json({ success: false, error: 'No se pudo registrar ninguna asistencia', errores });
-            }
-          }
-        });
-      }
-    });
-  });
-});
-router.post('/api/firmar-alumnos', (req, res) => {
-  const registros = req.body.registros;
-
-  if (!Array.isArray(registros) || registros.length === 0) {
-    return res.status(400).json({ success: false, error: 'No se han enviado asistencias' });
-  }
-
   let procesados = 0;
   const errores = [];
 
@@ -207,4 +155,15 @@ router.post('/api/firmar-alumnos', (req, res) => {
   }
 });
 
+// PATCH: Activar o desactivar QR
+router.patch('/api/eventos/:id/activar', (req, res) => {
+  const eventoId = req.params.id;
+  const { activo } = req.body;
+
+  const sql = `UPDATE eventos SET activo = ? WHERE id = ?`;
+  db.run(sql, [activo ? 1 : 0, eventoId], function (err) {
+    if (err) return res.status(500).json({ success: false, error: 'No se pudo actualizar' });
+    res.json({ success: true });
+  });
+});
 module.exports = router;

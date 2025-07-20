@@ -196,6 +196,37 @@ button.btn-secundario {
   overflow: visible;
   box-shadow: 0 0 10px rgba(0, 0, 0, 0.2); /* opcional: relieve */
 }
+ /* Mejora para móviles */
+ .calendar-container {
+  max-width: 100%;
+  overflow-x: auto;
+  margin-top: 1rem;
+}
 
+@media (max-width: 600px) {
+  .fc .fc-toolbar {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .fc-toolbar-title {
+    font-size: 1.2rem;
+  }
+
+  .fc-button {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.9rem;
+  }
+
+  .fc-daygrid-day-number {
+    font-size: 0.8rem;
+  }
+
+  .container {
+    padding: 1rem;
+    box-shadow: none;
+    border-radius: 0;
+  }
+}
 
 
