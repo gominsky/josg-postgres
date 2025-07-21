@@ -56,7 +56,7 @@ const alumnosRoutes = require('./routes/alumnos');
 const gruposRoutes = require('./routes/grupos');
 const cuotasRoutes = require('./routes/cuotas');
 const eventosRoutes = require('./routes/eventos');
-const asistenciasRoutes = require('./routes/asistencias');
+const firmasRoutes = require('./routes/firmas');
 const informesRoutes = require('./routes/informes');
 const guardiasRoutes = require('./routes/guardias');
 const instrumentosRoutes = require('./routes/instrumentos');
@@ -64,18 +64,18 @@ const tipos_cuotasRoutes = require('./routes/tipos_cuotas');
 const pagosRoutes = require('./routes/pagos');
 const control_firmasRoutes = require('./routes/control_firmas');
 
-app.use('/usuarios', isAdmin, usuariosRoutes);        // Solo admin
+app.use('/usuarios', usuariosRoutes);        // Solo admin
 app.use('/profesores', isAuthenticated, profesoresRoutes); // Admin, docentes y usuarios
 app.use('/alumnos', isAuthenticated, alumnosRoutes);        
 app.use('/grupos', isAdmin, gruposRoutes);  
 app.use('/cuotas', isAdmin, cuotasRoutes);            
 app.use('/eventos', isAuthenticated, eventosRoutes);  
-app.use('/asistencias', isAuthenticated, asistenciasRoutes); 
+app.use('/firmas', firmasRoutes); 
 app.use('/guardias', isAuthenticated, guardiasRoutes);
 app.use('/instrumentos', isAdmin, instrumentosRoutes);
 app.use('/tipos_cuotas', isAdmin, tipos_cuotasRoutes); // Solo admin
 app.use('/pagos', isAdmin, pagosRoutes);                // Solo admin
-app.use('/control_firmas', isAuthenticated, control_firmasRoutes);
+app.use('/control_firmas', control_firmasRoutes);
 
 app.use(express.static('public'));
 

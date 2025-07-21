@@ -42,7 +42,7 @@
         navigator.geolocation.getCurrentPosition(async (position) => {
           const ubicacion = `${position.coords.latitude},${position.coords.longitude}`;
 
-          const res = await fetch("/asistencias", {
+          const res = await fetch("/firmas", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ alumno_id, evento_id, token, ubicacion })
