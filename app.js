@@ -70,6 +70,7 @@ app.use('/alumnos', isAuthenticated, alumnosRoutes);
 app.use('/grupos', isAdmin, gruposRoutes);  
 app.use('/cuotas', isAdmin, cuotasRoutes);            
 app.use('/eventos', isAuthenticated, eventosRoutes);  
+app.use('/informes', isAuthenticated, informesRoutes);
 app.use('/firmas', firmasRoutes); 
 app.use('/guardias', isAuthenticated, guardiasRoutes);
 app.use('/instrumentos', isAdmin, instrumentosRoutes);

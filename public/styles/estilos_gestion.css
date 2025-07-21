@@ -1,0 +1,146 @@
+/* Gestión común para usuarios, grupos, cuotas, instrumentos */
+
+/* Contenedor principal para listas: 75% ancho centrado */
+.container {
+    width: 75%;
+    margin: 0 auto;
+    padding: 1rem 0;
+  }
+  
+  /* Título principal */
+  .h1-titulo {
+    font-size: 1.75rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+    text-align: center;
+  }
+  
+  /* Grid contenedora de tarjetas */
+  .dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+  
+  /* Tarjetas estándar */
+  .card-variacion2 {
+    background-color: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.75rem;
+    padding: 1rem;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    cursor: pointer;
+    transition: transform 0.1s ease-in-out;
+    font-weight: 600;
+  }
+  .card-variacion2:hover {
+    transform: translateY(-2px);
+  }
+  
+  /* Botón de eliminar peligroso */
+  .card-eliminar {
+    background-color: #fed7d7;
+    border: 1px solid #f87171;
+    border-radius: 0.75rem;
+    padding: 1rem;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    color: #b91c1c;
+    cursor: pointer;
+    transition: transform 0.1s ease-in-out;
+    font-weight: 600;
+  }
+  .card-eliminar:hover {
+    transform: translateY(-2px);
+  }
+  
+  /* Botón Nuevo */
+  .btn-nuevo {
+    display: inline-block;
+    padding: 0.75rem 1.25rem;
+    background-color: #2563eb;
+    color: #ffffff;
+    border-radius: 0.75rem;
+    text-decoration: none;
+    font-weight: 600;
+    transition: background-color 0.1s ease-in-out;
+  }
+  .btn-nuevo:hover {
+    background-color: #1e40af;
+  }
+  
+  /* Enlace de volver */
+  .volver-bloque-izquierda {
+    margin-top: 1.5rem;
+    text-align: center;
+  }
+  .enlace-final {
+    color: #2563eb;
+    text-decoration: none;
+    font-weight: 500;
+  }
+  .enlace-final:hover {
+    text-decoration: underline;
+  }
+  
+  /* Formularios */
+  .form-card {
+    background-color: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.75rem;
+    padding: 1rem;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  }
+  .form-group {
+    margin-bottom: 1rem;
+  }
+  .form-label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+  }
+  .form-input {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #cbd5e1;
+    border-radius: 0.75rem;
+    box-sizing: border-box;
+  }
+  
+  /* Tablas de gestión */
+  .gestion-table,
+  .tabla-estilizada {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 1rem;
+  }
+  .gestion-table th,
+  .gestion-table td,
+  .tabla-estilizada th,
+  .tabla-estilizada td {
+    border: 1px solid #e2e8f0;
+    padding: 0.75rem;
+    text-align: left;
+  }
+  .gestion-table thead,
+  .tabla-estilizada thead {
+    background-color: #edf2f7;
+  }
+  .gestion-table tr:nth-child(even),
+  .tabla-estilizada tr:nth-child(even) {
+    background-color: #f7fafc;
+  }
+  .gestion-table tr:hover td,
+  .tabla-estilizada tr:hover td {
+    background-color: #e2e8f0;
+  }
+  
+  /* Filas clicables */
+  .clickable-row {
+    cursor: pointer;
+    transition: background-color 0.1s ease-in-out;
+  }
+  .clickable-row:hover td {
+    background-color: #e2e8f0;
+  }
+  

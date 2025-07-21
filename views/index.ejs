@@ -1,72 +1,113 @@
 <% title = 'Inicio - JOSG' %>
 <% hero = true %>
-
 <style>
   html, body {
-  height: 100%;
-  margin: 0;
-  padding: 0;
-  overflow: hidden; /* evitar scroll */
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
   }
   .hero-header {
     position: relative;
     height: 100vh;
     overflow: hidden;
   }
+/* Títulos de overlay en naranja */
+.login-form-overlay h1,
+.panel-usuario-overlay h1 {
+  color: #FF9501;;    /* naranja */
+}
+
+/* Subtítulos (párrafos) de overlay en blanco */
+  .login-form-overlay p,
+  .panel-usuario-overlay p {
+    color: #ffffff;    /* blanco */
+  }
+  /* Overlay naranja con texto en blanco */
   .login-form-overlay,
   .panel-usuario-overlay {
     position: absolute;
     left: 50%;
     transform: translateX(-50%);
-    background: linear-gradient(
-      rgba(255, 255, 255, 0.0),
-      rgb(228, 234, 233)
-    );
+    background-color:#FF9501;;   /* fondo naranja */
     padding: 1.5rem;
     border-radius: 8px;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-    color: #333;
-    backdrop-filter: blur(4px);
-    animation: fadeIn 1.2s ease-in;
-    opacity: 0;
-    animation-fill-mode: forwards;
-    animation-delay: 0.3s;
+    color: #ffffff;              /* texto blanco */
     width: 90%;
   }
-  .login-form-overlay {
-    top: 25%;
-    max-width: 320px;
-  }
-  .panel-usuario-overlay {
-    top: 25%;
-    max-width: 860px;
-  }
+  .login-form-overlay { top: 25%; max-width: 320px; }
+  .panel-usuario-overlay { top: 25%; max-width: 860px; }
 
+  /* Cabeceras y párrafos dentro de la overlay */
   .login-form-overlay h1,
   .panel-usuario-overlay h1 {
-    font-weight: 700;
-    font-size: 2rem;
-    margin-bottom: 0.5rem;
+    margin-bottom: .5rem;
     text-align: center;
   }
-
   .login-form-overlay p,
   .panel-usuario-overlay p {
-    font-size: 1rem;
-    text-align: center;
     margin-bottom: 1rem;
+    text-align: center;
   }
 
-  .login-form-overlay form {
-    background-color: rgb(1, 95, 69);
-    color: rgb(227, 255, 0);
+  /* Formulario con fondo claro y texto naranja */
+  .login-form-overlay form,
+  .panel-usuario-overlay form {
+    background-color: #ffffff;
+    color: #FF9501;            /* letras naranjas */
     padding: 1rem;
     border-radius: 6px;
   }
-  @keyframes fadeIn {
-    to {
-      opacity: 1;
-    }
+  .login-form-overlay label,
+  .panel-usuario-overlay label {
+    color: #FF9501;
+    font-weight: bold;
+  }
+  .login-form-overlay input,
+  .panel-usuario-overlay input {
+    border-radius: 6px;
+    border: 1px solid #ccc;
+    width: 100%;
+    padding: .5rem;
+    margin-bottom: .75rem;
+  }
+/* Centrar la imagen en el overlay */
+  .login-form-overlay,
+  .panel-usuario-overlay {
+    text-align: center;   /* centra todo el contenido inline, incluidas imágenes */
+  }
+
+  /* Asegurarnos de que la imagen sea block y tenga margen automático */
+  .login-form-overlay img.logo-grande,
+  .panel-usuario-overlay img.logo-grande {
+    display: block;
+    margin: 0 auto 1rem;  /* 1rem de separación por debajo */
+  }
+  .panel-usuario-overlay {
+    background-color: rgba(255, 149, 1, 0.1); /* casi transparente */
+  }
+  /* Botones invertidos: fondo naranja, texto blanco */
+  .btn-main,
+  .btn-main-naranja {
+    background-color: #FF9501;
+    border-color:  #FF9501;
+    color: #ffffff;
+  }
+  .btn-main:hover,
+  .btn-main-naranja:hover {
+    background-color: #FF9501;
+    border-color:  #FF9501;
+  }
+
+  /* Menú principal naranja */
+  .card-index {
+    background-color: #FF9501;
+    color: #ffffff;
+    text-align: center;
+    padding: 1rem;
+    border-radius: 8px;
+    font-weight: bold;
   }
 
   .dashboard-grid {
@@ -75,27 +116,49 @@
     gap: 1rem;
   }
 
-  .card-index {
-    background-color:rgba(1, 95, 69, 0.6);
-    text-align: center;
-    padding: 1rem;
-    border-radius: 8px;
-    text-decoration: none;
-    font-weight: bold;
-    color:  rgb(227, 255, 0);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-    transition: transform 0.2s;
-  }
+.logo {
+  height: 60px;
+  object-fit: contain;
+}
 
-  .card-index:hover {
-    transform: translateY(-5px);
-  }
+.logo-grande {
+  height: 110px;
+  max-width: 110px;
+}
+.btn-main.btn-mini {
+    transition: transform 0.1s ease-in-out;
+}
+.btn-main.btn-mini:hover {
+  background-color: #FF9501 !important;
+  border-color:     #FF9501 !important;
+  color:            #ffffff !important;
+  transform: translateY(-2px) !important;
+}
+/* Overlay exterior: fondo naranja semitransparente */
+.login-form-overlay,
+.panel-usuario-overlay {
+  background-color: rgba(255, 149, 1, 0.2) !important;
+}
+
+/* Form interno: fondo blanco semitransparente */
+.login-form-overlay form,
+.panel-usuario-overlay form {
+  background-color: rgba(255, 255, 255, 0.2) !important;
+}
+
+/* Si usas .form-control (Bootstrap) también hay que hacerlo transparente */
+.login-form-overlay .form-control,
+.panel-usuario-overlay .form-control {
+  background-color: rgba(255, 255, 255, 0.2) !important;
+}
+
 </style>
 
 <header class="hero-header">
   <% if (!usuario) { %>
+    <div class="container">
     <div class="login-form-overlay">
-      <h1>JOSG</h1>
+      <img src="/../imagenes/logoJOSG.png" alt="Logo JOSG" class="logo logo-grande">
       <p>Asociación Joven Orquesta Sinfónica de Granada</p>
       <p>Acceso</p>
 
@@ -112,14 +175,14 @@
           <input type="password" name="password" class="form-control" required>
         </div>
         <div class="d-grid">
-          <button type="submit" class="btn-main btn">Entrar</button>
+          <button type="submit" class="btn-main-naranja btn">Entrar</button>
         </div>
       </form>
     </div>
 
   <% } else { %>
     <div class="panel-usuario-overlay">
-      <h1>JOSG</h1>
+      <img src="/imagenes/logoJOSG.png" alt="Logo JOSG" class="logo-grande" />
       <p>Bienvenido, <%= usuario.nombre %> (<%= usuario.rol %>)</p>
       <div class="text-end mb-3">
         <a href="/logout" class="btn-main btn-mini">Cerrar sesión</a>
