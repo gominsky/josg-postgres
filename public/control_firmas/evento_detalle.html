@@ -13,12 +13,17 @@
     <div id="info-evento"></div>
 
     <p id="qr-estado" class="subtitulo"></p>
-    <button id="btn-qr" type="button" onclick="mostrarQR()" style="display:none;">Mostrar QR</button>
-    <button id="btn-toggle-qr" type="button" onclick="toggleQR()" style="display:none;">Activar QR</button>
+    <button id="btn-qr" type="button" onclick="mostrarQR()">Mostrar QR</button>
+    <button id="btn-toggle-qr" type="button" onclick="toggleQR()" class="button-negro" style="display:none">Activar QR</button>
     <div id="qr-container" style="margin-top: 1rem; display: none;"></div>
-
     <form id="form-asistencias">
-      <div id="lista-alumnos"></div>
+      <div id="lista-alumnos">
+        <div class="firma-header">
+          <div class="firma-check"><strong>Firma</strong></div>
+          <div class="firma-nombre"><strong>Nombre</strong></div>
+          <div class="firma-observacion"><strong>Observaciones</strong></div>
+        </div>
+      </div>
       <button type="submit">Guardar asistencias</button>
     </form>
 
@@ -77,7 +82,8 @@
         </div>
       `).join('');
 
-      document.getElementById('lista-alumnos').innerHTML = lista;
+      document.getElementById('lista-alumnos').innerHTML += lista;
+
     }
 
     async function guardarAsistencias(e) {

@@ -1,5 +1,7 @@
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
+const bcrypt   = require('bcrypt');
+const saltRounds = 10;
 
 // Conexión a la base de datos
 const db = new sqlite3.Database(path.resolve(__dirname, 'josg.db'), (err) => {
@@ -10,15 +12,60 @@ const db = new sqlite3.Database(path.resolve(__dirname, 'josg.db'), (err) => {
 // Crear tablas
 //Usuarios de la aplicación
 db.run(`
-  CREATE TABLE IF NOT EXISTS usuarios (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    nombre TEXT NOT NULL,
-    email TEXT UNIQUE NOT NULL,
-    password TEXT NOT NULL,
-    rol TEXT CHECK(rol IN ('admin', 'docente', 'usuario')) NOT NULL DEFAULT 'usuario',
-    creado_en DATETIME DEFAULT CURRENT_TIMESTAMP
+    CREATE TABLE IF NOT EXISTS usuarios (
+      id         INTEGER PRIMARY KEY AUTOINCREMENT,
+      nombre     TEXT    NOT NULL,
+      apellidos  TEXT    NOT NULL,
+      email      TEXT    UNIQUE NOT NULL,
+      password   TEXT    NOT NULL,
+      rol        TEXT    CHECK(rol IN ('admin','docente','usuario')) NOT NULL DEFAULT 'usuario',
+      creado_en  DATETIME DEFAULT CURRENT_TIMESTAMP
     )
-`);
+  `, err => {
+    if (err) throw err;
+
+    // 2) Sembrar un admin por defecto si no existe ninguno
+    db.get(`SELECT COUNT(*) AS cnt FROM usuarios WHERE rol = 'admin'`, (err, row) => {
+      if (err) {
+        console.error('Error comprobando admin:', err);
+        return;
+      }
+
+      if (row.cnt === 0) {
+        const defaultAdmin = {
+          nombre:    'Admin',
+          apellidos: 'Default',
+          email:     'admin@josg.com',
+          password:  'admin1234' 
+        };
+
+        bcrypt.hash(defaultAdmin.password, saltRounds, (err, hash) => {
+          if (err) {
+            console.error('Error al hashear contraseña admin:', err);
+            return;
+          }
+
+          db.run(
+            `INSERT INTO usuarios (nombre, apellidos, email, password, rol)
+             VALUES (?, ?, ?, ?, 'admin')`,
+            [ defaultAdmin.nombre,
+              defaultAdmin.apellidos,
+              defaultAdmin.email,
+              hash
+            ],
+            err => {
+              if (err) {
+                console.error('Error al crear usuario admin por defecto:', err);
+              } else {
+                console.log('Usuario admin por defecto creado: admin@josg.com');
+              }
+            }
+          );
+        });
+      }
+    });
+});  
+
 //Alumnos
 db.run(`
   CREATE TABLE IF NOT EXISTS alumnos (

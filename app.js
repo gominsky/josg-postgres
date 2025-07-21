@@ -51,56 +51,31 @@ app.locals.formatDate = (isoString) => {
 
 // Rutas
 const usuariosRoutes = require('./routes/usuarios');
-app.use('/usuarios', usuariosRoutes);
-
 const profesoresRoutes = require('./routes/profesores');
-app.use('/profesores', profesoresRoutes);
-
 const alumnosRoutes = require('./routes/alumnos');
-app.use('/alumnos', alumnosRoutes);
-
 const gruposRoutes = require('./routes/grupos');
-app.use('/grupos', gruposRoutes);
-
 const cuotasRoutes = require('./routes/cuotas');
-app.use('/cuotas', cuotasRoutes);
-
 const eventosRoutes = require('./routes/eventos');
-app.use('/eventos', eventosRoutes);
-
 const asistenciasRoutes = require('./routes/asistencias');
-app.use('/asistencias', asistenciasRoutes);
-
 const informesRoutes = require('./routes/informes');
-app.use('/informes', informesRoutes);
-
 const guardiasRoutes = require('./routes/guardias');
-app.use('/guardias', guardiasRoutes);
-
 const instrumentosRoutes = require('./routes/instrumentos');
-app.use('/instrumentos', instrumentosRoutes);
-
 const tipos_cuotasRoutes = require('./routes/tipos_cuotas');
-app.use('/tipos_cuotas', tipos_cuotasRoutes);
-
 const pagosRoutes = require('./routes/pagos');
-app.use('/pagos', pagosRoutes);
-
 const control_firmasRoutes = require('./routes/control_firmas');
-app.use('/control_firmas', control_firmasRoutes);
 
 app.use('/usuarios', isAdmin, usuariosRoutes);        // Solo admin
-app.use('/profesores', isAuthenticated, profesoresRoutes); // Admin y docentes
-app.use('/alumnos', isDocente, alumnosRoutes);        // Solo docentes
-app.use('/grupos', isAuthenticated, gruposRoutes);    // Admin y docentes
-app.use('/cuotas', isAdmin, cuotasRoutes);            // Solo admin
-app.use('/eventos', isAuthenticated, eventosRoutes);  // Admin y docentes
-app.use('/asistencias', isAuthenticated, asistenciasRoutes);
-app.use('/informes', isAuthenticated, informesRoutes);
+app.use('/profesores', isAuthenticated, profesoresRoutes); // Admin, docentes y usuarios
+app.use('/alumnos', isAuthenticated, alumnosRoutes);        
+app.use('/grupos', isAdmin, gruposRoutes);  
+app.use('/cuotas', isAdmin, cuotasRoutes);            
+app.use('/eventos', isAuthenticated, eventosRoutes);  
+app.use('/asistencias', isAuthenticated, asistenciasRoutes); 
 app.use('/guardias', isAuthenticated, guardiasRoutes);
-app.use('/instrumentos', isAuthenticated, instrumentosRoutes);
+app.use('/instrumentos', isAdmin, instrumentosRoutes);
 app.use('/tipos_cuotas', isAdmin, tipos_cuotasRoutes); // Solo admin
 app.use('/pagos', isAdmin, pagosRoutes);                // Solo admin
+app.use('/control_firmas', isAuthenticated, control_firmasRoutes);
 
 app.use(express.static('public'));
 

@@ -33,35 +33,63 @@ router.post('/api/login', (req, res) => {
   });
 });
 
+// GET /api/eventos?usuario_id=...
 router.get('/api/eventos', (req, res) => {
   const usuarioId = req.query.usuario_id;
   if (!usuarioId) return res.status(400).json([]);
 
-  const sql = `
-    SELECT e.id, e.titulo, e.fecha_inicio, e.fecha_fin, g.nombre AS grupo_nombre
-    FROM eventos e
-    JOIN grupos g ON e.grupo_id = g.id
-    JOIN profesor_grupo pg ON pg.grupo_id = g.id
-    JOIN profesores p ON p.id = pg.profesor_id
-    JOIN usuarios u ON u.email = p.email
-    WHERE u.id = ?
-    ORDER BY e.fecha_inicio ASC
-  `;
+  // 1) Obtenemos el rol de ese usuario
+  db.get(
+    'SELECT rol FROM usuarios WHERE id = ?',
+    [usuarioId],
+    (err, row) => {
+      if (err) return res.status(500).json([]);
+      if (!row) return res.json([]);
 
-  db.all(sql, [usuarioId], (err, eventos) => {
-    if (err) return res.status(500).json([]);
+      const rol = row.rol;
+      let sql, params = [];
 
-    // Adaptar formato para FullCalendar
-    const eventosAdaptados = eventos.map(e => ({
-      id: e.id,
-      title: `${e.titulo} (${e.grupo_nombre})`,
-      start: e.fecha_inicio,
-      end: e.fecha_fin
-    }));
+      if (rol === 'admin') {
+        // 2a) Si es admin, sacamos todos los eventos
+        sql = `
+          SELECT e.id, e.titulo, e.fecha_inicio, e.fecha_fin, g.nombre AS grupo_nombre
+          FROM eventos e
+          JOIN grupos g ON e.grupo_id = g.id
+          ORDER BY e.fecha_inicio ASC
+        `;
+      } else {
+        // 2b) Si no es admin (docente), sacamos sólo los suyos
+        sql = `
+          SELECT e.id, e.titulo, e.fecha_inicio, e.fecha_fin, g.nombre AS grupo_nombre
+          FROM eventos e
+          JOIN grupos g ON e.grupo_id = g.id
+          JOIN profesor_grupo pg ON pg.grupo_id = g.id
+          JOIN profesores p ON p.id = pg.profesor_id
+          JOIN usuarios u ON u.email = p.email
+          WHERE u.id = ?
+          ORDER BY e.fecha_inicio ASC
+        `;
+        params = [usuarioId];
+      }
 
-    res.json(eventosAdaptados);
-  });
+      // 3) Ejecutamos la consulta seleccionada
+      db.all(sql, params, (err2, eventos) => {
+        if (err2) return res.status(500).json([]);
+
+        // 4) Adaptamos para FullCalendar
+        const eventosAdaptados = eventos.map(e => ({
+          id:    e.id,
+          title: `${e.titulo} (${e.grupo_nombre})`,
+          start: e.fecha_inicio,
+          end:   e.fecha_fin
+        }));
+
+        res.json(eventosAdaptados);
+      });
+    }
+  );
 });
+
 
 router.get('/api/eventos/:id', (req, res) => {
   const eventoId = req.params.id;

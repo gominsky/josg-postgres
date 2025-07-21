@@ -12,6 +12,7 @@
       <thead>
         <tr>
           <th>Nombre</th>
+          <th>Apellidos</th> 
           <th>Email</th>
           <th>Rol</th>
         </tr>
@@ -20,6 +21,7 @@
         <% usuarios.forEach(u => { %>
           <tr onclick="window.location='/usuarios/<%= u.id %>/editar'" style="cursor: pointer;">
             <td><%= u.nombre %></td>
+            <td><%= u.apellidos %></td>
             <td><%= u.email %></td>
             <td><%= u.rol %></td>
           </tr>
