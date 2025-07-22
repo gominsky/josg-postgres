@@ -63,7 +63,8 @@ const instrumentosRoutes = require('./routes/instrumentos');
 const tipos_cuotasRoutes = require('./routes/tipos_cuotas');
 const pagosRoutes = require('./routes/pagos');
 const control_firmasRoutes = require('./routes/control_firmas');
-
+const configuracionRoutes = require('./routes/configuracion');
+app.use('/configuracion', isAdmin, configuracionRoutes);
 app.use('/usuarios', usuariosRoutes);        // Solo admin
 app.use('/profesores', isAuthenticated, profesoresRoutes); // Admin, docentes y usuarios
 app.use('/alumnos', isAuthenticated, alumnosRoutes);        

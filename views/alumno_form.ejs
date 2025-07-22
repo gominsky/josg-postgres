@@ -1,5 +1,7 @@
+<% const isEdicion = Boolean(alumno && alumno.id); %>
+<% title   = isEdicion ? 'Editar alumno' : 'Nuevo alumno'; %>
+<% hero    = false; %>
 <h1 class="h1-titulo"><%= title %></h1>
-
 <form action="<%= alumno ? '/alumnos/' + alumno.id + '?_method=PUT' : '/alumnos' %>" method="POST" enctype="multipart/form-data" class="formulario-alumno">
 
   <div class="grupo-campos">
@@ -117,11 +119,11 @@
   </div>
 
   <div class="acciones-finales">
-    <div class="volver-izquierda">
-      <a href="/alumnos" class="enlace-final-verde">← Volver</a>
+    <div class="volver-bloque-izquierda">
+      <a href="/alumnos" class="enlace-final-naranja">← Volver</a>
     </div>
     <div class="editar-centro">
-      <button type="submit" class="btn-main-verde">
+      <button type="submit" class="btn-main">
         <%= alumno ? 'Actualizar' : 'Registrar' %>
       </button>
     </div>

@@ -92,6 +92,7 @@
     transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
   }
   .btn-main.btn-mini:hover {
+    background-color: #FF9501;
     transform: translateY(-4px);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
   }
@@ -111,6 +112,13 @@
     padding: 1rem;
     border-radius: 8px;
     font-weight: bold;
+    text-decoration: none;
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+  }
+  .card-index:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    background-color: #FF950180;
   }
   /* Forzar párrafos del panel de usuario en blanco */
 .panel-usuario-overlay p {
@@ -130,9 +138,27 @@
 }
 
 .card-logout:hover {
-  transform: translateY(-3px); /* elevación un pelín menor */
+  transform: translateY(-3px);
   box-shadow: 0 3px 8px rgba(0, 0, 0, 0.2);
+  background-color: #FF950180;
 }
+/* Icono de configuración dentro de la card */
+.config-icon {
+  display: block;
+  margin: 0 auto 0.5rem;
+  width: 1.2rem;
+  height: 1.2rem;
+  object-fit: contain;
+}
+
+/* Asegúrate que .card-index defina display: flex; flex-direction: column; align-items: center */
+.card-index {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
 /* HEADER ********************************************************************/
 /* Header de la aplicación */
 .header-simple {
@@ -187,6 +213,24 @@
   display: flex; 
   flex-wrap: wrap; 
   gap: 0.75rem;
+}
+.user-info .fw-bold {
+  color: #000000 !important;
+}
+/* Card de Configuración más compacte */
+.header-nav .card-cabecera.d-flex {
+  padding: 0.5rem 0.75rem;     /* menos padding */
+  min-width: 3rem;             /* ancho mínimo para coherencia */
+  width: auto;
+}
+
+/* Icono más grande */
+.config-icon-header {
+  display: block;
+  margin: 0 auto 0.5rem;
+  width: 1.5rem;               /* antes 0.8rem */
+  height: 1.5rem;
+  object-fit: contain;
 }
 /* FOOTER ********************************************************************/
 .custom-footer {
@@ -243,7 +287,7 @@
 /* BASE ********************************************************************/
 body {
   font-family: 'Inter', sans-serif;
-  background-color: #ffffff;    /* fondo blanco */
+  background-color: #FFFFF0;   
   color: #FF9501;  
   font-size: 14px;
   line-height: 1.5;
@@ -389,7 +433,7 @@ h1, h2, h3, h4, h5,p {
 /* GRIDS */
 .dashboard-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr); /* 4 columnas por fila */
+  grid-template-columns: repeat(4, 1fr); /* 4 columnas por fila */
   gap: 1rem;
   max-width: 900px;
   margin: 1.5rem auto;
@@ -436,3 +480,490 @@ h1, h2, h3, h4, h5,p {
 .fila-enlace:hover {
   background-color: #FF9501;
 }
+/* Ficha alumno ********************************************************************/
+.ficha-alumno-container {
+  max-width: 900px;
+  margin: 2rem auto;
+  padding: 2rem;
+}
+.ficha-alumno {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2rem;
+  background: #f1f5fb; 
+  padding: 2rem;
+  border-radius: 12px;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.06);
+  border: 1px solid #d0d8e4;
+  max-width: 900px;
+  margin: 2rem auto;
+}
+.foto-perfil {
+  width: 120px;
+  height: 120px;
+  object-fit: cover;
+  border-radius: 50%;
+  border: 1px solid #ddd;
+}
+.ficha-datos {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  font-family: 'Inter', sans-serif;
+  font-size: 1rem;
+  line-height: 1.7;
+  color: #333;
+}
+.ficha-datos h2 {
+  font-family: 'Inter', serif;
+  font-size: 1.6rem;
+  margin-bottom: 0.5rem;
+  color:  #FF9501;
+}
+.ficha-container {
+  max-width: 800px;
+  margin: 2rem auto;
+  padding: 2rem;
+  background: #fff;
+  font-family: 'Helvetica Neue', sans-serif;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+  border-radius: 12px;
+  line-height: 1.6;
+  color:  #FF9501;
+}
+.ficha-header {
+  border-bottom: 1px solid #ddd;
+  margin-bottom: 1.5rem;
+  color:  #FF9501;
+}
+.ficha-header h1 {
+  font-size: 2rem;
+  margin-bottom: 0.2rem;
+  font-weight: 500;
+  color:  #FF9501;
+}
+.ficha-header p {
+  color: #666;
+  margin: 0;
+}
+.ficha-section {
+  margin-bottom: 1.5rem;
+  color: rgba(0,0,0,1);
+}
+.ficha-section h2 {
+  font-size: 1.2rem;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 0.2rem;
+  color:  #FF9501;
+}
+.ficha-info p {
+  margin: 0.3rem 0;
+}
+.ficha-datos ul {
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+.ficha-datos li {
+  margin-bottom: 0.4rem;
+}
+.info-flex {
+  display: flex;
+  align-items: flex-start;
+  gap: 1.5rem;
+}
+.info-detalles {
+  flex: 1;
+}
+.info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 10px 30px;
+}
+.tag {
+  display: inline-block;
+  background-color: #f0f0f0;
+  border-radius: 4px;
+  padding: 0.3rem 0.6rem;
+  font-size: 0.85rem;
+  margin: 0.2rem;
+}
+/*Calendario ********************************************************************/
+/* Contenedor del calendario */
+#calendar {
+  max-width: 1200px;
+  margin: 0 auto;
+  font-weight: bold;
+  font-size: 1rem;
+  color: #FF9501; /* naranja corporativo */
+}
+
+/* Título (mes y año) */
+#calendar .fc-toolbar-title {
+  color: #FF9501;
+  font-weight: bold;
+  font-size: 1.5rem;
+}
+
+/* Botones (Hoy, siguiente, anterior) */
+.fc .fc-button {
+  background-color: #FF9501;
+  border: none;
+  color: #ffffff;
+  font-weight: 500;
+  padding: 0.4rem 0.75rem;
+  border-radius: 0.4rem;
+  transition: background-color 0.2s ease-in-out, transform 0.1s ease-in-out;
+}
+.fc .fc-button:hover {
+  background-color: #e65500; /* naranja oscuro */
+  transform: translateY(-2px);
+}
+
+/* Cabecera de días de la semana */
+#calendar .fc-col-header-cell,
+.fc .fc-col-header-cell {
+  background-color: rgba(255, 149, 1, 0.1);
+  color: #FF9501;
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 0.95rem;
+}
+
+/* Números de día */
+.fc .fc-daygrid-day-number {
+  color: #FF9501;
+  font-weight: bold;
+}
+
+/* Día actual (celdilla) */
+#calendar td.fc-day-today a,
+.fc .fc-daygrid-day.fc-day-today a {
+  color: #ffffff !important;
+  background-color: #FF9501 !important;
+  border-radius: 0.4rem;
+  padding: 2px 6px;
+}
+
+/* Eventos en el calendario */
+.fc-event,
+.fc-daygrid-event-dot .fc-daygrid-event-dot {
+  cursor: pointer;
+}
+.fc-event {
+  background-color: #FF9501 !important;
+  color: #ffffff !important;
+  border: none !important;
+  border-radius: 0.4rem !important;
+  font-size: 0.85rem;
+  padding: 2px 6px;
+  transition: transform 0.1s ease-in-out, box-shadow 0.1s ease-in-out;
+}
+.fc-event:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* Enlaces dentro de cabecera */
+#calendar .fc-col-header-cell a {
+  color: #FF9501;
+  text-decoration: none;
+  font-weight: 600;
+}
+#calendar .fc-col-header-cell a:hover {
+  text-decoration: underline;
+}
+/* Botones de la toolbar (Semana, Mes, Lista…) */
+.fc-toolbar .fc-button {
+  background-color: #FF9501;    /* naranja base */
+  color: #ffffff;               /* texto blanco */
+  border: none;
+}
+
+/* Hover y focus: naranja oscuro */
+.fc-toolbar .fc-button:hover,
+.fc-toolbar .fc-button:focus {
+  background-color: #e65500 !important;  
+  color: #ffffff !important;
+}
+
+/* Botón activo (seleccionado) */
+.fc-toolbar .fc-button.fc-button-active {
+  background-color: #e65500 !important;
+  color: #ffffff !important;
+}
+.fc-daygrid-dot-event .fc-daygrid-event-dot,
+.fc .fc-daygrid-event-dot {
+  display: none !important;
+}
+/*Modal calendario ********************************************************************/
+/* estilos_gestion.css - solo reglas CSS, sin HTML */
+
+/* Modal personalizado */
+.header-naranja {
+  background-color: #FF9501; /* header del modal en naranja corporativo */
+}
+.bg-white {
+  background-color: #ffffff !important; /* fondo blanco para el modal */
+}
+.text-black {
+  color: #000000 !important; /* texto negro para labels y campos */
+}
+
+/* Botones del modal */
+.btn-primary-negro {
+  background-color: #000000;
+  color: #ffffff;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.btn-primary-negro:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
+.btn-danger {
+  background-color: #FF0000;
+  color: #ffffff;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.btn-danger:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
+/* Asegurar que form-check-input y form-select funcionen */
+.form-check-input,
+.form-select,
+.form-control {
+  cursor: pointer;
+}
+
+/* Asegurar que el modal no se cierre al hacer clic dentro */
+.modal-content {
+  pointer-events: auto;
+  background-color: #FF9501;
+}
+
+/* Mantener backdrop activo */
+.modal {
+  pointer-events: auto;
+}
+
+
+/*Finanzas ********************************************************************/
+/* Toggle resumen financiero */
+#toggleResumenBtn {
+  background-color: #FF9501;
+  color: #fff;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+#toggleResumenBtn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
+/* Enlaces Volver/Editar en naranja */
+.enlace-final-naranja {
+  color: #FF9501;
+  text-decoration: none;
+  font-weight: 600;
+  transition: color 0.2s;
+}
+.enlace-final-naranja:hover {
+  color: #e65500;
+  text-decoration: underline;
+}
+
+.finanzas-section {
+  background-color: #f9f9fc;
+  color: #333;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 1.5em;
+  margin-top: 2em;
+}
+.finanzas-section h2,h3 {
+  margin-bottom: 1rem;
+  font-size: 1.4rem;
+  color: #000;
+}
+.subsection {
+  margin-bottom: 1.5rem;
+}
+.table-sm th,
+.table-sm td {
+  font-size: 0.9rem;
+  padding: 0.35em 0.6em;
+}
+.acciones-financieras {
+  border-top: 1px solid #ccc;
+  padding-top: 1em;
+}
+.form-cuotas {
+  margin-top: 0.8rem;
+  font-size: 0.9rem;
+}
+.form-cuotas .form-row {
+  display: flex;
+  gap: 1em;
+  flex-wrap: wrap;
+  margin-bottom: 0.5em;
+}
+.form-cuotas label {
+  display: flex;
+  flex-direction: column;
+  font-weight: 500;
+}
+@media (min-width: 1024px) {
+  .finanzas-section {
+    position: sticky;
+    top: 80px;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+}
+.fade-in {
+  animation: fadeIn 0.6s ease-in-out;
+}
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Acciones del final de la página ********************************************************************/
+.acciones-finales {
+  margin-top: 2rem;
+  text-align: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2rem;
+  justify-content: center;
+  color: #FF9501; 
+}
+.volver-izquierda {
+  flex: 1;
+  text-align: left;
+}
+.editar-derecha {
+  text-align: right;
+}
+.editar-centro {
+  flex: 1;
+  text-align: center;
+}
+.volver-bloque {
+  text-align: center;
+  margin-top: 2rem;
+  color: #FF9501; 
+}
+.volver-bloque-izquierda {
+  text-align: left;
+  margin: 2rem auto;
+  max-width: 900px;
+  color: #FF9501; 
+}
+
+/* FORMULARIOS ********************************************************************/
+form {
+  background:  #FF9501;
+  color: white;
+  padding: 1rem;
+  border-radius: 8px;
+  max-width: 700px;
+  margin: 1.5rem auto;
+}
+.formulario-centrado {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  justify-content: flex-start;
+  align-items: flex-end;
+}
+.campo-filtro {
+  display: flex;
+  flex-direction: column;
+  min-width: 160px;
+}
+
+.formulario-centrado label {
+  font-size: 0.85rem;
+  font-weight: 500;
+  margin-bottom: 0.3rem;
+}
+.form-centrado-etiqueta {
+  font-weight: 500;
+  color: rgba(0,0,0,1);
+  font-size: 0.85rem;
+  align-items: flex-end;
+}
+.form-centrado-select {
+  padding: 0.4rem;
+  font-size: 0.85rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  align-items: flex-end;
+}
+
+.formulario-alumno {
+  background: #fff;
+  padding: 2rem;
+  border-radius: 12px;
+  max-width: 900px;
+  margin: 2rem auto;
+}
+.form-grid-2 {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1rem;
+  color: black;
+}
+.grupo-campos {
+  margin-bottom: 2rem;
+}
+.grupo-campos h2 {
+  font-size: 1.2rem;
+  margin-bottom: 1rem;
+  color:  #FF9501;
+  border-bottom: 1px solid #ccc;
+  padding-bottom: 0.3rem;
+}
+.foto-actual {
+  margin-top: 1rem;
+}
+.foto-actual img {
+  max-width: 150px;
+  border-radius: 8px;
+  border: 1px solid #ddd;
+}
+.form-grid-2 label,
+.campo-label {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.9rem;
+  gap: 0.3rem;
+}
+

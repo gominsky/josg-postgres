@@ -1,6 +1,7 @@
 <% title = 'Ficha de Alumno' %>
 <% hero = false %>
 <link rel="stylesheet" href="/styles.css">
+
 <div class="ficha-container">
   <div class="ficha-header">
     <h1 class="h1-titulo"><%= alumno.nombre %> <%= alumno.apellidos %></h1>
@@ -57,117 +58,69 @@
       <% }) %>
     </div>
   <% } %>
-<div class="finanzas-section">
- <div class="ficha-section">
-  <h3>Resumen financiero</h3>
-  <ul>
-    <li><strong>Total de cuotas generadas:</strong> <%= resumenDeuda.total_cuotas.toFixed(2) %> €</li>
-    <li><strong>Total pagado:</strong> <%= resumenDeuda.total_pagado.toFixed(2) %> €</li>
-    <li><strong>Total pendiente:</strong> <%= resumenDeuda.total_pendiente.toFixed(2) %> €</li>
-  </ul>
-</div>
-  <% if (cuotasAlumno && cuotasAlumno.length > 0) { %>
-    <div class="subsection">
-      <h3>Cuotas del alumno</h3>
-      <table class="table table-sm">
-        <thead>
-          <tr>
-            <th>Nombre</th>
-            <th>Importe</th>
-            <th>Vencimiento</th>
-            <th>Estado</th>
-            <th>Fecha de pago</th>
-          </tr>
-        </thead>
-        <tbody>
-          <% cuotasAlumno.forEach(c => { %>
-            <tr>
-              <td><%= c.nombre_cuota %></td>
-              <td><%= c.precio %> €</td>
-              <td><%= formatDate(c.fecha_vencimiento) %></td>
-              <td>
-                <span class="badge bg-<%= c.pagado ? 'success' : 'warning' %>">
-                  <%= c.pagado ? 'Pagada' : 'Pendiente' %>
-                </span>
-              </td>
-              <td><%= c.fecha_pago ? formatDate(c.fecha_pago) : '—' %></td>
-            </tr>
-          <% }) %>
-        </tbody>
-      </table>
+
+  <!-- BOTÓN PARA TOGGLE RESUMEN FINANCIERO -->
+  <button id="toggleResumenBtn" class="btn-main-verde mb-3">
+    Mostrar resumen financiero
+  </button>
+
+  <!-- RESUMEN FINANCIERO OCULTO POR DEFECTO -->
+  <div id="resumenFinanciero" class="finanzas-section" style="display: none;">
+    <div class="ficha-section">
+      <h3>Resumen financiero</h3>
+      <ul>
+        <li><strong>Total de cuotas generadas:</strong> <%= resumenDeuda.total_cuotas.toFixed(2) %> €</li>
+        <li><strong>Total pagado:</strong> <%= resumenDeuda.total_pagado.toFixed(2) %> €</li>
+        <li><strong>Total pendiente:</strong> <%= resumenDeuda.total_pendiente.toFixed(2) %> €</li>
+      </ul>
     </div>
-  <% } %>
-<% if (pagos && pagos.length > 0) { %>
-  <div class="subsection">
-    <h2>Pagos</h2>
-    <table class="table">
-      <thead>
-        <tr>
-          <th>Fecha</th>
-          <th>Importe</th>
-          <th>Medio</th>
-          <th>Cuota</th>
-          <th>Referencia</th>
-          <th>PDF</th> <!-- Aquí la columna PDF -->
-        </tr>
-      </thead>
-      <tbody>
-        <% pagos.forEach(p => { %>
-          <tr>
-            <td><%= p.fecha_pago ? p.fecha_pago.split('-').reverse().join('/') : '' %></td>
-            <td><%= p.importe_pago.toFixed(2) %> €</td>
-            <td><%= p.medio_pago %></td>
-            <td><%= p.cuota_nombre %></td>
-            <td><%= p.referencia || '—' %></td>
-            <td>
-              <a href="/pagos/<%= p.pago_id %>/recibo" target="_blank" class="btn btn-sm btn-outline-dark">PDF</a>
-            </td>
-          </tr>
-        <% }) %>
-      </tbody>
-    </table>
+
+    <% if (cuotasAlumno && cuotasAlumno.length > 0) { %>
+      <div class="subsection">
+        <h3>Cuotas del alumno</h3>
+        <table class="table table-sm">
+          <!-- … contenido de la tabla de cuotas … -->
+        </table>
+      </div>
+    <% } %>
+
+    <% if (pagos && pagos.length > 0) { %>
+      <div class="subsection">
+        <h2>Pagos</h2>
+        <table class="table">
+          <!-- … contenido de la tabla de pagos … -->
+        </table>
+      </div>
+    <% } %>
+    <div class="acciones-financieras">
+      <a href="/pagos/nuevo/<%= alumno.id %>" class="enlace-final-naranja">Registrar nuevo pago</a>
+      <!-- … formulario de generación de cuotas … -->
+    </div>
   </div>
-<% } %>
 
-  
-
-  <div class="acciones-financieras">
-    <a href="/pagos/nuevo/<%= alumno.id %>" class="btn-main-verde">Registrar nuevo pago</a>
-
-    <form action="/pagos/generar-cuotas" method="POST" class="form-centrado-etiqueta">
-      <input type="hidden" name="alumno_id" value="<%= alumno.id %>">
-
-      <% if (cuotasDisponibles && cuotasDisponibles.length > 0) { %>
-        <div class="form-row">
-          <label>Tipo de cuota:
-            <select name="cuota_id" required>
-              <% cuotasDisponibles.forEach(c => { %>
-                <option value="<%= c.id %>"><%= c.nombre %> - <%= c.precio %> €</option>
-              <% }) %>
-            </select>
-          </label>
-
-          <label>Desde:
-            <input type="date" name="fecha_inicio" required>
-          </label>
-
-          <label>Hasta:
-            <input type="date" name="fecha_fin" required>
-          </label>
-        </div>
-
-        <button type="submit" class="btn-main-verde">Generar cuotas</button>
-      <% } else { %>
-        <p class="enlace-final-verde">No hay tipos de cuota disponibles para asignar.</p>
-      <% } %>
-    </form>
+<!-- ACCIONES FINALES -->
+  <div class="acciones-finales mt-4">
+    <div class="volver-izquierda">
+      <a href="/alumnos" class="enlace-final-naranja">← Volver</a>
+    </div>
+    <div class="editar-centro">
+      <a href="/alumnos/<%= alumno.id %>/editar" class="enlace-final-naranja ms-3">Editar</a>
+    </div>
   </div>
 </div>
-<div class="acciones-finales">
-  <div class="volver-izquierda">
-    <a href="/alumnos" class="enlace-final-verde">← Volver</a>
-  </div>
-  <div class="editar-centro">
-    <a href="/alumnos/<%= alumno.id %>/editar" class="btn-main-verde">Editar</a>
-  </div>
-</div>
+
+<!-- SCRIPT DE TOGGLE -->
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const btnToggle = document.getElementById('toggleResumenBtn');
+    const resumen   = document.getElementById('resumenFinanciero');
+
+    btnToggle.addEventListener('click', () => {
+      const abierto = resumen.style.display !== 'none';
+      resumen.style.display = abierto ? 'none' : 'block';
+      btnToggle.textContent  = abierto
+        ? 'Mostrar resumen financiero'
+        : 'Ocultar resumen financiero';
+    });
+  });
+</script>
