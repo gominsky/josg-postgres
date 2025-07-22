@@ -1,0 +1,438 @@
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700&display=swap');
+/* INDEX ********************************************************************/ 
+  html, body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+  }
+
+  /* Hero completo */
+  .hero-header {
+    position: relative;
+    height: 100vh;
+  }
+
+  /* Overlay de login y panel, centrados y semitransparentes */
+  .login-form-overlay,
+  .panel-usuario-overlay {
+    position: absolute;
+    top: 25%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 90%;
+    max-width: 320px;       /* override en panel pasa a 860px */
+    background-color: rgba(255, 149, 1, 0.1);
+    padding: 1.5rem;
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+    color: #ffffff;
+    text-align: center;     /* centra imágenes y textos */
+  }
+  .panel-usuario-overlay {
+    max-width: 860px;
+  }
+
+  /* Logo dentro de overlay */
+  .login-form-overlay img.logo-grande,
+  .panel-usuario-overlay img.logo-grande {
+    display: block;
+    margin: 0 auto 1rem;
+    height: 110px;
+    max-width: 110px;
+  }
+
+  /* Título (solo en login, ya no usamos h1 en panel) */
+  .login-form-overlay h1 {
+    color: #FF9501;
+    margin-bottom: 0.5rem;
+  }
+
+  /* Subtítulos en login: párrafos */
+  .login-form-overlay p {
+    color: #ffffff;
+    margin-bottom: 1rem;
+  }
+
+  /* Formulario semitransparente con texto en blanco */
+  .login-form-overlay form {
+    background-color: rgba(255, 255, 255, 0.2);
+    padding: 1rem;
+    border-radius: 6px;
+    color: #ffffff;
+  }
+  .login-form-overlay form label {
+    color: #ffffff;
+    font-weight: bold;
+  }
+  .login-form-overlay form .form-control {
+    background-color: rgba(255, 255, 255, 0.2) !important;
+    color: #ffffff !important;
+  }
+  .login-form-overlay form .form-control::placeholder {
+    color: #ffffff !important;
+    opacity: 0.8;
+  }
+
+  /* Botón Entrar */
+  .btn-main-naranja {
+    background-color: #FF9501;
+    border-color:   #FF9501;
+    color: #ffffff;
+  }
+  .btn-main-naranja:hover {
+    background-color: #FF9501;
+    border-color:     #FF9501;
+  }
+
+  /* Botón Cerrar sesión pequeño */
+  .btn-main.btn-mini {
+    background-color: #FF9501;
+    border-color:     #FF9501;
+    color: #ffffff;
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+  }
+  .btn-main.btn-mini:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  }
+
+  /* Grid del menú principal */
+  .dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 1rem;
+  }
+
+  /* Tarjetas del menú principal */
+  .card-index {
+    background-color: #FF9501;
+    color: #ffffff;
+    text-align: center;
+    padding: 1rem;
+    border-radius: 8px;
+    font-weight: bold;
+  }
+  /* Forzar párrafos del panel de usuario en blanco */
+.panel-usuario-overlay p {
+  color: #ffffff !important;
+}
+/* Mini‑card para Cerrar sesión */
+.card-logout {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;    /* menos espacio vertical y horizontal */
+  font-size: 0.875rem;         /* un poco más pequeña */
+  background-color: #FF9501;
+  color: #ffffff;
+  border-radius: 0.5rem;       /* radios algo menores */
+  font-weight: 600;
+  text-decoration: none;
+  transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+
+.card-logout:hover {
+  transform: translateY(-3px); /* elevación un pelín menor */
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.2);
+}
+/* HEADER ********************************************************************/
+/* Header de la aplicación */
+.header-simple {
+  background-color: #ffffff;            /* fondo blanco */
+  border-bottom: 4px solid #FF9501;     /* franja naranja */
+}
+
+/* Logo en el header */
+.logo-header {
+  height: 5rem;                         /* igual altura que las cards */
+  object-fit: contain;
+}
+
+/* Cards naranjas con texto negro */
+.header-simple .card-cabecera {
+  background: #FF9501;                  /* naranja corporativo */
+  color: #ffffff;                     /* texto negro */
+  border-radius: 1rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  padding: 1.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  margin-bottom: 1.5rem;
+  text-align: center;
+  text-decoration: none;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  display: inline-block;
+}
+.header-simple .card-cabecera:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
+}
+
+/* Mini‑card “Cerrar sesión” */
+.header-simple .card-logout {
+  background-color: #FF9501;
+  color: #ffffff;
+  padding: 0.25rem 0.75rem;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+.header-simple .card-logout:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+.header-nav {
+  background: #ffffff;
+  background-color: #ffffff;
+  display: flex; 
+  flex-wrap: wrap; 
+  gap: 0.75rem;
+}
+/* FOOTER ********************************************************************/
+.custom-footer {
+  background-color: #ffffff;    /* fondo blanco */
+  color: #FF9501;               /* texto naranja */
+  text-align: center;
+  padding: 0.5rem 1rem;
+}
+
+.custom-footer .footer-content p,
+.custom-footer .footer-content a,
+.custom-footer .footer-content small {
+  color: #FF9501;               /* asegurar que todo el texto sea naranja */
+  font-size: 0.8rem !important;
+  line-height: 1.2;
+  margin: 0.2rem 0;
+}
+
+.custom-footer .footer-content a {
+  text-decoration: underline;   /* opcional, mejora accesibilidad */
+}
+
+.custom-footer .cc-logo {
+  filter: hue-rotate(0deg)      /* si quieres tintar el logo CC naranja, reemplaza con una imagen naranja */
+}
+/* HERO ********************************************************************/
+.hero-header {
+  background-image:
+    linear-gradient(to bottom, rgba(0,0,0,0.2), rgba(0,0,0,0.7)),
+    url('https://static.wixstatic.com/media/adfd29_416db1241c784666ba638d06e05c5676~mv2.jpg');
+  background-size: cover;
+  background-position: center;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.hero-overlay {
+  background-color: rgba(0, 0, 0, 0.5);
+  padding: 1rem;
+  border-radius: 10px;
+  text-align: center;
+  color:#FF9501; 
+}
+.hero-header h1 {
+  font-size: 3.2rem;
+  margin-bottom: 0.5rem;
+  color:#FF9501; 
+}
+.hero-header p {
+  font-size: 1.2rem;
+  color:#FF9501; 
+}
+/* BASE ********************************************************************/
+body {
+  font-family: 'Inter', sans-serif;
+  background-color: #ffffff;    /* fondo blanco */
+  color: #FF9501;  
+  font-size: 14px;
+  line-height: 1.5;
+  margin: 0;
+  padding: 0;
+}
+h1, h2, h3, h4, h5,p {
+  font-family: 'Inter', sans-serif;
+  font-weight: 700;
+  color: #FF9501; 
+  margin: 1rem 0 0.5rem;
+  font-size: 1.3rem;
+}
+.h1-titulo {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  max-width: 900px;
+  margin: 2rem auto 1rem;
+  font-size: 2rem;
+}
+
+.texto-base {
+  font-family: 'Inter', sans-serif;
+  color: #FF9501; 
+  margin: 1rem 0 0.5rem;
+  font-size: 1rem;
+}
+.enlace-final{
+  color: #FF9501; 
+  font-weight: 500;
+}
+/* Botones*/
+.btn-main {
+  background-color:transparent;
+  color: #FF9501; 
+  border: 1px solid  #FF9501; 
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  transition: 0.2s ease;
+  margin-top: 1.5rem;
+  padding: 0.4rem 0.8rem;
+} 
+.btn-main:hover {
+  background-color: #FF9501; 
+  color: white;
+  margin-top: 1.5rem;
+}
+/* CARDS */
+
+.card.activo {
+  background-color: rgb(227, 255, 0);
+  color: #00060e;
+  text-decoration: none;
+  border-radius: 1rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.8);
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  text-align: center;
+}
+.card.activo:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
+  background-color: rgba(227, 255, 0,0.8);
+  text-decoration: none;
+}
+
+.card.pasivo {
+  background-color:rgb(231, 238, 175);
+  color: #999;
+  border: 1px solid #ccc;
+  text-decoration: none;
+  border-radius: 1rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.8);
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  text-align: center;
+}
+.card.pasivo:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
+  background-color:rgba(231, 238, 175,0.8);
+}
+.card-variacion {
+  background-color:#FFA8FC;
+  color: #00060e;
+  text-decoration: none;
+  border-radius: 1rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.8);
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  text-align: center;
+}
+.card-variacion:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
+  background-color: rgba(255,168,252,0.8);
+  text-decoration: none;
+}
+.card-variacion2 {
+  background-color:#0CE95D;
+  color: #00060e;
+  text-decoration: none;
+  border-radius: 1rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.8);
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  text-align: center;
+}
+.card-variacion2:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
+  background-color: rgba(12, 233, 93,0.8);
+  text-decoration: none;
+}
+.card-eliminar {
+  background-color:rgba(255,0,0,1);
+  color: #00060e;
+  text-decoration: none;
+  border-radius: 1rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.8);
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  text-align: center;
+}
+.card-eliminar:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
+  background-color: rgba(255,0,0,0.8);
+  text-decoration: none;
+}
+
+/* GRIDS */
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr); /* 4 columnas por fila */
+  gap: 1rem;
+  max-width: 900px;
+  margin: 1.5rem auto;
+  padding: 0.5rem;
+}
+.floating-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.5rem;
+  max-width: 900px;
+  margin-top: -18rem;
+  position: relative;
+  z-index: 2;
+  padding-top: 0.5rem;
+}
+
+/* TABLA LISTADOS */
+.tabla-estilizada {
+  width: 100%;
+  border-collapse: collapse;
+  background-color: white;
+  box-shadow: rgba(12, 233, 93,0.1);
+  color:  rgb(0, 0, 0);
+  margin: 2rem 0;
+  border-radius: 8px;
+  overflow: hidden;
+}
+.tabla-estilizada th {
+  background-color:black;
+  color:  white;
+  padding: 12px;
+  text-align: left;
+}
+
+.tabla-estilizada td {
+  padding: 12px;
+  border-bottom: 1px solid #000;
+  text-align: left;
+}
+/* fila como enlace */
+.fila-enlace {
+  cursor: pointer;
+}
+.fila-enlace:hover {
+  background-color: #FF9501;
+}

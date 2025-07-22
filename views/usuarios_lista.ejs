@@ -19,7 +19,7 @@
       </thead>
       <tbody>
         <% usuarios.forEach(u => { %>
-          <tr onclick="window.location='/usuarios/<%= u.id %>/editar'" style="cursor: pointer;">
+          <tr onclick="window.location='/usuarios/<%= u.id %>/editar'" class="fila-enlace">
             <td><%= u.nombre %></td>
             <td><%= u.apellidos %></td>
             <td><%= u.email %></td>
