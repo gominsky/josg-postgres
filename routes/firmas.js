@@ -47,7 +47,7 @@ router.post('/login', (req, res) => {
 
 // Ruta 3: Firma de asistencia con QR
 router.post('/', (req, res) => {
-  const { alumno_id, evento_id, token, ubicacion, observaciones } = req.body;
+  const { alumno_id, evento_id, token } = req.body;
 
   // Validar evento y token
   const eventoSQL = `SELECT * FROM eventos WHERE id = ? AND token = ? AND activo = 1`;
@@ -65,17 +65,14 @@ router.post('/', (req, res) => {
       const hora = new Date().toLocaleTimeString();
 
       const insertSQL = `
-    INSERT INTO asistencias (alumno_id, evento_id, fecha, hora, tipo, ubicacion, observaciones)
-    VALUES (?, ?, ?, ?, 'qr', ?, ?)
-  `;
+        INSERT INTO asistencias (alumno_id, evento_id, fecha, hora, tipo)
+        VALUES (?, ?, ?, ?, 'qr')
+      `;
 
-    db.run(insertSQL, [alumno_id, evento_id, fecha, hora, ubicacion || '', observaciones || ''], function (err) {
-      if (err) {
-        console.error("Error al registrar asistencia:", err);
-        return res.status(500).json({ error: 'Error al registrar la asistencia' });
-      }
-      res.json({ success: true, mensaje: 'Asistencia registrada correctamente' });
-    });
+      db.run(insertSQL, [alumno_id, evento_id, fecha, hora], function (err) {
+        if (err) return res.status(500).json({ error: 'Error al registrar la asistencia' });
+        res.json({ success: true, mensaje: 'Asistencia registrada correctamente' });
+      });
     });
   });
 });
