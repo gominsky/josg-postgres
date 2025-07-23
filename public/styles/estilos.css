@@ -148,7 +148,7 @@
 
 /* Cards naranjas con texto negro */
 .header-simple .card-cabecera {
-  background: #FF9501;                  /* naranja corporativo */
+  background:#FF9501;                  /* naranja corporativo */
   color: #ffffff;                     /* texto negro */
   border-radius: 1rem;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
@@ -211,8 +211,8 @@
 }
 /* FOOTER ********************************************************************/
 .custom-footer {
-  background-color: #ece1dd;    /* fondo blanco */
-  color: #39575B;               /* texto naranja */
+  background-color: #FF9501;;    /* fondo blanco */
+  color:black;               /* texto naranja */
   text-align: center;
   padding: 0.5rem 1rem;
 }
@@ -220,7 +220,7 @@
 .custom-footer .footer-content p,
 .custom-footer .footer-content a,
 .custom-footer .footer-content small {
-  color: #39575B;                /* asegurar que todo el texto sea naranja */
+  color:black;                /* asegurar que todo el texto sea naranja */
   font-size: 0.8rem !important;
   line-height: 1.2;
   margin: 0.2rem 0;
@@ -314,14 +314,32 @@ h1, h2, h3, h4, h5,p {
   padding: 0.4rem 0.8rem;
 } 
 .btn-main:hover {
-  background-color: #FF9501; 
+  background-color: #FF9501;
   color: white;
+  margin-top: 1.5rem;
+}
+.btn-main-blanco {
+  background-color: #FF9501;
+  color: white;
+  border: 1px solid white; 
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  transition: 0.2s ease;
+  margin-top: 1.5rem;
+  padding: 0.4rem 0.8rem;
+} 
+.btn-main-blanco:hover {
+  background-color: white;
+  color: #FF9501;
   margin-top: 1.5rem;
 }
 /* CARDS */
 
 .card.activo {
-  background-color:#c72939;
+  background-color: #FFC30F;
   color: #00060e;
   text-decoration: none;
   border-radius: 1rem;
@@ -335,15 +353,15 @@ h1, h2, h3, h4, h5,p {
 .card.activo:hover {
   transform: translateY(-4px);
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
-  background-color:#6a932380;
+  background-color: #FF950180;
   text-decoration: none;
   font-weight: bold;
 }
 
 .card.pasivo {
-  background-color:#ece1dd;
-  color: #999;
-  border: 1px solid #ccc;
+  background-color:#c75d2c;
+  color: white;
+  border: 1px solid #c75d2c;
   text-decoration: none;
   border-radius: 1rem;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.8);
@@ -351,13 +369,13 @@ h1, h2, h3, h4, h5,p {
   margin-bottom: 1.5rem;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
   text-align: center;
-   font-weight: bold;
+  font-weight: bold;
 }
 
 .card.pasivo:hover {
   transform: translateY(-4px);
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
-  background-color:#ece1dd80;
+  background-color:#c75d2c80;
   font-weight: bold;
 }
 .card-variacion {

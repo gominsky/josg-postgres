@@ -4,7 +4,7 @@ const router = express.Router();
 const db = require('../database/db');
 const PDFDocument = require('pdfkit');
 const util = require('util'); 
-
+const { isAuthenticated } = require('../middleware/auth');
 // Redirigir a lista
 router.get('/', (req, res) => {
   res.redirect('/informes/lista');
@@ -26,7 +26,8 @@ router.get('/ficha', (req, res) => {
         instrumentoSeleccionado: null,
         profesorSeleccionado: null,
         nombreInforme: '',
-        fechaHoy: new Date().toISOString().split('T')[0]
+        fechaHoy: new Date().toISOString().split('T')[0],
+        fecha_fin: new Date().toISOString().split('T')[0]
       });
     });
   });
@@ -68,6 +69,7 @@ router.get('/ficha/:id', (req, res) => {
               instrumentoSeleccionado,
               profesorSeleccionado: null,
               fechaHoy: informe.fecha,
+              fecha_fin: informe.fecha,
               grupos,
               instrumentos,
               campos,
@@ -80,7 +82,6 @@ router.get('/ficha/:id', (req, res) => {
     });
   });
 });
-
 router.get('/lista', (req, res) => {
   db.all(`
     SELECT inf.id, inf.informe, inf.fecha,
@@ -105,7 +106,6 @@ router.get('/lista', (req, res) => {
     res.render('informes_lista', { informes });
   });
 });
-
 router.post('/ficha/guardar-json', (req, res) => {
   const {
     nombre_informe,
@@ -194,7 +194,6 @@ router.post('/ficha/guardar-json', (req, res) => {
     });
   }
 });
-
 router.get('/detalle/:id', (req, res) => {
   const id = req.params.id;
 
@@ -362,81 +361,96 @@ router.post('/eliminar/:id', (req, res) => {
     });
   });
 });
+// GET /informes/horas
+router.get('/horas', isAuthenticated, (req, res) => {
+  // Desestructuramos los parámetros tal como vienen del formulario
+  const { fecha, fecha_fin, grupo, instrumento } = req.query;
 
-router.get('/pdf/:id', (req, res) => {
-  const id = req.params.id;
+  // Preparamos los filtros dinámicos
+  const whereE  = [];
+  const paramsE = [];
 
-  db.get(`SELECT * FROM informes WHERE id = ?`, [id], (err, informe) => {
-    if (err || !informe) return res.status(404).send('Informe no encontrado');
+  if (fecha) {
+    whereE.push("e.fecha_inicio >= ?");
+    paramsE.push(fecha);
+  }
+  if (fecha_fin) {
+    whereE.push("e.fecha_fin <= ?");
+    paramsE.push(fecha_fin + " 23:59:59");
+  }
+  if (grupo) {
+    whereE.push("e.grupo_id = ?");
+    paramsE.push(grupo);
+  }
 
-    db.all(`SELECT * FROM informe_campos WHERE informe_id = ? ORDER BY id`, [id], (errCampos, campos) => {
-      if (errCampos) return res.status(500).send('Error al obtener campos');
+  const whereClause = whereE.length ? "WHERE " + whereE.join(" AND ") : "";
 
-      db.all(`
-        SELECT ir.*, a.nombre, a.apellidos
-        FROM informe_resultados ir
-        LEFT JOIN alumnos a ON ir.alumno_id = a.id
-        WHERE ir.informe_id = ?
-        AND (a.id IS NULL OR a.activo = 1)
-      `, [id], (errResultados, resultados) => {
-        if (errResultados) return res.status(500).send('Error al obtener resultados');
+  // 1) Total de horas en el periodo
+  const sqlTotal = `
+    SELECT 
+      SUM(
+        (strftime('%s', e.fecha_fin) - strftime('%s', e.fecha_inicio)) / 3600.0
+      ) AS total_horas
+    FROM eventos e
+    ${whereClause}
+  `;
 
-        const filasMap = {};
-        resultados.forEach(r => {
-          const clave = r.alumno_id !== null ? `a_${r.alumno_id}` : `f_${r.fila}`;
-          if (!filasMap[clave]) {
-            filasMap[clave] = {
-              alumno: r.apellidos && r.nombre ? `${r.apellidos}, ${r.nombre}` : '-',
-              valores: {}
-            };
-          }
-          filasMap[clave].valores[r.campo_id] = r.valor;
-        });
+  // 2) Horas por alumno (manual + qr)
+  const sqlPorAlumno = `
+    SELECT 
+      a.id,
+      a.nombre || ' ' || a.apellidos AS alumno,
+      SUM(
+        (strftime('%s', e.fecha_fin) - strftime('%s', e.fecha_inicio)) / 3600.0
+      ) AS horas
+    FROM asistencias asi
+    JOIN alumnos a   ON asi.alumno_id = a.id
+    JOIN eventos e   ON asi.evento_id = e.id
+    ${instrumento 
+      ? "JOIN alumno_instrumento ai ON ai.alumno_id = a.id AND ai.instrumento_id = ?" 
+      : ""
+    }
+    ${whereClause ? "AND " + whereE.join(" AND ").replace(/^e\./, 'e.') : ""}
+      AND asi.tipo IN ('manual','qr')
+    GROUP BY a.id, a.nombre, a.apellidos
+    HAVING horas > 0
+  `;
 
-        const filas = Object.values(filasMap);
+  // Ejecutamos la consulta de total
+  db.get(sqlTotal, paramsE, (err, tot) => {
+    if (err) return res.status(500).send("Error calculando total de horas");
+    const totalHoras = tot.total_horas || 0;
 
-        // Crear PDF
-        const PDFDocument = require('pdfkit');
-        const doc = new PDFDocument({ margin: 40, size: 'A4' });
+    // Preparamos parámetros para la consulta por alumno
+    const paramsA = [...paramsE];
+    if (instrumento) paramsA.push(instrumento);
 
-        res.setHeader('Content-disposition', `inline; filename="informe_${informe.id}.pdf"`);
-        res.setHeader('Content-type', 'application/pdf');
-        doc.pipe(res);
+    // Ejecutamos la consulta por alumno
+    db.all(sqlPorAlumno, paramsA, (err2, rows) => {
+      if (err2) return res.status(500).send("Error calculando horas por alumno");
 
-        doc.fontSize(18).text(informe.informe, { align: 'center' });
-        doc.moveDown();
-        doc.fontSize(10).text(`Fecha: ${new Date(informe.fecha).toLocaleDateString('es-ES')}`);
-        doc.text(`Grupo: ${informe.grupo_id || 'Ninguno'}`);
-        doc.text(`Instrumento: ${informe.instrumento_id || 'Ninguno'}`);
-        doc.moveDown();
+      // Calcular porcentaje
+      const resultados = rows.map(r => ({
+        alumno:     r.alumno,
+        horas:      Number(r.horas.toFixed(2)),
+        porcentaje: totalHoras > 0 
+          ? Number(((r.horas / totalHoras) * 100).toFixed(1)) 
+          : 0
+      }));
 
-        // Tabla
-        const headers = campos.map(c => c.nombre);
-        const includeAlumno = filas.some(f => f.alumno !== '-');
-
-        if (includeAlumno) headers.unshift('Alumno');
-
-        // Cabecera
-        doc.font('Helvetica-Bold').text(headers.join(' | '));
-        doc.moveDown(0.5);
-        doc.font('Helvetica');
-
-        // Filas
-        filas.forEach(f => {
-          const valores = campos.map(c => {
-            let v = f.valores[c.id];
-            if (c.tipo === 'booleano') v = v === '1' ? 'Sí' : 'No';
-            return v || '';
-          });
-          if (includeAlumno) valores.unshift(f.alumno);
-          doc.text(valores.join(' | '));
-        });
-
-        doc.end();
+      // Renderizamos pasando fecha y fecha_fin para que sigan disponibles en la vista
+      res.render('informes_horas', {
+        fecha,
+        fecha_fin,
+        grupo,
+        instrumento,
+        totalHoras,
+        resultados
       });
     });
   });
 });
+
 
 module.exports = router;
 

@@ -1,0 +1,65 @@
+<% title = 'Informe: % Horas' %>
+<% hero = false %>
+
+<h1 class="h1-titulo text-center mb-4">Porcentaje de horas</h1>
+<p class="text-center mb-4">
+  Total de horas en periodo: <strong><%= totalHoras.toFixed(2) %> h</strong>
+</p>
+
+<div class="table-responsive mb-4">
+  <table class="tabla-estilizada">
+    <thead>
+      <tr>
+        <th class="sortable">Alumno</th>
+        <th class="sortable">Horas</th>
+        <th class="sortable">% sobre total</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% resultados.forEach(r => { %>
+        <tr>
+          <td><%= r.alumno %></td>
+          <td data-value="<%= r.horas %>"><%= r.horas %> h</td>
+          <td data-value="<%= r.porcentaje %>"><%= r.porcentaje %> %</td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+</div>
+
+<div class="volver-bloque-izquierda">
+  <a href="/informes" class="enlace-final">← Volver a Informes</a>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('th.sortable').forEach((th, idx) => {
+    let asc = true;
+    th.style.cursor = 'pointer';
+    th.addEventListener('click', () => {
+      const table = th.closest('table');
+      const tbody = table.querySelector('tbody');
+      const rows = Array.from(tbody.querySelectorAll('tr'));
+      rows.sort((a, b) => {
+        const cellA = a.children[idx];
+        const cellB = b.children[idx];
+        const valA = cellA.dataset.value !== undefined
+          ? parseFloat(cellA.dataset.value)
+          : cellA.textContent.trim();
+        const valB = cellB.dataset.value !== undefined
+          ? parseFloat(cellB.dataset.value)
+          : cellB.textContent.trim();
+        if (!isNaN(valA) && !isNaN(valB)) {
+          return asc ? valA - valB : valB - valA;
+        }
+        return asc
+          ? String(valA).localeCompare(String(valB))
+          : String(valB).localeCompare(String(valA));
+      });
+      rows.forEach(row => tbody.appendChild(row));
+      asc = !asc;
+    });
+  });
+});
+</script>
+

@@ -6,8 +6,8 @@
 
     <!-- Filtros del informe -->
     <div class="col-md-5">
-      <div class="formulario-centrado p3 rounded" style="background-color: transparent">
-        <form action="/informes/ficha/filtrar" method="POST" style="background-color: rgba(12, 233, 93, 1)">
+      <div class="formulario-centrado p-3 rounded">
+        <form action="/informes/ficha/filtrar" method="POST" id="form-filtrar">
           <h2 class="h5 mb-3 text-dark text-center fw-bold">Filtros</h2>
           <div class="mb-2">
             <label class="form-label form-label-sm fw-bold">Nombre del informe</label>
@@ -38,64 +38,42 @@
           <div class="mb-2">
             <label class="form-label form-label-sm fw-bold">Fecha</label>
             <input type="date" name="fecha" class="form-control form-control-sm" id="fecha-input" required value="<%= fechaHoy %>">
+            <label class="form-label form-label-sm fw-bold">Fecha fin</label>
+            <input type="date" name="fecha_fin" class="form-control form-control-sm" id="fecha-fin-input" value="<%= typeof fecha_fin !== 'undefined' ? fecha_fin : fechaHoy %>">
           </div>
 
-          <div class="text-center mt-3">
-            <button type="submit" class="btn btn-dark btn-sm">Aplicar</button>
+          <div class="d-flex justify-content-center gap-2 mb-3">
+            <button type="submit" class="btn btn-dark btn-sm">Aplicar filtros</button>
+            <button formaction="/informes/horas" formmethod="GET" class="btn-main-blanco fw-bold px-3 py-1">Porcentaje de horas</button>
           </div>
         </form>
-
-        <script>
-          const grupoSelect = document.getElementById('grupo_id');
-          const instrumentoBlock = document.getElementById('bloque-instrumento');
-          const instrumentoSelect = document.getElementById('instrumento-select');
-          const fechaInput = document.getElementById('fecha-input');
-
-          function actualizarVisibilidadInstrumento() {
-            const grupo = grupoSelect.value;
-            if (grupo === 'ninguno') {
-              instrumentoBlock.style.display = 'none';
-              instrumentoSelect.removeAttribute('required');
-              instrumentoSelect.value = 'ninguno';
-              fechaInput?.removeAttribute('required');
-            } else {
-              instrumentoBlock.style.display = 'block';
-              instrumentoSelect.setAttribute('required', 'required');
-              fechaInput?.setAttribute('required', 'required');
-            }
-          }
-
-          grupoSelect.addEventListener('change', actualizarVisibilidadInstrumento);
-          window.addEventListener('DOMContentLoaded', actualizarVisibilidadInstrumento);
-        </script>
       </div>
     </div>
 
     <!-- Formulario de resultados -->
     <div class="col-md-7">
       <% if (grupoSeleccionado === 'ninguno') { %>
-        <div class="mensaje-ok text-center">
-          Estás creando un informe personalizado sin alumnos. Añade los campos que desees.
-        </div>
+        <div class="mensaje-ok text-center">Informe sin alumnos, añade campos.</div>
       <% } else if (alumnos && alumnos.length) { %>
-        <div class="mensaje-ok text-center">
-          Alumnos filtrados correctamente. Ahora puedes añadir los campos para tu informe.
-        </div>
+        <div class="mensaje-ok text-center">Alumnos filtrados, añade campos.</div>
       <% } %>
 
       <% if (grupoSeleccionado === 'ninguno' || (alumnos && alumnos.length)) { %>
-        <form id="form-informe" method="POST" action="/informes/ficha/guardar-json" class="formulario-centrado" style="background-color: rgba(12, 233, 93, 1)">
+        <form id="form-informe" method="POST" action="/informes/ficha/guardar-json" class="formulario-centrado">
           <input type="hidden" name="nombre_informe" value="<%= nombreInforme %>">
           <input type="hidden" name="grupo_id" value="<%= grupoSeleccionado %>">
           <input type="hidden" name="instrumento_id" value="<%= instrumentoSeleccionado %>">
           <input type="hidden" name="profesor_id" value="<%= profesorSeleccionado %>">
           <input type="hidden" name="fecha" value="<%= fechaHoy %>">
+          <input type="hidden" name="fecha_fin" value="<%= typeof fecha_fin !== 'undefined' ? fecha_fin : fechaHoy %>">
           <input type="hidden" name="resultados" id="resultados-json">
           <input type="hidden" name="campos_json" id="campos-json">
 
           <h2 class="h5 mb-3 text-dark text-center">Elegir campos para el informe</h2>
-          <button type="submit" class="btn btn-dark btn-sm" onclick="addCampo()">+ Añadir campo</button>
-
+          <!-- Botón añadir campo con preventDefault para evitar submit -->
+          <div class="text-center mb-3">
+            <button type="button" class="btn btn-dark btn-sm" onclick="event.preventDefault(); addCampo()">+ Añadir campo</button>
+          </div>
 
           <table class="table table-bordered table-sm" id="tabla-campos">
             <thead class="table-light">
@@ -103,15 +81,15 @@
                 <th>Nombre</th>
                 <th>Tipo</th>
                 <th>Obligatorio</th>
-                <th></th>
+                <th>Acción</th>
               </tr>
             </thead>
             <tbody></tbody>
           </table>
 
-          <div class="table-responsive" id="alumnos-container"></div>
+          <div id="alumnos-container" class="table-responsive mb-3"></div>
 
-          <div class="text-center mt-4">
+          <div class="text-center">
             <button type="submit" class="btn btn-dark btn-sm">Guardar informe</button>
           </div>
         </form>
@@ -123,108 +101,72 @@
           function renderTablaAlumnos(camposFinal) {
             const cont = document.getElementById('alumnos-container');
             if (!alumnos.length || !camposFinal.length) return cont.innerHTML = '';
-
-            let html = `<table class="table table-sm table-bordered align-middle text-center">
-              <thead class="table-light"><tr><th>Alumno</th>`;
-
-            camposFinal.forEach((c, idx) => {
-              html += `<th>${c.nombre || 'Campo ' + (idx + 1)}</th>`;
-            });
-
-            html += '</tr></thead><tbody>';
-
-            alumnos.forEach(alumno => {
-              html += `<tr><td class="text-start">${alumno.apellidos}, ${alumno.nombre}</td>`;
+            let html = `<table class="table table-sm table-bordered"><thead><tr><th>Alumno</th>`;
+            camposFinal.forEach((c, i) => html += `<th>${c.nombre || 'Campo ' + (i+1)}</th>`);
+            html += `</tr></thead><tbody>`;
+            alumnos.forEach(al => {
+              html += `<tr><td>${al.apellidos}, ${al.nombre}</td>`;
               camposFinal.forEach((campo, idx) => {
-                const name = `r_${alumno.id}_${idx}`;
-                let input = '';
-
-                if (campo.tipo === 'texto') {
-                  input = `<input type="text" class="form-control form-control-sm" name="${name}">`;
-                } else if (campo.tipo === 'numero') {
-                  input = `<input type="number" class="form-control form-control-sm" name="${name}" step="0.01" min="0" max="10">`;
-                } else if (campo.tipo === 'booleano') {
-                  input = `<input type="checkbox" class="form-check-input" name="${name}">`;
-                }
-
-                html += `<td>${input}</td>`;
+                const nm = `r_${al.id}_${idx}`;
+                let inp = campo.tipo === 'texto'
+                  ? `<input type="text" class="form-control form-control-sm" name="${nm}">`
+                  : campo.tipo === 'numero'
+                    ? `<input type="number" class="form-control form-control-sm" name="${nm}" step="0.01">`
+                    : `<input type="checkbox" class="form-check-input" name="${nm}">`;
+                html += `<td>${inp}</td>`;
               });
-              html += '</tr>';
+              html += `</tr>`;
             });
-
-            html += '</tbody></table>';
+            html += `</tbody></table>`;
             cont.innerHTML = html;
           }
 
-          function addCampo(nombre = '', tipo = 'texto', obligatorio = false) {
+          function addCampo() {
+            const tbody = document.querySelector('#tabla-campos tbody');
             const idx = campos.length;
-            campos.push({ nombre, tipo, obligatorio });
+            campos.push({ nombre: '', tipo: 'texto', obligatorio: false });
 
-            const row = document.createElement('tr');
-            row.innerHTML = `
-              <td><input type="text" class="form-control form-control-sm" value="${nombre}" data-idx="${idx}" data-prop="nombre" oninput="updateCampoNombre(${idx}, this.value)"></td>
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+              <td><input type="text" class="form-control form-control-sm" data-idx="${idx}" data-prop="nombre" oninput="updateCampo(${idx}, 'nombre', this.value)"></td>
               <td>
-                <select class="form-select form-select-sm" data-idx="${idx}" data-prop="tipo" onchange="updateCampoTipo(${idx}, this.value)">
-                  <option value="texto"${tipo === 'texto' ? ' selected' : ''}>Texto</option>
-                  <option value="numero"${tipo === 'numero' ? 'selected' : ''}>Número</option>
-                  <option value="booleano"${tipo === 'booleano' ? 'selected' : ''}>Sí/No</option>
+                <select class="form-select form-select-sm" data-idx="${idx}" data-prop="tipo" onchange="updateCampo(${idx}, 'tipo', this.value)">
+                  <option value="texto">Texto</option>
+                  <option value="numero">Número</option>
+                  <option value="booleano">Sí/No</option>
                 </select>
               </td>
-              <td class="text-center">
-                <input type="checkbox" class="form-check-input" ${obligatorio ? 'checked' : ''} data-idx="${idx}" data-prop="obligatorio" onchange="updateCampoObligatorio(${idx}, this.checked)">
-              </td>
-              <td><button type="button" class="btn btn-sm text-danger fw-bold" style="font-size: 1rem;" onclick="removeCampo(this)">×</button></td>
+              <td class="text-center"><input type="checkbox" class="form-check-input" data-idx="${idx}" data-prop="obligatorio" onchange="updateCampo(${idx}, 'obligatorio', this.checked)"></td>
+              <td><button type="button" class="btn btn-sm text-danger" onclick="removeCampo(${idx})">×</button></td>
             `;
-            document.querySelector('#tabla-campos tbody').appendChild(row);
+            tbody.appendChild(tr);
             renderTablaAlumnos(campos);
           }
 
-          function updateCampoNombre(idx, value) {
-            campos[idx].nombre = value;
+          function updateCampo(idx, prop, val) {
+            campos[idx][prop] = prop === 'obligatorio' ? (val ? 1 : 0) : val;
             renderTablaAlumnos(campos);
           }
-          function updateCampoTipo(idx, tipo) {
-            campos[idx].tipo = tipo;
-            renderTablaAlumnos(campos);
-          }
-          function updateCampoObligatorio(idx, obligatorio) {
-            campos[idx].obligatorio = obligatorio ? 1 : 0;
-          }
-          function removeCampo(btn) {
-            const row = btn.closest('tr');
-            const idx = [...row.parentNode.children].indexOf(row);
+
+          function removeCampo(idx) {
             campos.splice(idx, 1);
-            row.remove();
+            document.querySelectorAll('#tabla-campos tr')[idx+1].remove();
             renderTablaAlumnos(campos);
           }
 
-          document.getElementById('form-informe').addEventListener('submit', function (e) {
-            const camposFinal = [];
+          document.getElementById('form-informe').addEventListener('submit', function(e) {
+            document.getElementById('campos-json').value = JSON.stringify(campos);
             const resultados = [];
-
-            document.querySelectorAll('#tabla-campos tbody tr').forEach(row => {
-              const nombre = row.querySelector('[data-prop="nombre"]').value.trim();
-              const tipo = row.querySelector('[data-prop="tipo"]').value;
-              const obligatorio = row.querySelector('[data-prop="obligatorio"]').checked ? 1 : 0;
-              if (nombre) camposFinal.push({ nombre, tipo, obligatorio });
+            document.querySelectorAll('#alumnos-container input').forEach(el => {
+              const [_, alId, campoIdx] = el.name.split('_');
+              const val = el.type === 'checkbox' ? (el.checked ? '1':'0') : el.value;
+              resultados.push({ alumno_id: parseInt(alId), campo_index: parseInt(campoIdx), valor: val });
             });
-
-            alumnos.forEach(alumno => {
-              camposFinal.forEach((campo, campo_index) => {
-                const name = `r_${alumno.id}_${campo_index}`;
-                const el = document.querySelector(`[name="${name}"]`);
-                if (el) {
-                  const valor = el.type === 'checkbox' ? (el.checked ? '1' : '0') : el.value;
-                  resultados.push({ alumno_id: alumno.id, campo_index, valor });
-                }
-              });
-            });
-            document.getElementById('campos-json').value = JSON.stringify(camposFinal);
             document.getElementById('resultados-json').value = JSON.stringify(resultados);
           });
         </script>
-      <% } else if (grupoSeleccionado && instrumentoSeleccionado) { %>
-        <p class="mensaje-error">No hay alumnos activos en este grupo con ese instrumento.</p>
+      <% } else { %>
+        <p class="mensaje-error">No alumnos activos.</p>
       <% } %>
     </div>
   </div>

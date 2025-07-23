@@ -3,45 +3,42 @@
 
 <h1 class="text-center mb-4">Planilla de Guardias</h1>
 
-<!-- Filtros + acciones alineados en una sola fila -->
-<div class="d-flex flex-wrap align-items-end justify-content-center gap-3 mb-4">
-
-  <!-- Formulario de filtros con acciones incluidas -->
-  <form method="GET" action="/guardias" class="d-flex flex-wrap align-items-end gap-2">
-    <div class="campo-filtro">
-      <label for="desde" class="form-centrado-etiqueta">Desde</label>
-      <input type="date" id="desde" name="desde" value="<%= desde %>" class="form-centrado-select" />
+<!-- Filtros + acciones -->
+<div class="mb-4">
+  <form method="GET" action="/guardias" class="d-flex flex-column gap-3">
+    <!-- FILTROS EN LA PRIMERA FILA -->
+    <div class="d-flex flex-wrap gap-3 justify-content-center">
+      <div class="campo-filtro">
+        <label for="desde" class="form-centrado-etiqueta">Desde</label>
+        <input type="date" id="desde" name="desde" value="<%= desde %>" class="form-centrado-select" />
+      </div>
+      <div class="campo-filtro">
+        <label for="hasta" class="form-centrado-etiqueta">Hasta</label>
+        <input type="date" id="hasta" name="hasta" value="<%= hasta %>" class="form-centrado-select" />
+      </div>
+      <div class="campo-filtro">
+        <label for="grupo" class="form-centrado-etiqueta">Grupo</label>
+        <select id="grupo" name="grupo" class="form-centrado-select">
+          <option value="">Todos</option>
+          <% grupos.forEach(function(g) { %>
+            <option value="<%= g.id %>" <%= grupo == g.id ? 'selected' : '' %>><%= g.nombre %></option>
+          <% }) %>
+        </select>
+      </div>
     </div>
-    <div class="campo-filtro">
-      <label for="hasta" class="form-centrado-etiqueta">Hasta</label>
-      <input type="date" id="hasta" name="hasta" value="<%= hasta %>" class="form-centrado-select" />
+
+    <!-- BOTONES EN LA SEGUNDA FILA CENTRADOS -->
+    <div class="d-flex gap-3 justify-content-center">
+      <button type="submit" class="btn-main-blanco px-4 py-2">Filtrar</button>
+      <button formaction="/guardias/generar-multiples" formmethod="POST" class="btn-main-blanco fw-bold px-4 py-2">
+        Asignar guardias múltiples
+      </button>
+      <button formaction="/guardias/informe" formmethod="POST" class="btn-main-blanco fw-bold px-4 py-2">
+        Generar PDF
+      </button>
     </div>
-    <div class="campo-filtro">
-      <label for="grupo" class="form-centrado-etiqueta">Grupo</label>
-      <select id="grupo" name="grupo" class="form-centrado-select">
-        <option value="">Todos</option>
-        <% grupos.forEach(function(g) { %>
-          <option value="<%= g.id %>" <%= grupo == g.id ? 'selected' : '' %>><%= g.nombre %></option>
-        <% }) %>
-      </select>
-    </div>
-
-    <!-- Botón Filtrar -->
-    <button type="submit" class="btn-main-blanco px-4 py-2">Filtrar</button>
-
-    <!-- Botón Asignar Guardias Múltiples -->
-    <button formaction="/guardias/generar-multiples" formmethod="POST" class="btn-main-blanco fw-bold px-4 py-2">
-      Asignar guardias múltiples
-    </button>
-
-    <!-- Botón Generar PDF -->
-    <button formaction="/guardias/informe" formmethod="POST" class="btn-main-blanco fw-bold px-4 py-2">
-      Generar PDF
-    </button>
   </form>
-
 </div>
-
 
   <% if (guardias.length > 0) { %>
     <div class="mx-auto" style="max-width: 1200px; padding: 0 1rem;">
