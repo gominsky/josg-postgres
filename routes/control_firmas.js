@@ -117,7 +117,7 @@ router.get('/api/eventos/:id/alumnos', (req, res) => {
     FROM alumnos a
     JOIN alumno_grupo ag ON ag.alumno_id = a.id
     JOIN eventos e ON e.grupo_id = ag.grupo_id
-    LEFT JOIN asistencias asi ON asi.evento_id = e.id AND asi.alumno_id = a.id AND asi.tipo = 'manual'
+    LEFT JOIN asistencias asi ON asi.evento_id = e.id AND asi.alumno_id = a.id 
     WHERE e.id = ? AND a.activo = 1
     ORDER BY a.apellidos, a.nombre
   `;

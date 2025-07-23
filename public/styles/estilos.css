@@ -211,8 +211,8 @@
 }
 /* FOOTER ********************************************************************/
 .custom-footer {
-  background-color: #ffffff;    /* fondo blanco */
-  color: #FF9501;               /* texto naranja */
+  background-color: #ece1dd;    /* fondo blanco */
+  color: #39575B;               /* texto naranja */
   text-align: center;
   padding: 0.5rem 1rem;
 }
@@ -220,7 +220,7 @@
 .custom-footer .footer-content p,
 .custom-footer .footer-content a,
 .custom-footer .footer-content small {
-  color: #FF9501;               /* asegurar que todo el texto sea naranja */
+  color: #39575B;                /* asegurar que todo el texto sea naranja */
   font-size: 0.8rem !important;
   line-height: 1.2;
   margin: 0.2rem 0;

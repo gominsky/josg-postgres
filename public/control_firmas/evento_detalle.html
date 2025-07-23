@@ -82,7 +82,15 @@
         </div>
       `).join('');
 
-      document.getElementById('lista-alumnos').innerHTML += lista;
+     document.getElementById('lista-alumnos').innerHTML = `
+  <div class="firma-header">
+    <div class="firma-check"><strong>Firma</strong></div>
+    <div class="firma-nombre"><strong>Nombre</strong></div>
+    <div class="firma-observacion"><strong>Observaciones</strong></div>
+  </div>
+  ${lista}
+`;
+
 
     }
 

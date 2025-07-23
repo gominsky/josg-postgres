@@ -7,7 +7,7 @@
 <div class="d-flex flex-wrap align-items-end justify-content-center gap-3 mb-4">
 
   <!-- Formulario de filtros con acciones incluidas -->
-  <form method="GET" action="/guardias" class="d-flex flex-wrap align-items-end gap-2" style="background-color:rgb(227, 255, 0);">
+  <form method="GET" action="/guardias" class="d-flex flex-wrap align-items-end gap-2">
     <div class="campo-filtro">
       <label for="desde" class="form-centrado-etiqueta">Desde</label>
       <input type="date" id="desde" name="desde" value="<%= desde %>" class="form-centrado-select" />
@@ -27,15 +27,15 @@
     </div>
 
     <!-- Botón Filtrar -->
-    <button type="submit" class="btn-main-verde fw-bold px-4 py-2">Filtrar</button>
+    <button type="submit" class="btn-main-blanco px-4 py-2">Filtrar</button>
 
     <!-- Botón Asignar Guardias Múltiples -->
-    <button formaction="/guardias/generar-multiples" formmethod="POST" class="btn-main-verde fw-bold px-4 py-2">
+    <button formaction="/guardias/generar-multiples" formmethod="POST" class="btn-main-blanco fw-bold px-4 py-2">
       Asignar guardias múltiples
     </button>
 
     <!-- Botón Generar PDF -->
-    <button formaction="/guardias/informe" formmethod="POST" class="btn-main-verde fw-bold px-4 py-2">
+    <button formaction="/guardias/informe" formmethod="POST" class="btn-main-blanco fw-bold px-4 py-2">
       Generar PDF
     </button>
   </form>
@@ -93,7 +93,7 @@
   <input type="hidden" name="evento_id" value="<%= g.evento_id %>">
   <input type="hidden" name="desde" value="<%= desde %>">
   <input type="hidden" name="hasta" value="<%= hasta %>">
-  <button type="submit" class="btn btn-sm btn-dark px-2 py-1" style="font-size: 0.75rem; line-height: 1;">Asignar guardia</button>
+  <button type="submit" class="btn-primary-negro btn-sm  px-2 py-1" style="font-size: 0.75rem; line-height: 1;">Asignar guardia</button>
   </form>
 
   <% } %>
