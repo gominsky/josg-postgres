@@ -154,7 +154,7 @@ router.get('/:id/qr', (req, res) => {
           <body style="font-family: sans-serif; text-align: center; padding: 2rem;">
             <h2>QR desactivado</h2>
             <p>Este evento no tiene activo el sistema de escaneo QR.</p>
-            <a href="/eventos/${evento.id}" style="text-decoration:none;color:#007bff;">Volver al evento</a>
+            <a href="/eventos/" style="text-decoration:none;color:#FF9501;">Volver al evento</a>
           </body>
         </html>
       `);
@@ -204,7 +204,7 @@ router.get('/:id/qr', (req, res) => {
                 font-size: 1rem;
                 border: none;
                 border-radius: 0.5rem;
-                background-color: #007bff;
+                background-color: #FF9501;
                 color: white;
                 cursor: pointer;
               }

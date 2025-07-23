@@ -124,41 +124,15 @@
 .panel-usuario-overlay p {
   color: #ffffff !important;
 }
-/* Mini‑card para Cerrar sesión */
-.card-logout {
-  display: inline-block;
-  padding: 0.25rem 0.75rem;    /* menos espacio vertical y horizontal */
-  font-size: 0.875rem;         /* un poco más pequeña */
-  background-color: #FF9501;
-  color: #ffffff;
-  border-radius: 0.5rem;       /* radios algo menores */
-  font-weight: 600;
-  text-decoration: none;
-  transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+.icono-cerrar-sesion img {
+  width: 30px;
+  height: auto;
+  cursor: pointer;
+  transition: transform 0.2s ease;
 }
-
-.card-logout:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.2);
-  background-color: #FF950180;
+.icono-cerrar-sesion img:hover {
+  transform: scale(1.05);
 }
-/* Icono de configuración dentro de la card */
-.config-icon {
-  display: block;
-  margin: 0 auto 0.5rem;
-  width: 1.2rem;
-  height: 1.2rem;
-  object-fit: contain;
-}
-
-/* Asegúrate que .card-index defina display: flex; flex-direction: column; align-items: center */
-.card-index {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-}
-
 /* HEADER ********************************************************************/
 /* Header de la aplicación */
 .header-simple {
@@ -186,10 +160,12 @@
   text-decoration: none;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
   display: inline-block;
+  margin-top: 6px;
 }
 .header-simple .card-cabecera:hover {
   transform: translateY(-4px);
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
+  margin-top: 6px;
 }
 
 /* Mini‑card “Cerrar sesión” */
@@ -213,6 +189,7 @@
   display: flex; 
   flex-wrap: wrap; 
   gap: 0.75rem;
+  margin-top: 0.5rem;
 }
 .user-info .fw-bold {
   color: #000000 !important;
@@ -344,7 +321,7 @@ h1, h2, h3, h4, h5,p {
 /* CARDS */
 
 .card.activo {
-  background-color: rgb(227, 255, 0);
+  background-color:#c72939;
   color: #00060e;
   text-decoration: none;
   border-radius: 1rem;
@@ -353,16 +330,18 @@ h1, h2, h3, h4, h5,p {
   margin-bottom: 1.5rem;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
   text-align: center;
+  font-weight: bold;
 }
 .card.activo:hover {
   transform: translateY(-4px);
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
-  background-color: rgba(227, 255, 0,0.8);
+  background-color:#6a932380;
   text-decoration: none;
+  font-weight: bold;
 }
 
 .card.pasivo {
-  background-color:rgb(231, 238, 175);
+  background-color:#ece1dd;
   color: #999;
   border: 1px solid #ccc;
   text-decoration: none;
@@ -372,11 +351,14 @@ h1, h2, h3, h4, h5,p {
   margin-bottom: 1.5rem;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
   text-align: center;
+   font-weight: bold;
 }
+
 .card.pasivo:hover {
   transform: translateY(-4px);
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
-  background-color:rgba(231, 238, 175,0.8);
+  background-color:#ece1dd80;
+  font-weight: bold;
 }
 .card-variacion {
   background-color:#FFA8FC;
@@ -433,7 +415,7 @@ h1, h2, h3, h4, h5,p {
 /* GRIDS */
 .dashboard-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr); /* 4 columnas por fila */
+  grid-template-columns: repeat(3, 1fr); /* 4 columnas por fila */
   gap: 1rem;
   max-width: 900px;
   margin: 1.5rem auto;
@@ -704,8 +686,23 @@ h1, h2, h3, h4, h5,p {
 
 /* Modal personalizado */
 .header-naranja {
-  background-color: #FF9501; /* header del modal en naranja corporativo */
+  background-color: var(--naranja);
+  color: white;
+  padding: 1rem 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-top-left-radius: 0.5rem;
+  border-top-right-radius: 0.5rem;
 }
+
+.header-naranja .modal-title {
+  font-size: 1.25rem;
+  font-weight: bold;
+  margin: 0;
+  color: white;
+}
+
 .bg-white {
   background-color: #ffffff !important; /* fondo blanco para el modal */
 }

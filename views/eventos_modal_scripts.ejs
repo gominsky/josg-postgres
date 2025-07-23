@@ -1,10 +1,12 @@
 <!-- Modal flotante para nuevo/editar evento -->
+
 <div class="modal fade" id="eventoModal" tabindex="-1" aria-labelledby="eventoModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
       <form id="eventoForm">
         <input type="hidden" name="id">
         <div class="modal-header header-naranja text-white">
+          <h5 class="modal-title mb-0" id="eventoModalTitulo">Nuevo evento</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
         </div>
         <div class="modal-body">
@@ -45,7 +47,7 @@
           <button type="submit" class="btn-primary-negro">Guardar</button>
           <button type="button" id="btnEliminar" class="btn-danger d-none">Eliminar</button>
           <button type="button" id="btnQR" class="btn-primary-negro d-none">Ver QR</button>
-          <button type="button" id="btnFirmaManual" class="btn-primary-negro d-none">Firmas manuales</button>
+          <button type="button" id="btnFirmaManual" class="btn-primary-negro d-none">Listado alumnos</button>
         </div>
       </form>
     </div>
@@ -57,6 +59,7 @@
   <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/locales-all.global.min.js"></script>
   <script>
+    const modalTitulo = document.getElementById('eventoModalTitulo');
     document.addEventListener('DOMContentLoaded', () => {
       const form             = document.getElementById('eventoForm');
       const modalEl          = document.getElementById('eventoModal');
@@ -139,6 +142,7 @@
           events: '/eventos/listado',
           views: { dayGridMonth: { displayEventTime:false } },
           dateClick(info) {
+            modalTitulo.innerText = 'Nuevo evento';
             // PREPARAR CREACIÓN
             form.reset();
             form.id.value         = '';
@@ -154,6 +158,7 @@
           },
           eventClick(info) {
             // EDITAR desde calendario
+            modalTitulo.innerText = 'Editar evento';
             const e = info.event;
             form.reset();
             form.id.value          = e.id;

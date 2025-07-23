@@ -23,7 +23,7 @@
           </thead>
           <tbody>
             <% eventos.forEach(ev => { %>
-              <tr class="evento-row" data-id="<%= ev.id %>">
+              <tr class="evento-row fila-enlace" data-id="<%= ev.id %>">
                 <td><strong><%= ev.titulo %></strong></td>
                 <td><%= ev.descripcion || '—' %></td>
                 <td><%= ev.grupo_nombre || '—' %></td>
