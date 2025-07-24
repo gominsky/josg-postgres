@@ -113,7 +113,8 @@ db.run(`
 db.run(`
   CREATE TABLE IF NOT EXISTS instrumentos (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    nombre TEXT NOT NULL UNIQUE
+    nombre TEXT NOT NULL UNIQUE,
+    familia TEXT CHECK(familia IN ('Cuerda','Percusión','Viento madera','Viento metal', 'Otra')) DEFAULT 'Otra'
   )
 `);
 //Relación alumno-instrumento

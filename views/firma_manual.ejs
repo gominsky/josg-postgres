@@ -8,17 +8,54 @@
   </div>
 </div>
 
-<div class="container mt-4">
-    <div class="text-center">
-    <h5 class="mb-3">Evento: <%= evento.titulo %></h5>
-    <p class="mb-3">
+<!-- 📄 SOLO PARA PDF -->
+<div id="pdf-content" class="container mt-4 solo-pdf p-4" style="background-color: white;">
+  <%- include('partials/pdf-header') %>
+
+  <div class="text-center mb-3">
+    <h5>Evento: <%= evento.titulo %> (<%= evento.grupo_nombre %>)</h5>
+    <p>
       <strong>Fecha:</strong>
-      <%= new Date(evento.fecha_inicio).toLocaleString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }) %>,
+      <%= new Date(evento.fecha_inicio).toLocaleString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' }) %>,
       <strong>Hora:</strong> <%= evento.hora_inicio %> - <%= evento.hora_fin %>
     </p>
+  </div>
 
-    <form method="POST" action="/eventos/<%= evento.id %>/firma_manual" style="background-color: transparent">
-            <table class="tabla-estilizada">
+  <table class="tabla-estilizada w-100">
+    <thead>
+      <tr>
+        <th>Nombre completo</th>
+        <th>DNI</th>
+        <th>Firmado</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% alumnos.forEach(alumno => { %>
+        <tr>
+          <td class="text-start"><%= alumno.apellidos %>, <%= alumno.nombre %></td>
+          <td><%= alumno.DNI %></td>
+          <td><%= firmados.includes(alumno.id) ? '✓' : '' %></td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+
+  <%- include('partials/pdf-footer') %>
+</div>
+
+<!-- 🌐 SOLO PARA LA WEB -->
+<div class="container mt-4 solo-web">
+  <div class="text-center">
+    <div class="text-center mb-3">
+      <h5>Evento: <%= evento.titulo %> (<%= evento.grupo_nombre %>)</h5>
+      <p>
+        <strong>Fecha:</strong>
+        <%= new Date(evento.fecha_inicio).toLocaleString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' }) %>,
+        <strong>Hora:</strong> <%= evento.hora_inicio %> - <%= evento.hora_fin %>
+      </p>
+    </div>
+    <form method="POST" action="/eventos/<%= evento.id %>/firma_manual" style="background-color: transparent;">
+      <table class="tabla-estilizada">
         <thead>
           <tr>
             <th>Nombre completo</th>
@@ -57,6 +94,7 @@
     </div>
   </div>
 </div>
+
 <script>
   document.addEventListener('DOMContentLoaded', () => {
     const checks = document.querySelectorAll('input[name="alumnosFirmados"]');
@@ -86,3 +124,31 @@
     });
   });
 </script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const btn = document.getElementById('btnPDF');
+    const pdfContent = document.getElementById('pdf-content');
+
+    if (!btn || !pdfContent) return;
+
+    btn.addEventListener('click', () => {
+      // Mostrar el bloque oculto
+      pdfContent.style.display = 'block';
+
+      const opt = {
+        margin: 0.5,
+        filename: `firmas_evento_<%= evento.id %>.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2 },
+        jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
+      };
+
+      html2pdf().set(opt).from(pdfContent).save().then(() => {
+        // Ocultarlo otra vez después de exportar
+        pdfContent.style.display = 'none';
+      });
+    });
+  });
+</script>
+

@@ -236,7 +236,12 @@ router.get('/:id/qr', (req, res) => {
 router.get('/:id/firma_manual', (req, res) => {
   const eventoId = req.params.id;
 
-  const eventoSQL = `SELECT * FROM eventos WHERE id = ?`;
+  const eventoSQL = `
+  SELECT e.*, g.nombre AS grupo_nombre
+  FROM eventos e
+  JOIN grupos g ON g.id = e.grupo_id
+  WHERE e.id = ?
+`;
   const asistenciasSQL = `SELECT alumno_id FROM asistencias WHERE evento_id = ?`;
 
   db.get(eventoSQL, [eventoId], (err, evento) => {

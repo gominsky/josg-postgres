@@ -17,6 +17,16 @@
       <label>Nombre:
         <input type="text" name="nombre" id="nombre" value="<%= instrumento?.nombre || '' %>" required>
       </label>
+      <label>Familia:
+        <select name="familia" required>
+          <% familias.forEach(fam => { %>
+            <option
+              value="<%= fam %>"
+              <%= instrumento && instrumento.familia === fam ? 'selected' : '' %>
+            ><%= fam %></option>
+          <% }) %>
+        </select>
+       </label>
     </div>
   </div>
 
