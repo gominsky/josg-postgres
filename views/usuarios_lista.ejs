@@ -1,35 +1,30 @@
 <% title = 'Usuarios' %>
 <% hero = false %>
+<% title = 'Usuarios' %>
+<% hero = false %>
 
 <div class="container mt-4">
   <div class="d-flex justify-content-between align-items-center mb-3">
-    <h1 class="h1-titulo mb-0">Gestión de Usuarios</h1>
+    <h1 class="h1-titulo mb-0"><%= title %></h1>
     <a href="/usuarios/nuevo" class="btn-main fw-bold">+ Nuevo Usuario</a>
   </div>
 
   <% if (usuarios && usuarios.length > 0) { %>
-    <table class="tabla-estilizada">
-      <thead>
-        <tr>
-          <th>Nombre</th>
-          <th>Apellidos</th> 
-          <th>Email</th>
-          <th>Rol</th>
-        </tr>
-      </thead>
-      <tbody>
-        <% usuarios.forEach(u => { %>
-          <tr onclick="window.location='/usuarios/<%= u.id %>/editar'" class="fila-enlace">
-            <td><%= u.nombre %></td>
-            <td><%= u.apellidos %></td>
-            <td><%= u.email %></td>
-            <td><%= u.rol %></td>
-          </tr>
-        <% }) %>
-      </tbody>
-    </table>
+    <div class="dashboard-grid" id="grid-usuarios">
+      <% usuarios.forEach(u => { %>
+        <a href="/usuarios/<%= u.id %>/editar" class="card-variacion2">
+          <div class="fw-bold"><%= u.nombre %> <%= u.apellidos %></div>
+          <div class="text-sm text-muted" style="font-size:0.85rem; margin-top:0.25rem;"><%= u.email %></div>
+          <div class="text-sm" style="font-size:0.85rem; color:#666; margin-top:0.2rem;"><%= u.rol.charAt(0).toUpperCase() + u.rol.slice(1) %></div>
+        </a>
+      <% }) %>
+    </div>
   <% } else { %>
-    <p>No hay usuarios registrados.</p>
+    <p class="text-center mt-4">No hay usuarios registrados.</p>
   <% } %>
+
+  <div class="volver-bloque-izquierda mt-4">
+    <a href="/" class="enlace-final">← Volver al inicio</a>
+  </div>
 </div>
 

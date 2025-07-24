@@ -1,13 +1,36 @@
 <% title = 'Informe: % Horas' %>
 <% hero = false %>
+<%
+  // Formatear fechas a día, mes (texto) y año en español
+  const opcionesFecha = { day: '2-digit', month: 'long', year: 'numeric' };
+  const fechaFormateada = new Date(fecha).toLocaleDateString('es-ES', opcionesFecha);
+  const fechaFinFormateada = fecha_fin ? new Date(fecha_fin).toLocaleDateString('es-ES', opcionesFecha) : null;
+%>
 
-<h1 class="h1-titulo text-center mb-4">Porcentaje de horas</h1>
+<h1 class="h1-titulo text-center mb-4">
+  Porcentaje de horas de asistencia
+  (<%= fechaFormateada %><% if (fechaFinFormateada) { %> – <%= fechaFinFormateada %><% } %>)
+</h1>
 <p class="text-center mb-4">
   Total de horas en periodo: <strong><%= totalHoras.toFixed(2) %> h</strong>
 </p>
 
-<div class="table-responsive mb-4">
-  <table class="tabla-estilizada">
+<div class="text-center mb-4">
+  <form action="/informes/horas/guardar" method="POST" class="d-inline-block" style="background-color: transparent";>
+    <input type="hidden" name="fecha" value="<%= fecha %>">
+    <input type="hidden" name="fecha_fin" value="<%= fecha_fin %>">
+    <input type="hidden" name="grupo" value="<%= grupo %>">
+    <input type="hidden" name="instrumento" value="<%= instrumento %>">
+    <% /* Serializar resultados con alumno_id, horas y porcentaje */ %>
+    <% const datosParaGuardar = resultados.map(r => ({ alumno_id: r.id, horas: r.horas, porcentaje: r.porcentaje })); %>
+    <input type="hidden" name="resultados" value='<%- JSON.stringify(datosParaGuardar) %>'>
+
+    <button type="submit" class="btn-main-blanco fw-bold px-4 py-2">Guardar informe</button>
+  </form>
+</div>
+
+<div class="table-responsive mb-4" style="max-width:800px; margin:0 auto;">
+  <table class="tabla-estilizada mx-auto" style="width:80%;">
     <thead>
       <tr>
         <th class="sortable">Alumno</th>
@@ -18,7 +41,7 @@
     <tbody>
       <% resultados.forEach(r => { %>
         <tr>
-          <td><%= r.alumno %></td>
+          <td data-value="<%= r.id %>"><%= r.alumno %></td>
           <td data-value="<%= r.horas %>"><%= r.horas %> h</td>
           <td data-value="<%= r.porcentaje %>"><%= r.porcentaje %> %</td>
         </tr>
@@ -32,34 +55,33 @@
 </div>
 
 <script>
-document.addEventListener('DOMContentLoaded', () => {
-  document.querySelectorAll('th.sortable').forEach((th, idx) => {
-    let asc = true;
-    th.style.cursor = 'pointer';
-    th.addEventListener('click', () => {
-      const table = th.closest('table');
-      const tbody = table.querySelector('tbody');
-      const rows = Array.from(tbody.querySelectorAll('tr'));
-      rows.sort((a, b) => {
-        const cellA = a.children[idx];
-        const cellB = b.children[idx];
-        const valA = cellA.dataset.value !== undefined
-          ? parseFloat(cellA.dataset.value)
-          : cellA.textContent.trim();
-        const valB = cellB.dataset.value !== undefined
-          ? parseFloat(cellB.dataset.value)
-          : cellB.textContent.trim();
-        if (!isNaN(valA) && !isNaN(valB)) {
-          return asc ? valA - valB : valB - valA;
-        }
-        return asc
-          ? String(valA).localeCompare(String(valB))
-          : String(valB).localeCompare(String(valA));
+  document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('th.sortable').forEach((th, idx) => {
+      let asc = true;
+      th.style.cursor = 'pointer';
+      th.addEventListener('click', () => {
+        const table = th.closest('table');
+        const tbody = table.querySelector('tbody');
+        const rows = Array.from(tbody.querySelectorAll('tr'));
+        rows.sort((a, b) => {
+          const cellA = a.children[idx];
+          const cellB = b.children[idx];
+          const valA = cellA.dataset.value !== undefined
+            ? parseFloat(cellA.dataset.value)
+            : cellA.textContent.trim();
+          const valB = cellB.dataset.value !== undefined
+            ? parseFloat(cellB.dataset.value)
+            : cellB.textContent.trim();
+          if (!isNaN(valA) && !isNaN(valB)) {
+            return asc ? valA - valB : valB - valA;
+          }
+          return asc
+            ? String(valA).localeCompare(String(valB))
+            : String(valB).localeCompare(String(valA));
+        });
+        rows.forEach(row => tbody.appendChild(row));
+        asc = !asc;
       });
-      rows.forEach(row => tbody.appendChild(row));
-      asc = !asc;
     });
   });
-});
 </script>
-

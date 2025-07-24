@@ -9,7 +9,6 @@ const { isAuthenticated } = require('../middleware/auth');
 router.get('/', (req, res) => {
   res.redirect('/informes/lista');
 });
-
 // Formulario inicial
 router.get('/ficha', (req, res) => {
   db.all('SELECT * FROM grupos ORDER BY nombre', (err1, grupos) => {
@@ -32,7 +31,6 @@ router.get('/ficha', (req, res) => {
     });
   });
 });
-
 // Edición
 router.get('/ficha/:id', (req, res) => {
   const id = req.params.id;
@@ -166,7 +164,6 @@ router.post('/ficha/guardar-json', (req, res) => {
             });
           })
           .catch(err => {
-            console.error('❌ Error al guardar campos/resultados:', err);
             res.status(500).send('Error al guardar informe');
           });
       });
@@ -361,7 +358,7 @@ router.post('/eliminar/:id', (req, res) => {
     });
   });
 });
-// GET /informes/horas
+// GET /informes/horas porcentaje
 router.get('/horas', isAuthenticated, (req, res) => {
   // Desestructuramos los parámetros tal como vienen del formulario
   const { fecha, fecha_fin, grupo, instrumento } = req.query;
@@ -431,6 +428,7 @@ router.get('/horas', isAuthenticated, (req, res) => {
 
       // Calcular porcentaje
       const resultados = rows.map(r => ({
+        id: r.id,
         alumno:     r.alumno,
         horas:      Number(r.horas.toFixed(2)),
         porcentaje: totalHoras > 0 
@@ -450,9 +448,68 @@ router.get('/horas', isAuthenticated, (req, res) => {
     });
   });
 });
+// POST: Guardar informe de porcentaje de horas
+router.post('/horas/guardar', isAuthenticated, (req, res) => {
+  const { fecha, fecha_fin, grupo, instrumento, resultados } = req.body;
+  const parsed = JSON.parse(resultados || '[]');
 
+  const nombreInforme = 'Porcentaje de horas';
+  db.run(
+    `INSERT INTO informes (informe, grupo_id, instrumento_id, fecha)
+     VALUES (?, ?, ?, ?)`,
+    [
+      nombreInforme,
+      grupo === 'todos' ? null : grupo,
+      instrumento === 'todos' ? null : instrumento,
+      fecha_fin
+    ],
+    function (err) {
+      if (err) return res.status(500).send('Error al crear informe');
+      const informeId = this.lastID;
+
+      // 1) Creamos los tres campos dinámicos: Alumno, Horas, Porcentaje
+      const sqlCampo = `
+        INSERT INTO informe_campos (informe_id, nombre, tipo, obligatorio)
+        VALUES (?, ?, ?, 0)
+      `;
+      // Campo 1: Alumno (guardaremos el ID)
+      db.run(sqlCampo, [informeId, 'Alumno', 'numero']);
+      // Campo 2: Horas
+      db.run(sqlCampo, [informeId, 'Horas', 'numero']);
+      // Campo 3: Porcentaje
+      db.run(sqlCampo, [informeId, 'Porcentaje', 'numero'], err2 => {
+        if (err2) return res.status(500).send('Error al crear campos');
+
+        // 2) Leemos los IDs de los campos en orden de inserción
+        db.all(
+    `SELECT id, nombre FROM informe_campos
+     WHERE informe_id = ? ORDER BY id`,
+    [informeId],
+    (err3, campos) => {
+      // campos[0]=Alumno, campos[1]=Horas, campos[2]=Porcentaje
+      const sqlRes = `
+        INSERT INTO informe_resultados (informe_id, alumno_id, campo_id, valor)
+        VALUES (?, ?, ?, ?)
+      `;
+      const insertRes = db.prepare(sqlRes);
+
+      parsed.forEach(r => {
+        // 1) Guardamos el alumno_id
+        insertRes.run(informeId, r.alumno_id, campos[0].id, String(r.alumno_id));
+        // 2) Guardamos las horas
+        insertRes.run(informeId, r.alumno_id, campos[1].id, String(r.horas));
+        // 3) Guardamos el porcentaje
+        insertRes.run(informeId, r.alumno_id, campos[2].id, String(r.porcentaje));
+      });
+
+      insertRes.finalize(() => {
+        res.redirect(`/informes/detalle/${informeId}`);
+      });
+    }
+  );
+});
+    }
+  );
+});
 
 module.exports = router;
-
-
-

@@ -1,27 +1,49 @@
-<% title = tipo ? 'Editar tipo de cuota' : 'Nuevo tipo de cuota' %>
-<% hero = false %>
+<% const isEdicion = Boolean(tipo && tipo.id); %>
+<% title = isEdicion ? 'Editar Tipo de Cuota' : 'Nuevo Tipo de Cuota'; %>
+<% hero = false; %>
+
 <h1 class="h1-titulo"><%= title %></h1>
-<!-- Ficha de campos -->
-<div class="dashboard-grid">
-  <form id="form-tipo_cuota" method="POST" action="<%= tipo ? '/tipos_cuotas/editar/' + tipo.id : '/tipos_cuotas' %>"class="card-variacion" style="width: 430px;
-  height: 150px; box-sizing: border-box; overflow: auto;">
-  <div><label for="nombre"><div style="font-weight: 600; font-size: 1rem;">Tipo de cuota</div></label>
-      <div><input type="text" name="tipo" value="<%= tipo?.tipo || '' %>" required/></div>
+
+<form
+  id="form-tipo-cuota"
+  method="POST"
+  action="<%= isEdicion 
+    ? '/tipos_cuotas/editar/' + tipo.id 
+    : '/tipos_cuotas'
+  %>"
+  class="formulario-alumno"
+  style="border: 2px solid #FF9501; border-radius: 0.75rem; padding: 1rem;"
+>
+  <div class="grupo-campos">
+    <h2>Datos del Tipo de Cuota</h2>
+    <div class="form-grid-2">
+      <label>Tipo de cuota:
+        <input 
+          type="text" 
+          name="tipo" 
+          value="<%= tipo?.tipo || '' %>" 
+          required
+        >
+      </label>
+    </div>
   </div>
-  </form>
-</div>
-<!-- Ficha de Guardar -->
-  <div class="dashboard-grid">
-    <a href="#" onclick="document.getElementById('form-tipo_cuota').submit(); return false;" class="card-variacion"><div style="font-weight: 600; font-size: 1rem;">Guardar</div></a>
-    <% if (tipo) { %>
-    <a href="#"
-        onclick="if(confirm('¿Eliminar este tipo de cuota?')) document.getElementById('delete-form').submit(); return false;"
-        class="card-eliminar"><div style="font-weight: 600; font-size: 1rem;">Eliminar</div>
-    </a>
-    <form id="delete-form" method="POST" action="/tipos_cuotas/<%=tipo.id %>?_method=DELETE" class="hidden" style="background-color: transparent;"></form>
-    <% } %>
+
+  <div class="acciones-finales d-flex justify-content-between align-items-center mt-4">
+    <a href="/tipos_cuotas" class="enlace-final-naranja">← Volver</a>
+    <div class="d-flex align-items-center gap-2">
+      <button type="submit" class="btn-main">
+        <%= isEdicion ? 'Actualizar' : 'Registrar' %>
+      </button>
+      <% if (isEdicion) { %>
+        <button
+          type="submit"
+          class="btn-rojo"
+          form="form-tipo-cuota"
+          formaction="/tipos_cuotas/<%= tipo.id %>?_method=DELETE"
+          formmethod="POST"
+          onclick="return confirm('¿Eliminar este tipo de cuota?');"
+        >Eliminar</button>
+      <% } %>
+    </div>
   </div>
-<!-- Enlace Volver -->
-<div class="volver-bloque-izquierda">
-  <a href="/tipos_cuotas" class="enlace-final">← Volver a lista de tipos de cuota</a>
-</div>    
+</form>

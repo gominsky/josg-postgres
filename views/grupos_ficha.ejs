@@ -1,36 +1,39 @@
-<!-- Vista: grupos_ficha.ejs -->
-<%
-  var title = grupo ? 'Editar grupo' : 'Nuevo grupo';
-  var hero = false;
-%>
-  <!-- Título -->
-  <h1 class="h1-titulo"><%= title %></h1>
-  <!-- Ficha de campos -->
-  <div class="dashboard-grid">
-    <form id="form-grupo" method="POST" action="<%= grupo ? '/grupos/editar/' + grupo.id : '/grupos' %>" class="card-variacion2" style="width: 430px;
-  height: 200px; box-sizing: border-box; overflow: auto;">
-  <div><label for="nombre"><div style="font-weight: 600; font-size: 1rem;">Nombre</div></label>
-      <div><input type="text" id="nombre" name="nombre" value="<%= grupo?.nombre || '' %>" required/></div>
-  </div>
-  <div>
-      <label for="descripcion"><div style="font-weight: 600; font-size: 1rem;">Descripción</div></label>
-      <div><textarea id="descripcion" name="descripcion" rows="3"><%= grupo?.descripcion || '' %></textarea></div>
-    </form>
-  </div>
+<% const isEdicion = Boolean(grupo && grupo.id); %>
+<% title = isEdicion ? 'Editar Grupo' : 'Nuevo Grupo'; %>
+<% hero = false; %>
+
+<h1 class="h1-titulo"><%= title %></h1>
+
+<form id="form-grupo" method="POST" action="<%= isEdicion ? '/grupos/editar/' + grupo.id : '/grupos' %>" class="formulario-alumno" style="border: 2px solid #FF9501; border-radius: 0.75rem; padding: 1rem;">
+
+  <div class="grupo-campos">
+    <h2>Datos del Grupo</h2>
+    <div class="form-grid-2">
+      <label>Nombre:
+        <input type="text" name="nombre" id="nombre" value="<%= grupo?.nombre || '' %>" required>
+      </label>
+      <label>Descripción:
+        <textarea name="descripcion" id="descripcion" rows="3"><%= grupo?.descripcion || '' %></textarea>
+      </label>
+    </div>
   </div>
 
-  <!-- Ficha de Guardar -->
-  <div class="dashboard-grid">
-    <a href="#" onclick="document.getElementById('form-grupo').submit(); return false;" class="card-variacion2"><div style="font-weight: 600; font-size: 1rem;">Guardar</div></a>
-    <% if (grupo) { %>
-    <a href="#"
-        onclick="if(confirm('¿Eliminar este grupo?')) document.getElementById('delete-form').submit(); return false;"
-        class="card-eliminar"><div style="font-weight: 600; font-size: 1rem;"> Eliminar</div>
-    </a>
-    <form id="delete-form" method="POST" action="/grupos/<%= grupo.id %>?_method=DELETE" class="hidde" style="background-color: transparent;"></form>
-    <% } %>
+  <div class="acciones-finales d-flex justify-content-between align-items-center mt-4">
+    <a href="/grupos" class="enlace-final-naranja">← Volver</a>
+    <div class="d-flex align-items-center gap-2">
+      <button type="submit" class="btn-main"><%= isEdicion ? 'Actualizar' : 'Registrar' %></button>
+      <% if (isEdicion) { %>
+        <button
+          type="submit"
+          class="btn-rojo"
+          form="form-grupo"
+          formaction="/grupos/eliminar/<%= grupo.id %>"
+          formmethod="POST"
+          onclick="return confirm('¿Eliminar este grupo?');"
+        >Eliminar</button>
+      <% } %>
+    </div>
   </div>
-<!-- Enlace Volver -->
-<div class="volver-bloque-izquierda">
-  <a href="/grupos" class="enlace-final">← Volver a lista de grupos</a>
-</div>
+
+</form>
+

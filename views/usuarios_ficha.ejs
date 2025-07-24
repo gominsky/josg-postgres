@@ -1,78 +1,56 @@
-<% /* Vista: usuarios_ficha.ejs */ %>
-<% /* Determina si estamos en modo edición: se recibe 'esEdicion' o se infiere de usuario.id */ %>
-<% const isEdicion = (typeof esEdicion !== 'undefined') ? esEdicion : Boolean(usuario && usuario.id); %>
-<% const title = isEdicion ? 'Editar Usuario' : 'Nuevo Usuario'; %>
+<% const isEdicion = Boolean(usuario && usuario.id); %>
+<% title = isEdicion ? 'Editar Usuario' : 'Nuevo Usuario'; %>
+<% hero = false; %>
 
 <h1 class="h1-titulo"><%= title %></h1>
 
-  <form
-    id="form-usuario"
-    method="POST"
-    action="<%= isEdicion
-      ? '/usuarios/' + usuario.id + '/editar'
-      : '/usuarios/nuevo' %>"
-  >
-    <div>
-      <label for="nombre"><div >Nombre</div></label>
-      <div><input type="text" id="nombre" name="nombre" value="<%= (usuario && usuario.nombre) || '' %>" required/></div>
-    </div>
+<form id="form-usuario" method="POST" action="<%= isEdicion ? '/usuarios/' + usuario.id + '/editar' : '/usuarios/nuevo' %>" class="formulario-alumno" style="border: 2px solid #FF9501; border-radius: 0.75rem; padding: 1rem;">
 
-    <div>
-      <label for="apellidos"><div >Apellidos</div></label>
-      <div><input type="text" id="apellidos" name="apellidos" value="<%= (usuario && usuario.apellidos) || '' %>" required/></div>
+  <div class="grupo-campos">
+    <h2>Datos Personales</h2>
+    <div class="form-grid-2">
+      <label>Nombre:
+        <input type="text" name="nombre" id="nombre" value="<%= usuario?.nombre || '' %>" required>
+      </label>
+      <label>Apellidos:
+        <input type="text" name="apellidos" id="apellidos" value="<%= usuario?.apellidos || '' %>" required>
+      </label>
     </div>
+  </div>
 
-    <div>
-      <label for="email"><div>Email</div></label>
-      <div><input type="email" id="email" name="email" value="<%= (usuario && usuario.email) || '' %>" required/></div>
-    </div>
-
-    <div>
-      <label for="password"><div><%= isEdicion ? 'Contraseña (déjalo vacío para mantener la actual)' : 'Contraseña' %></div></label>
-      <div><input type="password" id="password" name="password" <%= isEdicion ? '' : 'required' %> /></div>
-    </div>
-
-    <div>
-      <label for="rol"><div>Rol</div></label>
-      <div>
-        <select id="rol" name="rol" required>
-          <option value="usuario" <%= (usuario && usuario.rol === 'usuario') ? 'selected' : '' %>>Usuario</option>
-          <option value="docente" <%= (usuario && usuario.rol === 'docente') ? 'selected' : '' %>>Docente</option>
-          <option value="admin"   <%= (usuario && usuario.rol === 'admin') ? 'selected' : '' %>>Admin</option>
+  <div class="grupo-campos">
+    <h2>Credenciales</h2>
+    <div class="form-grid-2">
+      <label>Email:
+        <input type="email" name="email" id="email" value="<%= usuario?.email || '' %>" required>
+      </label>
+      <label><%= isEdicion ? 'Contraseña (deja vacío para mantener)' : 'Contraseña' %>:
+        <input type="password" name="password" id="password" <%= isEdicion ? '' : 'required' %>>
+      </label>
+      <label>Rol:
+        <select name="rol" id="rol" required>
+          <option value="usuario" <%= usuario?.rol === 'usuario' ? 'selected' : '' %>>Usuario</option>
+          <option value="docente" <%= usuario?.rol === 'docente' ? 'selected' : '' %>>Docente</option>
+          <option value="admin" <%= usuario?.rol === 'admin' ? 'selected' : '' %>>Admin</option>
         </select>
-      </div>
+      </label>
     </div>
-  </form>
+  </div>
+
+  <div class="acciones-finales d-flex justify-content-between align-items-center mt-4">
+  <a href="/usuarios" class="enlace-final-naranja">← Volver</a>
+  <div class="d-flex align-items-center gap-2">
+    <button type="submit" class="btn-main"><%= isEdicion ? 'Actualizar' : 'Registrar' %></button>
+    <% if (isEdicion) { %>
+      <button
+        type="submit"
+        class="btn-rojo"
+        formaction="/usuarios/<%= usuario.id %>/eliminar"
+        formmethod="POST"
+        onclick="return confirm('¿Eliminar este usuario?');"
+      >Eliminar</button>
+    <% } %>
+  </div>
 </div>
+</form>
 
-<div>
-  <!-- Guardar -->
-  <a
-    href="#"
-    onclick="document.getElementById('form-usuario').submit(); return false;"
-    class="card-variacion2"
-  >
-    <div>Guardar</div>
-  </a>
-
-  <% if (isEdicion) { %>
-    <!-- Eliminar -->
-    <form
-      id="delete-form"
-      method="POST"
-      action="/usuarios/<%= usuario.id %>/eliminar"
-    ></form>
-
-    <a
-      href="#"
-      onclick="if(confirm('¿Eliminar este usuario?')) document.getElementById('delete-form').submit(); return false;"
-      class="card-eliminar"
-    >
-      <div>Eliminar</div>
-    </a>
-  <% } %>
-</div>
-
-<div class="volver-bloque-izquierda">
-  <a href="/usuarios" class="enlace-final">← Volver a lista de usuarios</a>
-</div>

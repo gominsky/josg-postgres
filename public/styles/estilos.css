@@ -216,7 +216,6 @@
   text-align: center;
   padding: 0.5rem 1rem;
 }
-
 .custom-footer .footer-content p,
 .custom-footer .footer-content a,
 .custom-footer .footer-content small {
@@ -318,6 +317,24 @@ h1, h2, h3, h4, h5,p {
   color: white;
   margin-top: 1.5rem;
 }
+.btn-rojo {
+  background-color:transparent;
+  color: #FF0000;
+  border: 1px solid  #FF0000; 
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  transition: 0.2s ease;
+  margin-top: 1.5rem;
+  padding: 0.4rem 0.8rem;
+} 
+.btn-rojo:hover {
+  background-color: #FF0000;
+  color: white;
+  margin-top: 1.5rem;
+}
 .btn-main-blanco {
   background-color: #FF9501;
   color: white;
@@ -337,7 +354,6 @@ h1, h2, h3, h4, h5,p {
   margin-top: 1.5rem;
 }
 /* CARDS */
-
 .card.activo {
   background-color: #FFC30F;
   color: #00060e;
@@ -379,8 +395,8 @@ h1, h2, h3, h4, h5,p {
   font-weight: bold;
 }
 .card-variacion {
-  background-color:#FFA8FC;
-  color: #00060e;
+  background-color: #dc7633;
+  color:white;
   text-decoration: none;
   border-radius: 1rem;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.8);
@@ -388,15 +404,18 @@ h1, h2, h3, h4, h5,p {
   margin-bottom: 1.5rem;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
   text-align: center;
+  font-weight: bold;
 }
 .card-variacion:hover {
   transform: translateY(-4px);
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
-  background-color: rgba(255,168,252,0.8);
+  background-color:#dc763380;
+  color:white;
   text-decoration: none;
+  font-weight: bold;
 }
 .card-variacion2 {
-  background-color:#0CE95D;
+  background-color:#f4d03f;
   color: #00060e;
   text-decoration: none;
   border-radius: 1rem;
@@ -405,12 +424,14 @@ h1, h2, h3, h4, h5,p {
   margin-bottom: 1.5rem;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
   text-align: center;
+  font-weight: bold;
 }
 .card-variacion2:hover {
   transform: translateY(-4px);
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
-  background-color: rgba(12, 233, 93,0.8);
+  background-color: #f4d03f80;
   text-decoration: none;
+  font-weight: bold;
 }
 .card-eliminar {
   background-color:rgba(255,0,0,1);
@@ -686,19 +707,22 @@ h1, h2, h3, h4, h5,p {
 /* Hover y focus: naranja oscuro */
 .fc-toolbar .fc-button:hover,
 .fc-toolbar .fc-button:focus {
-  background-color: #e65500 !important;  
+  background-color: #070300 !important;  
   color: #ffffff !important;
 }
 
 /* Botón activo (seleccionado) */
 .fc-toolbar .fc-button.fc-button-active {
-  background-color: #e65500 !important;
+  background-color: #0a0400 !important;
   color: #ffffff !important;
 }
-.fc-daygrid-dot-event .fc-daygrid-event-dot,
-.fc .fc-daygrid-event-dot {
+
+.fc-timegrid-axis-cushion .fc-scrollgrid-shrink-cushion .fc-scrollgrid-sync
+.fc {
   display: none !important;
 }
+
+
 /*Modal calendario ********************************************************************/
 /* estilos_gestion.css - solo reglas CSS, sin HTML */
 

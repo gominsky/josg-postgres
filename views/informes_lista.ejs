@@ -6,16 +6,17 @@
     <h1 class="h1-titulo"><%= title %></h1>
     <a href="/informes/ficha" class="btn-main">+ Nuevo informe</a>
   </div>
- <div class="d-flex justify-content-center mb-4">
-  <form id="busqueda-form">
-    <div class="campo-filtro">
-      <label for="busqueda">Buscar</label>
-      <input type="text" id="busqueda-informes" class="form-centrado-select" placeholder="Nombre, grupo, instrumento, fecha...">
-    </div>
-  </form>
-</div>
+  <div class="d-flex justify-content-center mb-4">
+    <form id="busqueda-form">
+      <div class="campo-filtro">
+        <label for="busqueda">Buscar</label>
+        <input type="text" id="busqueda-informes" class="form-centrado-select" placeholder="Nombre, fecha...">
+      </div>
+    </form>
+  </div>
+
   <% if (informes.length === 0) { %>
-    <p class="mt-4" style="text-align: center;">No hay informes disponibles.</p>
+    <p class="mt-4 text-center">No hay informes disponibles.</p>
   <% } else { %>
     <div class="table-responsive">
       <table class="tabla-estilizada" id="tabla-informes">
@@ -29,7 +30,7 @@
         </thead>
         <tbody>
           <% informes.forEach(i => { %>
-            <tr style="cursor:pointer" onclick="location.href='/informes/detalle/<%= i.id %>'">
+            <tr class="fila-enlace clickable-row" onclick="location.href='/informes/detalle/<%= i.id %>'">
               <td><%= i.informe %></td>
               <td><%= i.fecha %></td>
               <td><%= i.grupo %></td>
@@ -40,19 +41,17 @@
       </table>
     </div>
   <% } %>
+
   <div class="volver-bloque-izquierda mt-4">
-    <a href="/" class="enlace-final">← Volver al incio</a>
+    <a href="/" class="enlace-final">← Volver al inicio</a>
   </div>
 </div>
-</div>
+
 <script>
   document.getElementById('busqueda-informes').addEventListener('input', function () {
     const filtro = this.value.toLowerCase().trim();
-    const filas = document.querySelectorAll('#tabla-informes tbody tr');
-
-    filas.forEach(fila => {
-      const texto = fila.textContent.toLowerCase();
-      fila.style.display = texto.includes(filtro) ? '' : 'none';
+    document.querySelectorAll('#tabla-informes tbody tr').forEach(fila => {
+      fila.style.display = fila.textContent.toLowerCase().includes(filtro) ? '' : 'none';
     });
   });
 </script>

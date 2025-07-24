@@ -1,29 +1,40 @@
-<% title = instrumento ? 'Editar instrumento' : 'Nuevo instrumento' %>
-<% hero = false %>
-<h1 class="h1-titulo"><%= title %></h1>
-<div class="dashboard-grid">
-<!-- Formulario principal -->
-<form  id="form-instrumento" method="POST" action="<%= instrumento ? '/instrumentos/editar/' + instrumento.id : '/instrumentos' %>" class="card-variacion" style="width: 430px;height: 200px; box-sizing: border-box; overflow: auto;">
-  <div><label for="nombre">
-      <div style="font-weight: 600; font-size: 1rem;">Nombre</div></label>
-    <div><input type="text" name="nombre" id="nombre" class="form-control" value="<%= instrumento?.nombre || '' %>" required></div>
-  </form></div>
-</div>
+<% const isEdicion = Boolean(instrumento && instrumento.id); %>
+<% title = isEdicion ? 'Editar Instrumento' : 'Nuevo Instrumento'; %>
+<% hero = false; %>
 
-<!-- Ficha de Guardar -->
-  <div class="dashboard-grid">
-    <a href="#" onclick="document.getElementById('form-instrumento').submit(); return false;" class="card-variacion"><div style="font-weight: 600; font-size: 1rem;">Guardar</div></a>
-    <% if (instrumento) { %>
-    <a href="#"
-        onclick="if(confirm('¿Eliminar este instrumento?')) document.getElementById('delete-form').submit(); return false;"
-        class="card-eliminar"><div style="font-weight: 600; font-size: 1rem;"> Eliminar</div>
-    </a>
-    <form id="delete-form" method="POST" action="/instrumentos/<%=instrumento.id %>?_method=DELETE" class="hidde" style="background-color: transparent;"></form>
-    <% } %>
+<h1 class="h1-titulo"><%= title %></h1>
+
+<form 
+  id="form-instrumento" 
+  method="POST" 
+  action="<%= isEdicion ? '/instrumentos/editar/' + instrumento.id : '/instrumentos' %>" 
+  class="formulario-alumno" 
+  style="border: 2px solid #FF9501; border-radius: 0.75rem; padding: 1rem;"
+>
+  <div class="grupo-campos">
+    <h2>Datos del Instrumento</h2>
+    <div class="form-grid-2">
+      <label>Nombre:
+        <input type="text" name="nombre" id="nombre" value="<%= instrumento?.nombre || '' %>" required>
+      </label>
+    </div>
   </div>
-  <!-- Enlace Volver -->
-<div class="volver-bloque-izquierda">
-  <a href="/instrumentos" class="enlace-final">← Volver a lista de instrumentos</a>
-</div>
+
+  <div class="acciones-finales d-flex justify-content-between align-items-center mt-4">
+    <a href="/instrumentos" class="enlace-final-naranja">← Volver</a>
+    <div class="d-flex align-items-center gap-2">
+      <button type="submit" class="btn-main"><%= isEdicion ? 'Actualizar' : 'Registrar' %></button>
+      <% if (isEdicion) { %>
+        <button
+          type="submit"
+          class="btn-rojo"
+          formaction="/instrumentos/<%= instrumento.id %>?_method=DELETE"
+          formmethod="POST"
+          onclick="return confirm('¿Eliminar este instrumento?');"
+        >Eliminar</button>
+      <% } %>
+    </div>
+  </div>
+</form>
 
 

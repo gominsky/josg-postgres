@@ -13,23 +13,23 @@
   </div>
   <!-- Columna derecha -->
   <div class="col-md-3 d-flex justify-content-end align-items-center gap-3">
-    <a href="/informes/pdf/<%= informe.id %>" class="card-variacion2">
+    <a href="/informes/pdf/<%= informe.id %>" class="btn-main">
       <div>Exportar PDF</div>
     </a>
-    <form method="POST" action="/informes/eliminar/<%= informe.id %>" onsubmit="return confirm('¿Eliminar informe completo?')">
-      <button type="submit" class="card-eliminar">
+    <form method="POST" action="/informes/eliminar/<%= informe.id %>" onsubmit="return confirm('¿Eliminar informe completo?')" style="background-color: transparent;">
+      <button type="submit" class="btn-main">
         <div>Eliminar informe</div>
       </button>
     </form>
   </div>
 </div>
 
-<form id="form-guardar" method="POST" action="/informes/detalle/<%= informe.id %>" class="formulario-centrado">
+<form id="form-guardar" method="POST" action="/informes/detalle/<%= informe.id %>" class="formulario-centrado" style="background-color: transparent";>
   <input type="hidden" name="resultados" id="resultados-json">
 
   <% if (!tieneAlumnos) { %>
     <div class="text-center mt-3 mb-4">
-      <button type="button" class="btn btn-dark btn-sm" onclick="addCampo()">+ Añadir campo</button>
+      <button type="button" class="btn-main" onclick="addCampo()">+ Añadir campo</button>
     </div>
   <% } %>
   <div class="table-responsive">

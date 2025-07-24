@@ -1,44 +1,44 @@
-<% title = 'Registrar Pago' %>
+<% title = 'Registrar Pago'; %>
+<% hero = false; %>
 
-<div class="form-wrapper" style="max-width: 500px; margin: 2rem auto; background: #f9f9f9; padding: 2rem; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
-  <h2 style="text-align: center; font-size: 1.4rem; margin-bottom: 1.5rem;">Registrar pago para <%= alumno.nombre %> <%= alumno.apellidos %></h2>
+<h1 class="h1-titulo text-center mb-4"><%= title %></h1>
 
-  <form action="/pagos" method="POST" style="display: flex; flex-direction: column; gap: 1rem;">
-    <input type="hidden" name="alumno_id" value="<%= alumno.id %>">
+<form id="form-pago" method="POST" action="/pagos" class="formulario-alumno" style="border: 2px solid #FF9501; border-radius: 0.75rem; padding: 1rem; max-width: 500px; margin: 2rem auto;">
+  <input type="hidden" name="alumno_id" value="<%= alumno.id %>">
 
-    <div>
-      <label for="importe" style="display: block; font-weight: 500; margin-bottom: 0.25rem;">Importe:</label>
-      <input type="number" name="importe" step="0.01" required style="width: 100%; padding: 0.5rem; border: 1px solid #ccc; border-radius: 6px;">
+  <div class="grupo-campos">
+    <h2>Datos de Pago</h2>
+    <div class="form-grid-2">
+      <label>Importe:
+        <input type="number" name="importe" step="0.01" class="form-input" required>
+      </label>
+
+      <label>Fecha de pago:
+        <input type="date" name="fecha_pago" class="form-input" required value="<%= new Date().toISOString().split('T')[0] %>">
+      </label>
+
+      <label>Medio de pago:
+        <select name="medio_pago" class="form-input">
+          <option value="efectivo">Efectivo</option>
+          <option value="transferencia">Transferencia</option>
+          <option value="tarjeta">Tarjeta</option>
+          <option value="otro">Otro</option>
+        </select>
+      </label>
+
+      <label>Referencia:
+        <input type="text" name="referencia" class="form-input">
+      </label>
+
+      <label>Observaciones:
+        <textarea name="observaciones" class="form-input" rows="2"></textarea>
+      </label>
     </div>
+  </div>
 
-    <div>
-      <label for="fecha_pago" style="display: block; font-weight: 500; margin-bottom: 0.25rem;">Fecha de pago:</label>
-      <input type="date" name="fecha_pago" value="<%= new Date().toISOString().split('T')[0] %>" required style="width: 100%; padding: 0.5rem; border: 1px solid #ccc; border-radius: 6px;">
-    </div>
-
-    <div>
-      <label for="medio_pago" style="display: block; font-weight: 500; margin-bottom: 0.25rem;">Medio de pago:</label>
-      <select name="medio_pago" style="width: 100%; padding: 0.5rem; border: 1px solid #ccc; border-radius: 6px;">
-        <option value="efectivo">Efectivo</option>
-        <option value="transferencia">Transferencia</option>
-        <option value="tarjeta">Tarjeta</option>
-        <option value="otro">Otro</option>
-      </select>
-    </div>
-
-    <div>
-      <label for="referencia" style="display: block; font-weight: 500; margin-bottom: 0.25rem;">Referencia o comprobante:</label>
-      <input type="text" name="referencia" style="width: 100%; padding: 0.5rem; border: 1px solid #ccc; border-radius: 6px;">
-    </div>
-
-    <div>
-      <label for="observaciones" style="display: block; font-weight: 500; margin-bottom: 0.25rem;">Observaciones:</label>
-      <textarea name="observaciones" rows="2" style="width: 100%; padding: 0.5rem; border: 1px solid #ccc; border-radius: 6px; resize: vertical;"></textarea>
-    </div>
-
-    <div style="text-align: center; margin-top: 1rem;">
-      <button type="submit" style="padding: 0.5rem 1.5rem; background-color: #007bff; color: white; border: none; border-radius: 6px; font-weight: 500; cursor: pointer;">Registrar pago</button>
-    </div>
-  </form>
-</div>
+  <div class="acciones-finales d-flex justify-content-between align-items-center mt-4">
+    <a href="/pagos/<%= alumno.id %>" class="enlace-final-naranja">← Volver</a>
+    <button type="submit" class="btn-main">Registrar pago</button>
+  </div>
+</form>
 
