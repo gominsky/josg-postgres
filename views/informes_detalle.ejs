@@ -24,7 +24,7 @@
   </div>
 </div>
 
-<form id="form-guardar" method="POST" action="/informes/detalle/<%= informe.id %>" class="formulario-centrado" style="background-color: transparent";>
+<form id="form-guardar" method="POST" action="/informes/detalle/<%= informe.id %>" class="formulario-centrado" style="background-color: transparent;">
   <input type="hidden" name="resultados" id="resultados-json">
 
   <% if (!tieneAlumnos) { %>
@@ -36,10 +36,8 @@
     <table class="table table-bordered table-sm align-middle text-center">
       <thead class="table-light">
         <tr>
-          <% if (tieneAlumnos) { %>
-            <th>Alumno</th>
-          <% } %>
-          <% campos.forEach(campo => { %>
+          <th>Alumno</th>
+          <% campos.slice(1).forEach(campo => { %>
             <th><%= campo.nombre %></th>
           <% }) %>
           <th>Acciones</th>
@@ -48,10 +46,8 @@
       <tbody id="tabla-resultados-body">
         <% filas.forEach((fila, filaIndex) => { %>
           <tr>
-            <% if (tieneAlumnos) { %>
-              <td class="text-start"><%= fila.apellidos %>, <%= fila.nombre %></td>
-            <% } %>
-            <% campos.forEach(campo => {
+                        <td class="text-start"><%= fila.apellidos %>, <%= fila.nombre %></td>
+            <% campos.slice(1).forEach(campo => {
                  const valor = fila.valores[campo.id] || '';
                  const name = `r_${fila.alumno_id !== null ? fila.alumno_id : 'null'}_${fila.fila ?? filaIndex}_${campo.id}`;
             %>
@@ -95,8 +91,7 @@
     const id = nextFila++;
 
     let html = '';
-    if (tieneAlumnos) html += `<td class="text-start">-</td>`;
-    campos.forEach(campo => {
+    campos.slice(1).forEach(campo => {
       const name = `r_null_${id}_${campo.id}`;
       if (campo.tipo === 'texto') html += `<td><input type="text" class="form-control form-control-sm" name="${name}"></td>`;
       else if (campo.tipo === 'numero') html += `<td><input type="number" step="0.01" class="form-control form-control-sm" name="${name}"></td>`;
@@ -122,4 +117,3 @@
     document.getElementById('resultados-json').value = JSON.stringify(resultados);
   });
 </script>
-

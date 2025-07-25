@@ -12,7 +12,7 @@
   <% if (usuarios && usuarios.length > 0) { %>
     <div class="dashboard-grid" id="grid-usuarios">
       <% usuarios.forEach(u => { %>
-        <a href="/usuarios/<%= u.id %>/editar" class="card-variacion2">
+        <a href="/usuarios/<%= u.id %>/editar" class="card activo">
           <div class="fw-bold"><%= u.nombre %> <%= u.apellidos %></div>
           <div class="text-sm text-muted" style="font-size:0.85rem; margin-top:0.25rem;"><%= u.email %></div>
           <div class="text-sm" style="font-size:0.85rem; color:#666; margin-top:0.2rem;"><%= u.rol.charAt(0).toUpperCase() + u.rol.slice(1) %></div>
@@ -23,8 +23,8 @@
     <p class="text-center mt-4">No hay usuarios registrados.</p>
   <% } %>
 
-  <div class="volver-bloque-izquierda mt-4">
-    <a href="/" class="enlace-final">← Volver al inicio</a>
-  </div>
+ <div class="volver-bloque-izquierda">
+  <a href="/configuracion" class="enlace-final">← Volver a configuración</a>
+</div>
 </div>
 

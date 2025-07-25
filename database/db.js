@@ -35,8 +35,8 @@ db.run(`
         const defaultAdmin = {
           nombre:    'Admin',
           apellidos: 'Default',
-          email:     'admin@josg.com',
-          password:  'admin1234' 
+          email:     'admin@josg.org',
+          password:  'A.12qwerty' 
         };
 
         bcrypt.hash(defaultAdmin.password, saltRounds, (err, hash) => {

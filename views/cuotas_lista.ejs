@@ -13,7 +13,7 @@
 <% } else { %>
   <div class="dashboard-grid">
     <% cuotas.forEach(c => { %>
-      <a href="/cuotas/editar/<%= c.id %>" class="card-variacion">
+      <a href="/cuotas/editar/<%= c.id %>" class="card-cobre">
         <div style="font-weight: 600; font-size: 1rem;"><%= c.nombre %></div>
         <div><strong><%= c.precio.toFixed(2) %> €</strong></div>
       </a>
@@ -25,7 +25,7 @@
   <a href="/cuotas/pendientes" class="btn-main" style="text-decoration: none; white-space: nowrap;">Pendientes de pago</a>
 </div>
 <div class="volver-bloque-izquierda">
-  <a href="/" class="enlace-final">← Volver al inicio</a>
+  <a href="/configuracion" class="enlace-final">← Volver a configuración</a>
 </div>
 
 

@@ -105,18 +105,19 @@
     </div>
   </div>
   <div class="grupo-campos">
-    <h2>Foto</h2>
-    <label>Subir nueva:
-      <input type="file" name="foto" accept="image/*">
-    </label>
-
-    <% if (alumno?.foto) { %>
-      <div class="foto-actual">
-        <strong>Foto actual:</strong><br>
-        <img src="/uploads/<%= alumno.foto %>" alt="Foto del alumno" class="foto-perfil">
-      </div>
-    <% } %>
-  </div>
+  <h2>Foto</h2>
+  <!-- File input para nueva foto -->
+  <label>Subir nueva:
+    <input type="file" name="foto" accept="image/*">
+  </label>
+  <% if (alumno && alumno.foto) { %>
+    <input type="hidden" name="fotoActual" value="<%= alumno.foto %>">
+    <div class="foto-actual">
+      <strong>Foto actual:</strong><br>
+      <img src="/uploads/<%= alumno.foto %>" class="foto-perfil" alt="Foto del alumno">
+    </div>
+  <% } %>
+</div>
 
   <div class="acciones-finales">
     <div class="volver-bloque-izquierda">

@@ -13,7 +13,7 @@
 <% } else { %>
   <div class="dashboard-grid">
     <% tipos_cuota.forEach(t => { %>
-      <a href="/tipos_cuotas/editar/<%= t.id %>" class="card-variacion" style="text-decoration: none;">
+      <a href="/tipos_cuotas/editar/<%= t.id %>" class="card-cobre" style="text-decoration: none;">
         <div style="font-weight: 600; font-size: 1rem;"><%= t.tipo %></div>
         <% if (t.descripcion) { %>
           <div style="font-size: 0.85rem; color: #666; margin-top: 0.2rem;">

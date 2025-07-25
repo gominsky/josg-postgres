@@ -40,35 +40,32 @@
   </form>
 </div>
 
-  <% if (guardias.length > 0) { %>
-    <div class="mx-auto" style="max-width: 1200px; padding: 0 1rem;">
+<% if (guardias.length > 0) { %>
+  <div class="mx-auto" style="max-width: 1200px; padding: 0 1rem;">
 
-    <div class="table-responsive mt-4">
-      <table class="tabla-estilizada">
-        <thead>
-          <tr>
-            <th>Fecha</th>
-            <th>Evento</th>
-            <th>Grupo</th>
-            <th>Guardia 1</th>
-            <th>Guardia 2</th>
-            <th>Eliminar / sugerir guardia</th>
-          </tr>
-        </thead>
-          <tbody>
+  <div class="table-responsive mt-4">
+    <table class="tabla-estilizada">
+      <thead>
+        <tr>
+          <th>Fecha</th>
+          <th>Evento</th>
+          <th>Grupo</th>
+          <th>Guardia 1</th>
+          <th>Guardia 2</th>
+          <th>Eliminar / sugerir guardia</th>
+        </tr>
+      </thead>
+      <tbody>
   <% guardias.forEach(g => { %>
-    <tr
-      <% if (g.guardia_id) { %>
-        style="cursor: pointer;" onclick="location.href='/guardias/editar/<%= g.guardia_id %>?desde=<%= desde %>&hasta=<%= hasta %>'"
-      <% } %>
+    <tr class="fila-enlace clickable-row <% if (typeof selectedId !== 'undefined' && selectedId == g.guardia_id) { %>fila-seleccionada<% } %>"
+        <% if (g.guardia_id) { %>
+          onclick="location.href='/guardias/editar/<%= g.guardia_id %>?desde=<%= desde %>&hasta=<%= hasta %>'"
+        <% } %>
     >
       <td>
         <%= new Date(g.fecha_inicio).toLocaleString('es-ES', {
-          day: '2-digit',
-          month: '2-digit',
-          year: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit'
+          day: '2-digit', month: '2-digit', year: 'numeric',
+          hour: '2-digit', minute: '2-digit'
         }).replace(',', '') %>
       </td>
       <td><%= g.evento %></td>
@@ -76,40 +73,31 @@
       <td><%= g.guardia1 || '-' %></td>
       <td><%= g.guardia2 || '-' %></td>
       <td class="text-center" onclick="event.stopPropagation();">
-  <% if (g.guardia_id) { %>
-    <form method="POST" action="/guardias/eliminar/<%= g.guardia_id %>?desde=<%= encodeURIComponent(desde || '') %>&hasta=<%= encodeURIComponent(hasta || '') %>&grupo=<%= encodeURIComponent(grupo || '') %>" onsubmit="event.stopPropagation(); return confirm('¿Eliminar guardia?');" style="display:inline; background-color: transparent;">
-      <button 
-        type="submit" 
-        class="btn btn-sm text-danger fw-bold" 
-        style="font-size: 1rem; line-height: 1;" 
-        onclick="event.stopPropagation();"
-      >×</button>
-    </form>
-  <% } else { %>
-   <form method="POST" action="/guardias/generar" style="margin: 0; display: inline; background-color: transparent;">
-  <input type="hidden" name="evento_id" value="<%= g.evento_id %>">
-  <input type="hidden" name="desde" value="<%= desde %>">
-  <input type="hidden" name="hasta" value="<%= hasta %>">
-  <button type="submit" class="btn-primary-negro btn-sm  px-2 py-1" style="font-size: 0.75rem; line-height: 1;">Asignar guardia</button>
-  </form>
-
-  <% } %>
-</td>
-
+        <% if (g.guardia_id) { %>
+          <form method="POST" action="/guardias/eliminar/<%= g.guardia_id %>?desde=<%= encodeURIComponent(desde || '') %>&hasta=<%= encodeURIComponent(hasta || '') %>&grupo=<%= encodeURIComponent(grupo || '') %>" onsubmit="event.stopPropagation(); return confirm('¿Eliminar guardia?');" style="display:inline; background-color: transparent;">
+            <button type="submit" class="btn btn-sm text-danger fw-bold" style="font-size: 1rem; line-height: 1;" onclick="event.stopPropagation();">×</button>
+          </form>
+        <% } else { %>
+          <form method="POST" action="/guardias/generar" style="margin: 0; display: inline; background-color: transparent;">
+            <input type="hidden" name="evento_id" value="<%= g.evento_id %>">
+            <input type="hidden" name="desde" value="<%= desde %>">
+            <input type="hidden" name="hasta" value="<%= hasta %>">
+            <button type="submit" class="btn-primary-negro btn-sm px-2 py-1" style="font-size: 0.75rem; line-height: 1;">Asignar guardia</button>
+          </form>
+        <% } %>
+      </td>
     </tr>
   <% }) %>
 </tbody>
-
-
       </table> 
       </div>
     </div>
-  <% } else { %>
-    <p class="mt-4" style="text-align: center;"">No hay eventos registrados.</p>
-  <% } %>
+<% } else { %>
+  <p class="mt-4" style="text-align: center;">No hay eventos registrados.</p>
+<% } %>
 
   <div class="volver-bloque-izquierda mt-4">
-    <a href="/eventos" class="enlace-final">← Eventos</a>
+    <a href="/eventos" class="enlace-final">← Volver a Eventos</a>
   </div>
 </div>
 

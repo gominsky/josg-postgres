@@ -12,7 +12,7 @@
   <% } else { %>
     <div class="dashboard-grid" style="margin-top: 2rem;">
       <% instrumentos.forEach(i => { %>
-        <a href="/instrumentos/<%= i.id %>/editar" class="card-variacion" style="text-decoration: none;">
+        <a href="/instrumentos/<%= i.id %>/editar" class="card-marron" style="text-decoration: none;">
           <div style="font-weight: 600; font-size: 1rem;"><%= i.nombre %></div>
           <div style="font-size: 0.85rem; color: #f5f1f1;"><%= i.familia %></div>
         </a>
@@ -21,6 +21,6 @@
   <% } %>
 
   <div class="volver-bloque-izquierda">
-    <a href="/" class="enlace-final">← Volver al inicio</a>
-  </div>
+  <a href="/configuracion" class="enlace-final">← Volver a configuración</a>
+</div>
 </div>

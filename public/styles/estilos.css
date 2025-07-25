@@ -1,4 +1,10 @@
 @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700&display=swap');
+
+select {
+  height: 2rem;
+  line-height: 2.5rem;
+}
+
 /* INDEX ********************************************************************/ 
   html, body {
     height: 100%;
@@ -10,8 +16,13 @@
   .hero-header {
     position: relative;
     height: 100vh;
+    padding-top: 2vh;
   }
 
+  .hero-header .login-form-overlay {
+  /* Ajusta este margen para afinar la posición vertical */
+  margin-top: -5rem;   /* prueba valores negativos o positivos según necesites */
+}
   /* Overlay de login y panel, centrados y semitransparentes */
   .login-form-overlay,
   .panel-usuario-overlay {
@@ -132,6 +143,11 @@
 }
 .icono-cerrar-sesion img:hover {
   transform: scale(1.05);
+}
+.alert-login-error {
+  background-color: #ffffff;  /* fondo muy suave naranja */
+  color: #FF9501;           /* texto naranja oscuro */
+  border: 1px solid  #FF9501;  /* borde naranja */
 }
 /* HEADER ********************************************************************/
 /* Header de la aplicación */
@@ -375,9 +391,8 @@ h1, h2, h3, h4, h5,p {
 }
 
 .card.pasivo {
-  background-color:#c75d2c;
-  color: white;
-  border: 1px solid #c75d2c;
+  background-color:	#EEE8AA;
+  border: 1px solid	#EEE8AA;
   text-decoration: none;
   border-radius: 1rem;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.8);
@@ -391,11 +406,11 @@ h1, h2, h3, h4, h5,p {
 .card.pasivo:hover {
   transform: translateY(-4px);
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
-  background-color:#c75d2c80;
+  background-color: #EEE8AA80;
   font-weight: bold;
 }
-.card-variacion {
-  background-color: #dc7633;
+.card-marron {
+  background-color: #A0522D;
   color:white;
   text-decoration: none;
   border-radius: 1rem;
@@ -406,16 +421,16 @@ h1, h2, h3, h4, h5,p {
   text-align: center;
   font-weight: bold;
 }
-.card-variacion:hover {
+.card-marron:hover {
   transform: translateY(-4px);
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
-  background-color:#dc763380;
+  background-color:  #A0522D80;
   color:white;
   text-decoration: none;
   font-weight: bold;
 }
-.card-variacion2 {
-  background-color:#f4d03f;
+.card-cobre {
+  background-color:#B8733380;
   color: #00060e;
   text-decoration: none;
   border-radius: 1rem;
@@ -426,15 +441,15 @@ h1, h2, h3, h4, h5,p {
   text-align: center;
   font-weight: bold;
 }
-.card-variacion2:hover {
+.card-cobre:hover {
   transform: translateY(-4px);
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
-  background-color: #f4d03f80;
+  background-color: #B8733380;
   text-decoration: none;
   font-weight: bold;
 }
-.card-eliminar {
-  background-color:rgba(255,0,0,1);
+.card-naranja {
+  background-color:#FF9501;
   color: #00060e;
   text-decoration: none;
   border-radius: 1rem;
@@ -443,14 +458,36 @@ h1, h2, h3, h4, h5,p {
   margin-bottom: 1.5rem;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
   text-align: center;
+  font-weight: bold;
 }
-.card-eliminar:hover {
+.card-naranja:hover {
   transform: translateY(-4px);
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
-  background-color: rgba(255,0,0,0.8);
+  background-color: #FF950180;
+  color: black;
   text-decoration: none;
+  font-weight: bold;
+}
+.card-oro {
+  background-color:	#FFD700;
+  border: 1px solid	#FFD700;
+  color:black;
+  text-decoration: none;
+  border-radius: 1rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.8);
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  text-align: center;
+  font-weight: bold;
 }
 
+.card-oro:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
+  background-color: #FFD70080;
+  font-weight: bold;
+}
 /* GRIDS */
 .dashboard-grid {
   display: grid;

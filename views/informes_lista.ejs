@@ -32,7 +32,7 @@
           <% informes.forEach(i => { %>
             <tr class="fila-enlace clickable-row" onclick="location.href='/informes/detalle/<%= i.id %>'">
               <td><%= i.informe %></td>
-              <td><%= i.fecha %></td>
+              <td><%= new Date(i.fecha).toLocaleDateString('es-ES') %></td>
               <td><%= i.grupo %></td>
               <td><%= i.instrumento %></td>
             </tr>

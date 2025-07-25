@@ -1,64 +1,61 @@
-<% title = 'Editar Guardia' %>
-<% hero = false %>
-<h1 class="h1-titulo">Editar Guardia</h1>
+<% const isEdicion = Boolean(guardia && guardia.id); %>
+<% title = isEdicion ? 'Editar Guardia' : 'Nueva Guardia'; %>
+<% hero = false; %>
 
-<div class="dashboard-grid">
-  <form id="form-guardia" method="POST" action="/guardias/guardar" class="card-variacion2" style="width: 430px; height: auto; box-sizing: border-box; overflow: auto;">
+<h1 class="h1-titulo"><%= title %></h1>
+
+<form id="form-guardia" method="POST" action="<%= isEdicion ? '/guardias/guardar' : '/guardias/crear' %>" class="formulario-alumno" style="border: 2px solid #FF9501; border-radius: 0.75rem; padding: 1rem;">
+  <% if (isEdicion) { %>
     <input type="hidden" name="id" value="<%= guardia.id %>">
     <input type="hidden" name="evento_id" value="<%= guardia.evento_id %>">
     <input type="hidden" name="curso" value="<%= guardia.curso %>">
     <input type="hidden" name="desde" value="<%= desde %>">
     <input type="hidden" name="hasta" value="<%= hasta %>">
+    <input type="hidden" name="grupo" value="<%= grupo %>">
+  <% } %>
 
-    <div>
-      <label><div style="font-weight: 600; font-size: 1rem;">Miembro 1</div></label>
-      <div>
-        <select name="alumno_id_1" required>
+  <div class="grupo-campos">
+    <h2>Miembros de Guardia</h2>
+    <div class="form-grid-2">
+      <label>Miembro 1:
+        <select name="alumno_id_1" required class="form-centrado-select">
+          <option value="">Selecciona un alumno</option>
           <% alumnos.filter(a => a.grupo_id === guardia.grupo_id).forEach(a => { %>
             <option value="<%= a.alumno_id %>" <%= a.alumno_id == guardia.alumno_id_1 ? 'selected' : '' %>>
               <%= a.apellidos %>, <%= a.nombre %>
             </option>
           <% }) %>
         </select>
-      </div>
-    </div>
+      </label>
 
-    <div>
-      <label><div style="font-weight: 600; font-size: 1rem;">Miembro 2</div></label>
-      <div>
-        <select name="alumno_id_2" required>
+      <label>Miembro 2:
+        <select name="alumno_id_2" required class="form-centrado-select">
+          <option value="">Selecciona un alumno</option>
           <% alumnos.filter(a => a.grupo_id === guardia.grupo_id).forEach(a => { %>
             <option value="<%= a.alumno_id %>" <%= a.alumno_id == guardia.alumno_id_2 ? 'selected' : '' %>>
               <%= a.apellidos %>, <%= a.nombre %>
             </option>
           <% }) %>
         </select>
-      </div>
+      </label>
     </div>
+  </div>
 
-    <div>
-      <label><div style="font-weight: 600; font-size: 1rem;">Notas</div></label>
-      <div>
-        <textarea name="notas" rows="3"><%= guardia.notas || '' %></textarea>
-      </div>
+  <div class="grupo-campos">
+    <h2>Notas</h2>
+    <textarea name="notas" rows="4" class="form-control"><%= guardia.notas || '' %></textarea>
+  </div>
+
+  <div class="acciones-finales d-flex justify-content-between align-items-center mt-4">
+    <a href="/guardias?<%= desde ? 'desde=' + desde + '&' : '' %><%= hasta ? 'hasta=' + hasta : '' %>" class="enlace-final-naranja">← Volver</a>
+    <div class="d-flex gap-2">
+      <button type="submit" class="btn-main"><%= isEdicion ? 'Actualizar' : 'Crear' %></button>
+      <% if (isEdicion) { %>
+        <form method="POST" action="/guardias/eliminar/<%= guardia.id %>?desde=<%= desde %>&hasta=<%= hasta %>" onsubmit="return confirm('¿Eliminar esta guardia?');" class="ms-2" style="display:inline;">
+          <button type="submit" class="btn-rojo">Eliminar</button>
+        </form>
+      <% } %>
     </div>
-  </form>
-</div>
-
-<div class="dashboard-grid">
-  <a href="#" onclick="document.getElementById('form-guardia').submit(); return false;" class="card-variacion2">
-    <div style="font-weight: 600; font-size: 1rem;">Guardar</div>
-  </a>
-  <a href="#"
-     onclick="if(confirm('¿Eliminar esta guardia?')) document.getElementById('delete-form').submit(); return false;"
-     class="card-eliminar">
-    <div style="font-weight: 600; font-size: 1rem;">Eliminar</div>
-  </a>
-  <form id="delete-form" method="POST" action="/guardias/eliminar/<%= guardia.id %>?desde=<%= desde %>&hasta=<%= hasta %>" class="hidde" style="background-color: transparent;"></form>
-</div>
-
-<div class="volver-bloque-izquierda mt-3">
-  <a href="/guardias?<%= desde ? 'desde=' + desde + '&' : '' %><%= hasta ? 'hasta=' + hasta : '' %>" class="enlace-final">← Volver a listado</a>
-</div>
-
+  </div>
+</form>
 

@@ -1,8 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../database/db');
+const fs   = require('fs');
 const multer = require('multer');
 const path = require('path');
+
 
 // Multer config
 const storage = multer.diskStorage({
@@ -32,84 +34,181 @@ router.get('/nuevo', (req, res) => {
   });
 });
 
+// POST: Crear alumno con subida de foto, relaciones y redirección a detalle
 router.post('/', upload.single('foto'), (req, res) => {
   const {
-    nombre, apellidos, tutor, direccion, codigo_postal, municipio, provincia, telefono,
-    email, fecha_nacimiento, DNI, centro, profesor_centro,
+    nombre, apellidos, tutor, direccion, codigo_postal,
+    municipio, provincia, telefono, email,
+    fecha_nacimiento, DNI, centro, profesor_centro,
     instrumentos, grupos
   } = req.body;
 
-  const activo = req.body.activo === '1' ? 1 : 0;
   const foto = req.file ? req.file.filename : null;
-  const fecha_matriculacion = new Date().toISOString().split('T')[0]; // yyyy-mm-dd
+  const activo = req.body.activo === '1' ? 1 : 0;
+  const fechaMat = new Date().toISOString().split('T')[0];
 
-  db.run(
-    `INSERT INTO alumnos 
-    (nombre, apellidos, tutor, direccion, codigo_postal, municipio, provincia, telefono, email, fecha_nacimiento, DNI, centro, profesor_centro, foto, activo, fecha_matriculacion)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [nombre, apellidos, tutor, direccion, codigo_postal, municipio, provincia, telefono, email, fecha_nacimiento, DNI, centro, profesor_centro, foto, activo, fecha_matriculacion],
-    function (err) {
-      if (err) return res.status(500).send('Error al guardar alumno');
+  const sqlInsert = `
+    INSERT INTO alumnos (
+      nombre, apellidos, tutor, direccion, codigo_postal,
+      municipio, provincia, telefono, email, fecha_nacimiento,
+      DNI, centro, profesor_centro, foto, activo, fecha_matriculacion
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `;
+  const paramsInsert = [
+    nombre, apellidos, tutor, direccion, codigo_postal,
+    municipio, provincia, telefono, email,
+    fecha_nacimiento, DNI, centro, profesor_centro,
+    foto, activo, fechaMat
+  ];
 
-      const alumnoId = this.lastID;
-      const instrumentosArray = Array.isArray(instrumentos) ? instrumentos : [instrumentos];
-      const stmt = db.prepare('INSERT INTO alumno_instrumento (alumno_id, instrumento_id) VALUES (?, ?)');
-      instrumentosArray.forEach(instId => {
-        if (instId) stmt.run(alumnoId, instId);
-      });
-
-      const grupoIds = Array.isArray(grupos) ? grupos : grupos ? [grupos] : [];
-      const stmtGrupo = db.prepare('INSERT INTO alumno_grupo (alumno_id, grupo_id) VALUES (?, ?)');
-      grupoIds.forEach(grupoId => {
-        if (grupoId) stmtGrupo.run(alumnoId, grupoId);
-      });
-
-      stmt.finalize(() => {
-        stmtGrupo.finalize(() => res.redirect('/alumnos'));
-      });
+  db.run(sqlInsert, paramsInsert, function(err) {
+    if (err) {
+      console.error('Error al crear alumno:', err);
+      return res.status(500).send('Error al guardar alumno');
     }
-  );
+    const newId = this.lastID;
+
+    // Relaciones instrumentos
+    const instArray = Array.isArray(instrumentos) ? instrumentos : instrumentos ? [instrumentos] : [];
+    const stmtInst = db.prepare(
+      'INSERT INTO alumno_instrumento (alumno_id, instrumento_id) VALUES (?, ?)'
+    );
+    instArray.forEach(iid => {
+      if (iid) stmtInst.run(newId, iid);
+    });
+    stmtInst.finalize(err2 => {
+      if (err2) console.error('Error insertando instrumentos:', err2);
+
+      // Relaciones grupos
+      const grpArray = Array.isArray(grupos) ? grupos : grupos ? [grupos] : [];
+      const stmtGrp = db.prepare(
+        'INSERT INTO alumno_grupo (alumno_id, grupo_id) VALUES (?, ?)'
+      );
+      grpArray.forEach(gid => {
+        if (gid) stmtGrp.run(newId, gid);
+      });
+      stmtGrp.finalize(err3 => {
+        if (err3) console.error('Error insertando grupos:', err3);
+        // Redirigir a la ficha de alumno creado
+        res.redirect(`/alumnos/${newId}`);
+      });
+    });
+  });
 });
 
 // PUT: Actualizar alumno
+// PUT: Actualizar alumno con preservación de foto y manejo de relaciones
 router.put('/:id', upload.single('foto'), (req, res) => {
   const id = req.params.id;
   const {
-    nombre, apellidos, tutor, direccion, codigo_postal, municipio, provincia, telefono,
-    email, fecha_nacimiento, DNI, centro, profesor_centro,
-    instrumentos, grupos
+    nombre,
+    apellidos,
+    tutor,
+    direccion,
+    codigo_postal,
+    municipio,
+    provincia,
+    telefono,
+    email,
+    fecha_nacimiento,
+    DNI,
+    centro,
+    profesor_centro,
+    instrumentos,
+    grupos,
+    fotoActual // recover hidden field
   } = req.body;
+
+  // Determinar foto a usar: nueva subida o la existente
+  const foto = req.file ? req.file.filename : (fotoActual || null);
+
+  // Estado y fecha de baja
   const activo = req.body.activo === '1' ? 1 : 0;
-  const foto = req.file ? req.file.filename : null;
-  const fechaBaja = activo === 0 ? new Date().toISOString().split('T')[0] : null;
-  const query = foto
-    ? `UPDATE alumnos SET nombre = ?, apellidos = ?, email = ?, telefono = ?, direccion = ?, codigo_postal = ?, municipio = ?, provincia = ?, tutor = ?, fecha_nacimiento = ?, DNI = ?, centro = ?, profesor_centro = ?, foto = ?, activo = ?, fecha_baja = ? WHERE id = ?`
-    : `UPDATE alumnos SET nombre = ?, apellidos = ?, email = ?, telefono = ?, direccion = ?, codigo_postal = ?, municipio = ?, provincia = ?, tutor = ?, fecha_nacimiento = ?, DNI = ?, centro = ?, profesor_centro = ?, foto = ?, activo = ?, fecha_baja = ? WHERE id = ?`;
+  const fechaBaja = activo === 0
+    ? new Date().toISOString().split('T')[0]
+    : null;
 
-  const params = foto
-    ? [nombre, apellidos, email, telefono, direccion, codigo_postal, municipio, provincia, tutor, fecha_nacimiento, DNI, centro, profesor_centro, foto, activo, fechaBaja, id]
-    : [nombre, apellidos, email, telefono, direccion, codigo_postal, municipio, provincia, tutor, fecha_nacimiento, DNI, centro, profesor_centro, foto, activo, fechaBaja, id];
+  // Definir consulta SQL, ahora siempre incluye la columna foto
+  const consulta = `
+    UPDATE alumnos
+    SET
+      nombre           = ?,
+      apellidos        = ?,
+      tutor            = ?,
+      direccion        = ?,
+      codigo_postal    = ?,
+      municipio        = ?,
+      provincia        = ?,
+      telefono         = ?,
+      email            = ?,
+      fecha_nacimiento = ?,
+      DNI              = ?,
+      centro           = ?,
+      profesor_centro  = ?,
+      foto             = ?,
+      activo           = ?,
+      fecha_baja       = ?
+    WHERE id = ?
+  `;
 
-  db.run(query, params, err => {
-    if (err) return res.status(500).send('Error al actualizar alumno');
+  // Parámetros para la consulta
+  const params = [
+    nombre,
+    apellidos,
+    tutor,
+    direccion,
+    codigo_postal,
+    municipio,
+    provincia,
+    telefono,
+    email,
+    fecha_nacimiento,
+    DNI,
+    centro,
+    profesor_centro,
+    foto,
+    activo,
+    fechaBaja,
+    id
+  ];
 
-    db.run('DELETE FROM alumno_instrumento WHERE alumno_id = ?', [id], err2 => {
-      if (err2) return res.status(500).send('Error al limpiar instrumentos');
+  // Ejecutar actualización
+  db.run(consulta, params, err => {
+    if (err) {
+      console.error('Error al actualizar alumno:', err);
+      return res.status(500).send('Error al actualizar alumno');
+    }
 
-      const instrumentosArray = Array.isArray(instrumentos) ? instrumentos : [instrumentos];
-      const stmt = db.prepare('INSERT INTO alumno_instrumento (alumno_id, instrumento_id) VALUES (?, ?)');
-      instrumentosArray.forEach(instId => {
-        if (instId) stmt.run(id, instId);
-      });
+    // Limpiar relaciones instrumento
+    db.run('DELETE FROM alumno_instrumento WHERE alumno_id = ?', [id], errInst => {
+      if (errInst) {
+        console.error('Error al limpiar instrumentos:', errInst);
+        return res.status(500).send('Error al limpiar instrumentos');
+      }
+      const arrInst = Array.isArray(instrumentos) ? instrumentos : instrumentos ? [instrumentos] : [];
+      const stmtInst = db.prepare(
+        'INSERT INTO alumno_instrumento (alumno_id, instrumento_id) VALUES (?, ?)'
+      );
+      arrInst.forEach(iid => { if (iid) stmtInst.run(id, iid); });
+      stmtInst.finalize(err2 => {
+        if (err2) console.error('Error al insertar instrumentos:', err2);
 
-      stmt.finalize(() => {
-        db.run('DELETE FROM alumno_grupo WHERE alumno_id = ?', [id], () => {
-          const grupoIds = Array.isArray(grupos) ? grupos : grupos ? [grupos] : [];
-          const stmtGrupo = db.prepare('INSERT INTO alumno_grupo (alumno_id, grupo_id) VALUES (?, ?)');
-          grupoIds.forEach(grupoId => {
-            if (grupoId) stmtGrupo.run(id, grupoId);
+        // Limpiar relaciones grupo
+        db.run('DELETE FROM alumno_grupo WHERE alumno_id = ?', [id], errGrp => {
+          if (errGrp) {
+            console.error('Error al limpiar grupos:', errGrp);
+            return res.status(500).send('Error al limpiar grupos');
+          }
+          const arrGrp = Array.isArray(grupos) ? grupos : grupos ? [grupos] : [];
+          const stmtGrp = db.prepare(
+            'INSERT INTO alumno_grupo (alumno_id, grupo_id) VALUES (?, ?)'
+          );
+          arrGrp.forEach(gid => { if (gid) stmtGrp.run(id, gid); });
+          stmtGrp.finalize(err3 => {
+            if (err3) console.error('Error al insertar grupos:', err3);
+            // Redirigir al detalle del alumno
+            res.redirect(`/alumnos/${id}`);
           });
-          stmtGrupo.finalize(() => res.redirect(`/alumnos/${id}`));
         });
       });
     });
