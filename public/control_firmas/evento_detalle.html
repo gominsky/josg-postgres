@@ -16,19 +16,26 @@
     <button id="btn-qr" type="button" onclick="mostrarQR()">Mostrar QR</button>
     <button id="btn-toggle-qr" type="button" onclick="toggleQR()" class="button-negro" style="display:none">Activar QR</button>
     <div id="qr-container" style="margin-top: 1rem; display: none;"></div>
+
     <form id="form-asistencias">
       <div id="lista-alumnos">
         <div class="firma-header">
           <div class="firma-check"><strong>Firma</strong></div>
           <div class="firma-nombre"><strong>Nombre</strong></div>
-          <div class="firma-observacion"><strong>Observaciones</strong></div>
         </div>
       </div>
+
+      <div style="margin-top: 1rem;">
+        <label for="observaciones_generales"><strong>Observaciones generales:</strong></label><br>
+        <textarea id="observaciones_generales" rows="4" style="width: 100%;"></textarea>
+      </div>
+
       <button type="submit">Guardar asistencias</button>
     </form>
 
     <p id="mensaje"></p>
     <button onclick="location.href='eventos.html'">← Volver</button>
+    <button onclick="verAsistencias()">Ver asistencias registradas</button>
   </div>
 
   <script>
@@ -42,6 +49,10 @@
       document.getElementById('form-asistencias').addEventListener('submit', guardarAsistencias);
     });
 
+    function verAsistencias() {
+      location.href = `asistencias_evento.html?id=${evento_id}`;
+    }
+
     async function cargarEventoYAlumnos() {
       try {
         const eventoRes = await fetch(`/control_firmas/api/eventos/${evento_id}`);
@@ -53,7 +64,8 @@
           <p><strong>Inicio:</strong> ${formatearFecha(evento.fecha_inicio)}</p>
         `;
 
-        // Guardamos el token
+        document.getElementById('observaciones_generales').value = evento.observaciones_generales || '';
+
         tokenQR = evento.token;
         qrActivo = evento.activo === 1;
 
@@ -62,7 +74,7 @@
         document.getElementById('btn-toggle-qr').style.display = 'inline-block';
         document.getElementById('btn-toggle-qr').innerText = qrActivo ? 'Desactivar QR' : 'Activar QR';
 
-        actualizarListaAlumnos(); // primera carga
+        actualizarListaAlumnos();
       } catch (error) {
         console.error('Error al cargar evento o alumnos', error);
       }
@@ -78,20 +90,16 @@
             <input type="checkbox" name="alumno_id" value="${a.id}" ${a.asistio ? 'checked' : ''} />
           </div>
           <div class="firma-nombre">${a.nombre} ${a.apellidos}</div>
-          <input class="firma-observacion" type="text" name="observaciones_${a.id}" placeholder="Observaciones" value="${a.observaciones || ''}" />
         </div>
       `).join('');
 
-     document.getElementById('lista-alumnos').innerHTML = `
-  <div class="firma-header">
-    <div class="firma-check"><strong>Firma</strong></div>
-    <div class="firma-nombre"><strong>Nombre</strong></div>
-    <div class="firma-observacion"><strong>Observaciones</strong></div>
-  </div>
-  ${lista}
-`;
-
-
+      document.getElementById('lista-alumnos').innerHTML = `
+        <div class="firma-header">
+          <div class="firma-check"><strong>Firma</strong></div>
+          <div class="firma-nombre"><strong>Nombre</strong></div>
+        </div>
+        ${lista}
+      `;
     }
 
     async function guardarAsistencias(e) {
@@ -105,13 +113,11 @@
       const registros = [];
 
       alumnos.forEach(check => {
-        const alumno_id = check.value;
-        const observaciones = form.querySelector(`input[name="observaciones_${alumno_id}"]`).value;
         registros.push({
-          alumno_id,
+          alumno_id: check.value,
           evento_id,
           asistio: check.checked,
-          observaciones
+          observaciones: ''
         });
       });
 
@@ -123,6 +129,13 @@
 
       const data = await res.json();
       if (data.success) {
+        const observacionesGenerales = document.getElementById('observaciones_generales').value;
+        await fetch(`/control_firmas/api/eventos/${evento_id}/observaciones-generales`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ observaciones: observacionesGenerales })
+        });
+
         mensaje.className = 'success';
         mensaje.innerText = 'Firmas actualizadas.';
       } else {
@@ -135,10 +148,10 @@
       const fecha = new Date(fechaISO);
       const dia = fecha.getDate().toString().padStart(2, '0');
       const mes = (fecha.getMonth() + 1).toString().padStart(2, '0');
-      const año = fecha.getFullYear();
+      const ano = fecha.getFullYear();
       const horas = fecha.getHours().toString().padStart(2, '0');
       const minutos = fecha.getMinutes().toString().padStart(2, '0');
-      return `${dia}/${mes}/${año} ${horas}:${minutos}`;
+      return `${dia}/${mes}/${ano} ${horas}:${minutos}`;
     }
 
     function mostrarQR() {
@@ -150,10 +163,7 @@
         boton.innerText = 'Mostrar QR';
       } else {
         container.innerHTML = '';
-        const datosQR = {
-          evento_id: evento_id,
-          token: tokenQR
-        };
+        const datosQR = { evento_id: evento_id, token: tokenQR };
 
         QRCode.toCanvas(JSON.stringify(datosQR), { width: 200 }, function (err, canvas) {
           if (err) {

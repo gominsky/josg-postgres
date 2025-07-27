@@ -16,13 +16,11 @@ router.post('/api/login', (req, res) => {
     if (err) return res.status(500).json({ success: false, error: 'Error de servidor' });
     if (!user) return res.json({ success: false, error: 'Usuario no encontrado o sin permiso' });
 
-    // Comparar usando bcrypt
     bcrypt.compare(password, user.password, (err, result) => {
       if (err || !result) {
         return res.json({ success: false, error: 'Contraseña incorrecta' });
       }
-      
-      // Éxito
+
       res.json({
         success: true,
         usuario_id: user.id,
@@ -33,63 +31,52 @@ router.post('/api/login', (req, res) => {
   });
 });
 
-// GET /api/eventos?usuario_id=...
 router.get('/api/eventos', (req, res) => {
   const usuarioId = req.query.usuario_id;
   if (!usuarioId) return res.status(400).json([]);
 
-  // 1) Obtenemos el rol de ese usuario
-  db.get(
-    'SELECT rol FROM usuarios WHERE id = ?',
-    [usuarioId],
-    (err, row) => {
-      if (err) return res.status(500).json([]);
-      if (!row) return res.json([]);
+  db.get('SELECT rol FROM usuarios WHERE id = ?', [usuarioId], (err, row) => {
+    if (err) return res.status(500).json([]);
+    if (!row) return res.json([]);
 
-      const rol = row.rol;
-      let sql, params = [];
+    const rol = row.rol;
+    let sql, params = [];
 
-      if (rol === 'admin') {
-        // 2a) Si es admin, sacamos todos los eventos
-        sql = `
-          SELECT e.id, e.titulo, e.fecha_inicio, e.fecha_fin, g.nombre AS grupo_nombre
-          FROM eventos e
-          JOIN grupos g ON e.grupo_id = g.id
-          ORDER BY e.fecha_inicio ASC
-        `;
-      } else {
-        // 2b) Si no es admin (docente), sacamos sólo los suyos
-        sql = `
-          SELECT e.id, e.titulo, e.fecha_inicio, e.fecha_fin, g.nombre AS grupo_nombre
-          FROM eventos e
-          JOIN grupos g ON e.grupo_id = g.id
-          JOIN profesor_grupo pg ON pg.grupo_id = g.id
-          JOIN profesores p ON p.id = pg.profesor_id
-          JOIN usuarios u ON u.email = p.email
-          WHERE u.id = ?
-          ORDER BY e.fecha_inicio ASC
-        `;
-        params = [usuarioId];
-      }
-
-      // 3) Ejecutamos la consulta seleccionada
-      db.all(sql, params, (err2, eventos) => {
-        if (err2) return res.status(500).json([]);
-
-        // 4) Adaptamos para FullCalendar
-        const eventosAdaptados = eventos.map(e => ({
-          id:    e.id,
-          title: `${e.titulo} (${e.grupo_nombre})`,
-          start: e.fecha_inicio,
-          end:   e.fecha_fin
-        }));
-
-        res.json(eventosAdaptados);
-      });
+    if (rol === 'admin') {
+      sql = `
+        SELECT e.id, e.titulo, e.fecha_inicio, e.fecha_fin, g.nombre AS grupo_nombre
+        FROM eventos e
+        JOIN grupos g ON e.grupo_id = g.id
+        ORDER BY e.fecha_inicio ASC
+      `;
+    } else {
+      sql = `
+        SELECT e.id, e.titulo, e.fecha_inicio, e.fecha_fin, g.nombre AS grupo_nombre
+        FROM eventos e
+        JOIN grupos g ON e.grupo_id = g.id
+        JOIN profesor_grupo pg ON pg.grupo_id = g.id
+        JOIN profesores p ON p.id = pg.profesor_id
+        JOIN usuarios u ON u.email = p.email
+        WHERE u.id = ?
+        ORDER BY e.fecha_inicio ASC
+      `;
+      params = [usuarioId];
     }
-  );
-});
 
+    db.all(sql, params, (err2, eventos) => {
+      if (err2) return res.status(500).json([]);
+
+      const eventosAdaptados = eventos.map(e => ({
+        id: e.id,
+        title: `${e.titulo} (${e.grupo_nombre})`,
+        start: e.fecha_inicio,
+        end: e.fecha_fin
+      }));
+
+      res.json(eventosAdaptados);
+    });
+  });
+});
 
 router.get('/api/eventos/:id', (req, res) => {
   const eventoId = req.params.id;
@@ -138,39 +125,30 @@ router.post('/api/firmar-alumnos', (req, res) => {
   let procesados = 0;
   const errores = [];
 
-  registros.forEach(({ evento_id, alumno_id, asistio, observaciones }) => {
-    const verificarSQL = `SELECT id FROM asistencias WHERE evento_id = ? AND alumno_id = ? AND tipo = 'manual'`;
+  registros.forEach(({ evento_id, alumno_id, asistio }) => {
+    const verificarSQL = `SELECT id, tipo FROM asistencias WHERE evento_id = ? AND alumno_id = ?`;
 
     db.get(verificarSQL, [evento_id, alumno_id], (err, row) => {
       if (err) {
         errores.push({ alumno_id, error: 'Error de lectura' });
         done();
       } else if (asistio && !row) {
-        // Insertar si no existe
         const insertSQL = `
           INSERT INTO asistencias (evento_id, alumno_id, fecha, hora, tipo, observaciones)
-          VALUES (?, ?, DATE('now'), TIME('now'), 'manual', ?)
+          VALUES (?, ?, DATE('now'), TIME('now'), 'manual', '')
         `;
-        db.run(insertSQL, [evento_id, alumno_id, observaciones || ''], err2 => {
+        db.run(insertSQL, [evento_id, alumno_id], err2 => {
           if (err2) errores.push({ alumno_id, error: 'No se pudo insertar' });
           done();
         });
-      } else if (!asistio && row) {
-        // Eliminar si existe y está desmarcado
+      } else if (!asistio && row && row.tipo === 'manual') {
         const deleteSQL = `DELETE FROM asistencias WHERE id = ?`;
         db.run(deleteSQL, [row.id], err3 => {
           if (err3) errores.push({ alumno_id, error: 'No se pudo eliminar' });
           done();
         });
-      } else if (asistio && row) {
-        // Actualizar observación
-        const updateSQL = `UPDATE asistencias SET observaciones = ? WHERE id = ?`;
-        db.run(updateSQL, [observaciones || '', row.id], err4 => {
-          if (err4) errores.push({ alumno_id, error: 'No se pudo actualizar' });
-          done();
-        });
       } else {
-        done(); // Nada que hacer
+        done();
       }
     });
   });
@@ -183,7 +161,6 @@ router.post('/api/firmar-alumnos', (req, res) => {
   }
 });
 
-// PATCH: Activar o desactivar QR
 router.patch('/api/eventos/:id/activar', (req, res) => {
   const eventoId = req.params.id;
   const { activo } = req.body;
@@ -194,4 +171,36 @@ router.patch('/api/eventos/:id/activar', (req, res) => {
     res.json({ success: true });
   });
 });
+
+// PATCH: Actualizar observaciones generales del evento
+router.patch('/api/eventos/:id/observaciones-generales', (req, res) => {
+  const eventoId = req.params.id;
+  const { observaciones } = req.body;
+
+  const sql = `UPDATE eventos SET observaciones_generales = ? WHERE id = ?`;
+  db.run(sql, [observaciones, eventoId], function (err) {
+    if (err) {
+      console.error('Error actualizando observaciones generales:', err);
+      return res.status(500).json({ success: false, error: 'No se pudo actualizar observaciones' });
+    }
+    res.json({ success: true });
+  });
+});
+router.get('/api/eventos/:id/asistencias', (req, res) => {
+  const eventoId = req.params.id;
+
+  const sql = `
+    SELECT a.nombre, a.apellidos, asi.fecha, asi.hora, asi.tipo, asi.ubicacion
+    FROM asistencias asi
+    JOIN alumnos a ON a.id = asi.alumno_id
+    WHERE asi.evento_id = ?
+    ORDER BY asi.fecha DESC, asi.hora DESC
+  `;
+
+  db.all(sql, [eventoId], (err, filas) => {
+    if (err) return res.status(500).json({ error: 'Error al obtener asistencias' });
+    res.json(filas);
+  });
+});
+
 module.exports = router;

@@ -175,6 +175,7 @@ CREATE TABLE IF NOT EXISTS eventos (
   fecha_fin TEXT NOT NULL,
   hora_inicio TEXT,
   hora_fin TEXT,
+  observaciones TEXT,
   grupo_id INTEGER NOT NULL,
   token TEXT,
   activo INTEGER DEFAULT 0,
