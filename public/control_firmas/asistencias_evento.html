@@ -15,20 +15,16 @@
       font-size: 1.1rem;
     }
     .asistencia-detalle {
-      margin-top: 0.4rem;
-      color: #333;
+      margin-top: 0.3rem;
+      color: #444;
       font-size: 0.95rem;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 1rem;
     }
     .asistencia-detalle span {
-      flex: 1 1 40%;
+      display: inline-block;
+      margin-right: 1rem;
     }
-    @media (max-width: 500px) {
-      .asistencia-detalle span {
-        flex: 1 1 100%;
-      }
+    .asistencia-detalle a {
+      text-decoration: underline;
     }
   </style>
 </head>
@@ -66,10 +62,9 @@
         <div class="asistencia-item">
           <div class="asistencia-nombre">${a.nombre} ${a.apellidos}</div>
           <div class="asistencia-detalle">
-            <span><strong>Fecha:</strong> ${formatearFecha(a.fecha)}</span>
-            <span><strong>Hora:</strong> ${formatearHora(a.hora)}</span>
-            <span><strong>Tipo:</strong> ${a.tipo}</span>
-            <span><strong>Ubicación:</strong> ${a.ubicacion ? `<a href='https://www.google.com/maps?q=${a.ubicacion}' target='_blank'>Ver</a>` : 'Sin datos'}</span>
+            <span>📅 ${formatearFecha(a.fecha)} · ${formatearHora(a.hora)}</span>
+            <span>| Tipo: ${a.tipo}</span>
+            <span>| 📍 ${a.ubicacion ? `<a href='https://www.google.com/maps?q=${a.ubicacion}' target='_blank'>Ver</a>` : 'Sin datos'}</span>
           </div>
         </div>
       `).join("");
@@ -81,3 +76,4 @@
   </script>
 </body>
 </html>
+

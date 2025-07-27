@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Firmas del evento</title>
+  <title>Firmar asistencia</title>
   <link rel="stylesheet" href="../styles/estilos_app.css" />
   <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
 </head>
 <body>
   <div class="container">
-    <h2 id="titulo">Firmar asistencia manual</h2>
+    <h2 id="titulo">Firmar asistencia</h2>
     <div id="info-evento"></div>
 
     <p id="qr-estado" class="subtitulo"></p>
@@ -34,8 +34,8 @@
     </form>
 
     <p id="mensaje"></p>
+    <button onclick="verAsistencias()">Ver firmas registradas</button>
     <button onclick="location.href='eventos.html'">← Volver</button>
-    <button onclick="verAsistencias()">Ver asistencias registradas</button>
   </div>
 
   <script>
