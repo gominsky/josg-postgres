@@ -1,9 +1,15 @@
-<% title = profesor && profesor.id ? 'Editar docente' : 'Registrar docente' %>
+<% const isEdicion = Boolean(profesor && profesor.id); %>
+<% title = isEdicion ? 'Editar docente' : 'Registrar docente'; %>
+<% hero = false; %>
+<% // Ordenar alfabeticamente grupos e instrumentos %>
+<% grupos.sort((a, b) => a.nombre.localeCompare(b.nombre)); %>
+<% instrumentos.sort((a, b) => a.nombre.localeCompare(b.nombre)); %>
+
 <h1 class="h1-titulo"><%= title %></h1>
 <% if (typeof error !== 'undefined') { %>
   <div class="mensaje-error"><%= error %></div>
 <% } %>
-<form action="<%= profesor && profesor.id ? '/profesores/' + profesor.id + '?_method=PUT' : '/profesores' %>" method="POST" enctype="multipart/form-data" class="formulario-alumno">
+<form action="<%= isEdicion ? '/profesores/' + profesor.id + '?_method=PUT' : '/profesores' %>" method="POST" enctype="multipart/form-data" class="formulario-alumno">
   <div class="grupo-campos">
     <h2>Datos personales</h2>
     <div class="form-grid-2">
@@ -37,8 +43,8 @@
     <h2>Asignación</h2>
     <div class="form-grid-2">
       <div class="campo-label">
-        <label>Grupos:</label>
-        <select name="grupos" id="grupos" multiple>
+        <label for="grupos">Grupos:</label>
+        <select name="grupos" id="grupos" multiple size="8" class="form-control form-control-sm" style="width: 100%; height: 12rem; overflow-y:auto;">
           <% grupos.forEach(grupo => { %>
             <option value="<%= grupo.id %>" <%= gruposProfesor.includes(grupo.id) ? 'selected' : '' %>>
               <%= grupo.nombre %>
@@ -48,8 +54,8 @@
       </div>
 
       <div class="campo-label">
-        <label>Instrumentos:</label>
-        <select name="instrumentos" id="instrumentos" multiple>
+        <label for="instrumentos">Instrumentos:</label>
+        <select name="instrumentos" id="instrumentos" multiple size="8" class="form-control form-control-sm" style="width: 100%; height: 12rem; overflow-y:auto;">
           <% instrumentos.forEach(inst => { %>
             <option value="<%= inst.id %>" <%= instrumentosProfesor.includes(inst.id) ? 'selected' : '' %>>
               <%= inst.nombre %>
@@ -59,7 +65,7 @@
       </div>
 
       <label>Estado:
-        <select name="activo" required>
+        <select name="activo" required class="form-control form-control-sm" style="width: auto;">
           <option value="1" <%= profesor?.activo ? 'selected' : '' %>>Activo</option>
           <option value="0" <%= profesor && !profesor.activo ? 'selected' : '' %>>No activo</option>
         </select>
@@ -87,8 +93,9 @@
     </div>
     <div class="editar-centro">
       <button type="submit" class="btn-main">
-       <%= profesor && profesor.id ? 'Actualizar' : 'Registrar' %>
+        <%= isEdicion ? 'Actualizar' : 'Registrar' %>
       </button>
     </div>
   </div>
 </form>
+

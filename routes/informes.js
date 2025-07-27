@@ -247,7 +247,8 @@ router.get('/detalle/:id', (req, res) => {
           informe,
           campos,
           filas,
-          tieneAlumnos
+          tieneAlumnos,
+          dinamic: true
         });
       });
     });
@@ -292,7 +293,8 @@ router.post('/ficha/filtrar', (req, res) => {
           instrumentoSeleccionado: instrumento_id,
           profesorSeleccionado: null,
           nombreInforme: nombre_informe,
-          fechaHoy: fecha || new Date().toISOString().split('T')[0]
+          fechaHoy: fecha || new Date().toISOString().split('T')[0],
+          dinamic:true
         });
       });
     });
@@ -336,7 +338,8 @@ router.post('/ficha/filtrar', (req, res) => {
           instrumentoSeleccionado: instrumento_id,
           profesorSeleccionado: null,
           nombreInforme: nombre_informe,
-          fechaHoy: fecha || new Date().toISOString().split('T')[0]
+          fechaHoy: fecha || new Date().toISOString().split('T')[0],
+          dynamic: true
         });
       });
     });
@@ -354,6 +357,23 @@ router.post('/eliminar/:id', (req, res) => {
       db.run(`DELETE FROM informes WHERE id = ?`, [id], (err3) => {
         if (err3) return res.status(500).send('Error al eliminar informe');
         res.redirect('/informes/lista');
+      });
+    });
+  });
+});
+router.get('/certificados', (req, res) => {
+  // Carga listas para filtros (si las necesita tu vista)
+  db.all('SELECT id, nombre FROM grupos ORDER BY nombre', (errGrp, grupos) => {
+    if (errGrp) return res.status(500).send('Error cargando grupos');
+    db.all('SELECT id, nombre FROM instrumentos ORDER BY nombre', (errInst, instrumentos) => {
+      if (errInst) return res.status(500).send('Error cargando instrumentos');
+      // Renderiza la nueva vista
+      res.render('informes_y_certificados', {
+        title: 'Informes y Certificados',
+        hero: false,
+        grupos,
+        instrumentos,
+        // cualquier otra variable que tu vista requiera
       });
     });
   });
@@ -452,8 +472,16 @@ router.get('/horas', isAuthenticated, (req, res) => {
 router.post('/horas/guardar', isAuthenticated, (req, res) => {
   const { fecha, fecha_fin, grupo, instrumento, resultados } = req.body;
   const parsed = JSON.parse(resultados || '[]');
+  const opts = { day: '2-digit', month: 'long', year: 'numeric' };
+  const fi = new Date(fecha).toLocaleDateString('es-ES', opts);
+  const ff = fecha_fin
+           ? new Date(fecha_fin).toLocaleDateString('es-ES', opts)
+           : null;
 
-  const nombreInforme = 'Porcentaje de horas';
+  // 2) Construir el título dinámico
+  const nombreInforme = `Porcentaje de horas de asistencia (${fi}`
+        + (ff ? ` – ${ff}` : '')
+        + `)`;
   db.run(
     `INSERT INTO informes (informe, grupo_id, instrumento_id, fecha)
      VALUES (?, ?, ?, ?)`,
@@ -511,5 +539,4 @@ router.post('/horas/guardar', isAuthenticated, (req, res) => {
     }
   );
 });
-
 module.exports = router;

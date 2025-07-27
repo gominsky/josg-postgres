@@ -6,7 +6,6 @@
   const fechaFormateada = new Date(fecha).toLocaleDateString('es-ES', opcionesFecha);
   const fechaFinFormateada = fecha_fin ? new Date(fecha_fin).toLocaleDateString('es-ES', opcionesFecha) : null;
 %>
-
 <h1 class="h1-titulo text-center mb-4">
   Porcentaje de horas de asistencia
   (<%= fechaFormateada %><% if (fechaFinFormateada) { %> – <%= fechaFinFormateada %><% } %>)
@@ -16,7 +15,7 @@
 </p>
 
 <div class="text-center mb-4">
-  <form action="/informes/horas/guardar" method="POST" class="d-inline-block" style="background-color: transparent";>
+  <form action="/informes/horas/guardar" method="POST" class="d-inline-block" style="background-color: transparent;">
     <input type="hidden" name="fecha" value="<%= fecha %>">
     <input type="hidden" name="fecha_fin" value="<%= fecha_fin %>">
     <input type="hidden" name="grupo" value="<%= grupo %>">

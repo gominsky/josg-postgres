@@ -3,14 +3,13 @@
 
 <div class="container my-4">
   <div class="row g-4">
-
     <!-- Filtros del informe -->
     <div class="col-md-5">
       <div class="formulario-centrado p-3 rounded">
         <form action="/informes/ficha/filtrar" method="POST" id="form-filtrar">
-          <h2 class="h5 mb-3 text-dark text-center fw-bold">Filtros</h2>
+          <h2 class="h5 mb-3 text-dark text-center fw-bold">Listado dinámico</h2>
           <div class="mb-2">
-            <label class="form-label form-label-sm fw-bold">Nombre (informes dinámicos)</label>
+            <label class="form-label form-label-sm fw-bold">Nombre</label>
              <input type="text" name="nombre_informe" class="form-control form-control-sm">
             <!--<input type="text" name="nombre_informe" class="form-control form-control-sm" required value="<%= nombreInforme || '' %>">-->
           </div>
@@ -39,13 +38,9 @@
           <div class="mb-2">
             <label class="form-label form-label-sm fw-bold">Fecha</label>
             <input type="date" name="fecha" class="form-control form-control-sm" id="fecha-input" required value="<%= fechaHoy %>">
-            <label class="form-label form-label-sm fw-bold">Fecha fin</label>
-            <input type="date" name="fecha_fin" class="form-control form-control-sm" id="fecha-fin-input" value="<%= typeof fecha_fin !== 'undefined' ? fecha_fin : fechaHoy %>">
           </div>
-
           <div class="d-flex justify-content-center gap-2 mb-3">
-            <button type="submit" class="btn-main-blanco fw-bold px-3 py-1">Informe dinámico</button>
-            <button formaction="/informes/horas" formmethod="GET" class="btn-main-blanco fw-bold px-3 py-1">Porcentaje de horas</button>
+            <button type="submit" class="btn-main-blanco fw-bold px-3 py-1">Crear listado</button>
           </div>
         </form>
       </div>
@@ -66,7 +61,6 @@
           <input type="hidden" name="instrumento_id" value="<%= instrumentoSeleccionado %>">
           <input type="hidden" name="profesor_id" value="<%= profesorSeleccionado %>">
           <input type="hidden" name="fecha" value="<%= fechaHoy %>">
-          <input type="hidden" name="fecha_fin" value="<%= typeof fecha_fin !== 'undefined' ? fecha_fin : fechaHoy %>">
           <input type="hidden" name="resultados" id="resultados-json">
           <input type="hidden" name="campos_json" id="campos-json">
 
@@ -167,7 +161,7 @@
           });
         </script>
       <% } else { %>
-        <p class="mensaje-error">Generador de informes</p>
+        <p class="mensaje-error">Generador de listados dinámicos</p>
       <% } %>
     </div>
   </div>

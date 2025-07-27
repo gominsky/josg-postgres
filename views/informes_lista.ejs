@@ -4,8 +4,12 @@
 <div class="container mt-4">
   <div class="d-flex justify-content-between align-items-center mb-3">
     <h1 class="h1-titulo"><%= title %></h1>
-    <a href="/informes/ficha" class="btn-main">+ Nuevo informe</a>
+    <div>
+      <a href="/informes/certificados" class="btn-main me-2">+ Informes y Certificados</a>
+      <a href="/informes/ficha" class="btn-main">+ Listado dinámico</a>
+    </div>
   </div>
+
   <div class="d-flex justify-content-center mb-4">
     <form id="busqueda-form">
       <div class="campo-filtro">
@@ -33,8 +37,8 @@
             <tr class="fila-enlace clickable-row" onclick="location.href='/informes/detalle/<%= i.id %>'">
               <td><%= i.informe %></td>
               <td><%= new Date(i.fecha).toLocaleDateString('es-ES') %></td>
-              <td><%= i.grupo %></td>
-              <td><%= i.instrumento %></td>
+              <td><%= i.grupo || '—' %></td>
+              <td><%= i.instrumento || '—' %></td>
             </tr>
           <% }) %>
         </tbody>

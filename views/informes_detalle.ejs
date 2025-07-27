@@ -1,5 +1,7 @@
 <% title = 'Detalle del Informe' %>
 <% hero = false %>
+<% // Flag que indica si es informe dinámico (true) o estático (false) %>
+<% const isDinamico = typeof dynamic !== 'undefined' ? dynamic : false; %>
 
 <div class="row align-items-start mb-3">
   <!-- Columna izquierda -->
@@ -13,13 +15,9 @@
   </div>
   <!-- Columna derecha -->
   <div class="col-md-3 d-flex justify-content-end align-items-center gap-3">
-    <a href="/informes/pdf/<%= informe.id %>" class="btn-main">
-      <div>Exportar PDF</div>
-    </a>
+    <a href="/informes/pdf/<%= informe.id %>" class="btn-main"><div>Exportar PDF</div></a>
     <form method="POST" action="/informes/eliminar/<%= informe.id %>" onsubmit="return confirm('¿Eliminar informe completo?')" style="background-color: transparent;">
-      <button type="submit" class="btn-main">
-        <div>Eliminar informe</div>
-      </button>
+      <button type="submit" class="btn-main"><div>Eliminar informe</div></button>
     </form>
   </div>
 </div>
@@ -32,22 +30,29 @@
       <button type="button" class="btn-main" onclick="addCampo()">+ Añadir campo</button>
     </div>
   <% } %>
+
   <div class="table-responsive">
     <table class="table table-bordered table-sm align-middle text-center">
       <thead class="table-light">
         <tr>
           <th>Alumno</th>
-          <% campos.slice(1).forEach(campo => { %>
-            <th><%= campo.nombre %></th>
-          <% }) %>
+          <% if (isDinamico) { %>
+            <% campos.forEach(campo => { %>
+              <th><%= campo.nombre %></th>
+            <% }) %>
+          <% } else { %>
+            <% campos.slice(1).forEach(campo => { %>
+              <th><%= campo.nombre %></th>
+            <% }) %>
+          <% } %>
           <th>Acciones</th>
         </tr>
       </thead>
       <tbody id="tabla-resultados-body">
         <% filas.forEach((fila, filaIndex) => { %>
           <tr>
-                        <td class="text-start"><%= fila.apellidos %>, <%= fila.nombre %></td>
-            <% campos.slice(1).forEach(campo => {
+            <td class="text-start"><%= fila.apellidos %>, <%= fila.nombre %></td>
+            <% (isDinamico ? campos : campos.slice(1)).forEach(campo => {
                  const valor = fila.valores[campo.id] || '';
                  const name = `r_${fila.alumno_id !== null ? fila.alumno_id : 'null'}_${fila.fila ?? filaIndex}_${campo.id}`;
             %>
@@ -57,7 +62,7 @@
                 <% } else if (campo.tipo === 'numero') { %>
                   <input type="number" step="0.01" class="form-control form-control-sm" name="<%= name %>" value="<%= valor %>">
                 <% } else if (campo.tipo === 'booleano') { %>
-                  <input type="checkbox" class="form-check-input" name="<%= name %>" <%= valor === '1' ? 'checked' : '' %> >
+                  <input type="checkbox" class="form-check-input" name="<%= name %>" <%= valor === '1' ? 'checked' : '' %>>
                 <% } else { %>
                   <input type="text" class="form-control form-control-sm" name="<%= name %>" value="<%= valor %>">
                 <% } %>
@@ -84,6 +89,7 @@
 <script>
   let nextFila = <%= filas.length %>;
   const campos = <%- JSON.stringify(campos) %>;
+  const isDinamico = <%= isDinamico %>;
 
   function addCampo() {
     const tbody = document.getElementById('tabla-resultados-body');
@@ -91,7 +97,7 @@
     const id = nextFila++;
 
     let html = '';
-    campos.slice(1).forEach(campo => {
+    (isDinamico ? campos : campos.slice(1)).forEach(campo => {
       const name = `r_null_${id}_${campo.id}`;
       if (campo.tipo === 'texto') html += `<td><input type="text" class="form-control form-control-sm" name="${name}"></td>`;
       else if (campo.tipo === 'numero') html += `<td><input type="number" step="0.01" class="form-control form-control-sm" name="${name}"></td>`;
@@ -109,10 +115,10 @@
       const match = el.name.match(/^r_(.+?)_(.+?)_(\d+)$/);
       if (!match) return;
       const alumno_id = match[1] !== 'null' ? parseInt(match[1]) : null;
-      const fila = isNaN(match[2]) ? null : parseInt(match[2]);
+      const filaIdx = isNaN(match[2]) ? null : parseInt(match[2]);
       const campo_id = parseInt(match[3]);
       const valor = el.type === 'checkbox' ? (el.checked ? '1' : '0') : el.value;
-      resultados.push({ alumno_id, fila, campo_id, valor });
+      resultados.push({ alumno_id, fila: filaIdx, campo_id, valor });
     });
     document.getElementById('resultados-json').value = JSON.stringify(resultados);
   });

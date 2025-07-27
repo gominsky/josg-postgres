@@ -273,18 +273,67 @@ router.post('/guardar', (req, res) => {
 });
 
 // POST: Eliminar guardia
+// POST: Eliminar guardia y actualizar contadores
 router.post('/eliminar/:id', (req, res) => {
   const guardiaId = req.params.id;
-  const { desde, hasta, grupo } = req.query;   // ← incluimos grupo
+  const { desde, hasta, grupo } = req.query;
 
-  // … lógica de borrado y decremento …
-  // Al final, reconstrimos igual:
-  const params = [];
-  if (desde) params.push(`desde=${encodeURIComponent(desde)}`);
-  if (hasta) params.push(`hasta=${encodeURIComponent(hasta)}`);
-  if (grupo)  params.push(`grupo=${encodeURIComponent(grupo)}`);
-  const qs = params.length ? `?${params.join('&')}` : '';
-  res.redirect('/guardias' + qs);
+  // 1) Recuperar los alumnos de esa guardia
+  db.get(
+    `SELECT alumno_id_1, alumno_id_2
+       FROM guardias
+      WHERE id = ?`,
+    [guardiaId],
+    (err, fila) => {
+      if (err || !fila) {
+        console.error('Error obteniendo guardia:', err);
+        req.session.error = 'No se pudo encontrar la guardia';
+        return res.redirect('/guardias');
+      }
+
+      const { alumno_id_1, alumno_id_2 } = fila;
+
+      // 2) Borrar la guardia
+      db.run(
+        `DELETE FROM guardias WHERE id = ?`,
+        [guardiaId],
+        function (err2) {
+          if (err2) {
+            console.error('Error eliminando guardia:', err2);
+            req.session.error = 'Error al eliminar la guardia';
+            return res.redirect('/guardias');
+          }
+
+          // 3) Decrementar el contador de guardias de cada alumno
+          if (alumno_id_1) {
+            db.run(
+              `UPDATE alumnos
+                  SET guardias_actual = MAX(guardias_actual - 1, 0)
+                WHERE id = ?`,
+              [alumno_id_1]
+            );
+          }
+          if (alumno_id_2) {
+            db.run(
+              `UPDATE alumnos
+                  SET guardias_actual = MAX(guardias_actual - 1, 0)
+                WHERE id = ?`,
+              [alumno_id_2]
+            );
+          }
+
+          // 4) Reconstruir query-string y redirigir
+          const params = [];
+          if (desde) params.push(`desde=${encodeURIComponent(desde)}`);
+          if (hasta) params.push(`hasta=${encodeURIComponent(hasta)}`);
+          if (grupo)  params.push(`grupo=${encodeURIComponent(grupo)}`);
+          const qs = params.length ? `?${params.join('&')}` : '';
+          req.session.mensaje = 'Guardia eliminada correctamente ✅';
+          res.redirect('/guardias' + qs);
+        }
+      );
+    }
+  );
 });
 
 router.post('/generar-multiples', (req, res) => {
