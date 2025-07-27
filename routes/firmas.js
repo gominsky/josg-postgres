@@ -49,20 +49,20 @@ router.post('/login', (req, res) => {
 router.post('/', (req, res) => {
   const { alumno_id, evento_id, token, ubicacion } = req.body;
 
-  // Validar evento y token
   const eventoSQL = `SELECT * FROM eventos WHERE id = ? AND token = ? AND activo = 1`;
   db.get(eventoSQL, [evento_id, token], (err, evento) => {
     if (err || !evento) return res.status(400).json({ error: 'Evento no válido o inactivo' });
 
-    // Verificar si ya firmó
-    const checkSQL = `SELECT * FROM asistencias WHERE alumno_id = ? AND evento_id = ?`;
-    db.get(checkSQL, [alumno_id, evento_id], (err, asistenciaExistente) => {
-      if (asistenciaExistente) {
+    const checkSQL = `SELECT COUNT(*) AS total FROM asistencias WHERE alumno_id = ? AND evento_id = ?`;
+    db.get(checkSQL, [alumno_id, evento_id], (err, row) => {
+      if (err) return res.status(500).json({ error: 'Error al verificar asistencia previa' });
+      if (row.total > 0) {
         return res.status(400).json({ error: 'Ya se ha firmado asistencia para este evento' });
       }
 
-      const fecha = new Date().toISOString().split('T')[0];
-      const hora = new Date().toLocaleTimeString();
+      const now = new Date();
+      const fecha = now.toISOString().split('T')[0];
+      const hora = now.toTimeString().split(' ')[0]; // formato 24h HH:MM:SS
 
       const insertSQL = `
         INSERT INTO asistencias (alumno_id, evento_id, fecha, hora, tipo, ubicacion)

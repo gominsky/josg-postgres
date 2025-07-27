@@ -15,13 +15,20 @@
       font-size: 1.1rem;
     }
     .asistencia-detalle {
-      margin-top: 0.3rem;
-      color: #555;
+      margin-top: 0.4rem;
+      color: #333;
       font-size: 0.95rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
     }
     .asistencia-detalle span {
-      display: inline-block;
-      margin-right: 1.2rem;
+      flex: 1 1 40%;
+    }
+    @media (max-width: 500px) {
+      .asistencia-detalle span {
+        flex: 1 1 100%;
+      }
     }
   </style>
 </head>
@@ -38,6 +45,19 @@
   <script>
     const evento_id = new URLSearchParams(location.search).get("id");
 
+    function formatearFecha(fechaStr) {
+      const [anio, mes, dia] = fechaStr.split('-');
+      return `${dia}/${mes}/${anio}`;
+    }
+
+    function formatearHora(horaStr) {
+      const partes = horaStr.split(":");
+      if (partes.length >= 2) {
+        return `${partes[0].padStart(2, '0')}:${partes[1].padStart(2, '0')}`;
+      }
+      return horaStr;
+    }
+
     async function cargarAsistencias() {
       const res = await fetch(`/control_firmas/api/eventos/${evento_id}/asistencias`);
       const asistencias = await res.json();
@@ -46,8 +66,8 @@
         <div class="asistencia-item">
           <div class="asistencia-nombre">${a.nombre} ${a.apellidos}</div>
           <div class="asistencia-detalle">
-            <span><strong>Fecha:</strong> ${a.fecha}</span>
-            <span><strong>Hora:</strong> ${a.hora}</span>
+            <span><strong>Fecha:</strong> ${formatearFecha(a.fecha)}</span>
+            <span><strong>Hora:</strong> ${formatearHora(a.hora)}</span>
             <span><strong>Tipo:</strong> ${a.tipo}</span>
             <span><strong>Ubicación:</strong> ${a.ubicacion ? `<a href='https://www.google.com/maps?q=${a.ubicacion}' target='_blank'>Ver</a>` : 'Sin datos'}</span>
           </div>
@@ -61,4 +81,3 @@
   </script>
 </body>
 </html>
-
