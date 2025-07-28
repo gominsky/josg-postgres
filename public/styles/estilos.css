@@ -149,6 +149,21 @@ select {
   color: #FF9501;           /* texto naranja oscuro */
   border: 1px solid  #FF9501;  /* borde naranja */
 }
+.cerrar-sesion-icono {
+  position: fixed;
+  bottom: 10px;  /* Más abajo */
+  right: 20px;   /* Mover a la derecha */
+  z-index: 1000;
+  width: 40px;
+  height: 40px;
+}
+.cerrar-sesion-icono img {
+  width: 100%;
+  height: auto;
+  cursor: pointer;
+}
+
+
 /* HEADER ********************************************************************/
 /* Header de la aplicación */
 .header-simple {

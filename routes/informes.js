@@ -3,7 +3,10 @@ const express = require('express');
 const router = express.Router();
 const db = require('../database/db');
 const PDFDocument = require('pdfkit');
+const ejs = require('ejs');
+const path = require('path');
 const util = require('util'); 
+const fs   = require('fs');
 const { isAuthenticated } = require('../middleware/auth');
 // Redirigir a lista
 router.get('/', (req, res) => {
@@ -220,87 +223,112 @@ db.get(
 // routes/informes.js
 router.get('/detalle/:id', (req, res) => {
   const id = req.params.id;
-
-  // 1) Obtenemos el informe, incluyendo nombre de grupo e instrumento (o null)
   db.get(`
-    SELECT 
-      i.*,
-      g.nombre AS grupo,
-      inst.nombre AS instrumento
+    SELECT i.*, g.nombre AS informeGrupo, inst.nombre AS informeInstrumento
     FROM informes i
-    LEFT JOIN grupos g        ON i.grupo_id       = g.id
+    LEFT JOIN grupos g ON i.grupo_id = g.id
     LEFT JOIN instrumentos inst ON i.instrumento_id = inst.id
     WHERE i.id = ?
   `, [id], (err, informe) => {
     if (err || !informe) return res.status(404).send('Informe no encontrado');
 
-    // 2) Calculamos dos flags para la vista
-    const showGroup      = informe.grupo      !== null;
-    const showInstrument = informe.instrumento !== null;
+    const showGroup      = informe.grupo_id      != null;
+    const showInstrument = informe.instrumento_id != null;
 
-    // 3) Cargamos los campos definidos para este informe
-    db.all(`
-      SELECT * 
-      FROM informe_campos 
-      WHERE informe_id = ? 
-      ORDER BY id
-    `, [id], (errCampos, campos) => {
-      if (errCampos) return res.status(500).send('Error al obtener campos');
+    db.all(`SELECT * FROM informe_campos WHERE informe_id = ? ORDER BY id`, [id], (errC, campos) => {
+      if (errC) return res.status(500).send('Error al obtener campos');
 
-      // 4) Traemos todos los resultados guardados
       db.all(`
-        SELECT 
-          ir.*,
-          a.nombre,
-          a.apellidos
+        SELECT ir.*, a.nombre, a.apellidos
         FROM informe_resultados ir
         LEFT JOIN alumnos a ON ir.alumno_id = a.id
-        WHERE ir.informe_id = ?
-          AND (a.id IS NULL OR a.activo = 1)
-      `, [id], (errRes, resultados) => {
-        if (errRes) return res.status(500).send('Error al obtener resultados');
+        WHERE ir.informe_id = ? AND (a.id IS NULL OR a.activo = 1)
+      `, [id], (errR, resultados) => {
+        if (errR) return res.status(500).send('Error al obtener resultados');
 
-        // 5) Agrupamos por alumno o por fila libre
+        // 1) Agrupar por fila/alumno
         const filasMap = {};
         resultados.forEach(r => {
-          const clave = r.alumno_id !== null ? `a_${r.alumno_id}` : `f_${r.fila}`;
-          if (!filasMap[clave]) {
-            filasMap[clave] = {
+          const key = r.alumno_id !== null ? `a_${r.alumno_id}` : `f_${r.fila}`;
+          if (!filasMap[key]) {
+            filasMap[key] = {
               alumno_id: r.alumno_id,
               fila:       r.fila,
-              nombre:     r.nombre     || '',
-              apellidos:  r.apellidos  || '',
+              nombre:     r.nombre || '',
+              apellidos:  r.apellidos || '',
               valores:    {}
             };
           }
-          filasMap[clave].valores[r.campo_id] = r.valor;
+          filasMap[key].valores[r.campo_id] = r.valor;
         });
-        const filas = Object.values(filasMap).sort((a, b) => {
-          if (a.alumno_id && b.alumno_id) {
-            return a.apellidos.localeCompare(b.apellidos) || a.nombre.localeCompare(b.nombre);
-          } else if (!a.alumno_id && !b.alumno_id) {
-            return (a.fila || 0) - (b.fila || 0);
-          } else {
-            return a.alumno_id ? -1 : 1;
-          }
+        let filas = Object.values(filasMap);
+
+        // 2) Enriquecer cada fila con los grupos e instrumentos del alumno
+        const promesas = filas.map(f => {
+          if (!f.alumno_id) return Promise.resolve(f);
+          return Promise.all([
+            new Promise((ok, ko) => {
+              db.all(
+                `SELECT g.nombre
+                   FROM grupos g
+                   JOIN alumno_grupo ag ON ag.grupo_id = g.id
+                   WHERE ag.alumno_id = ?
+                   ORDER BY g.nombre`,
+                [f.alumno_id],
+                (e, rows) => e ? ko(e) : ok(rows.map(r=>r.nombre).join(', '))
+              );
+            }),
+            new Promise((ok, ko) => {
+              db.all(
+                `SELECT i.nombre
+                   FROM instrumentos i
+                   JOIN alumno_instrumento ai ON ai.instrumento_id = i.id
+                   WHERE ai.alumno_id = ?
+                   ORDER BY i.nombre`,
+                [f.alumno_id],
+                (e, rows) => e ? ko(e) : ok(rows.map(r=>r.nombre).join(', '))
+              );
+            })
+          ]).then(([grupos, instrumentos]) => ({
+            ...f,
+            grupos,
+            instrumentos
+          }));
         });
 
-        const tieneAlumnos = filas.some(f => f.alumno_id !== null);
+        Promise.all(promesas)
+          .then(filasEnriquecidas => {
+            // 3) Ordenar
+            filasEnriquecidas.sort((a, b) => {
+              if (a.alumno_id && b.alumno_id) {
+                return a.apellidos.localeCompare(b.apellidos) || a.nombre.localeCompare(b.nombre);
+              }
+              if (!a.alumno_id && !b.alumno_id) {
+                return (a.fila || 0) - (b.fila || 0);
+              }
+              return a.alumno_id ? -1 : 1;
+            });
 
-        // 6) Renderizamos pasando los flags
-        res.render('informes_detalle', {
-          informe,
-          campos,
-          filas,
-          tieneAlumnos,
-          showGroup,
-          showInstrument
-        });
+            const tieneAlumnos = filasEnriquecidas.some(f => f.alumno_id !== null);
+
+            // 4) Renderizar enviando showGroup/showInstrument
+            res.render('informes_detalle', {
+              informe,
+              campos,
+              filas: filasEnriquecidas,
+              tieneAlumnos,
+              showGroup,
+              showInstrument
+            });
+          })
+          .catch(e => {
+            console.error('Error enriqueciendo filas:', e);
+            res.status(500).send('Error procesando informe');
+          });
       });
     });
   });
 });
-
 router.post('/detalle/:id', (req, res) => {
   const id = req.params.id;
   const resultados = JSON.parse(req.body.resultados || '[]');
@@ -631,4 +659,164 @@ router.post('/horas/guardar', isAuthenticated, (req, res) => {
     }
   );
 });
+router.get('/pdf/:id', (req, res) => {
+  const id = req.params.id;
+
+  // 1) Carga informe y metadatos
+  db.get(`
+    SELECT i.*, 
+           g.nombre AS informeGrupo, 
+           inst.nombre AS informeInstrumento
+    FROM informes i
+    LEFT JOIN grupos g ON i.grupo_id = g.id
+    LEFT JOIN instrumentos inst ON i.instrumento_id = inst.id
+    WHERE i.id = ?
+  `, [id], (err, informe) => {
+    if (err || !informe) return res.status(404).send('Informe no encontrado');
+
+    const showGroup      = informe.grupo_id      != null;
+    const showInstrument = informe.instrumento_id != null;
+
+    // 2) Campos
+    db.all(`SELECT * FROM informe_campos WHERE informe_id = ? ORDER BY id`, [id], (errC, campos) => {
+      if (errC) return res.status(500).send('Error al obtener campos');
+
+      // 3) Resultados crudos
+      db.all(`
+        SELECT ir.*, a.nombre, a.apellidos
+        FROM informe_resultados ir
+        LEFT JOIN alumnos a ON ir.alumno_id = a.id
+        WHERE ir.informe_id = ?
+          AND (a.id IS NULL OR a.activo = 1)
+      `, [id], (errR, resultados) => {
+        if (errR) return res.status(500).send('Error al obtener resultados');
+
+        // ───── Agrupar ─────
+        const filasMap = {};
+        resultados.forEach(r => {
+          const key = r.alumno_id != null ? `a_${r.alumno_id}` : `f_${r.fila}`;
+          if (!filasMap[key]) {
+            filasMap[key] = {
+              alumno_id: r.alumno_id,
+              fila:       r.fila,
+              nombre:     r.nombre || '',
+              apellidos:  r.apellidos || '',
+              valores:    {}
+            };
+          }
+          filasMap[key].valores[r.campo_id] = r.valor;
+        });
+        let filas = Object.values(filasMap);
+
+        // ───── Enriquecer ─────
+        const promesas = filas.map(f => {
+          if (!f.alumno_id) return Promise.resolve(f);
+          const pG = new Promise((ok, ko) => {
+            db.all(
+              `SELECT g.nombre
+                 FROM grupos g
+                 JOIN alumno_grupo ag ON ag.grupo_id = g.id
+                WHERE ag.alumno_id = ? ORDER BY g.nombre`,
+              [f.alumno_id],
+              (e, rows) => e ? ko(e) : ok(rows.map(r=>r.nombre).join(', '))
+            );
+          });
+          const pI = new Promise((ok, ko) => {
+            db.all(
+              `SELECT i.nombre
+                 FROM instrumentos i
+                 JOIN alumno_instrumento ai ON ai.instrumento_id = i.id
+                WHERE ai.alumno_id = ? ORDER BY i.nombre`,
+              [f.alumno_id],
+              (e, rows) => e ? ko(e) : ok(rows.map(r=>r.nombre).join(', '))
+            );
+          });
+          return Promise.all([pG, pI]).then(
+            ([grupos, instrumentos]) => ({ ...f, grupos, instrumentos })
+          );
+        });
+
+        Promise.all(promesas)
+          .then(filasFinal => {
+            // ───── Ordenar ─────
+            filasFinal.sort((a, b) => {
+              if (a.alumno_id && b.alumno_id) {
+                return a.apellidos.localeCompare(b.apellidos) || a.nombre.localeCompare(b.nombre);
+              } else if (!a.alumno_id && !b.alumno_id) {
+                return (a.fila||0) - (b.fila||0);
+              }
+              return a.alumno_id ? -1 : 1;
+            });
+
+            // ───── Render header/footer ─────
+            const headerTpl = path.join(__dirname, '../views/pdf-header.ejs');
+            const footerTpl = path.join(__dirname, '../views/pdf-footer.ejs');
+
+            ejs.renderFile(headerTpl, {}, {}, (eH, headerHtml) => {
+              if (eH) console.error(eH);
+              ejs.renderFile(footerTpl, {}, {}, (eF, footerHtml) => {
+                if (eF) console.error(eF);
+
+                // ───── Generar PDF ─────
+                res.setHeader('Content-Disposition', `attachment; filename="informe_${id}.pdf"`);
+                res.setHeader('Content-Type', 'application/pdf');
+                const doc = new PDFDocument({ margin: 40, size: 'A4' });
+                doc.pipe(res);
+
+                // Header
+                doc.fontSize(10).text(headerHtml, { align: 'left' }).moveDown();
+
+                // Título y subt
+                doc.fontSize(16).text(informe.informe, { align: 'center' }).moveDown(0.5);
+                doc.fontSize(10).text(`Fecha: ${new Date(informe.fecha).toLocaleDateString('es-ES')}`);
+                if (showGroup)      doc.text(`Grupo: ${informe.informeGrupo}`);
+                if (showInstrument) doc.text(`Instrumento: ${informe.informeInstrumento}`);
+                doc.moveDown();
+
+                // Tabla
+                const startX = doc.x;
+                const colWidths = [150,100,100].concat(campos.map(()=>80));
+                const headers   = ['Alumno','Grupo','Instrumento'].concat(campos.map(c=>c.nombre));
+                headers.forEach((h,i) => {
+                  doc.font('Helvetica-Bold').fontSize(9)
+                     .text(h, startX + colWidths.slice(0,i).reduce((a,b)=>a+b,0),
+                           doc.y, { width: colWidths[i], align: 'center' });
+                });
+                doc.moveDown(0.5);
+
+                filasFinal.forEach(f => {
+                  const alumno = f.alumno_id ? `${f.apellidos}, ${f.nombre}` : '—';
+                  const grp    = f.grupos      || '—';
+                  const inst   = f.instrumentos|| '—';
+                  const vals   = campos.map(c=>f.valores[c.id]||'');
+                  [alumno,grp,inst].concat(vals).forEach((txt,i) => {
+                    doc.font('Helvetica').fontSize(8)
+                       .text(txt, startX + colWidths.slice(0,i).reduce((a,b)=>a+b,0),
+                             doc.y, { width: colWidths[i], align: 'center' });
+                  });
+                  doc.moveDown(0.4);
+                });
+                doc.moveDown();
+
+                // Pie
+                doc.fontSize(8).fillColor('gray')
+                   .text(`Generado ${new Date().toLocaleDateString('es-ES')} a las ${new Date().toLocaleTimeString('es-ES')}`, { align: 'right' })
+                   .moveDown();
+
+                doc.fontSize(9).fillColor('black').text(footerHtml, { align: 'center' });
+
+                doc.end();
+              }); // fin ejs.renderFile footer
+            });   // fin ejs.renderFile header
+          })     // fin Promise.all filas
+          .catch(e => {
+            console.error(e);
+            res.status(500).send('Error procesando informe');
+          });
+
+      }); // fin db.all resultados
+    });   // fin db.all campos
+  });     // fin db.get informe
+});       // fin router.get
+
 module.exports = router;

@@ -1,27 +1,24 @@
 <% title = 'Detalle del Informe' %>
-<% hero = false %>
-<% 
-  // Por si acaso no llegan definidas:
-  const showGroup      = typeof showGroup      !== 'undefined' ? showGroup      : false;
-  const showInstrument = typeof showInstrument !== 'undefined' ? showInstrument : false;
-
-  // Determinas qué campos mostrar (por ejemplo, para el porcentaje cortas el primero)
-  const isHoras      = informe.informe.startsWith('Porcentaje de horas de asistencia');
+<% hero  = false %>
+<%
+  // Determina si es informe estático de porcentaje
+  const isHoras       = informe.informe.startsWith('Porcentaje de horas de asistencia');
+  // Si es porcentaje, omitimos el primer campo (Alumno), si no, mostramos todos
   const camposMostrar = isHoras ? campos.slice(1) : campos;
 %>
+
 <div class="row align-items-start mb-3">
   <div class="col-md-8 offset-md-1">
     <h1 class="h1-titulo mb-2"><%= informe.informe %></h1>
     <ul class="list-unstyled texto-base mb-0">
-  <li><strong>Fecha:</strong> <%= new Date(informe.fecha).toLocaleDateString('es-ES') %></li>
-  <% if (showGroup) { %>
-    <li><strong>Grupo:</strong> <%= informe.grupo %></li>
-  <% } %>
-  <% if (showInstrument) { %>
-    <li><strong>Instrumento:</strong> <%= informe.instrumento %></li>
-  <% } %>
-</ul>
-
+      <li><strong>Fecha:</strong> <%= new Date(informe.fecha).toLocaleDateString('es-ES') %></li>
+      <% if (showGroup) { %>
+        <li><strong>Grupo:</strong> <%= informe.informeGrupo %></li>
+      <% } %>
+      <% if (showInstrument) { %>
+        <li><strong>Instrumento:</strong> <%= informe.informeInstrumento %></li>
+      <% } %>
+    </ul>
   </div>
   <div class="col-md-3 d-flex justify-content-end align-items-center gap-3">
     <form method="POST" action="/informes/eliminar/<%= informe.id %>" onsubmit="return confirm('¿Eliminar informe completo?')" style="background-color: transparent;">
@@ -39,15 +36,25 @@
     </div>
   <% } %>
 
+  <!-- Botones para ocultar/mostrar columnas -->
+  <div class="text-end mb-2">
+    <button id="toggleGrupo" type="button" class="btn btn-sm btn-outline-secondary me-2">
+      Ocultar/Mostrar Grupo
+    </button>
+    <button id="toggleInst" type="button" class="btn btn-sm btn-outline-secondary">
+      Ocultar/Mostrar Instrumento
+    </button>
+  </div>
+
   <div class="table-responsive">
-    <table class="table table-bordered table-sm align-middle text-center">
+    <table class="tabla-estilizada table-sm align-middle text-center">
       <thead class="table-light">
         <tr>
-          <th>Alumno</th>
-          <% if (showGroup) { %><th>Grupo</th><% } %>
-          <% if (showInstrument) { %><th>Instrumento</th><% } %>
+          <th class="sortable" style="width: 200px; min-width: 200px; text-align: left;">Alumno</th>
+          <th class="col-grupo sortable">Grupo</th>
+          <th class="col-inst sortable">Instrumento</th>
           <% camposMostrar.forEach(campo => { %>
-            <th><%= campo.nombre %></th>
+            <th class="sortable"><%= campo.nombre %></th>
           <% }) %>
           <th>Acciones</th>
         </tr>
@@ -55,9 +62,9 @@
       <tbody id="tabla-resultados-body">
         <% filas.forEach((fila, filaIndex) => { %>
           <tr>
-            <td class="text-start"><%= fila.apellidos %>, <%= fila.nombre %></td>
-            <% if (showGroup) { %><td><%= fila.grupos || '—' %></td><% } %>
-            <% if (showInstrument) { %><td><%= fila.instrumentos || '—' %></td><% } %>
+            <td class="text-start" style="width: 200px; min-width: 200px;"><%= fila.apellidos %>, <%= fila.nombre %></td>
+            <td class="col-grupo"><%= fila.grupos      || '—' %></td>
+            <td class="col-inst"><%= fila.instrumentos || '—' %></td>
             <% camposMostrar.forEach(campo => {
                  const valor = fila.valores[campo.id] || '';
                  const name  = `r_${fila.alumno_id !== null ? fila.alumno_id : 'null'}_${fila.fila ?? filaIndex}_${campo.id}`;
@@ -84,29 +91,67 @@
   </div>
 
   <div class="text-center mt-3 mb-4">
-    <button type="submit" class="btn btn-dark btn-sm">Guardar cambios</button>
+    <!-- Botón Guardar Cambios -->
+    <button type="submit" class="btn btn-dark btn-sm me-2">
+      Guardar cambios
+    </button>
+    <!-- Botón Exportar PDF -->
+    <button type="button" class="btn btn-dark btn-sm" onclick="window.location.href='/informes/pdf/<%= informe.id %>'">
+      Exportar PDF
+    </button>
   </div>
+
 </form>
 
 <div class="volver-bloque-izquierda mb-4">
   <a href="/informes" class="enlace-final">← Volver</a>
 </div>
+<script>
+  document.querySelectorAll('.tabla-estilizada th.sortable').forEach((th, idx) => {
+    let asc = true;
+    th.style.cursor = 'pointer';
+    th.addEventListener('click', () => {
+      const table = th.closest('table');
+      const tbody = table.querySelector('tbody');
+      const rows  = Array.from(tbody.querySelectorAll('tr'));
+      rows.sort((a, b) => {
+        const cellA = a.children[idx].dataset.value ?? a.children[idx].textContent.trim();
+        const cellB = b.children[idx].dataset.value ?? b.children[idx].textContent.trim();
+        const numA  = parseFloat(cellA);
+        const numB  = parseFloat(cellB);
+        let res;
+        if (!isNaN(numA) && !isNaN(numB)) {
+          res = numA - numB;
+        } else {
+          res = String(cellA).localeCompare(cellB);
+        }
+        return asc ? res : -res;
+      });
+      rows.forEach(r => tbody.appendChild(r));
+      asc = !asc;
+    });
+  });
+</script>
 
 <script>
+  // Inyectamos los flags de visibilidad desde el servidor
+  const showGroup      = <%= showGroup ? 'true' : 'false' %>;
+  const showInstrument = <%= showInstrument ? 'true' : 'false' %>;
+
   let nextFila = <%= filas.length %>;
-  const campos      = <%- JSON.stringify(campos) %>;
-  const camposMostrar = <%- JSON.stringify(camposMostrar) %>;
+  const campos       = <%- JSON.stringify(campos) %>;
+  const camposMostrar= <%- JSON.stringify(camposMostrar) %>;
 
   function addCampo() {
     const tbody = document.getElementById('tabla-resultados-body');
     const fila  = document.createElement('tr');
     const id    = nextFila++;
     let html    = `<td class="text-start">-</td>`;
-    if (showGroup)      html += `<td>—</td>`;
-    if (showInstrument) html += `<td>—</td>`;
+    if (showGroup)      html += `<td class="col-grupo">—</td>`;
+    if (showInstrument) html += `<td class="col-inst">—</td>`;
     camposMostrar.forEach(campo => {
       const name = `r_null_${id}_${campo.id}`;
-      if (campo.tipo === 'texto') html += `<td><input type="text" class="form-control form-control-sm" name="${name}"></td>`;
+      if (campo.tipo === 'texto')    html += `<td><input type="text" class="form-control form-control-sm" name="${name}"></td>`;
       else if (campo.tipo === 'numero') html += `<td><input type="number" step="0.01" class="form-control form-control-sm" name="${name}"></td>`;
       else if (campo.tipo === 'booleano') html += `<td><input type="checkbox" class="form-check-input" name="${name}"></td>`;
       else html += `<td><input type="text" class="form-control form-control-sm" name="${name}"></td>`;
@@ -116,7 +161,8 @@
     tbody.appendChild(fila);
   }
 
-  document.getElementById('form-guardar').addEventListener('submit', function(e) {
+  // Recopila los valores antes de enviar
+  document.getElementById('form-guardar').addEventListener('submit', function() {
     const resultados = [];
     document.querySelectorAll('#tabla-resultados-body input').forEach(el => {
       const m = el.name.match(/^r_(.+?)_(.+?)_(\d+)$/);
@@ -129,4 +175,19 @@
     });
     document.getElementById('resultados-json').value = JSON.stringify(resultados);
   });
+
+  // Toggle de columnas de Grupo e Instrumento
+  function toggleCol(selector) {
+    document.querySelectorAll(selector).forEach(el => {
+      el.style.display = (el.style.display === 'none' ? '' : 'none');
+    });
+  }
+
+  document.getElementById('toggleGrupo').addEventListener('click', () => {
+    toggleCol('.col-grupo');
+  });
+  document.getElementById('toggleInst').addEventListener('click', () => {
+    toggleCol('.col-inst');
+  });
 </script>
+
