@@ -1,21 +1,29 @@
 <% title = 'Detalle del Informe' %>
 <% hero = false %>
-<% // Flag que indica si es informe dinámico (true) o estático (false) %>
-<% const isDinamico = typeof dynamic !== 'undefined' ? dynamic : false; %>
+<% 
+  // Por si acaso no llegan definidas:
+  const showGroup      = typeof showGroup      !== 'undefined' ? showGroup      : false;
+  const showInstrument = typeof showInstrument !== 'undefined' ? showInstrument : false;
 
+  // Determinas qué campos mostrar (por ejemplo, para el porcentaje cortas el primero)
+  const isHoras      = informe.informe.startsWith('Porcentaje de horas de asistencia');
+  const camposMostrar = isHoras ? campos.slice(1) : campos;
+%>
 <div class="row align-items-start mb-3">
-  <!-- Columna izquierda -->
   <div class="col-md-8 offset-md-1">
     <h1 class="h1-titulo mb-2"><%= informe.informe %></h1>
     <ul class="list-unstyled texto-base mb-0">
-      <li><strong>Fecha:</strong> <%= new Date(informe.fecha).toLocaleDateString('es-ES') %></li>
-      <li><strong>Grupo:</strong> <%= informe.grupo || 'Ninguno' %></li>
-      <li><strong>Instrumento:</strong> <%= informe.instrumento || 'Ninguno' %></li>
-    </ul>
+  <li><strong>Fecha:</strong> <%= new Date(informe.fecha).toLocaleDateString('es-ES') %></li>
+  <% if (showGroup) { %>
+    <li><strong>Grupo:</strong> <%= informe.grupo %></li>
+  <% } %>
+  <% if (showInstrument) { %>
+    <li><strong>Instrumento:</strong> <%= informe.instrumento %></li>
+  <% } %>
+</ul>
+
   </div>
-  <!-- Columna derecha -->
   <div class="col-md-3 d-flex justify-content-end align-items-center gap-3">
-    <a href="/informes/pdf/<%= informe.id %>" class="btn-main"><div>Exportar PDF</div></a>
     <form method="POST" action="/informes/eliminar/<%= informe.id %>" onsubmit="return confirm('¿Eliminar informe completo?')" style="background-color: transparent;">
       <button type="submit" class="btn-main"><div>Eliminar informe</div></button>
     </form>
@@ -36,15 +44,11 @@
       <thead class="table-light">
         <tr>
           <th>Alumno</th>
-          <% if (isDinamico) { %>
-            <% campos.forEach(campo => { %>
-              <th><%= campo.nombre %></th>
-            <% }) %>
-          <% } else { %>
-            <% campos.slice(1).forEach(campo => { %>
-              <th><%= campo.nombre %></th>
-            <% }) %>
-          <% } %>
+          <% if (showGroup) { %><th>Grupo</th><% } %>
+          <% if (showInstrument) { %><th>Instrumento</th><% } %>
+          <% camposMostrar.forEach(campo => { %>
+            <th><%= campo.nombre %></th>
+          <% }) %>
           <th>Acciones</th>
         </tr>
       </thead>
@@ -52,9 +56,11 @@
         <% filas.forEach((fila, filaIndex) => { %>
           <tr>
             <td class="text-start"><%= fila.apellidos %>, <%= fila.nombre %></td>
-            <% (isDinamico ? campos : campos.slice(1)).forEach(campo => {
+            <% if (showGroup) { %><td><%= fila.grupos || '—' %></td><% } %>
+            <% if (showInstrument) { %><td><%= fila.instrumentos || '—' %></td><% } %>
+            <% camposMostrar.forEach(campo => {
                  const valor = fila.valores[campo.id] || '';
-                 const name = `r_${fila.alumno_id !== null ? fila.alumno_id : 'null'}_${fila.fila ?? filaIndex}_${campo.id}`;
+                 const name  = `r_${fila.alumno_id !== null ? fila.alumno_id : 'null'}_${fila.fila ?? filaIndex}_${campo.id}`;
             %>
               <td>
                 <% if (campo.tipo === 'texto') { %>
@@ -88,16 +94,17 @@
 
 <script>
   let nextFila = <%= filas.length %>;
-  const campos = <%- JSON.stringify(campos) %>;
-  const isDinamico = <%= isDinamico %>;
+  const campos      = <%- JSON.stringify(campos) %>;
+  const camposMostrar = <%- JSON.stringify(camposMostrar) %>;
 
   function addCampo() {
     const tbody = document.getElementById('tabla-resultados-body');
-    const fila = document.createElement('tr');
-    const id = nextFila++;
-
-    let html = '';
-    (isDinamico ? campos : campos.slice(1)).forEach(campo => {
+    const fila  = document.createElement('tr');
+    const id    = nextFila++;
+    let html    = `<td class="text-start">-</td>`;
+    if (showGroup)      html += `<td>—</td>`;
+    if (showInstrument) html += `<td>—</td>`;
+    camposMostrar.forEach(campo => {
       const name = `r_null_${id}_${campo.id}`;
       if (campo.tipo === 'texto') html += `<td><input type="text" class="form-control form-control-sm" name="${name}"></td>`;
       else if (campo.tipo === 'numero') html += `<td><input type="number" step="0.01" class="form-control form-control-sm" name="${name}"></td>`;
@@ -112,12 +119,12 @@
   document.getElementById('form-guardar').addEventListener('submit', function(e) {
     const resultados = [];
     document.querySelectorAll('#tabla-resultados-body input').forEach(el => {
-      const match = el.name.match(/^r_(.+?)_(.+?)_(\d+)$/);
-      if (!match) return;
-      const alumno_id = match[1] !== 'null' ? parseInt(match[1]) : null;
-      const filaIdx = isNaN(match[2]) ? null : parseInt(match[2]);
-      const campo_id = parseInt(match[3]);
-      const valor = el.type === 'checkbox' ? (el.checked ? '1' : '0') : el.value;
+      const m = el.name.match(/^r_(.+?)_(.+?)_(\d+)$/);
+      if (!m) return;
+      const alumno_id = m[1] === 'null' ? null : parseInt(m[1], 10);
+      const filaIdx   = isNaN(m[2]) ? null : parseInt(m[2], 10);
+      const campo_id  = parseInt(m[3], 10);
+      const valor     = el.type === 'checkbox' ? (el.checked ? '1' : '0') : el.value;
       resultados.push({ alumno_id, fila: filaIdx, campo_id, valor });
     });
     document.getElementById('resultados-json').value = JSON.stringify(resultados);

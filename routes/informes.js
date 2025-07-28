@@ -11,22 +11,22 @@ router.get('/', (req, res) => {
 });
 // Formulario inicial
 router.get('/ficha', (req, res) => {
-  db.all('SELECT * FROM grupos ORDER BY nombre', (err1, grupos) => {
-    if (err1) return res.status(500).send('Error al cargar grupos');
-    db.all('SELECT * FROM instrumentos ORDER BY nombre', (err2, instrumentos) => {
-      if (err2) return res.status(500).send('Error al cargar instrumentos');
+  db.all('SELECT * FROM grupos ORDER BY nombre', (e1, grupos) => {
+    if (e1) return res.status(500).send('Error cargando grupos');
+    db.all('SELECT * FROM instrumentos ORDER BY nombre', (e2, instrumentos) => {
+      if (e2) return res.status(500).send('Error cargando instrumentos');
       res.render('informe_form', {
         grupos,
         instrumentos,
-        profesores: [],
-        alumnos: [],
+        alumnos: [],       // sin alumnos al principio
         campos: [],
-        grupoSeleccionado: null,
-        instrumentoSeleccionado: null,
-        profesorSeleccionado: null,
         nombreInforme: '',
-        fechaHoy: new Date().toISOString().split('T')[0],
-        fecha_fin: new Date().toISOString().split('T')[0]
+        grupoSeleccionado: 'todos',
+        instrumentoSeleccionado: 'todos',
+        fechaHoy:    new Date().toISOString().split('T')[0],
+        // **Estos dos son claves:**
+        showGroup: false,
+        showInstrument: false
       });
     });
   });
@@ -182,55 +182,99 @@ router.post('/ficha/guardar-json', (req, res) => {
 
   } else {
     // 🆕 Si es un nuevo informe
-    db.run(`
-      INSERT INTO informes (informe, grupo_id, instrumento_id, fecha)
-      VALUES (?, ?, ?, ?)
-    `, [nombre_informe, grupoIdFinal, instrumentoIdFinal, fecha], function (err) {
-      if (err) return res.status(500).send('Error al guardar informe nuevo');
-      guardarResultadosYCampos(this.lastID);
-    });
+   // 🆕 Si es un nuevo informe
+db.get(
+  `SELECT id 
+     FROM informes 
+    WHERE informe        = ?
+      AND (grupo_id      IS ? OR grupo_id      = ?)
+      AND (instrumento_id IS ? OR instrumento_id = ?)
+      AND fecha          = ?`,
+  [
+    nombre_informe,
+    grupoIdFinal, grupoIdFinal,
+    instrumentoIdFinal, instrumentoIdFinal,
+    fecha
+  ],
+  (err, row) => {
+    if (err) return res.status(500).send('Error comprobando duplicados');
+    if (row) {
+      // Ya existía: reutilizamos su id
+      guardarResultadosYCampos(row.id);
+    } else {
+      // No existía: creamos uno nuevo
+      db.run(
+        `INSERT INTO informes (informe, grupo_id, instrumento_id, fecha)
+         VALUES (?, ?, ?, ?)`,
+        [nombre_informe, grupoIdFinal, instrumentoIdFinal, fecha],
+        function (err2) {
+          if (err2) return res.status(500).send('Error al guardar informe nuevo');
+          guardarResultadosYCampos(this.lastID);
+        }
+      );
+    }
   }
+);
+}
 });
+// routes/informes.js
 router.get('/detalle/:id', (req, res) => {
   const id = req.params.id;
 
+  // 1) Obtenemos el informe, incluyendo nombre de grupo e instrumento (o null)
   db.get(`
-  SELECT i.*, g.nombre AS grupo, inst.nombre AS instrumento
-  FROM informes i
-  LEFT JOIN grupos g ON i.grupo_id = g.id
-  LEFT JOIN instrumentos inst ON i.instrumento_id = inst.id
-  WHERE i.id = ?
-`, [id], (err, informe) => {
+    SELECT 
+      i.*,
+      g.nombre AS grupo,
+      inst.nombre AS instrumento
+    FROM informes i
+    LEFT JOIN grupos g        ON i.grupo_id       = g.id
+    LEFT JOIN instrumentos inst ON i.instrumento_id = inst.id
+    WHERE i.id = ?
+  `, [id], (err, informe) => {
     if (err || !informe) return res.status(404).send('Informe no encontrado');
 
-    db.all(`SELECT * FROM informe_campos WHERE informe_id = ? ORDER BY id`, [id], (errCampos, campos) => {
+    // 2) Calculamos dos flags para la vista
+    const showGroup      = informe.grupo      !== null;
+    const showInstrument = informe.instrumento !== null;
+
+    // 3) Cargamos los campos definidos para este informe
+    db.all(`
+      SELECT * 
+      FROM informe_campos 
+      WHERE informe_id = ? 
+      ORDER BY id
+    `, [id], (errCampos, campos) => {
       if (errCampos) return res.status(500).send('Error al obtener campos');
 
+      // 4) Traemos todos los resultados guardados
       db.all(`
-        SELECT ir.*, a.nombre, a.apellidos
+        SELECT 
+          ir.*,
+          a.nombre,
+          a.apellidos
         FROM informe_resultados ir
         LEFT JOIN alumnos a ON ir.alumno_id = a.id
         WHERE ir.informe_id = ?
-        AND (a.id IS NULL OR a.activo = 1)
-      `, [id], (errResultados, resultados) => {
-        if (errResultados) return res.status(500).send('Error al obtener resultados');
+          AND (a.id IS NULL OR a.activo = 1)
+      `, [id], (errRes, resultados) => {
+        if (errRes) return res.status(500).send('Error al obtener resultados');
 
-        // Agrupar por alumno o fila
+        // 5) Agrupamos por alumno o por fila libre
         const filasMap = {};
         resultados.forEach(r => {
           const clave = r.alumno_id !== null ? `a_${r.alumno_id}` : `f_${r.fila}`;
           if (!filasMap[clave]) {
             filasMap[clave] = {
               alumno_id: r.alumno_id,
-              fila: r.fila,
-              nombre: r.nombre || '',
-              apellidos: r.apellidos || '',
-              valores: {}
+              fila:       r.fila,
+              nombre:     r.nombre     || '',
+              apellidos:  r.apellidos  || '',
+              valores:    {}
             };
           }
           filasMap[clave].valores[r.campo_id] = r.valor;
         });
-
         const filas = Object.values(filasMap).sort((a, b) => {
           if (a.alumno_id && b.alumno_id) {
             return a.apellidos.localeCompare(b.apellidos) || a.nombre.localeCompare(b.nombre);
@@ -243,17 +287,20 @@ router.get('/detalle/:id', (req, res) => {
 
         const tieneAlumnos = filas.some(f => f.alumno_id !== null);
 
+        // 6) Renderizamos pasando los flags
         res.render('informes_detalle', {
           informe,
           campos,
           filas,
           tieneAlumnos,
-          dinamic: true
+          showGroup,
+          showInstrument
         });
       });
     });
   });
 });
+
 router.post('/detalle/:id', (req, res) => {
   const id = req.params.id;
   const resultados = JSON.parse(req.body.resultados || '[]');
@@ -277,74 +324,119 @@ router.post('/detalle/:id', (req, res) => {
   });
 });
 router.post('/ficha/filtrar', (req, res) => {
-  const { grupo_id, instrumento_id, nombre_informe, fecha } = req.body;
+  const {
+    nombre_informe,
+    grupo_id,
+    instrumento_id,
+    fecha,
+    fecha_fin,
+    mostrar_grupo,
+    mostrar_instrumento
+  } = req.body;
 
-  // Si es un informe sin alumnos
-  if (grupo_id === 'ninguno') {
-    return db.all('SELECT * FROM grupos ORDER BY nombre', (_, grupos) => {
-      db.all('SELECT * FROM instrumentos ORDER BY nombre', (_, instrumentos) => {
-        res.render('informe_form', {
-          grupos,
-          instrumentos,
-          profesores: [],
-          alumnos: [], // sin alumnos
-          campos: [],
-          grupoSeleccionado: grupo_id,
-          instrumentoSeleccionado: instrumento_id,
-          profesorSeleccionado: null,
-          nombreInforme: nombre_informe,
-          fechaHoy: fecha || new Date().toISOString().split('T')[0],
-          dinamic:true
-        });
-      });
-    });
-  }
+  const showGroup      = !!mostrar_grupo;
+  const showInstrument = !!mostrar_instrumento;
 
-  // Consulta para informe con alumnos
-  let sql = `
+  // 1) Construir SQL base para alumnos activos
+  let sql    = `
     SELECT DISTINCT a.id, a.nombre, a.apellidos
-    FROM alumnos a
-    JOIN alumno_grupo ag ON a.id = ag.alumno_id
-    JOIN alumno_instrumento ai ON a.id = ai.alumno_id
-    WHERE a.activo = 1
+      FROM alumnos a
+ LEFT JOIN alumno_grupo ag       ON a.id = ag.alumno_id
+ LEFT JOIN alumno_instrumento ai ON a.id = ai.alumno_id
+     WHERE a.activo = 1
   `;
-
   const params = [];
 
+  // Filtro por grupo
   if (grupo_id !== 'todos') {
-    sql += ' AND ag.grupo_id = ?';
-    params.push(grupo_id);
+    if (grupo_id === 'ninguno') {
+      sql += ' AND ag.grupo_id IS NULL';
+    } else {
+      sql   += ' AND ag.grupo_id = ?';
+      params.push(grupo_id);
+    }
   }
 
-  if (instrumento_id !== 'todos' && instrumento_id !== 'ninguno') {
-    sql += ' AND ai.instrumento_id = ?';
-    params.push(instrumento_id);
+  // Filtro por instrumento
+  if (instrumento_id !== 'todos') {
+    if (instrumento_id === 'ninguno') {
+      sql += ' AND ai.instrumento_id IS NULL';
+    } else {
+      sql   += ' AND ai.instrumento_id = ?';
+      params.push(instrumento_id);
+    }
   }
 
   sql += ' ORDER BY a.apellidos, a.nombre';
-
-  db.all(sql, params, (err, alumnos) => {
+  // 2) Obtener los alumnos filtrados
+  db.all(sql, params, (err, rows) => {
     if (err) return res.status(500).send('Error al cargar alumnos');
 
-    db.all('SELECT * FROM grupos ORDER BY nombre', (_, grupos) => {
-      db.all('SELECT * FROM instrumentos ORDER BY nombre', (_, instrumentos) => {
-        res.render('informe_form', {
-          grupos,
-          instrumentos,
-          profesores: [],
-          alumnos,
-          campos: [],
-          grupoSeleccionado: grupo_id,
-          instrumentoSeleccionado: instrumento_id,
-          profesorSeleccionado: null,
-          nombreInforme: nombre_informe,
-          fechaHoy: fecha || new Date().toISOString().split('T')[0],
-          dynamic: true
+    // 3) Enriquecer con nombres de grupo e instrumento
+    const promesas = rows.map(a =>
+      new Promise((ok, ko) => {
+        db.all(
+          `SELECT g.nombre
+             FROM grupos g
+             JOIN alumno_grupo ag ON g.id = ag.grupo_id
+            WHERE ag.alumno_id = ?`,
+          [a.id],
+          (e1, grpRows) => {
+            if (e1) return ko(e1);
+            db.all(
+              `SELECT i.nombre
+                 FROM instrumentos i
+                 JOIN alumno_instrumento ai ON i.id = ai.instrumento_id
+                WHERE ai.alumno_id = ?`,
+              [a.id],
+              (e2, instRows) => {
+                if (e2) return ko(e2);
+                ok({
+                  id: a.id,
+                  nombre: a.nombre,
+                  apellidos: a.apellidos,
+                  grupos: grpRows.map(r => r.nombre).join(', '),
+                  instrumentos: instRows.map(r => r.nombre).join(', ')
+                });
+              }
+            );
+          }
+        );
+      })
+    );
+
+    Promise.all(promesas)
+      .then(alumnos => {
+        // 4) Volver a cargar listas para selects de grupo e instrumento
+        db.all('SELECT * FROM grupos ORDER BY nombre', (errG, grupos) => {
+          if (errG) grupos = [];
+          db.all('SELECT * FROM instrumentos ORDER BY nombre', (errI, instrumentos) => {
+            if (errI) instrumentos = [];
+            // 5) Renderizar la vista
+            res.render('informe_form', {
+              grupos,
+              instrumentos,
+              alumnos,
+              campos: [],
+              nombreInforme: nombre_informe,
+              grupoSeleccionado: grupo_id,
+              instrumentoSeleccionado: instrumento_id,
+              profesorSeleccionado: null,
+              fechaHoy: fecha,
+              fecha_fin,
+              showGroup,
+              showInstrument
+            });
+          });
         });
+      })
+      .catch(e => {
+        console.error(e);
+        res.status(500).send('Error al enriquecer datos de alumnos');
       });
-    });
   });
 });
+
 router.post('/eliminar/:id', (req, res) => {
   const id = req.params.id;
 

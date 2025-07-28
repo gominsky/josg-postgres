@@ -3,11 +3,10 @@
 
 <div class="container my-4">
   <div class="row justify-content-center">
-    <div class="col-md-6">
-      <div class="card p-4 shadow-sm">
-        <h2 class="h5 mb-3 text-center fw-bold">Filtros de Informe</h2>
-        <form action="/informes/horas" method="GET" class="formulario-filtro">
-          <div class="mb-3">
+    <div class="col-12">
+      <div class="bg-transparent border-0 p-0 shadow-none">
+        <form action="/informes/horas" method="GET" class="row gx-3 gy-2 align-items-center">
+          <div class="col-auto">
             <label for="grupo" class="form-label fw-bold">Grupo</label>
             <select id="grupo" name="grupo" class="form-select form-select-sm">
               <option value="" selected>Todos</option>
@@ -16,7 +15,7 @@
               <% }) %>
             </select>
           </div>
-          <div class="mb-3">
+          <div class="col-auto">
             <label for="instrumento" class="form-label fw-bold">Instrumento</label>
             <select id="instrumento" name="instrumento" class="form-select form-select-sm">
               <option value="" selected>Todos</option>
@@ -25,15 +24,15 @@
               <% }) %>
             </select>
           </div>
-          <div class="mb-3">
+          <div class="col-auto">
             <label for="fecha" class="form-label fw-bold">Fecha inicio</label>
             <input type="date" id="fecha" name="fecha" class="form-control form-control-sm" required>
           </div>
-          <div class="mb-3">
+          <div class="col-auto">
             <label for="fecha_fin" class="form-label fw-bold">Fecha fin</label>
             <input type="date" id="fecha_fin" name="fecha_fin" class="form-control form-control-sm">
           </div>
-          <div class="d-flex justify-content-between mt-4">
+          <div class="col-auto d-grid">
             <button type="submit" formaction="/informes/horas" formmethod="GET" class="btn-main-blanco px-4 py-2">% Horas</button>
           </div>
         </form>
