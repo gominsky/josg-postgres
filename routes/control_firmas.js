@@ -186,6 +186,7 @@ router.patch('/api/eventos/:id/observaciones-generales', (req, res) => {
     res.json({ success: true });
   });
 });
+
 router.get('/api/eventos/:id/asistencias', (req, res) => {
   const eventoId = req.params.id;
 

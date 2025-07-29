@@ -2,9 +2,7 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../database/db');
-const puppeteer = require('puppeteer');
 const fs = require('fs');
-const util = require('util'); 
 const { isAuthenticated } = require('../middleware/auth');
 // Redirigir a lista
 router.get('/', (req, res) => {
@@ -462,7 +460,6 @@ router.post('/ficha/filtrar', (req, res) => {
       });
   });
 });
-
 router.post('/eliminar/:id', (req, res) => {
   const id = req.params.id;
 
@@ -657,52 +654,5 @@ router.post('/horas/guardar', isAuthenticated, (req, res) => {
     }
   );
 });
-router.get('/pdf/:id', async (req, res) => {
-  const id = req.params.id;
-  const url = `${req.protocol}://${req.get('host')}/informes/detalle/${id}`;
 
-  const browser = await puppeteer.launch();
-  const page = await browser.newPage();
-  await page.goto(url, { waitUntil: 'networkidle0' });
-  const pdf = await page.pdf({
-    format: 'A4',
-    printBackground: true,
-    displayHeaderFooter: true,
-    margin: { top: '100px', bottom: '100px' },
-    headerTemplate: `<div class="d-flex justify-content-between align-items-center mb-3">
-    <!-- Logo -->
-    <div class="d-flex align-items-center">
-      <img src="/imagenes/logoJOSG.png" alt="Logo JOSG" style="height: 60px; margin-right: 1rem;">
-    </div>
-  
-    <!-- Web y correo -->
-    <div class="text-end" style="font-size: 0.9rem; line-height: 1.2;">
-      <div><strong>www.josg.org</strong></div>
-      <div>info@josg.org</div>
-    </div>
-  </div>`,
-    footerTemplate: `<div class="pdf-footer">
-  <p>Granada, <%= new Date().getDate() %> de 
-    <%= new Date().toLocaleString('es-ES', { month: 'long' }) %> de 
-    <%= new Date().getFullYear() %>
-  </p>
-  <hr />
-  <small>
-    Asociación Joven Orquesta de Granada<br />
-    CIF: G-18651067 · www.josg.org · Tfno: 682445971<br />
-    C/ Andrés Segovia 60, 18007 Granada<br />
-    Sede de ensayos: Teatro Maestro Francisco Alonso, C/ Ribera del Beiro 34, 18012 Granada
-  </small>
-</div>
-`
-  });
-
-  await browser.close();
-
-  res.set({
-    'Content-Type': 'application/pdf',
-    'Content-Disposition': 'inline; filename="certificado.pdf"',
-  });
-  res.send(pdf);
-});
 module.exports = router;

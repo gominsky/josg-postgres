@@ -38,7 +38,6 @@ router.get('/listado', (req, res) => {
     res.json(eventos);
   });
 });
-
 // Vista principal: calendario o lista según parámetros
 router.get('/', (req, res) => {
   const desde = req.query.desde || '';
@@ -70,7 +69,6 @@ router.get('/', (req, res) => {
     });
   }
 });
-
 router.get('/:id', (req, res) => {
   const id = req.params.id;
   db.get('SELECT * FROM eventos WHERE id = ?', [id], (err, row) => {
@@ -83,7 +81,6 @@ router.get('/:id', (req, res) => {
     res.json(row);
   });
 });
-
 // Crear evento con hora_inicio, hora_fin y token QR
 router.post('/', (req, res) => {
   const { titulo, descripcion, fecha_inicio, fecha_fin, grupo_id, activo } = req.body;
@@ -97,7 +94,6 @@ router.post('/', (req, res) => {
     INSERT INTO eventos (titulo, descripcion, fecha_inicio, fecha_fin, grupo_id, activo, hora_inicio, hora_fin, token)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
   `;
-
   const params = [
     titulo,
     descripcion,
@@ -115,7 +111,6 @@ router.post('/', (req, res) => {
     res.json({ id: this.lastID });
   });
 });
-
 // Actualizar evento
 router.put('/:id', (req, res) => {
   const { titulo, descripcion, fecha_inicio, fecha_fin, grupo_id, activo } = req.body;
@@ -130,7 +125,6 @@ db.run(sql, [titulo, descripcion, fecha_inicio, fecha_fin, grupo_id, activoValue
     res.json({ updated: true });
   });
 });
-
 // Eliminar evento
 router.delete('/:id', (req, res) => {
   db.run('DELETE FROM eventos WHERE id = ?', [req.params.id], function (err) {
@@ -138,7 +132,6 @@ router.delete('/:id', (req, res) => {
     res.json({ deleted: true });
   });
 });
-
 //Generar QR
 router.get('/:id/qr', (req, res) => {
   const eventoId = req.params.id;
@@ -231,7 +224,6 @@ router.get('/:id/qr', (req, res) => {
     }
   });
 });
-
 // Mostrar formulario de firma manual
 router.get('/:id/firma_manual', (req, res) => {
   const eventoId = req.params.id;
@@ -272,7 +264,6 @@ router.get('/:id/firma_manual', (req, res) => {
     });
   });
 });
-
 router.post('/:id/firma_manual', (req, res) => {
   const eventoId = req.params.id;
   const firmadosActuales = req.body.alumnosFirmados || [];
@@ -326,7 +317,6 @@ router.post('/:id/firma_manual', (req, res) => {
       });
   });
 });
-
 router.post('/:id/firma_manual/ajax', (req, res) => {
   const eventoId = parseInt(req.params.id);
   const alumnoId = parseInt(req.body.alumno_id);
@@ -348,5 +338,4 @@ router.post('/:id/firma_manual/ajax', (req, res) => {
     res.json({ success: true });
   });
 });
-
 module.exports = router;

@@ -1101,3 +1101,7 @@ form {
   padding: 1rem;
   font-size: 0.8rem;
 }
+/*PDF***************************************************/
+  #pdf-content {
+    display: none;
+  }

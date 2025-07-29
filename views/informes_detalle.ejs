@@ -6,7 +6,6 @@
   // Si es porcentaje, omitimos el primer campo (Alumno), si no, mostramos todos
   const camposMostrar = isHoras ? campos.slice(1) : campos;
 %>
-
 <div class="row align-items-start mb-3">
   <div class="col-md-8 offset-md-1">
     <h1 class="h1-titulo mb-2"><%= informe.informe %></h1>
@@ -89,22 +88,84 @@
       </tbody>
     </table>
   </div>
-
   <div class="text-center mt-3 mb-4">
     <!-- Botón Guardar Cambios -->
     <button type="submit" class="btn btn-dark btn-sm me-2">
       Guardar cambios
     </button>
+
+
+<div id="pdf-content" style="display:none; background: white; padding: 2rem; color: black; font-size: 12px;">
+  <!-- Header con logo y título -->
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+    <div style="display: flex; align-items: center;">
+      <img src="/imagenes/logoJOSG.png" alt="Logo JOSG" style="height: 80px; margin-right: 20px;">
+      <div>
+        <h1 style="margin: 0; font-size: 1.4rem;"><strong>Asociación Joven Orquesta de Granada</strong></h1>
+        <p style="margin: 0; font-size: 10px;">www.josg.org – info@josg.org</p>
+      </div>
+    </div>
+  </div>
+  <!-- Título principal -->
+  <h2 style="text-align: center; margin-top: 1rem; font-size: 1.1rem;"><strong><%= informe.informe %></strong></h2>
+
+  <!-- Subtítulos informativos -->
+  <p style="font-size: 10px; margin: 0.2rem 0;"><strong>Fecha del informe:</strong> <%= new Date(informe.fecha).toLocaleDateString('es-ES') %></p>
+  <% if (showGroup) { %>
+    <p class="pdf-grupo" style="font-size: 10px; margin: 0.2rem 0;"><strong>Grupo:</strong> <%= informe.informeGrupo %></p>
+  <% } %>
+  <% if (showInstrument) { %>
+    <p class="pdf-inst" style="font-size: 10px; margin: 0.2rem 0;"><strong>Instrumento:</strong> <%= informe.informeInstrumento %></p>
+  <% } %>
+
+  <!-- Tabla -->
+    <div style="height: 40px;"></div>
+  <table style="width: 100%; border-collapse: collapse; margin-top: 1rem; font-size: 11px;">
+    <thead>
+      <tr style="background-color: #f0f0f0;">
+        <th style="border: 1px solid #ccc; padding: 6px;">Alumno</th>
+        <% if (showGroup) { %><th class="pdf-grupo" style="border: 1px solid #ccc; padding: 6px;">Grupo</th><% } %>
+        <% if (showInstrument) { %><th class="pdf-inst" style="border: 1px solid #ccc; padding: 6px;">Instrumento</th><% } %>
+        <% camposMostrar.forEach(campo => { %>
+          <th style="border: 1px solid #ccc; padding: 6px;"><%= campo.nombre %></th>
+        <% }) %>
+      </tr>
+    </thead>
+    <tbody>
+      <% filas.forEach(fila => { %>
+        <tr>
+          <td style="border: 1px solid #ccc; padding: 6px;"><%= fila.apellidos %>, <%= fila.nombre %></td>
+          <% if (showGroup) { %><td class="pdf-grupo" style="border: 1px solid #ccc; padding: 6px;"><%= fila.grupos || '—' %></td><% } %>
+          <% if (showInstrument) { %><td class="pdf-inst" style="border: 1px solid #ccc; padding: 6px;"><%= fila.instrumentos || '—' %></td><% } %>
+          <% camposMostrar.forEach(campo => { %>
+            <td style="border: 1px solid #ccc; padding: 6px;"><%= fila.valores[campo.id] || '' %></td>
+          <% }) %>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+<p style="text-align: center; font-size: 10px; margin-top: 30px;">
+  Granada, <%= new Date().toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' }) %>
+</p>
+  <!-- Footer -->
+  <hr style="margin-top: 20px;">
+   <div style="height: 400px;"></div> <!-- espacio antes del footer -->
+  
+  <div style="position: relative; bottom: 0; margin-top: 130px; font-size: 10px; text-align: right; color: #666;">
+    Asociación Joven Orquesta de Granada · CIF: G-18651067<br>
+    C/ Andrés Segovia 60, 18007 Granada · Tfno: 682 445 971<br>
+    Sede de ensayos: Teatro Maestro Francisco Alonso, C/ Ribera del Beiro 34, 18012 Granada
+  </div>
+</div>
     <!-- Botón Exportar PDF -->
-    <button type="button" class="btn btn-dark btn-sm" onclick="window.location.href='/informes/pdf/<%= informe.id %>'">
-      Exportar PDF
-    </button>
+    <button type="button" id="btnPDF"class="btn btn-dark btn-sm">Exportar PDF</button>
   </div>
 
 </form>
 
 <div class="volver-bloque-izquierda mb-4">
   <a href="/informes" class="enlace-final">← Volver</a>
+</div>
 </div>
 <script>
   document.querySelectorAll('.tabla-estilizada th.sortable').forEach((th, idx) => {
@@ -190,4 +251,47 @@
     toggleCol('.col-inst');
   });
 </script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const btn = document.getElementById('btnPDF');
+    const pdfContent = document.getElementById('pdf-content');
 
+    if (!btn || !pdfContent) return;
+
+    btn.addEventListener('click', () => {
+      // Clonar el contenido del PDF
+      const clone = pdfContent.cloneNode(true);
+      clone.style.display = 'block';
+
+      // Ocultar columnas si no están visibles en pantalla
+      const hideGroup = document.querySelector('.col-grupo')?.offsetParent === null;
+      const hideInst  = document.querySelector('.col-inst')?.offsetParent === null;
+
+      if (hideGroup) {
+        clone.querySelectorAll('.pdf-grupo').forEach(el => el.remove());
+      }
+      if (hideInst) {
+        clone.querySelectorAll('.pdf-inst').forEach(el => el.remove());
+      }
+
+      // Fecha actual (como pie de página)
+      const fecha = new Date().toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' });
+      const footer = document.createElement('div');
+      footer.style.cssText = "text-align:center; margin-top:40px; font-size:10px; color:#333;";
+      
+      clone.appendChild(footer);
+
+      // Opciones de exportación
+      const opt = {
+        margin: [0.6, 0.5],
+        filename: `informe_<%= informe.id %>.pdf`,
+        image: { type: 'jpeg', quality: 1 },
+        html2canvas: { scale: 3, useCORS: true },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+      };
+
+      html2pdf().set(opt).from(clone).save();
+    });
+  });
+</script>

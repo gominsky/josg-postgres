@@ -48,7 +48,6 @@ app.locals.formatDate = (isoString) => {
   if (isNaN(date)) return isoString;
   return date.toLocaleDateString('es-ES'); // formato DD/MM/YYYY
 };
-
 // Rutas
 const usuariosRoutes = require('./routes/usuarios');
 const profesoresRoutes = require('./routes/profesores');
