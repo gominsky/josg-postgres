@@ -2,11 +2,9 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../database/db');
-const PDFDocument = require('pdfkit');
-const ejs = require('ejs');
-const path = require('path');
+const puppeteer = require('puppeteer');
+const fs = require('fs');
 const util = require('util'); 
-const fs   = require('fs');
 const { isAuthenticated } = require('../middleware/auth');
 // Redirigir a lista
 router.get('/', (req, res) => {
@@ -659,164 +657,52 @@ router.post('/horas/guardar', isAuthenticated, (req, res) => {
     }
   );
 });
-router.get('/pdf/:id', (req, res) => {
+router.get('/pdf/:id', async (req, res) => {
   const id = req.params.id;
+  const url = `${req.protocol}://${req.get('host')}/informes/detalle/${id}`;
 
-  // 1) Carga informe y metadatos
-  db.get(`
-    SELECT i.*, 
-           g.nombre AS informeGrupo, 
-           inst.nombre AS informeInstrumento
-    FROM informes i
-    LEFT JOIN grupos g ON i.grupo_id = g.id
-    LEFT JOIN instrumentos inst ON i.instrumento_id = inst.id
-    WHERE i.id = ?
-  `, [id], (err, informe) => {
-    if (err || !informe) return res.status(404).send('Informe no encontrado');
+  const browser = await puppeteer.launch();
+  const page = await browser.newPage();
+  await page.goto(url, { waitUntil: 'networkidle0' });
+  const pdf = await page.pdf({
+    format: 'A4',
+    printBackground: true,
+    displayHeaderFooter: true,
+    margin: { top: '100px', bottom: '100px' },
+    headerTemplate: `<div class="d-flex justify-content-between align-items-center mb-3">
+    <!-- Logo -->
+    <div class="d-flex align-items-center">
+      <img src="/imagenes/logoJOSG.png" alt="Logo JOSG" style="height: 60px; margin-right: 1rem;">
+    </div>
+  
+    <!-- Web y correo -->
+    <div class="text-end" style="font-size: 0.9rem; line-height: 1.2;">
+      <div><strong>www.josg.org</strong></div>
+      <div>info@josg.org</div>
+    </div>
+  </div>`,
+    footerTemplate: `<div class="pdf-footer">
+  <p>Granada, <%= new Date().getDate() %> de 
+    <%= new Date().toLocaleString('es-ES', { month: 'long' }) %> de 
+    <%= new Date().getFullYear() %>
+  </p>
+  <hr />
+  <small>
+    Asociación Joven Orquesta de Granada<br />
+    CIF: G-18651067 · www.josg.org · Tfno: 682445971<br />
+    C/ Andrés Segovia 60, 18007 Granada<br />
+    Sede de ensayos: Teatro Maestro Francisco Alonso, C/ Ribera del Beiro 34, 18012 Granada
+  </small>
+</div>
+`
+  });
 
-    const showGroup      = informe.grupo_id      != null;
-    const showInstrument = informe.instrumento_id != null;
+  await browser.close();
 
-    // 2) Campos
-    db.all(`SELECT * FROM informe_campos WHERE informe_id = ? ORDER BY id`, [id], (errC, campos) => {
-      if (errC) return res.status(500).send('Error al obtener campos');
-
-      // 3) Resultados crudos
-      db.all(`
-        SELECT ir.*, a.nombre, a.apellidos
-        FROM informe_resultados ir
-        LEFT JOIN alumnos a ON ir.alumno_id = a.id
-        WHERE ir.informe_id = ?
-          AND (a.id IS NULL OR a.activo = 1)
-      `, [id], (errR, resultados) => {
-        if (errR) return res.status(500).send('Error al obtener resultados');
-
-        // ───── Agrupar ─────
-        const filasMap = {};
-        resultados.forEach(r => {
-          const key = r.alumno_id != null ? `a_${r.alumno_id}` : `f_${r.fila}`;
-          if (!filasMap[key]) {
-            filasMap[key] = {
-              alumno_id: r.alumno_id,
-              fila:       r.fila,
-              nombre:     r.nombre || '',
-              apellidos:  r.apellidos || '',
-              valores:    {}
-            };
-          }
-          filasMap[key].valores[r.campo_id] = r.valor;
-        });
-        let filas = Object.values(filasMap);
-
-        // ───── Enriquecer ─────
-        const promesas = filas.map(f => {
-          if (!f.alumno_id) return Promise.resolve(f);
-          const pG = new Promise((ok, ko) => {
-            db.all(
-              `SELECT g.nombre
-                 FROM grupos g
-                 JOIN alumno_grupo ag ON ag.grupo_id = g.id
-                WHERE ag.alumno_id = ? ORDER BY g.nombre`,
-              [f.alumno_id],
-              (e, rows) => e ? ko(e) : ok(rows.map(r=>r.nombre).join(', '))
-            );
-          });
-          const pI = new Promise((ok, ko) => {
-            db.all(
-              `SELECT i.nombre
-                 FROM instrumentos i
-                 JOIN alumno_instrumento ai ON ai.instrumento_id = i.id
-                WHERE ai.alumno_id = ? ORDER BY i.nombre`,
-              [f.alumno_id],
-              (e, rows) => e ? ko(e) : ok(rows.map(r=>r.nombre).join(', '))
-            );
-          });
-          return Promise.all([pG, pI]).then(
-            ([grupos, instrumentos]) => ({ ...f, grupos, instrumentos })
-          );
-        });
-
-        Promise.all(promesas)
-          .then(filasFinal => {
-            // ───── Ordenar ─────
-            filasFinal.sort((a, b) => {
-              if (a.alumno_id && b.alumno_id) {
-                return a.apellidos.localeCompare(b.apellidos) || a.nombre.localeCompare(b.nombre);
-              } else if (!a.alumno_id && !b.alumno_id) {
-                return (a.fila||0) - (b.fila||0);
-              }
-              return a.alumno_id ? -1 : 1;
-            });
-
-            // ───── Render header/footer ─────
-            const headerTpl = path.join(__dirname, '../views/pdf-header.ejs');
-            const footerTpl = path.join(__dirname, '../views/pdf-footer.ejs');
-
-            ejs.renderFile(headerTpl, {}, {}, (eH, headerHtml) => {
-              if (eH) console.error(eH);
-              ejs.renderFile(footerTpl, {}, {}, (eF, footerHtml) => {
-                if (eF) console.error(eF);
-
-                // ───── Generar PDF ─────
-                res.setHeader('Content-Disposition', `attachment; filename="informe_${id}.pdf"`);
-                res.setHeader('Content-Type', 'application/pdf');
-                const doc = new PDFDocument({ margin: 40, size: 'A4' });
-                doc.pipe(res);
-
-                // Header
-                doc.fontSize(10).text(headerHtml, { align: 'left' }).moveDown();
-
-                // Título y subt
-                doc.fontSize(16).text(informe.informe, { align: 'center' }).moveDown(0.5);
-                doc.fontSize(10).text(`Fecha: ${new Date(informe.fecha).toLocaleDateString('es-ES')}`);
-                if (showGroup)      doc.text(`Grupo: ${informe.informeGrupo}`);
-                if (showInstrument) doc.text(`Instrumento: ${informe.informeInstrumento}`);
-                doc.moveDown();
-
-                // Tabla
-                const startX = doc.x;
-                const colWidths = [150,100,100].concat(campos.map(()=>80));
-                const headers   = ['Alumno','Grupo','Instrumento'].concat(campos.map(c=>c.nombre));
-                headers.forEach((h,i) => {
-                  doc.font('Helvetica-Bold').fontSize(9)
-                     .text(h, startX + colWidths.slice(0,i).reduce((a,b)=>a+b,0),
-                           doc.y, { width: colWidths[i], align: 'center' });
-                });
-                doc.moveDown(0.5);
-
-                filasFinal.forEach(f => {
-                  const alumno = f.alumno_id ? `${f.apellidos}, ${f.nombre}` : '—';
-                  const grp    = f.grupos      || '—';
-                  const inst   = f.instrumentos|| '—';
-                  const vals   = campos.map(c=>f.valores[c.id]||'');
-                  [alumno,grp,inst].concat(vals).forEach((txt,i) => {
-                    doc.font('Helvetica').fontSize(8)
-                       .text(txt, startX + colWidths.slice(0,i).reduce((a,b)=>a+b,0),
-                             doc.y, { width: colWidths[i], align: 'center' });
-                  });
-                  doc.moveDown(0.4);
-                });
-                doc.moveDown();
-
-                // Pie
-                doc.fontSize(8).fillColor('gray')
-                   .text(`Generado ${new Date().toLocaleDateString('es-ES')} a las ${new Date().toLocaleTimeString('es-ES')}`, { align: 'right' })
-                   .moveDown();
-
-                doc.fontSize(9).fillColor('black').text(footerHtml, { align: 'center' });
-
-                doc.end();
-              }); // fin ejs.renderFile footer
-            });   // fin ejs.renderFile header
-          })     // fin Promise.all filas
-          .catch(e => {
-            console.error(e);
-            res.status(500).send('Error procesando informe');
-          });
-
-      }); // fin db.all resultados
-    });   // fin db.all campos
-  });     // fin db.get informe
-});       // fin router.get
-
+  res.set({
+    'Content-Type': 'application/pdf',
+    'Content-Disposition': 'inline; filename="certificado.pdf"',
+  });
+  res.send(pdf);
+});
 module.exports = router;
