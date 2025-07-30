@@ -63,8 +63,8 @@ router.get('/', async (req, res) => {
 
     try {
       const { rows: eventos } = await db.query(query, [desde, hasta]);
-
-      res.render('eventos_lista', { eventos }); 
+      const { rows: grupos } = await db.query('SELECT * FROM grupos ORDER BY nombre');
+      res.render('eventos_lista', { eventos,grupos }); 
     } catch (error) {
       console.error('Error al obtener eventos entre fechas:', error);
       res.status(500).send('Error al obtener eventos');
@@ -166,6 +166,7 @@ router.delete('/:id', async (req, res) => {
   const id = req.params.id;
 
   try {
+    await db.query('DELETE FROM asistencias WHERE evento_id = $1', [id]);
     await db.query('DELETE FROM eventos WHERE id = $1', [id]);
     res.json({ deleted: true });
   } catch (err) {
@@ -290,7 +291,7 @@ router.get('/:id/firma_manual', async (req, res) => {
     if (!evento.grupo_id) return res.status(400).send('Grupo del evento no definido');
 
     const { rows: alumnos } = await db.query(alumnosSQL, [eventoId, evento.grupo_id]);
-
+    const firmados = alumnos.filter(a => a.firmado).map(a => a.id);
     res.render('firma_manual', {
       evento,
       alumnos,

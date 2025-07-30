@@ -78,7 +78,6 @@ router.post('/', upload.single('foto'), async (req, res) => {
     res.status(500).send('Error al guardar alumno');
   }
 });
-// PUT: Actualizar alumno con preservación de foto y manejo de relaciones
 router.put('/:id', upload.single('foto'), async (req, res) => {
   const id = req.params.id;
   const {
@@ -207,6 +206,109 @@ router.get('/:id/editar', async (req, res) => {
   } catch (err) {
     console.error('Error cargando datos del alumno:', err);
     res.status(500).send('Error al cargar el formulario de edición');
+  }
+});
+router.get('/nuevo/:alumnoId', async (req, res) => {
+  const alumnoId = req.params.alumnoId;
+
+  try {
+    // 1. Obtener alumno
+    const alumnoRes = await db.query('SELECT * FROM alumnos WHERE id = $1', [alumnoId]);
+    const alumno = alumnoRes.rows[0];
+
+    if (!alumno) return res.status(404).send('Alumno no encontrado');
+
+    // 2. Obtener instrumentos del alumno
+    const instrumentosRes = await db.query(`
+      SELECT i.nombre 
+      FROM instrumentos i
+      JOIN alumno_instrumento ai ON ai.instrumento_id = i.id
+      WHERE ai.alumno_id = $1
+    `, [alumnoId]);
+
+    const instrumentos = instrumentosRes.rows.map(i => i.nombre);
+
+    // 3. Obtener grupos del alumno
+    const gruposRes = await db.query(`
+      SELECT g.nombre 
+      FROM grupos g
+      JOIN alumno_grupo ag ON ag.grupo_id = g.id
+      WHERE ag.alumno_id = $1
+    `, [alumnoId]);
+
+    const grupos = gruposRes.rows.map(g => g.nombre);
+
+    // 4. Obtener pagos (si aplica)
+    const pagosRes = await db.query(`
+      SELECT * FROM cuotas_alumno
+      WHERE alumno_id = $1
+      ORDER BY fecha_vencimiento DESC
+    `, [alumnoId]);
+
+    const pagos = pagosRes.rows;
+
+    // 5. Obtener cuotas disponibles
+    const cuotasDisponiblesRes = await db.query(`SELECT * FROM cuotas ORDER BY nombre`);
+    const cuotasDisponibles = cuotasDisponiblesRes.rows;
+
+    // 6. Renderizar
+    res.render('alumnos_ficha', {
+      alumno: {
+        ...alumno,
+        instrumentos: instrumentos.join(', '),
+        grupos: grupos.join(', ')
+      },
+      pagos,
+      cuotasDisponibles
+    });
+
+  } catch (err) {
+    console.error('Error cargando datos del alumno:', err);
+    res.status(500).send('Error al cargar los datos del alumno');
+  }
+});
+router.post('/generar-cuotas', async (req, res) => {
+  const { alumno_id, cuota_id, fecha_inicio, fecha_fin } = req.body;
+
+  const fechaIni = new Date(fecha_inicio);
+  const fechaFin = new Date(fecha_fin);
+
+  try {
+    // Función recursiva para insertar cuotas mes a mes
+    const insertarCuotasRecursivo = async (fechaActual) => {
+      if (fechaActual > fechaFin) {
+        return res.redirect(`/alumnos/${alumno_id}`);
+      }
+
+      const año = fechaActual.getFullYear();
+      const mes = fechaActual.getMonth() + 1;
+      const fechaVenc = `${año}-${mes.toString().padStart(2, '0')}-01`;
+
+      // Comprobar si ya existe una cuota en esa fecha
+      const existenteRes = await db.query(`
+        SELECT 1 FROM cuotas_alumno
+        WHERE alumno_id = $1 AND cuota_id = $2 AND fecha_vencimiento = $3
+      `, [alumno_id, cuota_id, fechaVenc]);
+
+      if (existenteRes.rowCount === 0) {
+        await db.query(`
+          INSERT INTO cuotas_alumno (alumno_id, cuota_id, fecha_vencimiento, pagado)
+          VALUES ($1, $2, $3, false)
+        `, [alumno_id, cuota_id, fechaVenc]);
+      }
+
+      // Siguiente mes
+      const siguienteMes = new Date(fechaActual);
+      siguienteMes.setMonth(fechaActual.getMonth() + 1);
+      await insertarCuotasRecursivo(siguienteMes);
+    };
+
+    const inicioMes = new Date(fechaIni.getFullYear(), fechaIni.getMonth(), 1);
+    await insertarCuotasRecursivo(inicioMes);
+
+  } catch (err) {
+    console.error('❌ Error generando cuotas:', err);
+    res.status(500).send('Error generando cuotas');
   }
 });
 router.get('/', async (req, res) => {
