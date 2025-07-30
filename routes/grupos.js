@@ -2,78 +2,105 @@ const express = require('express');
 const router = express.Router();
 const db = require('../database/db');
 
-// GET: Mostrar formulario de nueva grupo
+// GET: Mostrar formulario de nuevo grupo
 router.get('/nuevo', (req, res) => {
   res.render('grupos_ficha', { grupo: null });
 });
 
-// POST: Crear nueva grupo
-router.post('/', (req, res) => {
+// POST: Crear nuevo grupo
+router.post('/', async (req, res) => {
   const { nombre, descripcion } = req.body;
-  db.run('INSERT INTO grupos (nombre, descripcion) VALUES (?, ?)', [nombre, descripcion], (err) => {
-    if (err) return res.status(500).send('Error al guardar el grupo');
+
+  try {
+    await db.query(
+      'INSERT INTO grupos (nombre, descripcion) VALUES ($1, $2)',
+      [nombre, descripcion]
+    );
     res.redirect('/grupos');
-  });
+  } catch (err) {
+    console.error('Error al guardar grupo:', err);
+    res.status(500).send('Error al guardar el grupo');
+  }
 });
 
 // GET: Listado de grupos con búsqueda
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
   const busqueda = req.query.busqueda || '';
   const sql = busqueda
-    ? 'SELECT * FROM grupos WHERE nombre LIKE ? OR descripcion LIKE ?'
+    ? 'SELECT * FROM grupos WHERE nombre ILIKE $1 OR descripcion ILIKE $2'
     : 'SELECT * FROM grupos';
-
   const params = busqueda ? [`%${busqueda}%`, `%${busqueda}%`] : [];
 
-  db.all(sql, params, (err, grupos) => {
-    if (err) return res.status(500).send('Error al obtener grupos');
+  try {
+    const result = await db.query(sql, params);
     res.render('grupos_lista', {
-      grupos,
+      grupos: result.rows,
       busqueda,
       hero: false
     });
-  });
+  } catch (err) {
+    console.error('Error al obtener grupos:', err);
+    res.status(500).send('Error al obtener grupos');
+  }
 });
 
 // GET: Formulario de edición
-router.get('/editar/:id', (req, res) => {
+router.get('/editar/:id', async (req, res) => {
   const id = req.params.id;
-  db.get('SELECT * FROM grupos WHERE id = ?', [id], (err, grupo) => {
-    if (err) return res.status(500).send('Error al cargar grupo');
+
+  try {
+    const result = await db.query('SELECT * FROM grupos WHERE id = $1', [id]);
+    const grupo = result.rows[0];
+
     if (!grupo) return res.status(404).send('Grupo no encontrado');
-    res.render('grupos_ficha', { grupo }); // 👈 Aquí se pasa `grupo`, no `grupos`
-  });
+    res.render('grupos_ficha', { grupo });
+  } catch (err) {
+    console.error('Error al cargar grupo:', err);
+    res.status(500).send('Error al cargar grupo');
+  }
 });
 
 // POST: Actualizar grupo
-router.post('/editar/:id', (req, res) => {
+router.post('/editar/:id', async (req, res) => {
   const id = req.params.id;
   const { nombre, descripcion } = req.body;
-  db.run('UPDATE grupos SET nombre = ?, descripcion = ? WHERE id = ?', [nombre, descripcion, id], (err) => {
-    if (err) return res.status(500).send('Error al actualizar grupo');
+
+  try {
+    await db.query(
+      'UPDATE grupos SET nombre = $1, descripcion = $2 WHERE id = $3',
+      [nombre, descripcion, id]
+    );
     res.redirect('/grupos');
-  });  
+  } catch (err) {
+    console.error('Error al actualizar grupo:', err);
+    res.status(500).send('Error al actualizar grupo');
+  }
 });
 
-router.post('/eliminar/:id', (req, res) => {
+// POST: Eliminar grupo
+router.post('/eliminar/:id', async (req, res) => {
   const id = req.params.id;
-  db.run('DELETE FROM grupos WHERE id = ?', [id], (err) => {
-    if (err) return res.status(500).send('Error al eliminar grupo');
+
+  try {
+    await db.query('DELETE FROM grupos WHERE id = $1', [id]);
     res.redirect('/grupos');
-  });
+  } catch (err) {
+    console.error('Error al eliminar grupo:', err);
+    res.status(500).send('Error al eliminar grupo');
+  }
 });
-// DELETE: Eliminar grupo
-router.delete('/:id', (req, res) => {
+
+// DELETE: Eliminar grupo (REST)
+router.delete('/:id', async (req, res) => {
   const id = req.params.id;
 
-  db.run('DELETE FROM grupos WHERE id = ?', [id], function (err) {
-    if (err) {
-      console.error('Error al eliminar grupo:', err.message);
-      return res.status(500).send('Error al eliminar grupo');
-    }
-
+  try {
+    await db.query('DELETE FROM grupos WHERE id = $1', [id]);
     res.redirect('/grupos');
-  });
+  } catch (err) {
+    console.error('Error al eliminar grupo:', err);
+    res.status(500).send('Error al eliminar grupo');
+  }
 });
 
 module.exports = router;

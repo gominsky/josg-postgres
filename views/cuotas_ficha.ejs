@@ -30,7 +30,7 @@
           type="number"
           name="precio"
           step="0.01"
-          value="<%= cuota?.precio || '' %>"
+          value="<%= cuota?.precio ? parseFloat(cuota.precio) : '' %>"
           required
         >
       </label>
