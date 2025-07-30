@@ -125,7 +125,7 @@
         <% pagos.forEach(p => { %>
           <tr>
             <td><%= p.fecha_pago ? p.fecha_pago.split('-').reverse().join('/') : '' %></td>
-            <td><%= p.importe_pago.toFixed(2) %> €</td>
+            <td><%= p.importe_pago ? Number(p.importe_pago).toFixed(2) + ' €' : '—' %></td>
             <td><%= p.medio_pago %></td>
             <td><%= p.cuota_nombre %></td>
             <td><%= p.referencia || '—' %></td>

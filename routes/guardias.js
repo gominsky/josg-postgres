@@ -129,10 +129,25 @@ router.post('/generar', async (req, res) => {
 
     // Alumnos activos del grupo
     const alumnosResult = await db.query(`
-      SELECT a.id, a.nombre, a.apellidos, a.curso_ingreso, a.guardias_actual
-      FROM alumnos a
-      JOIN alumno_grupo ag ON ag.alumno_id = a.id
-      WHERE ag.grupo_id = $1 AND a.activo = 1
+       SELECT 
+  a.id,
+  a.nombre,
+  a.apellidos,
+  CASE 
+    WHEN a.fecha_matriculacion IS NOT NULL THEN
+      CASE 
+        WHEN EXTRACT(MONTH FROM a.fecha_matriculacion::date) >= 6 THEN 
+          EXTRACT(YEAR FROM a.fecha_matriculacion::date)::INT
+        ELSE 
+          (EXTRACT(YEAR FROM a.fecha_matriculacion::date) - 1)::INT
+      END
+    ELSE
+      NULL
+  END AS curso_ingreso,
+  a.guardias_actual
+FROM alumnos a
+JOIN alumno_grupo ag ON ag.alumno_id = a.id
+WHERE ag.grupo_id = $1 AND a.activo = TRUE
     `, [grupo_id]);
     const alumnos = alumnosResult.rows;
 

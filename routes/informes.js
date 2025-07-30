@@ -108,8 +108,8 @@ router.post('/ficha/guardar-json', async (req, res) => {
   const parsedResultados = JSON.parse(resultados || '[]');
   const parsedCampos = JSON.parse(campos_json || '[]');
 
-  const grupoIdFinal = grupo_id === 'ninguno' ? null : grupo_id;
-  const instrumentoIdFinal = instrumento_id === 'ninguno' ? null : instrumento_id;
+  const grupoIdFinal = ['ninguno', 'todos'].includes(grupo_id) ? null : Number(grupo_id);
+  const instrumentoIdFinal = ['ninguno', 'todos'].includes(instrumento_id) ? null : Number(instrumento_id);
 
   try {
     let informeIdFinal = informeId;
@@ -136,7 +136,11 @@ router.post('/ficha/guardar-json', async (req, res) => {
     await db.query(`DELETE FROM informe_campos WHERE informe_id = $1`, [informeIdFinal]);
 
     // 3. Insertar campos nuevos
-    const campoInsert = `INSERT INTO informe_campos (informe_id, nombre, tipo, obligatorio) VALUES ($1, $2, $3, $4) RETURNING id`;
+    const campoInsert = `
+      INSERT INTO informe_campos (informe_id, nombre, tipo, obligatorio)
+      VALUES ($1, $2, $3, $4)
+      RETURNING id
+    `;
     const camposIds = [];
 
     for (const campo of parsedCampos) {
@@ -144,7 +148,7 @@ router.post('/ficha/guardar-json', async (req, res) => {
         informeIdFinal,
         campo.nombre,
         campo.tipo,
-        campo.obligatorio ? 1 : 0
+        Boolean(campo.obligatorio)
       ]);
       camposIds.push(result.rows[0].id);
     }
@@ -174,6 +178,7 @@ router.post('/ficha/guardar-json', async (req, res) => {
     res.status(500).send('Error al guardar informe');
   }
 });
+
 router.get('/detalle/:id', async (req, res) => {
   const id = req.params.id;
 
@@ -307,7 +312,6 @@ router.post('/detalle/:id', async (req, res) => {
     res.status(500).send('Error guardando datos del informe');
   }
 });
-
 router.post('/ficha/filtrar', async (req, res) => {
   const {
     nombre_informe,
@@ -559,7 +563,6 @@ router.get('/horas', isAuthenticated, async (req, res) => {
     res.status(500).send('Error calculando informe de horas');
   }
 });
-
 router.post('/horas/guardar', isAuthenticated, async (req, res) => {
   const { fecha, fecha_fin, grupo, instrumento, resultados } = req.body;
   const parsed = JSON.parse(resultados || '[]');
@@ -574,9 +577,6 @@ router.post('/horas/guardar', isAuthenticated, async (req, res) => {
     (ff ? ` – ${ff}` : '') + `)`;
 
   try {
-    console.log('🔍 Params comunes:', params);
-console.log('🔍 Params alumno:', alumnoParams);
-console.log('📄 Consulta SQL por alumno:\n', alumnoSQL);
     // 1. Insertar informe
     const result = await db.query(`
       INSERT INTO informes (informe, grupo_id, instrumento_id, fecha)
@@ -584,8 +584,8 @@ console.log('📄 Consulta SQL por alumno:\n', alumnoSQL);
       RETURNING id
     `, [
       nombreInforme,
-      grupo === 'todos' ? null : grupo,
-      instrumento === 'todos' ? null : instrumento,
+      grupo === 'todos' || grupo === '' ? null : parseInt(grupo),
+      instrumento === 'todos' || instrumento === '' ? null : parseInt(instrumento),
       fecha_fin
     ]);
     const informeId = result.rows[0].id;
@@ -593,7 +593,7 @@ console.log('📄 Consulta SQL por alumno:\n', alumnoSQL);
     // 2. Insertar los campos: Alumno, Horas, Porcentaje
     const campoInsert = `
       INSERT INTO informe_campos (informe_id, nombre, tipo, obligatorio)
-      VALUES ($1, $2, $3, 0)
+      VALUES ($1, $2, $3, false)
       RETURNING id
     `;
     const campoAlumno = (await db.query(campoInsert, [informeId, 'Alumno', 'numero'])).rows[0].id;

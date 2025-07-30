@@ -165,32 +165,39 @@ router.post('/asignar', async (req, res) => {
     res.status(500).send('Error durante la asignación');
   }
 });
-// GET: Cuotas pendientes
 router.get('/pendientes', async (req, res) => {
-  const hoy = new Date().toISOString().split('T')[0];
+  const hoy = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
 
   const query = `
-    SELECT 
-      a.nombre || ' ' || a.apellidos AS alumno,
-      c.nombre AS cuota,
-      ca.fecha_vencimiento,
-      ca.pagado,
-      DATE_PART('day', $1::date - ca.fecha_vencimiento) AS dias_retraso
+  SELECT 
+    a.nombre || ' ' || a.apellidos AS alumno,
+    c.nombre AS cuota,
+    ca.fecha_vencimiento,
+    ca.pagado,
+    (CURRENT_DATE - ca.fecha_vencimiento::date) AS dias_retraso
     FROM cuotas_alumno ca
     JOIN alumnos a ON a.id = ca.alumno_id
     JOIN cuotas c ON c.id = ca.cuota_id
-    WHERE ca.pagado = false AND ca.fecha_vencimiento < $1::date
-    ORDER BY ca.fecha_vencimiento ASC
+    WHERE ca.pagado = false AND ca.fecha_vencimiento::date < CURRENT_DATE
+    ORDER BY ca.fecha_vencimiento::date ASC
   `;
-
   try {
-    const { rows: cuotasPendientes } = await db.query(query, [hoy]);
-    res.render('cuotas_pendientes', { cuotasPendientes, hoy, hero: false });
+    const result = await db.query(query);
+    const cuotasPendientes = result.rows;
+
+    res.render('cuotas_pendientes', {
+      cuotasPendientes,
+      hoy,
+      hero: false
+    });
   } catch (err) {
-    console.error('Error obteniendo cuotas pendientes:', err);
+    console.error('❌ Error obteniendo cuotas pendientes:', err);
     res.status(500).send('Error obteniendo cuotas pendientes');
   }
 });
+
+module.exports = router;
+
 
 router.get('/pendientes/export', async (req, res) => {
   const hoy = new Date().toISOString().split('T')[0];

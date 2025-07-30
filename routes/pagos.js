@@ -60,7 +60,76 @@ router.post('/', async (req, res) => {
     res.status(500).send('Error al registrar el pago');
   }
 });
+router.get('/nuevo/:alumnoId', async (req, res) => {
+  const alumnoId = req.params.alumnoId;
 
+  try {
+    const alumnoRes = await db.query(`SELECT * FROM alumnos WHERE id = $1`, [alumnoId]);
+    const alumno = alumnoRes.rows[0];
+    if (!alumno) return res.status(404).send('Alumno no encontrado');
+
+    const [instrumentosRes, gruposRes, cuotasDisponiblesRes, cuotasAlumnoRes, pagosRes] = await Promise.all([
+      db.query(`
+        SELECT i.nombre
+        FROM instrumentos i
+        JOIN alumno_instrumento ai ON i.id = ai.instrumento_id
+        WHERE ai.alumno_id = $1
+      `, [alumnoId]),
+      db.query(`
+        SELECT g.nombre
+        FROM grupos g
+        JOIN alumno_grupo ag ON g.id = ag.grupo_id
+        WHERE ag.alumno_id = $1
+      `, [alumnoId]),
+      db.query(`SELECT * FROM cuotas ORDER BY nombre`),
+      db.query(`
+        SELECT 
+          ca.*, 
+          c.nombre AS nombre_cuota, 
+          c.precio
+        FROM cuotas_alumno ca
+        JOIN cuotas c ON ca.cuota_id = c.id
+        WHERE ca.alumno_id = $1
+        ORDER BY ca.fecha_vencimiento ASC
+      `, [alumnoId]),
+      db.query(`
+        SELECT 
+          p.id AS pago_id,
+          p.fecha_pago,
+          p.importe AS importe_pago,
+          p.medio_pago,
+          p.referencia,
+          p.observaciones,
+          c.nombre AS cuota_nombre,
+          pca.importe_aplicado
+        FROM pagos p
+        JOIN pago_cuota_alumno pca ON p.id = pca.pago_id
+        JOIN cuotas_alumno ca ON pca.cuota_alumno_id = ca.id
+        JOIN cuotas c ON ca.cuota_id = c.id
+        WHERE p.alumno_id = $1
+        ORDER BY p.fecha_pago DESC
+      `, [alumnoId])
+    ]);
+
+    const instrumentos = instrumentosRes.rows.map(i => i.nombre).join(', ');
+    const grupos = gruposRes.rows.map(g => g.nombre).join(', ');
+
+    res.render('pago_form', {
+      alumno: {
+        ...alumno,
+        instrumentos,
+        grupos
+      },
+      pagos: pagosRes.rows,
+      cuotasDisponibles: cuotasDisponiblesRes.rows,
+      cuotasAlumno: cuotasAlumnoRes.rows
+    });
+
+  } catch (err) {
+    console.error('❌ Error cargando formulario de pagos:', err);
+    res.status(500).send('Error cargando datos');
+  }
+});
 router.post('/generar-cuotas', async (req, res) => {
   const { alumno_id, cuota_id, fecha_inicio, fecha_fin } = req.body;
 
@@ -97,7 +166,6 @@ router.post('/generar-cuotas', async (req, res) => {
     res.status(500).send('Error al generar cuotas');
   }
 });
-
 // GET: Formulario nuevo pago
 router.get('/nuevo/:alumnoId', async (req, res) => {
   const alumnoId = req.params.alumnoId;

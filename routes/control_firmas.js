@@ -1,82 +1,67 @@
 const express = require('express');
 const router = express.Router();
-const db = require('../database/db');
+const db = require('../database/db'); // → instancia de pg.Pool
 const bcrypt = require('bcrypt');
 
-// 🔐 Login para docentes y admins
 router.post('/api/login', async (req, res) => {
   const { email, password } = req.body;
-
-  if (!email || !password) {
-    return res.json({ success: false, error: 'Faltan credenciales' });
-  }
+  if (!email || !password) return res.json({ success: false, error: 'Faltan credenciales' });
 
   try {
-    const row = await db.getAsync(
-      `SELECT * FROM usuarios WHERE email = ? AND rol IN ('docente', 'admin')`,
+    const result = await db.query(
+      `SELECT * FROM usuarios WHERE email = $1 AND rol IN ('docente', 'admin')`,
       [email]
     );
+    const user = result.rows[0];
+    if (!user) return res.json({ success: false, error: 'Credenciales inválidas' });
 
-    if (!row) return res.json({ success: false, error: 'Credenciales inválidas' });
-
-    const match = await bcrypt.compare(password, row.password);
+    const match = await bcrypt.compare(password, user.password);
     if (!match) return res.json({ success: false, error: 'Credenciales inválidas' });
 
-    res.json({ success: true, usuario: { id: row.id, nombre: row.nombre, rol: row.rol } });
-  } catch (error) {
-    console.error('Login error:', error);
+    res.json({ success: true, usuario: { id: user.id, nombre: user.nombre, rol: user.rol } });
+  } catch (err) {
+    console.error('Login error:', err);
     res.status(500).json({ success: false, error: 'Error interno' });
   }
 });
-
-// 📅 Obtener detalle de evento
 router.get('/api/eventos/:id', async (req, res) => {
   const eventoId = req.params.id;
-
   try {
-    const evento = await db.getAsync(`
+    const result = await db.query(`
       SELECT e.*, g.nombre AS grupo_nombre
       FROM eventos e
       JOIN grupos g ON e.grupo_id = g.id
-      WHERE e.id = ?
+      WHERE e.id = $1
     `, [eventoId]);
 
-    if (!evento) return res.status(404).json({ error: 'Evento no encontrado' });
-
-    res.json(evento);
+    if (!result.rows[0]) return res.status(404).json({ error: 'Evento no encontrado' });
+    res.json(result.rows[0]);
   } catch (err) {
     res.status(500).json({ error: 'Error al obtener evento' });
   }
 });
-
-// 👥 Obtener alumnos del evento
 router.get('/api/eventos/:id/alumnos', async (req, res) => {
   const eventoId = req.params.id;
-
   const sql = `
     SELECT a.id, a.nombre, a.apellidos,
-      CASE WHEN asi.id IS NOT NULL THEN 1 ELSE 0 END AS asistio,
+      CASE WHEN asi.id IS NOT NULL THEN true ELSE false END AS asistio,
       asi.observaciones
     FROM alumnos a
     JOIN alumno_grupo ag ON ag.alumno_id = a.id
     JOIN eventos e ON e.grupo_id = ag.grupo_id
     LEFT JOIN asistencias asi ON asi.evento_id = e.id AND asi.alumno_id = a.id 
-    WHERE e.id = ? AND a.activo = 1
+    WHERE e.id = $1 AND a.activo = true
     ORDER BY a.apellidos, a.nombre
   `;
-
   try {
-    const rows = await db.allAsync(sql, [eventoId]);
-    res.json(rows);
+    const result = await db.query(sql, [eventoId]);
+    res.json(result.rows);
   } catch (err) {
     res.status(500).json([]);
   }
 });
-
-// ✍️ Registrar asistencias manuales
 router.post('/api/firmar-alumnos', async (req, res) => {
   const registros = req.body.registros;
-
   if (!Array.isArray(registros) || registros.length === 0) {
     return res.status(400).json({ success: false, error: 'No se han enviado asistencias' });
   }
@@ -85,19 +70,20 @@ router.post('/api/firmar-alumnos', async (req, res) => {
 
   for (const { evento_id, alumno_id, asistio } of registros) {
     try {
-      const existente = await db.getAsync(
-        `SELECT id, tipo FROM asistencias WHERE evento_id = ? AND alumno_id = ?`,
+      const result = await db.query(
+        `SELECT id, tipo FROM asistencias WHERE evento_id = $1 AND alumno_id = $2`,
         [evento_id, alumno_id]
       );
+      const existente = result.rows[0];
 
       if (asistio && !existente) {
-        await db.runAsync(
+        await db.query(
           `INSERT INTO asistencias (evento_id, alumno_id, fecha, hora, tipo, observaciones)
-           VALUES (?, ?, DATE('now'), TIME('now'), 'manual', '')`,
+           VALUES ($1, $2, CURRENT_DATE, CURRENT_TIME, 'manual', '')`,
           [evento_id, alumno_id]
         );
       } else if (!asistio && existente?.tipo === 'manual') {
-        await db.runAsync(`DELETE FROM asistencias WHERE id = ?`, [existente.id]);
+        await db.query(`DELETE FROM asistencias WHERE id = $1`, [existente.id]);
       }
     } catch (err) {
       errores.push({ alumno_id, error: 'Error en el registro' });
@@ -106,47 +92,41 @@ router.post('/api/firmar-alumnos', async (req, res) => {
 
   res.json({ success: true, errores });
 });
-
-// 🔄 Activar / desactivar evento
 router.patch('/api/eventos/:id/activar', async (req, res) => {
   const eventoId = req.params.id;
   const { activo } = req.body;
 
   try {
-    await db.runAsync(`UPDATE eventos SET activo = ? WHERE id = ?`, [activo ? 1 : 0, eventoId]);
+    await db.query(`UPDATE eventos SET activo = $1 WHERE id = $2`, [activo, eventoId]);
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ success: false, error: 'No se pudo actualizar' });
   }
 });
-
-// 📝 Actualizar observaciones generales
 router.patch('/api/eventos/:id/observaciones-generales', async (req, res) => {
   const eventoId = req.params.id;
   const { observaciones } = req.body;
 
   try {
-    await db.runAsync(`UPDATE eventos SET observaciones_generales = ? WHERE id = ?`, [observaciones, eventoId]);
+    await db.query(`UPDATE eventos SET observaciones_generales = $1 WHERE id = $2`, [observaciones, eventoId]);
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ success: false, error: 'No se pudo actualizar observaciones' });
   }
 });
-
-// 📄 Ver lista de asistencias por evento
 router.get('/api/eventos/:id/asistencias', async (req, res) => {
   const eventoId = req.params.id;
 
   try {
-    const filas = await db.allAsync(`
+    const result = await db.query(`
       SELECT a.nombre, a.apellidos, asi.fecha, asi.hora, asi.tipo, asi.ubicacion
       FROM asistencias asi
       JOIN alumnos a ON a.id = asi.alumno_id
-      WHERE asi.evento_id = ?
+      WHERE asi.evento_id = $1
       ORDER BY asi.fecha DESC, asi.hora DESC
     `, [eventoId]);
 
-    res.json(filas);
+    res.json(result.rows);
   } catch (err) {
     res.status(500).json({ error: 'Error al obtener asistencias' });
   }
