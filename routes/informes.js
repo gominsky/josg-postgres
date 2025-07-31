@@ -295,17 +295,17 @@ router.post('/detalle/:id', async (req, res) => {
 
     // 2. Insertar nuevos resultados
     const insertSQL = `
-      INSERT INTO informe_resultados (informe_id, alumno_id, campo_id, valor)
-      VALUES ($1, $2, $3, $4)
-    `;
+  INSERT INTO informe_resultados (informe_id, alumno_id, fila, campo_id, valor)
+  VALUES ($1, $2, $3, $4, $5)
+`;
 
-    for (const r of resultados) {
-      const alumnoId = r.alumno_id || null;
-      const campoId = r.campo_id;
-      const valor = r.valor ?? '';
-      await db.query(insertSQL, [id, alumnoId, campoId, valor]);
-    }
-
+for (const r of resultados) {
+  const alumnoId = r.alumno_id ?? null;
+  const fila = r.fila ?? null;
+  const campoId = r.campo_id;
+  const valor = r.valor ?? '';
+  await db.query(insertSQL, [id, alumnoId, fila, campoId, valor]);
+}
     res.redirect(`/informes/detalle/${id}`);
   } catch (err) {
     console.error('❌ Error guardando resultados del informe:', err);

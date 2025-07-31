@@ -28,14 +28,8 @@
 
 <form id="form-guardar" method="POST" action="/informes/detalle/<%= informe.id %>" class="formulario-centrado" style="background-color: transparent;">
   <input type="hidden" name="resultados" id="resultados-json">
-
-  <% if (!tieneAlumnos) { %>
-    <div class="text-center mt-3 mb-4">
-      <button type="button" class="btn-main" onclick="addCampo()">+ Añadir campo</button>
-    </div>
-  <% } %>
-
   <!-- Botones para ocultar/mostrar columnas -->
+  <% if (tieneAlumnos) { %>
   <div class="text-end mb-2">
     <button id="toggleGrupo" type="button" class="btn btn-sm btn-outline-secondary me-2">
       Ocultar/Mostrar Grupo
@@ -44,14 +38,16 @@
       Ocultar/Mostrar Instrumento
     </button>
   </div>
-
+  <% } %>
   <div class="table-responsive">
     <table class="tabla-estilizada table-sm align-middle text-center">
       <thead class="table-light">
         <tr>
+          <% if (tieneAlumnos) { %>
           <th class="sortable" style="width: 200px; min-width: 200px; text-align: left;">Alumno</th>
           <th class="col-grupo sortable">Grupo</th>
           <th class="col-inst sortable">Instrumento</th>
+          <% } %>
           <% camposMostrar.forEach(campo => { %>
             <th class="sortable"><%= campo.nombre %></th>
           <% }) %>
@@ -61,9 +57,11 @@
       <tbody id="tabla-resultados-body">
         <% filas.forEach((fila, filaIndex) => { %>
           <tr>
+            <% if (tieneAlumnos) { %>
             <td class="text-start" style="width: 200px; min-width: 200px;"><%= fila.apellidos %>, <%= fila.nombre %></td>
             <td class="col-grupo"><%= fila.grupos      || '—' %></td>
             <td class="col-inst"><%= fila.instrumentos || '—' %></td>
+            <% } %>
             <% camposMostrar.forEach(campo => {
                  const valor = fila.valores[campo.id] || '';
                  const name  = `r_${fila.alumno_id !== null ? fila.alumno_id : 'null'}_${fila.fila ?? filaIndex}_${campo.id}`;
@@ -89,6 +87,11 @@
     </table>
   </div>
   <div class="text-center mt-3 mb-4">
+    <% if (!tieneAlumnos) { %>
+      <div class="text-center mt-3 mb-4">
+        <button type="button" class="btn-main" onclick="addCampo()">+ Añadir registro</button>
+      </div>
+    <% } %>
     <!-- Botón Guardar Cambios -->
     <button type="submit" class="btn btn-dark btn-sm me-2">
       Guardar cambios
@@ -123,7 +126,9 @@
   <table style="width: 100%; border-collapse: collapse; margin-top: 1rem; font-size: 11px;">
     <thead>
       <tr style="background-color: #f0f0f0;">
+        <% if (tieneAlumnos) { %>
         <th style="border: 1px solid #ccc; padding: 6px;">Alumno</th>
+        <% } %>
         <% if (showGroup) { %><th class="pdf-grupo" style="border: 1px solid #ccc; padding: 6px;">Grupo</th><% } %>
         <% if (showInstrument) { %><th class="pdf-inst" style="border: 1px solid #ccc; padding: 6px;">Instrumento</th><% } %>
         <% camposMostrar.forEach(campo => { %>
@@ -134,7 +139,9 @@
     <tbody>
       <% filas.forEach(fila => { %>
         <tr>
+          <% if (tieneAlumnos) { %>
           <td style="border: 1px solid #ccc; padding: 6px;"><%= fila.apellidos %>, <%= fila.nombre %></td>
+          <% } %>
           <% if (showGroup) { %><td class="pdf-grupo" style="border: 1px solid #ccc; padding: 6px;"><%= fila.grupos || '—' %></td><% } %>
           <% if (showInstrument) { %><td class="pdf-inst" style="border: 1px solid #ccc; padding: 6px;"><%= fila.instrumentos || '—' %></td><% } %>
           <% camposMostrar.forEach(campo => { %>
@@ -217,7 +224,7 @@
       else if (campo.tipo === 'booleano') html += `<td><input type="checkbox" class="form-check-input" name="${name}"></td>`;
       else html += `<td><input type="text" class="form-control form-control-sm" name="${name}"></td>`;
     });
-    html += `<td><button type="button" class="btn btn-sm text-danger fw-bold" onclick="this.closest('tr').remove()">×</button></td>`;
+    html += `<td><button type="button" class="btn btn-sm text-danger fw-bold" onclick="this.closest('tr').remove()">X</button></td>`;
     fila.innerHTML = html;
     tbody.appendChild(fila);
   }
