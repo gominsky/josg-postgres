@@ -465,5 +465,31 @@ router.get('/:id', async (req, res) => {
     res.status(500).send('Error interno');
   }
 });
+router.post('/:id/eliminar', async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  try {
+    // Obtener nombre de archivo de foto
+    const result = await db.query('SELECT foto FROM alumnos WHERE id = $1', [id]);
+    const foto = result.rows[0]?.foto;
+
+    // Borrar relaciones
+    await db.query('DELETE FROM alumno_grupo WHERE alumno_id = $1', [id]);
+    await db.query('DELETE FROM alumno_instrumento WHERE alumno_id = $1', [id]);
+
+    // Borrar alumno
+    await db.query('DELETE FROM alumnos WHERE id = $1', [id]);
+
+    // Borrar foto si existe
+    if (foto) {
+      const path = `./uploads/${foto}`;
+      if (fs.existsSync(path)) fs.unlinkSync(path);
+    }
+
+    res.redirect('/alumnos');
+  } catch (err) {
+    console.error('❌ Error al eliminar alumno:', err);
+    res.status(500).send('Error al eliminar alumno');
+  }
+});
 
 module.exports = router;

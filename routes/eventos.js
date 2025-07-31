@@ -303,7 +303,6 @@ router.get('/:id/firma_manual', async (req, res) => {
     res.status(500).send('Error al cargar formulario de firmas');
   }
 });
-
 router.post('/:id/firma_manual', async (req, res) => {
   const eventoId = parseInt(req.params.id);
   const firmadosActuales = req.body.alumnosFirmados || [];

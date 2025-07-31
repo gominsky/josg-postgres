@@ -145,9 +145,10 @@ select {
   transform: scale(1.05);
 }
 .alert-login-error {
-  background-color: #ffffff;  /* fondo muy suave naranja */
-  color: #FF9501;           /* texto naranja oscuro */
-  border: 1px solid  #FF9501;  /* borde naranja */
+  background-color: transparent;  
+  color:white;          
+  text-align: center;
+  font-weight: bold;
 }
 .cerrar-sesion-icono {
   position: fixed;

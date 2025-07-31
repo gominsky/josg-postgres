@@ -20,8 +20,8 @@
       <label>Miembro 1:
         <select name="alumno_id_1" required class="form-centrado-select">
           <option value="">Selecciona un alumno</option>
-          <% alumnos.filter(a => a.grupo_id === guardia.grupo_id).forEach(a => { %>
-            <option value="<%= a.alumno_id %>" <%= a.alumno_id == guardia.alumno_id_1 ? 'selected' : '' %>>
+          <% disponibles.forEach(a => { %>
+            <option value="<%= a.id %>" <%= a.id == guardia.alumno_id_1 ? 'selected' : '' %>>
               <%= a.apellidos %>, <%= a.nombre %>
             </option>
           <% }) %>
@@ -31,8 +31,8 @@
       <label>Miembro 2:
         <select name="alumno_id_2" required class="form-centrado-select">
           <option value="">Selecciona un alumno</option>
-          <% alumnos.filter(a => a.grupo_id === guardia.grupo_id).forEach(a => { %>
-            <option value="<%= a.alumno_id %>" <%= a.alumno_id == guardia.alumno_id_2 ? 'selected' : '' %>>
+          <% disponibles.forEach(a => { %>
+            <option value="<%= a.id %>" <%= a.id == guardia.alumno_id_2 ? 'selected' : '' %>>
               <%= a.apellidos %>, <%= a.nombre %>
             </option>
           <% }) %>
@@ -58,4 +58,3 @@
     </div>
   </div>
 </form>
-

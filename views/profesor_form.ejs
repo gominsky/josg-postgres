@@ -87,15 +87,22 @@
     <% } %>
   </div>
 
-  <div class="acciones-finales">
-    <div class="volver-bloque-izquierda">
-      <a href="/profesores" class="enlace-final-naranja">← Volver</a>
-    </div>
-    <div class="editar-centro">
+ <div class="acciones-finales d-flex justify-content-between align-items-center mt-4">
+  <a href="/profesores" class="enlace-final-naranja">← Volver</a>
+
+  <div class="d-flex gap-3">
+   <form action="<%= isEdicion ? '/profesores/' + profesor.id + '?_method=PUT' : '/profesores' %>" method="POST" enctype="multipart/form-data">
       <button type="submit" class="btn-main">
         <%= isEdicion ? 'Actualizar' : 'Registrar' %>
       </button>
-    </div>
+    </form>
   </div>
+</div> 
 </form>
+<% if (isEdicion) { %>
+  <form method="POST" action="/profesores/<%= profesor.id %>/eliminar" onsubmit="return confirm('¿Estás seguro de que quieres eliminar este profesor?');" class="text-center mt-3">
+    <p style="color: white; margin-bottom: 0.5rem;">Eliminar docente de manera definitiva</p>
+    <button type="submit" class="btn-main-blanco btn-rojo btn-sm">Eliminar</button>
+  </form>
+<% } %>
 

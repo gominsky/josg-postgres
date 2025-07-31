@@ -69,7 +69,6 @@ router.get('/', async (req, res) => {
     res.status(500).send('Error al obtener profesores');
   }
 });
-
 // GET: Nuevo profesor
 router.get('/nuevo', async (req, res) => {
   try {
@@ -150,7 +149,6 @@ router.post('/', upload.single('foto'), async (req, res) => {
     }
   }
 });
-
 // GET: Ficha
 router.get('/:id', async (req, res) => {
   const id = req.params.id;
@@ -293,6 +291,40 @@ router.put('/:id', upload.single('foto'), async (req, res) => {
       console.error('❌ Error al recargar formulario con error:', e);
       res.status(500).send('Error al cargar el formulario');
     }
+  }
+});
+// DELETE: Eliminar profesor
+router.post('/:id/eliminar', async (req, res) => {
+  const { id } = req.params;
+  console.log('Eliminando profesor:', id);
+  try {
+    // 1. Buscar la foto del profesor
+    const result = await db.query('SELECT foto FROM profesores WHERE id = $1', [id]);
+    const profesor = result.rows[0];
+
+    if (!profesor) {
+      return res.status(404).send('Profesor no encontrado');
+    }
+
+    // 2. Eliminar relaciones
+    await db.query('DELETE FROM profesor_instrumento WHERE profesor_id = $1', [id]);
+    await db.query('DELETE FROM profesor_grupo WHERE profesor_id = $1', [id]);
+
+    // 3. Eliminar profesor
+    await db.query('DELETE FROM profesores WHERE id = $1', [id]);
+
+    // 4. Borrar archivo de foto si existe
+    if (profesor.foto) {
+      const filePath = path.join(__dirname, '..', 'uploads', profesor.foto);
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+    }
+
+    res.redirect('/profesores');
+  } catch (err) {
+    console.error('❌ Error al eliminar profesor:', err);
+    res.status(500).send('Error al eliminar profesor');
   }
 });
 module.exports = router;
