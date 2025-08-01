@@ -68,7 +68,7 @@ router.post('/', async (req, res) => {
   console.log('📥 Datos recibidos:', { alumno_id, evento_id, token });
   try {
     const eventoRes = await db.query(
-      'SELECT * FROM eventos WHERE id = $1 AND token = $2 AND activo IS TRUE'
+      'SELECT * FROM eventos WHERE id = $1 AND token = $2 AND activo IS TRUE',
       [evento_id, token]
     );
     const evento = eventoRes.rows[0];
