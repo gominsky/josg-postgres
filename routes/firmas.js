@@ -65,14 +65,12 @@ router.post('/login', async (req, res) => {
 // Ruta 3: Firma de asistencia con QR
 router.post('/', async (req, res) => {
   const { alumno_id, evento_id, token, ubicacion } = req.body;
-  console.log('📥 Datos recibidos:', { alumno_id, evento_id, token });
   try {
     const eventoRes = await db.query(
       'SELECT * FROM eventos WHERE id = $1 AND token = $2 AND activo IS TRUE',
       [evento_id, token]
     );
     const evento = eventoRes.rows[0];
-    console.log('🔍 Resultado evento:', eventoRes.rows[0]);
     if (!evento) {
       return res.status(400).json({ error: 'Evento no válido o inactivo' });
     }
