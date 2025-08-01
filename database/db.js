@@ -8,5 +8,5 @@ const pool = new Pool({
     rejectUnauthorized: false // necesario en Render
   }
 });
-
+require('./init');
 module.exports = pool;
