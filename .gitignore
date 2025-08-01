@@ -24,3 +24,6 @@ localhost*.pem
 .vscode/
 .DS_Store
 Thumbs.db
+
+#No modificar db.js
+database/db.js

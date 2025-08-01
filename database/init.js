@@ -306,7 +306,7 @@ async function init() {
   const cuotasBase = [
     { nombre: 'Mensualidad', precio: 50, tipo: 'Mensual' },
     { nombre: 'Extraordinaria', precio: 100, tipo: 'Puntual' },
-    { nombre: 'Única', precio: 75, tipo: 'Puntual' }
+    { nombre: 'Matrícula', precio: 100, tipo: 'Puntual' }
   ];
 
   const resCuotas = await db.query('SELECT COUNT(*) FROM cuotas');

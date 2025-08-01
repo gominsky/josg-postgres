@@ -35,7 +35,7 @@
       const data = await res.json();
 
       if (data.success) {
-        localStorage.setItem('usuario_id', data.usuario_id);
+        localStorage.setItem('usuario_id', data.usuario.id);
         location.href = 'eventos.html';
       } else {
         document.getElementById('mensaje').innerText = data.error || 'Credenciales incorrectas';

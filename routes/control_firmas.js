@@ -24,6 +24,54 @@ router.post('/api/login', async (req, res) => {
     res.status(500).json({ success: false, error: 'Error interno' });
   }
 });
+router.get('/api/eventos', async (req, res) => {
+  const usuarioId = parseInt(req.query.usuario_id, 10);
+  if (isNaN(usuarioId)) return res.status(400).json([]);
+  if (!usuarioId) return res.status(400).json([]);
+
+  try {
+    const rolRes = await db.query('SELECT rol FROM usuarios WHERE id = $1', [usuarioId]);
+    if (rolRes.rowCount === 0) return res.json([]);
+
+    const rol = rolRes.rows[0].rol;
+    let sql, params = [];
+
+    if (rol === 'admin') {
+      sql = `
+        SELECT e.id, e.titulo, e.fecha_inicio, e.fecha_fin, g.nombre AS grupo_nombre
+        FROM eventos e
+        JOIN grupos g ON e.grupo_id = g.id
+        ORDER BY e.fecha_inicio ASC
+      `;
+    } else {
+      sql = `
+        SELECT e.id, e.titulo, e.fecha_inicio, e.fecha_fin, g.nombre AS grupo_nombre
+        FROM eventos e
+        JOIN grupos g ON e.grupo_id = g.id
+        JOIN profesor_grupo pg ON pg.grupo_id = g.id
+        JOIN profesores p ON p.id = pg.profesor_id
+        JOIN usuarios u ON u.email = p.email
+        WHERE u.id = $1
+        ORDER BY e.fecha_inicio ASC
+      `;
+      params = [usuarioId];
+    }
+
+    const eventosRes = await db.query(sql, params);
+
+    const eventosAdaptados = eventosRes.rows.map(e => ({
+      id: e.id,
+      title: `${e.titulo} (${e.grupo_nombre})`,
+      start: e.fecha_inicio,
+      end: e.fecha_fin
+    }));
+
+    res.json(eventosAdaptados);
+  } catch (err) {
+    console.error('❌ Error en /api/eventos:', err.message);
+    res.status(500).json([]);
+  }
+});
 router.get('/api/eventos/:id', async (req, res) => {
   const eventoId = req.params.id;
   try {
@@ -71,25 +119,33 @@ router.post('/api/firmar-alumnos', async (req, res) => {
   for (const { evento_id, alumno_id, asistio } of registros) {
     try {
       const result = await db.query(
-        `SELECT id, tipo FROM asistencias WHERE evento_id = $1 AND alumno_id = $2`,
+        `SELECT id FROM asistencias WHERE evento_id = $1 AND alumno_id = $2`,
         [evento_id, alumno_id]
       );
       const existente = result.rows[0];
-
-      if (asistio && !existente) {
-        await db.query(
-          `INSERT INTO asistencias (evento_id, alumno_id, fecha, hora, tipo, observaciones)
-           VALUES ($1, $2, CURRENT_DATE, CURRENT_TIME, 'manual', '')`,
-          [evento_id, alumno_id]
-        );
-      } else if (!asistio && existente?.tipo === 'manual') {
-        await db.query(`DELETE FROM asistencias WHERE id = $1`, [existente.id]);
+      if (asistio) {
+        if (!existente) {
+          await db.query(
+            `INSERT INTO asistencias (evento_id, alumno_id, fecha, hora, tipo, observaciones)
+             VALUES ($1, $2, CURRENT_DATE, CURRENT_TIME, 'manual', '')`,
+            [evento_id, alumno_id]
+          );
+        } else {
+          await db.query(
+            `UPDATE asistencias SET tipo = 'manual', fecha = CURRENT_DATE, hora = CURRENT_TIME WHERE id = $1`,
+            [existente.id]
+          );
+        }
+      } else {
+        if (existente) {
+          await db.query(`DELETE FROM asistencias WHERE id = $1`, [existente.id]);
+        }
       }
     } catch (err) {
+      console.error('⚠️ Error al procesar asistencia:', err);
       errores.push({ alumno_id, error: 'Error en el registro' });
     }
   }
-
   res.json({ success: true, errores });
 });
 router.patch('/api/eventos/:id/activar', async (req, res) => {

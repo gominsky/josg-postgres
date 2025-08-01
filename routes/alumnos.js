@@ -35,7 +35,7 @@ router.post('/', upload.single('foto'), async (req, res) => {
   const {
     nombre, apellidos, tutor, direccion, codigo_postal,
     municipio, provincia, telefono, email,
-    fecha_nacimiento, DNI, centro, profesor_centro,
+    fecha_nacimiento, dni, centro, profesor_centro,
     instrumentos, grupos
   } = req.body;
 
@@ -47,14 +47,14 @@ router.post('/', upload.single('foto'), async (req, res) => {
     INSERT INTO alumnos (
       nombre, apellidos, tutor, direccion, codigo_postal,
       municipio, provincia, telefono, email, fecha_nacimiento,
-      DNI, centro, profesor_centro, foto, activo, fecha_matriculacion
+      dni, centro, profesor_centro, foto, activo, fecha_matriculacion
     ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
     RETURNING id
   `;
   const paramsInsert = [
     nombre, apellidos, tutor, direccion, codigo_postal,
     municipio, provincia, telefono, email,
-    fecha_nacimiento, DNI, centro, profesor_centro,
+    fecha_nacimiento, dni, centro, profesor_centro,
     foto, activo, fechaMat
   ];
 
@@ -91,7 +91,7 @@ router.put('/:id', upload.single('foto'), async (req, res) => {
     telefono,
     email,
     fecha_nacimiento,
-    DNI,
+    dni,
     centro,
     profesor_centro,
     instrumentos,
@@ -116,7 +116,7 @@ router.put('/:id', upload.single('foto'), async (req, res) => {
       telefono = $8,
       email = $9,
       fecha_nacimiento = $10,
-      DNI = $11,
+      dni = $11,
       centro = $12,
       profesor_centro = $13,
       foto = $14,
@@ -136,7 +136,7 @@ router.put('/:id', upload.single('foto'), async (req, res) => {
     telefono,
     email,
     fecha_nacimiento,
-    DNI,
+    dni,
     centro,
     profesor_centro,
     foto,
