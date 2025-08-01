@@ -274,9 +274,86 @@ async function init() {
       );
       console.log("Usuario admin por defecto creado.");
     }
+  // 🏛️ GRUPOS BASE
+  const grupos = [
+    'OEG (Orquesta Escuela de Granada)',
+    'JOSG (Joven Orquesta Sinfónica de Granada)',
+    'Aspirantes OEG',
+    'Aspirantes JOSG',
+    'Música de Cámara'
+  ];
+
+  const resGrupos = await db.query('SELECT COUNT(*) FROM grupos');
+  if (parseInt(resGrupos.rows[0].count) === 0) {
+    for (const nombre of grupos) {
+      await db.query('INSERT INTO grupos (nombre) VALUES ($1)', [nombre]);
+    }
+    console.log("Grupos base insertados.");
+  }
+
+  // 💳 TIPOS DE CUOTA
+  const tiposCuota = ['Mensual', 'Semanal', 'Puntual', 'Otra'];
+
+  const resTipos = await db.query('SELECT COUNT(*) FROM tipos_cuota');
+  if (parseInt(resTipos.rows[0].count) === 0) {
+    for (const tipo of tiposCuota) {
+      await db.query('INSERT INTO tipos_cuota (tipo) VALUES ($1)', [tipo]);
+    }
+    console.log("Tipos de cuota insertados.");
+  }
+
+  // 💰 CUOTAS BASE
+  const cuotasBase = [
+    { nombre: 'Mensualidad', precio: 50, tipo: 'Mensual' },
+    { nombre: 'Extraordinaria', precio: 100, tipo: 'Puntual' },
+    { nombre: 'Única', precio: 75, tipo: 'Puntual' }
+  ];
+
+  const resCuotas = await db.query('SELECT COUNT(*) FROM cuotas');
+  if (parseInt(resCuotas.rows[0].count) === 0) {
+    for (const cuota of cuotasBase) {
+      const tipoId = await db.query('SELECT id FROM tipos_cuota WHERE tipo = $1', [cuota.tipo]);
+      if (tipoId.rows.length > 0) {
+        await db.query(
+          'INSERT INTO cuotas (nombre, precio, tipo_id) VALUES ($1, $2, $3)',
+          [cuota.nombre, cuota.precio, tipoId.rows[0].id]
+        );
+      }
+    }
+    console.log("Cuotas base insertadas.");
+  }
+
+  // 🎻 INSTRUMENTOS BASE
+  const instrumentos = [
+    { nombre: 'Violín', familia: 'Cuerda' },
+    { nombre: 'Viola', familia: 'Cuerda' },
+    { nombre: 'Violonchelo', familia: 'Cuerda' },
+    { nombre: 'Contrabajo', familia: 'Cuerda' },
+    { nombre: 'Flauta', familia: 'Viento madera' },
+    { nombre: 'Oboe', familia: 'Viento madera' },
+    { nombre: 'Clarinete', familia: 'Viento madera' },
+    { nombre: 'Fagot', familia: 'Viento madera' },
+    { nombre: 'Trompeta', familia: 'Viento metal' },
+    { nombre: 'Trompa', familia: 'Viento metal' },
+    { nombre: 'Trombón', familia: 'Viento metal' },
+    { nombre: 'Tuba', familia: 'Viento metal' },
+    { nombre: 'Percusión', familia: 'Percusión' },
+    { nombre: 'Batería', familia: 'Percusión' }
+  ];
+
+  const resInstru = await db.query('SELECT COUNT(*) FROM instrumentos');
+  if (parseInt(resInstru.rows[0].count) === 0) {
+    for (const instr of instrumentos) {
+      await db.query(
+        'INSERT INTO instrumentos (nombre, familia) VALUES ($1, $2)',
+        [instr.nombre, instr.familia]
+      );
+    }
+    console.log("Instrumentos base insertados.");
+  }
   } catch (err) {
     console.error("Error al inicializar la base de datos:", err);
-  } 
+  }
 }
 //init();
 module.exports = init;
