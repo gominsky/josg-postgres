@@ -278,4 +278,5 @@ async function init() {
     console.error("Error al inicializar la base de datos:", err);
   } 
 }
-init();
+//init();
+module.exports = init;
