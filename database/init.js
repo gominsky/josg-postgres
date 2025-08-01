@@ -276,9 +276,6 @@ async function init() {
     }
   } catch (err) {
     console.error("Error al inicializar la base de datos:", err);
-  } finally {
-    process.exit();
-  }
+  } 
 }
-
 init();

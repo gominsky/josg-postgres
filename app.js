@@ -96,8 +96,19 @@ app.use((req, res, next) => {
   next();
 });
 
-// Iniciar servidor
+const initDatabase = require('./database/init'); // Ajusta el path si es necesario
+
+(async () => {
+  await initDatabase(); // crea estructura de la base de datos
+
+  const PORT = process.env.PORT || 3001;
+  app.listen(PORT, () => {
+    console.log(`Servidor corriendo en http://localhost:${PORT}`);
+  });
+})();
+
+/* Iniciar servidor
 const PORT = 3001;
 app.listen(PORT, () => {
   console.log(`Servidor corriendo en http://localhost:${PORT}`);
-});
+});*/
