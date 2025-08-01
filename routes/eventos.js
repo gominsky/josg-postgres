@@ -190,7 +190,9 @@ router.get('/:id/qr', async (req, res) => {
 
     const evento = rows[0];
 
-    const qrData = `https://tuservidor.com/firmar/${evento.id}?token=${evento.token}`;
+    //const qrData = `https://tuservidor.com/firmar/${evento.id}?token=${evento.token}`;
+    const qrData = JSON.stringify({ evento_id: evento.id, token: evento.token });
+
     const qrDataUrl = await QRCode.toDataURL(qrData);
 
     const fechaFormateada = new Date(evento.fecha_inicio).toLocaleString('es-ES', {
