@@ -1020,8 +1020,11 @@ form {
   border: 1px solid #ccc;
   border-radius: 4px;
   align-items: flex-end;
-}
-
+    width: 100px;       
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
 .formulario-alumno {
   background: #fff;
   padding: 2rem;

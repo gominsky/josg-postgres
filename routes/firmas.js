@@ -24,9 +24,9 @@ router.post('/registro-app', async (req, res) => {
 
     const hash = await bcrypt.hash(password, 10);
     await db.query(
-      'UPDATE alumnos SET password = $1, registrado = 1 WHERE id = $2',
-      [hash, alumno.id]
-    );
+        'UPDATE alumnos SET password = $1, registrado = $2 WHERE id = $3',
+        [hash, true, alumno.id]
+      );
 
     res.json({ success: true, alumno_id: alumno.id });
   } catch (err) {
@@ -41,7 +41,7 @@ router.post('/login', async (req, res) => {
 
   try {
     const result = await db.query(
-      'SELECT * FROM alumnos WHERE email = $1 AND registrado = 1',
+      'SELECT * FROM alumnos WHERE email = $1 AND registrado = true',
       [email]
     );
     const alumno = result.rows[0];
@@ -68,7 +68,7 @@ router.post('/', async (req, res) => {
 
   try {
     const eventoRes = await db.query(
-      'SELECT * FROM eventos WHERE id = $1 AND token = $2 AND activo = 1',
+      'SELECT * FROM eventos WHERE id = $1 AND token = $2 AND activo = true'
       [evento_id, token]
     );
     const evento = eventoRes.rows[0];
