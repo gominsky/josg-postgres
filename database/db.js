@@ -1,8 +1,5 @@
 // db.js (nuevo para PostgreSQL)
 
-// Forzar que los campos NUMERIC (OID 1700) se devuelvan como float
-types.setTypeParser(1700, val => parseFloat(val));
-
 const { Pool } = require('pg');
 
 const pool = new Pool({
