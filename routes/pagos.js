@@ -2,6 +2,119 @@ const express = require('express');
 const router = express.Router();
 const db = require('../database/db');
 const PDFDocument = require('pdfkit');
+const path = require('path');
+function drawFooter(doc) {
+  const now = new Date();
+  const fecha = `${now.getDate()} de ${now.toLocaleString('es-ES', { month: 'long' })} de ${now.getFullYear()}`;
+
+  doc.moveTo(40, 730).lineTo(555, 730).stroke();
+
+  doc.fontSize(9).fillColor('gray').text(`Granada, ${fecha}`, 40, 735);
+  doc.fontSize(7).fillColor('gray').text(
+    `Asociación Joven Orquesta de Granada\n` +
+    `CIF: G-18651067 · www.josg.org · Tfno: 682445971\n` +
+    `C/ Andrés Segovia 60, 18007 Granada\n` +
+    `Sede de ensayos: Teatro Maestro Francisco Alonso, C/ Ribera del Beiro 34, 18012 Granada`,
+    40, 750
+  );
+}
+function drawHeader(doc) {
+  const margin = 40;
+  const top = 30;
+
+  // Recuadro superior
+  doc.rect(margin, top, 515, 80).fill('#f2f2f2').stroke();
+
+  // Logo
+  const logoPath = path.join(__dirname, '..', 'public', 'imagenes', 'logoJosg.png');
+  try {
+    doc.image(logoPath, margin + 10, top + 10, { width: 60 });
+  } catch (e) {
+    console.warn('⚠️ Logo no encontrado en', logoPath);
+  }
+
+  // Datos a la derecha
+  doc.fillColor('black')
+    .font('Helvetica-Bold').fontSize(10)
+    .text('Asociación Joven Orquesta de Granada', margin + 80, top + 10, { align: 'left' });
+
+  doc.font('Helvetica').fontSize(8)
+    .text('CIF: G-18651067', margin + 80, top + 24)
+    .text('www.josg.org', margin + 80, top + 36)
+}
+function generarReciboPago(doc, pago, cuotas) {
+  const margin = 40;
+  const lineHeight = 20;
+  const cellPadding = 5;
+  const col1Width = 120;
+  const col2Width = 350;
+
+  drawHeader(doc);
+  doc.moveDown(3);
+  doc.moveDown(4); // Baja antes de escribir el título
+  doc.fontSize(16).font('Helvetica-Bold').text('RECIBO DE PAGO', { align: 'center' }).moveDown(2);
+  // --- Tabla: Datos del alumno ---
+  doc.fontSize(12).font('Helvetica-Bold').text('Datos del alumno', { align: 'left' }).moveDown(0.5);
+  drawKeyValueTable(doc, [
+    ['Nombre', `${pago.nombre_alumno} ${pago.apellidos}`],
+    ['DNI', pago.dni || '—'],
+    ['Email', pago.email || '—']
+  ], { x: margin, y: doc.y, col1Width, col2Width, lineHeight, cellPadding });
+
+  doc.moveDown(1.5);
+
+  // --- Tabla: Detalles del pago ---
+  doc.fontSize(12).font('Helvetica-Bold').text('Detalles del pago', { align: 'left' }).moveDown(0.5);
+  drawKeyValueTable(doc, [
+    ['Fecha', new Date(pago.fecha_pago).toLocaleDateString('es-ES')],
+    ['Medio de pago', pago.medio_pago],
+    ['Referencia', pago.referencia || '—']
+  ], { x: margin, y: doc.y, col1Width, col2Width, lineHeight, cellPadding });
+
+  doc.moveDown(1.5);
+
+  // --- Tabla: Cuotas cubiertas ---
+  doc.fontSize(12).font('Helvetica-Bold').text('Cuotas cubiertas').moveDown(0.5);
+  if (cuotas.length > 0) {
+    cuotas.forEach((c, i) => {
+      doc.font('Helvetica').fontSize(10).text(
+        `${i + 1}. ${c.cuota_nombre} (${new Date(c.fecha_vencimiento).toLocaleDateString('es-ES')}) - ${Number(c.importe_aplicado).toFixed(2)} €`
+      );
+    });
+  } else {
+    doc.font('Helvetica').fontSize(10).text('No se encontraron cuotas asociadas.');
+  }
+
+  doc.moveDown(2);
+
+  // --- Total pagado ---
+  doc.moveTo(margin, doc.y).lineTo(555, doc.y).stroke().moveDown(0.5);
+  const total = parseFloat(pago.importe_pago || 0);
+  doc.fontSize(14).font('Helvetica-Bold').text(`Total pagado: ${total.toFixed(2)} €`, margin);
+
+  drawFooter(doc);
+}
+function drawKeyValueTable(doc, rows, { x, y, col1Width, col2Width, lineHeight, cellPadding }) {
+  rows.forEach(([label, value], index) => {
+    const yOffset = y + index * lineHeight;
+
+    // Columna 1: Etiqueta
+    doc.rect(x, yOffset, col1Width, lineHeight).stroke();
+    doc.font('Helvetica-Bold').fontSize(10).text(label, x + cellPadding, yOffset + cellPadding, {
+      width: col1Width - 2 * cellPadding,
+      height: lineHeight - 2 * cellPadding
+    });
+
+    // Columna 2: Valor
+    doc.rect(x + col1Width, yOffset, col2Width, lineHeight).stroke();
+    doc.font('Helvetica').fontSize(10).text(value, x + col1Width + cellPadding, yOffset + cellPadding, {
+      width: col2Width - 2 * cellPadding,
+      height: lineHeight - 2 * cellPadding
+    });
+  });
+
+  doc.y = y + rows.length * lineHeight;
+}
 
 // POST: Registrar un nuevo pago
 router.post('/', async (req, res) => {
@@ -53,8 +166,7 @@ router.post('/', async (req, res) => {
         `, [cuota.id]);
       }
     }
-
-    res.redirect('/alumnos/' + alumno_id);
+    res.redirect('/alumnos/' + alumno_id + '?tab=finanzas');
   } catch (err) {
     console.error('❌ Error al registrar pago:', err.message);
     res.status(500).send('Error al registrar el pago');
@@ -137,12 +249,22 @@ router.post('/generar-cuotas', async (req, res) => {
     const fechaIni = new Date(fecha_inicio);
     const fechaFin = new Date(fecha_fin);
 
-    let fechaActual = new Date(fechaIni.getFullYear(), fechaIni.getMonth(), 1);
+    const tipoRes = await db.query(`
+      SELECT tc.tipo FROM cuotas c
+      JOIN tipos_cuota tc ON c.tipo_id = tc.id
+      WHERE c.id = $1
+    `, [cuota_id]);
+
+    if (tipoRes.rows.length === 0) throw new Error('Tipo de cuota no encontrado');
+    const tipo = tipoRes.rows[0].tipo;
+
+    let fechaActual = new Date(fechaIni);
 
     while (fechaActual <= fechaFin) {
       const año = fechaActual.getFullYear();
       const mes = String(fechaActual.getMonth() + 1).padStart(2, '0');
-      const fechaVenc = `${año}-${mes}-01`;
+      const dia = String(fechaActual.getDate()).padStart(2, '0');
+      const fechaVenc = `${año}-${mes}-${dia}`;
 
       const { rows } = await db.query(
         `SELECT 1 FROM cuotas_alumno WHERE alumno_id = $1 AND cuota_id = $2 AND fecha_vencimiento = $3`,
@@ -157,10 +279,16 @@ router.post('/generar-cuotas', async (req, res) => {
         );
       }
 
-      fechaActual.setMonth(fechaActual.getMonth() + 1);
+      if (tipo === 'Mensual') {
+        fechaActual.setMonth(fechaActual.getMonth() + 1);
+      } else if (tipo === 'Semanal') {
+        fechaActual.setDate(fechaActual.getDate() + 7);
+      } else if (tipo === 'Puntual') {
+        break;
+      }
     }
 
-    res.redirect('/alumnos/' + alumno_id);
+    res.redirect('/alumnos/' + alumno_id + '?tab=finanzas');
   } catch (err) {
     console.error('Error al generar cuotas:', err);
     res.status(500).send('Error al generar cuotas');
@@ -178,7 +306,6 @@ router.get('/nuevo/:alumnoId', async (req, res) => {
     res.status(500).send('Error al buscar alumno');
   }
 });
-
 // GET: Detalles de pagos de un alumno
 router.get('/:id', async (req, res) => {
   const id = req.params.id;
@@ -240,43 +367,54 @@ router.get('/:id', async (req, res) => {
     res.status(500).send('Error al obtener datos del alumno');
   }
 });
-
 // GET: Generar recibo PDF
 router.get('/:id/recibo', async (req, res) => {
-  const pagoId = req.params.id;
+  const pagoId = parseInt(req.params.id, 10);
 
   try {
-    const result = await db.query(`
-      SELECT p.*, a.nombre, a.apellidos, a.id AS alumno_id
+    // Datos generales del pago y del alumno
+    const pagoResult = await db.query(`
+      SELECT p.*, a.nombre AS nombre_alumno, a.apellidos, a.dni, a.email
       FROM pagos p
-      JOIN alumnos a ON a.id = p.alumno_id
+      JOIN alumnos a ON p.alumno_id = a.id
       WHERE p.id = $1
     `, [pagoId]);
 
-    if (result.rows.length === 0) return res.status(404).send('Pago no encontrado');
-    const pago = result.rows[0];
+    if (pagoResult.rows.length === 0) {
+      return res.status(404).send('Pago no encontrado');
+    }
 
-    const doc = new PDFDocument();
+    const pago = pagoResult.rows[0];
+
+    // Cuotas aplicadas a este pago
+    const cuotasResult = await db.query(`
+      SELECT 
+        c.nombre AS cuota_nombre,
+        ca.fecha_vencimiento,
+        pca.importe_aplicado
+      FROM pago_cuota_alumno pca
+      JOIN cuotas_alumno ca ON pca.cuota_alumno_id = ca.id
+      JOIN cuotas c ON ca.cuota_id = c.id
+      WHERE pca.pago_id = $1
+    `, [pagoId]);
+
+    const cuotas = cuotasResult.rows;
+
+    // Generar PDF
+    const doc = new PDFDocument({ margin: 40 });
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `inline; filename="recibo_pago_${pago.id}.pdf"`);
+    res.setHeader('Content-Disposition', `inline; filename="recibo_${pago.id}.pdf"`);
 
+    generarReciboPago(doc, pago, cuotas);
     doc.pipe(res);
-
-    doc.fontSize(20).text('Recibo de Pago', { align: 'center' }).moveDown();
-    doc.fontSize(12)
-      .text(`Alumno: ${pago.nombre} ${pago.apellidos}`)
-      .text(`ID Alumno: ${pago.alumno_id}`)
-      .text(`Fecha de pago: ${pago.fecha_pago}`)
-      .text(`Importe: ${parseFloat(pago.importe).toFixed(2)} €`)
-      .text(`Medio de pago: ${pago.medio_pago}`)
-      .text(`Referencia: ${pago.referencia || '—'}`)
-      .text(`Observaciones: ${pago.observaciones || '—'}`);
-
     doc.end();
+
   } catch (err) {
-    console.error('❌ Error generando recibo:', err.message);
-    res.status(500).send('Error al generar recibo');
+    console.error('❌ Error al generar recibo:', err.message);
+    res.status(500).send('Error al generar el recibo');
   }
 });
+
+
 
 module.exports = router;

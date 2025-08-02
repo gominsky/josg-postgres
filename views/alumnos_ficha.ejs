@@ -80,31 +80,48 @@
         <h3>Cuotas del alumno</h3>
         <table class="table table-sm">
           <thead>
-          <tr>
-            <th>Nombre</th>
-            <th>Importe</th>
-            <th>Vencimiento</th>
-            <th>Estado</th>
-            <th>Fecha de pago</th>
-          </tr>
-        </thead>
-        <tbody>
-          <% cuotasAlumno.forEach(c => { %>
             <tr>
-              <td><%= c.nombre_cuota %></td>
-              <td><%= c.precio %> €</td>
-              <td><%= formatDate(c.fecha_vencimiento) %></td>
-              <td>
-                <span class="badge bg-<%= c.pagado ? 'success' : 'warning' %>">
-                  <%= c.pagado ? 'Pagada' : 'Pendiente' %>
-                </span>
-              </td>
-              <td><%= c.fecha_pago ? formatDate(c.fecha_pago) : '—' %></td>
+              <th>Nombre</th>
+              <th>Importe</th>
+              <th>Vencimiento</th>
+              <th>Estado</th>
+              <th>Fecha de pago</th>
+              <th>Acciones</th>
             </tr>
-          <% }) %>
-        </tbody>
+          </thead>
+          <tbody>
+            <% cuotasAlumno.forEach(c => { %>
+              <tr>
+                <td><%= c.nombre_cuota %></td>
+                <td><%= c.precio %> €</td>
+                <td><%= formatDate(c.fecha_vencimiento) %></td>
+                <td>
+                  <span class="badge bg-<%= c.pagado ? 'success' : 'warning' %>">
+                    <%= c.pagado ? 'Pagada' : 'Pendiente' %>
+                  </span>
+                </td>
+                <td><%= c.fecha_pago ? formatDate(c.fecha_pago) : '—' %></td>
+                <td style="text-align: center; vertical-align: middle; width: 60px;">
+                  <% if (!c.pagado) { %>
+                    <form action="/cuotas/alumno/eliminar/<%= c.id %>?alumno_id=<%= alumno.id %>&tab=finanzas"
+                          method="POST"
+                          style="margin: 0; padding: 0; display: inline; background-color: transparent;"
+                          onsubmit="return confirm('¿Eliminar esta cuota?');">
+                          <button title="Eliminar cuota"
+                          style="all: unset; cursor: pointer; font-size: 1rem; color: #c00; line-height: 1;">
+                    ✕
+                  </button>
+                    </form>
+                  <% } else { %>
+                    —
+                  <% } %>
+                </td>
+                
+              </tr>
+            <% }) %>
+          </tbody>
         </table>
-      </div>
+        
     <% } %>
 
     <% if (pagos && pagos.length > 0) { %>
@@ -184,14 +201,23 @@
 <script>
   document.addEventListener('DOMContentLoaded', () => {
     const btnToggle = document.getElementById('toggleResumenBtn');
-    const resumen   = document.getElementById('resumenFinanciero');
+    const resumen = document.getElementById('resumenFinanciero');
+
+    // Mostrar automáticamente si la URL contiene ?tab=finanzas
+    const urlParams = new URLSearchParams(window.location.search);
+    const tab = urlParams.get('tab');
+    if (tab === 'finanzas') {
+      resumen.style.display = 'block';
+      btnToggle.textContent = 'Ocultar resumen financiero';
+    }
 
     btnToggle.addEventListener('click', () => {
       const abierto = resumen.style.display !== 'none';
       resumen.style.display = abierto ? 'none' : 'block';
-      btnToggle.textContent  = abierto
+      btnToggle.textContent = abierto
         ? 'Mostrar resumen financiero'
         : 'Ocultar resumen financiero';
     });
   });
 </script>
+

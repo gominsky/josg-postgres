@@ -34,6 +34,8 @@ const fs = require('fs');
 const dayjs = require('dayjs');
 require('dayjs/locale/es');
 dayjs.locale('es');
+const ejs = require('ejs');
+const path = require('path');
 
 // routes/guardias.js
 router.get('/', async (req, res) => {
@@ -138,9 +140,6 @@ router.post('/generar', async (req, res) => {
   const { evento_id, desde, hasta } = req.body;
   const curso = getCursoActual();
 
-  console.log('📥 POST /generar recibido');
-  console.log('🆔 Evento ID:', evento_id, '| Curso actual:', curso);
-
   try {
     // Obtener fecha y grupo del evento
     const eventoResult = await db.query(
@@ -149,13 +148,10 @@ router.post('/generar', async (req, res) => {
     );
     const evento = eventoResult.rows[0];
     if (!evento) {
-      console.warn('⚠️ Evento no encontrado');
       return res.status(404).send('Evento no encontrado');
     }
 
     const { fecha_inicio, grupo_id } = evento;
-    console.log('📅 Fecha del evento:', fecha_inicio, '| Grupo ID:', grupo_id);
-
     // Alumnos activos del grupo
     const alumnosResult = await db.query(`
       SELECT 
@@ -179,8 +175,6 @@ router.post('/generar', async (req, res) => {
       WHERE ag.grupo_id = $1 AND a.activo = TRUE
     `, [grupo_id]);
     const alumnos = alumnosResult.rows;
-    console.log(`👥 ${alumnos.length} alumno(s) encontrados en el grupo`);
-
     // Alumnos ocupados ese día
     const ocupadosResult = await db.query(`
       SELECT alumno_id_1, alumno_id_2 FROM guardias WHERE fecha = $1
@@ -190,21 +184,13 @@ router.post('/generar', async (req, res) => {
       if (g.alumno_id_1) ocupados.add(g.alumno_id_1);
       if (g.alumno_id_2) ocupados.add(g.alumno_id_2);
     });
-    console.log(`🚫 ${ocupados.size} alumno(s) ya ocupados ese día`);
-
     const disponibles = alumnos.filter(a => !ocupados.has(a.id));
-    console.log(`✅ ${disponibles.length} alumno(s) disponibles`);
-
     if (!disponibles.length) {
       req.session.error = 'Sin alumnos disponibles para esta fecha';
-      console.warn('❌ Ningún alumno disponible para esta fecha');
       return res.redirect('/guardias');
     }
-
     const novatos = disponibles.filter(a => a.curso_ingreso === curso);
     const veteranos = disponibles.filter(a => a.curso_ingreso !== curso);
-    console.log(`🧑‍🎓 Novatos: ${novatos.length} | 🎓 Veteranos: ${veteranos.length}`);
-
     // Generar parejas válidas: un novato + un veterano preferiblemente
     let parejas = [];
     for (let i = 0; i < disponibles.length; i++) {
@@ -212,7 +198,6 @@ router.post('/generar', async (req, res) => {
         parejas.push([disponibles[i], disponibles[j]]);
       }
     }
-    console.log(`🤝 Total de parejas generadas: ${parejas.length}`);
     // Aleatorizar y ordenar por menor carga de guardias
     parejas = parejas
       .sort(() => Math.random() - 0.5)
@@ -224,13 +209,9 @@ router.post('/generar', async (req, res) => {
 
     if (!parejas.length) {
       req.session.error = 'No hay parejas válidas para esta guardia';
-      console.warn('❌ No se encontró ninguna pareja válida');
       return res.redirect('/guardias');
     }
-
     const [a1, a2] = parejas[0];
-    console.log(`🆕 Pareja seleccionada: ${a1.nombre} ${a1.apellidos} & ${a2.nombre} ${a2.apellidos}`);
-
     // Insertar nueva guardia
     await db.query(`
       INSERT INTO guardias (evento_id, fecha, alumno_id_1, alumno_id_2, curso, notas)
@@ -240,12 +221,9 @@ router.post('/generar', async (req, res) => {
     // Actualizar contadores
     await db.query(`UPDATE alumnos SET guardias_actual = guardias_actual + 1 WHERE id = $1`, [a1.id]);
     await db.query(`UPDATE alumnos SET guardias_actual = guardias_actual + 1 WHERE id = $1`, [a2.id]);
-    console.log(`✅ Guardia registrada y contadores actualizados`);
-
     req.session.mensaje = 'Guardia sugerida correctamente ✅';
     const query = `?desde=${encodeURIComponent(desde || '')}&hasta=${encodeURIComponent(hasta || '')}`;
     res.redirect('/guardias' + query);
-
   } catch (error) {
     console.error('❌ Error al generar guardia:', error);
     res.status(500).send('Error al generar guardia');
@@ -421,10 +399,6 @@ router.post('/eliminar/:id', async (req, res) => {
 router.post('/generar-multiples', async (req, res) => {
   const { desde, hasta, grupo } = req.body;
   const curso = getCursoActual();
-
-  console.log('📥 POST /generar-multiples recibido');
-  console.log('Desde:', desde, 'Hasta:', hasta, 'Grupo:', grupo);
-
   let sqlEventos = `
     SELECT e.id AS evento_id, e.fecha_inicio, e.grupo_id
     FROM eventos e
@@ -439,12 +413,9 @@ router.post('/generar-multiples', async (req, res) => {
   }
 
   sqlEventos += ' ORDER BY e.fecha_inicio ASC';
-
   try {
     const eventosRes = await db.query(sqlEventos, paramsEventos);
     const eventos = eventosRes.rows;
-
-    console.log('🔎 Eventos encontrados:', eventos.length);
     if (eventos.length === 0) {
       req.session.mensaje = 'No hay eventos sin guardia en ese rango.';
       return res.redirect('/guardias');
@@ -477,11 +448,8 @@ router.post('/generar-multiples', async (req, res) => {
         JOIN alumno_grupo ag ON a.id = ag.alumno_id
         WHERE ag.grupo_id = $1 AND a.activo = TRUE
       `, [evento.grupo_id]);
-
       const alumnos = alumnosRes.rows;
-      console.log(`👥 Alumnos disponibles en grupo ${evento.grupo_id}:`, alumnos.length);
       if (!alumnos.length) continue;
-
       // Verificar ocupados
       const guardiasDiaRes = await db.query(`
         SELECT alumno_id_1, alumno_id_2
@@ -502,9 +470,6 @@ router.post('/generar-multiples', async (req, res) => {
       const disponibles = alumnos.filter(a => !ocupados.has(a.id));
       const novatos = disponibles.filter(a => a.curso_ingreso === curso);
       const veteranos = disponibles.filter(a => a.curso_ingreso !== curso);
-
-      console.log(`📅 ${fechaStr} → Disponibles: ${disponibles.length}, Novatos: ${novatos.length}, Veteranos: ${veteranos.length}`);
-
       let parejas = [];
       for (let v of veteranos) {
         for (let otro of disponibles) {
@@ -514,9 +479,6 @@ router.post('/generar-multiples', async (req, res) => {
           }
         }
       }
-
-      console.log(`🤝 Parejas generadas para ${fechaStr}:`, parejas.length);
-
       parejas = parejas
         .sort(() => Math.random() - 0.5)
         .sort((a, b) => {
@@ -524,28 +486,19 @@ router.post('/generar-multiples', async (req, res) => {
           const cargaB = (b[0].guardias_actual || 0) + (b[1].guardias_actual || 0);
           return cargaA - cargaB;
         });
-
       if (parejas.length > 0) {
         const [a1, a2] = parejas[0];
-
         try {
           await db.query('BEGIN');
-
           await db.query(`
             INSERT INTO guardias (evento_id, fecha, alumno_id_1, alumno_id_2, curso, notas)
             VALUES ($1, $2, $3, $4, $5, NULL)
           `, [evento.evento_id, fechaStr, a1.id, a2.id, curso]);
-
           ocupados.add(a1.id);
           ocupados.add(a2.id);
-
           await db.query(`UPDATE alumnos SET guardias_actual = guardias_actual + 1 WHERE id = $1`, [a1.id]);
           await db.query(`UPDATE alumnos SET guardias_actual = guardias_actual + 1 WHERE id = $1`, [a2.id]);
-
           await db.query('COMMIT');
-
-          console.log(`✅ Guardia asignada para evento ${evento.evento_id}: ${a1.nombre} y ${a2.nombre} → ${fechaStr}`);
-
         } catch (insertErr) {
           console.error(`❌ Error insertando guardia para evento ${evento.evento_id}:`, insertErr.message);
           await db.query('ROLLBACK');
@@ -563,13 +516,49 @@ router.post('/generar-multiples', async (req, res) => {
     res.status(500).send('Error interno al generar guardias');
   }
 });
-router.get('/informe', (req, res) => {
-  res.render('guardias_informe_form', { hero: false });
-});
-router.post('/informe', async (req, res) => {
-  const { desde, hasta } = req.body;
 
-  const sql = `
+// --- Header PDF ---
+const drawHeader = (doc, desde, hasta, grupoNombre) => {
+  const logoPath = './public/imagenes/logoJOSG.png';
+
+  if (fs.existsSync(logoPath)) {
+    doc.image(logoPath, 40, 30, { height: 60 });
+  }
+
+  doc.fontSize(10).font('Helvetica-Bold')
+     .text('www.josg.org', 460, 30, { align: 'right' });
+
+  doc.font('Helvetica')
+     .text('info@josg.org', 460, 45, { align: 'right' });
+
+  doc.fontSize(14).fillColor('#222')
+     .text(`Guardias entre ${dayjs(desde).format('DD/MM/YYYY')} y ${dayjs(hasta).format('DD/MM/YYYY')} - Grupo: ${grupoNombre}`, 40, 100);
+};
+
+// --- Footer PDF ---
+const drawFooter = (doc) => {
+  const now = new Date();
+  const fecha = `${now.getDate()} de ${now.toLocaleString('es-ES', { month: 'long' })} de ${now.getFullYear()}`;
+
+  doc.moveTo(40, 730).lineTo(555, 730).stroke();
+
+  doc.fontSize(9).fillColor('gray').text(`Granada, ${fecha}`, 40, 735);
+  doc.fontSize(7).fillColor('gray').text(
+    `Asociación Joven Orquesta de Granada\nCIF: G-18651067 · www.josg.org · Tfno: 682445971\n` +
+    `C/ Andrés Segovia 60, 18007 Granada\nSede de ensayos: Teatro Maestro Francisco Alonso, C/ Ribera del Beiro 34, 18012 Granada`,
+    40, 750
+  );
+};
+
+// --- Ruta PDF ---
+router.post('/informe', async (req, res) => {
+  const { desde, hasta, grupo } = req.body;
+
+  if (!desde.trim() || !hasta.trim() || !grupo?.trim()) {
+    return res.send('<script>alert("⚠️ Debes indicar un rango de fechas y un grupo."); window.history.back();</script>');
+  }
+
+  let sql = `
     SELECT 
       e.fecha_inicio AS fecha,
       e.titulo AS evento,
@@ -582,17 +571,34 @@ router.post('/informe', async (req, res) => {
     LEFT JOIN alumnos a2 ON g.alumno_id_2 = a2.id
     LEFT JOIN grupos gr ON e.grupo_id = gr.id
     WHERE DATE(e.fecha_inicio) BETWEEN $1 AND $2
-    ORDER BY e.fecha_inicio ASC
   `;
 
+  const params = [desde, hasta];
+  if (grupo !== 'todos') {
+    sql += ' AND gr.id = $3';
+    params.push(grupo);
+  }
+
   try {
-    const result = await db.query(sql, [desde, hasta]);
+    const result = await db.query(sql, params);
     const eventos = result.rows;
 
+    if (eventos.length === 0) {
+      return res.send('<script>alert("No hay eventos entre las fechas indicadas para ese grupo."); window.history.back();</script>');
+    }
+
+    const grupoNombre = (eventos[0]?.grupo || 'Todos los grupos').replace(/\s*\(.*\)/, '');
     const doc = new PDFDocument({ margin: 30, size: 'A4' });
     res.setHeader('Content-disposition', 'attachment; filename="calendario_guardias.pdf"');
     res.setHeader('Content-type', 'application/pdf');
     doc.pipe(res);
+
+    drawHeader(doc, desde, hasta, grupoNombre);
+    drawFooter(doc);
+    doc.on('pageAdded', () => {
+      drawHeader(doc, desde, hasta, grupoNombre);
+      drawFooter(doc);
+    });
 
     const eventosPorMes = {};
     eventos.forEach(ev => {
@@ -602,8 +608,9 @@ router.post('/informe', async (req, res) => {
       eventosPorMes[key].push({
         dia: fecha.date(),
         evento: ev.evento,
-        grupo: ev.grupo,
-        guardias: [ev.guardia1, ev.guardia2].filter(Boolean).join(' y ')
+        grupo: ev.grupo.replace(/\s*\(.*\)/, ''),
+        guardias: [ev.guardia1, ev.guardia2].filter(Boolean).join(' y '),
+        fecha: fecha.format('DD/MM/YYYY')
       });
     });
 
@@ -617,25 +624,12 @@ router.post('/informe', async (req, res) => {
 
       if (i > 0) doc.addPage();
 
-      // CABECERA
-      if (fs.existsSync('./public/logo.png')) {
-        doc.image('./public/logo.png', 30, 30, { width: 40 });
-      }
-
-      const grupoTexto = eventosPorMes[mesKey][0].grupo || '';
-      doc.fontSize(14).text(grupoTexto.toUpperCase(), 100, 30, { align: 'center' });
-      doc.fontSize(20).text(primerDia.format('MMMM YYYY').toUpperCase(), { align: 'center' });
-
-      doc.fontSize(10).fillColor('gray')
-         .text(`Guardias entre ${dayjs(desde).format('DD/MM/YYYY')} y ${dayjs(hasta).format('DD/MM/YYYY')}`, { align: 'center' })
-         .moveDown();
-
       // CALENDARIO
       const margenX = 40;
-      const margenY = 110;
+      const margenY = 150;
       const ancho = 520;
-      const alto = 350;
-      const diasSemana = ['D', 'L', 'M', 'X', 'J', 'V', 'S'];
+      const alto = 320;
+      const diasSemana = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
       const cellWidth = ancho / 7;
       const cellHeight = alto / 6;
 
@@ -644,7 +638,7 @@ router.post('/informe', async (req, res) => {
       });
 
       let fila = 0;
-      let columna = primerDia.day();
+      let columna = (primerDia.day() + 6) % 7;
       for (let dia = 1; dia <= ultimoDia.date(); dia++) {
         const x = margenX + columna * cellWidth;
         const y = margenY + fila * cellHeight;
@@ -652,13 +646,14 @@ router.post('/informe', async (req, res) => {
         doc.rect(x, y, cellWidth, cellHeight).stroke();
         doc.fontSize(8).fillColor('black').text(dia.toString(), x + 2, y + 2);
 
-        const eventoDia = eventosPorMes[mesKey].find(ev => ev.dia === dia);
-        if (eventoDia) {
+        // 🟠 Mostrar todos los eventos del día (no solo el primero)
+        const eventosDia = eventosPorMes[mesKey].filter(ev => ev.dia === dia);
+        eventosDia.forEach((eventoDia, index) => {
           const texto = `${eventoDia.evento}\n${eventoDia.guardias}`;
-          doc.fontSize(6).fillColor('black').text(texto, x + 2, y + 12, {
+          doc.fontSize(6).fillColor('black').text(texto, x + 2, y + 12 + index * 20, {
             width: cellWidth - 4
           });
-        }
+        });
 
         columna++;
         if (columna > 6) {
@@ -666,15 +661,61 @@ router.post('/informe', async (req, res) => {
           fila++;
         }
       }
+      // --- TABLA DETALLE ---
+      const eventosMes = eventosPorMes[mesKey];
+      let yTabla = doc.y + 50; // más cerca del calendario, pero con margen
 
-      doc.fontSize(8).fillColor('gray')
-         .text(`Generado el ${dayjs().format('DD/MM/YYYY HH:mm')}`, 0, 800, { align: 'center' });
+      doc.fontSize(11).fillColor('#333')
+        .text('Guardias del mes:', 40, yTabla);
+
+      yTabla += 20;
+
+      // Encabezado de tabla
+      doc.fontSize(9).fillColor('black');
+      doc.rect(40, yTabla, 500, 18).fill('#eee').stroke();
+      doc.fillColor('black')
+        .text('Fecha', 45, yTabla + 4)
+        .text('Grupo', 120, yTabla + 4)
+        .text('Evento', 220, yTabla + 4)
+        .text('Guardias', 320, yTabla + 4);
+
+      yTabla += 20;
+
+      // Filas de tabla
+      const filaAltura = 18;
+      const limitePagina = 730; // justo antes del footer
+
+      eventosMes.forEach(ev => {
+        if (yTabla + filaAltura > limitePagina) {
+          doc.addPage();
+          drawHeader(doc, desde, hasta, grupoNombre);
+          drawFooter(doc);
+
+          yTabla = 130; // reinicio más abajo del header
+          doc.fontSize(9).fillColor('black');
+          doc.rect(40, yTabla, 500, 18).fill('#eee').stroke();
+          doc.fillColor('black')
+            .text('Fecha', 45, yTabla + 4)
+            .text('Grupo', 120, yTabla + 4)
+            .text('Evento', 220, yTabla + 4)
+            .text('Guardias', 320, yTabla + 4);
+          yTabla += 20;
+        }
+
+        doc.rect(40, yTabla, 500, filaAltura).stroke();
+        doc.text(ev.fecha, 45, yTabla + 4);
+        doc.text(ev.grupo, 120, yTabla + 4);
+        doc.text(ev.evento, 220, yTabla + 4, { width: 100 });
+        doc.text(ev.guardias, 320, yTabla + 4, { width: 220 });
+
+        yTabla += filaAltura;
+      });
     }
-
     doc.end();
   } catch (err) {
     console.error('❌ Error al generar informe:', err.message);
     res.status(500).send('Error al generar informe');
   }
 });
+
 module.exports = router;

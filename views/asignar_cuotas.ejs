@@ -10,7 +10,7 @@
       <% if (grupos.length > 0) { %>
         <% grupos.forEach(g => { %>
           <label class="d-flex align-items-center">
-            <input class="form-check-input me-1" type="checkbox" name="grupo_ids" value="<%= g.id %>">
+            <input class="form-check-input me-1" type="checkbox" name="grupo_ids[]" value="<%= g.id %>">
             <span class="text-dark"><%= g.nombre %></span>
           </label>
         <% }) %>

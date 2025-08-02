@@ -1020,7 +1020,14 @@ form {
   border: 1px solid #ccc;
   border-radius: 4px;
   align-items: flex-end;
-  width: 120px;       
+  }
+.form-centrado-select1 {
+  padding: 0.4rem;
+  font-size: 0.85rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  align-items: flex-end;
+  width: 150px;       
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
