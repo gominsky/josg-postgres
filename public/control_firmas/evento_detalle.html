@@ -67,7 +67,7 @@
         document.getElementById('observaciones_generales').value = evento.observaciones_generales || '';
 
         tokenQR = evento.token;
-        qrActivo = evento.activo === 1;
+        qrActivo = Boolean(evento.activo);
 
         document.getElementById('qr-estado').innerText = qrActivo ? 'QR activo' : 'QR desactivado';
         document.getElementById('btn-qr').style.display = qrActivo ? 'inline-block' : 'none';

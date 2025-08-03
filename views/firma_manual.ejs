@@ -33,7 +33,7 @@
       <% alumnos.forEach(alumno => { %>
         <tr>
           <td class="text-start"><%= alumno.apellidos %>, <%= alumno.nombre %></td>
-          <td><%= alumno.DNI %></td>
+          <td><%= alumno.dni %></td>
           <td><%= firmados.includes(alumno.id) ? '✓' : '' %></td>
         </tr>
       <% }) %>
@@ -67,7 +67,7 @@
           <% alumnos.forEach(alumno => { %>
             <tr>
               <td class="text-start"><%= alumno.apellidos %>, <%= alumno.nombre %></td>
-              <td><%= alumno.DNI %></td>
+              <td><%= alumno.dni %></td>
               <td>
                 <input 
                   class="form-check-input" 
