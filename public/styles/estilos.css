@@ -1116,3 +1116,11 @@ form {
   #pdf-content {
     display: none;
   }
+/*Error***********************************/
+.custom-error {
+  background-color: #fff3cd;
+  color: #856404;
+  border: 1px solid #ffeeba;
+  border-radius: 6px;
+  padding: 0.75rem 1rem;
+}

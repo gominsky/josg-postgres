@@ -3,136 +3,15 @@ const router = express.Router();
 const db = require('../database/db');
 const PDFDocument = require('pdfkit');
 const path = require('path');
-function drawFooter(doc) {
-  const now = new Date();
-  const fecha = `${now.getDate()} de ${now.toLocaleString('es-ES', { month: 'long' })} de ${now.getFullYear()}`;
-
-  doc.moveTo(40, 730).lineTo(555, 730).stroke();
-
-  doc.fontSize(9).fillColor('gray').text(`Granada, ${fecha}`, 40, 735);
-  doc.fontSize(7).fillColor('gray').text(
-    `Asociación Joven Orquesta de Granada\n` +
-    `CIF: G-18651067 · www.josg.org · Tfno: 682445971\n` +
-    `C/ Andrés Segovia 60, 18007 Granada\n` +
-    `Sede de ensayos: Teatro Maestro Francisco Alonso, C/ Ribera del Beiro 34, 18012 Granada`,
-    40, 750
-  );
-}
-function drawHeader(doc) {
-  const margin = 40;
-  const top = 30;
-
-  // Recuadro superior
-  doc.rect(margin, top, 515, 80).fill('#f2f2f2').stroke();
-
-  // Logo
-  const logoPath = path.join(__dirname, '..', 'public', 'imagenes', 'logoJosg.png');
-  try {
-    doc.image(logoPath, margin + 10, top + 10, { width: 60 });
-  } catch (e) {
-    console.warn('⚠️ Logo no encontrado en', logoPath);
-  }
-
-  // Datos a la derecha
-  doc.fillColor('black')
-    .font('Helvetica-Bold').fontSize(10)
-    .text('Asociación Joven Orquesta de Granada', margin + 80, top + 10, { align: 'left' });
-
-  doc.font('Helvetica').fontSize(8)
-    .text('CIF: G-18651067', margin + 80, top + 24)
-    .text('www.josg.org', margin + 80, top + 36)
-}
-function generarReciboPago(doc, pago, cuotas) {
-  const margin = 40;
-  const lineHeight = 20;
-  const cellPadding = 5;
-  const col1Width = 120;
-  const col2Width = 350;
-
-  drawHeader(doc);
-  doc.moveDown(3);
-  doc.moveDown(4); // Baja antes de escribir el título
-  doc.fontSize(16).font('Helvetica-Bold').text('RECIBO DE PAGO', { align: 'center' }).moveDown(2);
-  // --- Tabla: Datos del alumno ---
-  doc.fontSize(12).font('Helvetica-Bold').text('Datos del alumno', { align: 'left' }).moveDown(0.5);
-  drawKeyValueTable(doc, [
-    ['Nombre', `${pago.nombre_alumno} ${pago.apellidos}`],
-    ['DNI', pago.dni || '—'],
-    ['Email', pago.email || '—']
-  ], { x: margin, y: doc.y, col1Width, col2Width, lineHeight, cellPadding });
-
-  doc.moveDown(1.5);
-
-  // --- Tabla: Detalles del pago ---
-  doc.fontSize(12).font('Helvetica-Bold').text('Detalles del pago', { align: 'left' }).moveDown(0.5);
-  drawKeyValueTable(doc, [
-    ['Fecha', new Date(pago.fecha_pago).toLocaleDateString('es-ES')],
-    ['Medio de pago', pago.medio_pago],
-    ['Referencia', pago.referencia || '—']
-  ], { x: margin, y: doc.y, col1Width, col2Width, lineHeight, cellPadding });
-
-  doc.moveDown(1.5);
-
-  // --- Tabla: Cuotas cubiertas ---
-  doc.fontSize(12).font('Helvetica-Bold').text('Cuotas cubiertas').moveDown(0.5);
-  if (cuotas.length > 0) {
-    cuotas.forEach((c, i) => {
-      doc.font('Helvetica').fontSize(10).text(
-        `${i + 1}. ${c.cuota_nombre} (${new Date(c.fecha_vencimiento).toLocaleDateString('es-ES')}) - ${Number(c.importe_aplicado).toFixed(2)} €`
-      );
-    });
-  } else {
-    doc.font('Helvetica').fontSize(10).text('No se encontraron cuotas asociadas.');
-  }
-
-  doc.moveDown(2);
-
-  // --- Total pagado ---
-  doc.moveTo(margin, doc.y).lineTo(555, doc.y).stroke().moveDown(0.5);
-  const total = parseFloat(pago.importe_pago || 0);
-  doc.fontSize(14).font('Helvetica-Bold').text(`Total pagado: ${total.toFixed(2)} €`, margin);
-
-  drawFooter(doc);
-}
-function drawKeyValueTable(doc, rows, { x, y, col1Width, col2Width, lineHeight, cellPadding }) {
-  rows.forEach(([label, value], index) => {
-    const yOffset = y + index * lineHeight;
-
-    // Columna 1: Etiqueta
-    doc.rect(x, yOffset, col1Width, lineHeight).stroke();
-    doc.font('Helvetica-Bold').fontSize(10).text(label, x + cellPadding, yOffset + cellPadding, {
-      width: col1Width - 2 * cellPadding,
-      height: lineHeight - 2 * cellPadding
-    });
-
-    // Columna 2: Valor
-    doc.rect(x + col1Width, yOffset, col2Width, lineHeight).stroke();
-    doc.font('Helvetica').fontSize(10).text(value, x + col1Width + cellPadding, yOffset + cellPadding, {
-      width: col2Width - 2 * cellPadding,
-      height: lineHeight - 2 * cellPadding
-    });
-  });
-
-  doc.y = y + rows.length * lineHeight;
-}
+const { generarReciboPago } = require('../utils/pdfRecibos');
 
 // POST: Registrar un nuevo pago
 router.post('/', async (req, res) => {
   const { alumno_id, importe, fecha_pago, medio_pago, referencia, observaciones } = req.body;
 
   try {
-    // Insertar el pago
-    const result = await db.query(`
-      INSERT INTO pagos (alumno_id, importe, fecha_pago, medio_pago, referencia, observaciones)
-      VALUES ($1, $2, $3, $4, $5, $6)
-      RETURNING id
-    `, [alumno_id, importe, fecha_pago, medio_pago, referencia, observaciones]);
-
-    const pagoId = result.rows[0].id;
-    let restante = parseFloat(importe);
-
-    // Buscar cuotas no pagadas del alumno
-    const cuotasResult = await db.query(`
+    // 1. Verificar cuotas impagadas
+    const cuotasImpagasRes = await db.query(`
       SELECT ca.id, c.precio AS importe_cuota
       FROM cuotas_alumno ca
       JOIN cuotas c ON ca.cuota_id = c.id
@@ -140,9 +19,87 @@ router.post('/', async (req, res) => {
       ORDER BY ca.fecha_vencimiento ASC
     `, [alumno_id]);
 
-    const cuotas = cuotasResult.rows;
+    const cuotasImpagas = cuotasImpagasRes.rows;
 
-    for (const cuota of cuotas) {
+    if (cuotasImpagas.length === 0) {
+      // No hay cuotas impagadas → mostrar error en el formulario
+      const alumnoRes = await db.query(`SELECT * FROM alumnos WHERE id = $1`, [alumno_id]);
+      const alumno = alumnoRes.rows[0];
+
+      const [cuotasDisponiblesRes, cuotasAlumnoRes, pagosRes] = await Promise.all([
+        db.query(`SELECT * FROM cuotas ORDER BY nombre`),
+        db.query(`
+          SELECT ca.*, c.nombre AS nombre_cuota, c.precio
+          FROM cuotas_alumno ca
+          JOIN cuotas c ON ca.cuota_id = c.id
+          WHERE ca.alumno_id = $1
+          ORDER BY ca.fecha_vencimiento ASC
+        `, [alumno_id]),
+        db.query(`
+          SELECT p.id AS pago_id, p.fecha_pago, p.importe AS importe_pago, p.medio_pago, p.referencia,
+                 p.observaciones, c.nombre AS cuota_nombre, pca.importe_aplicado
+          FROM pagos p
+          JOIN pago_cuota_alumno pca ON p.id = pca.pago_id
+          JOIN cuotas_alumno ca ON pca.cuota_alumno_id = ca.id
+          JOIN cuotas c ON ca.cuota_id = c.id
+          WHERE p.alumno_id = $1
+          ORDER BY p.fecha_pago DESC
+        `, [alumno_id])
+      ]);
+
+      // Generar nueva referencia sugerida
+      const today = new Date();
+      const base = `P${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}`;
+      let sufijo = 0;
+      let nuevaRef = base;
+
+      while (true) {
+        const refCheck = await db.query(`SELECT 1 FROM pagos WHERE referencia = $1`, [nuevaRef]);
+        if (refCheck.rows.length === 0) break;
+        sufijo++;
+        nuevaRef = `${base}-${sufijo}`;
+      }
+
+      return res.render('pago_form', {
+        alumno,
+        pagos: pagosRes.rows,
+        cuotasDisponibles: cuotasDisponiblesRes.rows,
+        cuotasAlumno: cuotasAlumnoRes.rows,
+        referenciaSugerida: nuevaRef,
+        modoEdicion: false,
+        errorMsg: 'No hay cuotas impagadas a las que aplicar el pago.'
+      });
+    }
+
+    // 2. Generar referencia si no se proporcionó
+    let ref = referencia?.trim();
+    if (!ref) {
+      const base = `P${String(new Date(fecha_pago).getMonth() + 1).padStart(2, '0')}${String(new Date(fecha_pago).getDate()).padStart(2, '0')}`;
+      let sufijo = 0;
+      let nuevaRef = base;
+
+      while (true) {
+        const existe = await db.query(`SELECT 1 FROM pagos WHERE referencia = $1`, [nuevaRef]);
+        if (existe.rows.length === 0) break;
+        sufijo++;
+        nuevaRef = `${base}-${sufijo}`;
+      }
+
+      ref = nuevaRef;
+    }
+
+    // 3. Insertar el pago
+    const result = await db.query(`
+      INSERT INTO pagos (alumno_id, importe, fecha_pago, medio_pago, referencia, observaciones)
+      VALUES ($1, $2, $3, $4, $5, $6)
+      RETURNING id
+    `, [alumno_id, importe, fecha_pago, medio_pago, ref, observaciones]);
+
+    const pagoId = result.rows[0].id;
+    let restante = parseFloat(importe);
+
+    // 4. Aplicar a cuotas impagadas
+    for (const cuota of cuotasImpagas) {
       if (restante <= 0) break;
 
       const aplicar = Math.min(restante, cuota.importe_cuota);
@@ -161,85 +118,15 @@ router.post('/', async (req, res) => {
 
       const totalPagado = parseFloat(totalResult.rows[0].total_pagado || 0);
       if (totalPagado >= cuota.importe_cuota) {
-        await db.query(`
-          UPDATE cuotas_alumno SET pagado = true WHERE id = $1
-        `, [cuota.id]);
+        await db.query(`UPDATE cuotas_alumno SET pagado = true WHERE id = $1`, [cuota.id]);
       }
     }
-    res.redirect('/alumnos/' + alumno_id + '?tab=finanzas');
+
+    // 5. Redirigir a ficha del alumno
+    res.redirect(`/alumnos/${alumno_id}?tab=finanzas`);
   } catch (err) {
     console.error('❌ Error al registrar pago:', err.message);
     res.status(500).send('Error al registrar el pago');
-  }
-});
-router.get('/nuevo/:alumnoId', async (req, res) => {
-  const alumnoId = req.params.alumnoId;
-
-  try {
-    const alumnoRes = await db.query(`SELECT * FROM alumnos WHERE id = $1`, [alumnoId]);
-    const alumno = alumnoRes.rows[0];
-    if (!alumno) return res.status(404).send('Alumno no encontrado');
-
-    const [instrumentosRes, gruposRes, cuotasDisponiblesRes, cuotasAlumnoRes, pagosRes] = await Promise.all([
-      db.query(`
-        SELECT i.nombre
-        FROM instrumentos i
-        JOIN alumno_instrumento ai ON i.id = ai.instrumento_id
-        WHERE ai.alumno_id = $1
-      `, [alumnoId]),
-      db.query(`
-        SELECT g.nombre
-        FROM grupos g
-        JOIN alumno_grupo ag ON g.id = ag.grupo_id
-        WHERE ag.alumno_id = $1
-      `, [alumnoId]),
-      db.query(`SELECT * FROM cuotas ORDER BY nombre`),
-      db.query(`
-        SELECT 
-          ca.*, 
-          c.nombre AS nombre_cuota, 
-          c.precio
-        FROM cuotas_alumno ca
-        JOIN cuotas c ON ca.cuota_id = c.id
-        WHERE ca.alumno_id = $1
-        ORDER BY ca.fecha_vencimiento ASC
-      `, [alumnoId]),
-      db.query(`
-        SELECT 
-          p.id AS pago_id,
-          p.fecha_pago,
-          p.importe AS importe_pago,
-          p.medio_pago,
-          p.referencia,
-          p.observaciones,
-          c.nombre AS cuota_nombre,
-          pca.importe_aplicado
-        FROM pagos p
-        JOIN pago_cuota_alumno pca ON p.id = pca.pago_id
-        JOIN cuotas_alumno ca ON pca.cuota_alumno_id = ca.id
-        JOIN cuotas c ON ca.cuota_id = c.id
-        WHERE p.alumno_id = $1
-        ORDER BY p.fecha_pago DESC
-      `, [alumnoId])
-    ]);
-
-    const instrumentos = instrumentosRes.rows.map(i => i.nombre).join(', ');
-    const grupos = gruposRes.rows.map(g => g.nombre).join(', ');
-
-    res.render('pago_form', {
-      alumno: {
-        ...alumno,
-        instrumentos,
-        grupos
-      },
-      pagos: pagosRes.rows,
-      cuotasDisponibles: cuotasDisponiblesRes.rows,
-      cuotasAlumno: cuotasAlumnoRes.rows
-    });
-
-  } catch (err) {
-    console.error('❌ Error cargando formulario de pagos:', err);
-    res.status(500).send('Error cargando datos');
   }
 });
 router.post('/generar-cuotas', async (req, res) => {
@@ -294,16 +181,79 @@ router.post('/generar-cuotas', async (req, res) => {
     res.status(500).send('Error al generar cuotas');
   }
 });
-// GET: Formulario nuevo pago
 router.get('/nuevo/:alumnoId', async (req, res) => {
   const alumnoId = req.params.alumnoId;
+
   try {
-    const result = await db.query('SELECT * FROM alumnos WHERE id = $1', [alumnoId]);
-    if (result.rows.length === 0) return res.status(404).send('Alumno no encontrado');
-    // Aquí podrías renderizar un formulario si lo necesitas
-    res.send('Formulario nuevo pago (pendiente de implementación)');
+    const alumnoRes = await db.query(`SELECT * FROM alumnos WHERE id = $1`, [alumnoId]);
+    const alumno = alumnoRes.rows[0];
+    if (!alumno) return res.status(404).send('Alumno no encontrado');
+
+    const grupos = alumno.grupos || '';
+
+    // Generar referencia sugerida: P + MMDD + sufijo si ya existe
+    const today = new Date();
+    const base = `P${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}`;
+    let sufijo = 0;
+    let nuevaRef = base;
+
+    while (true) {
+      const refCheck = await db.query(`SELECT 1 FROM pagos WHERE referencia = $1`, [nuevaRef]);
+      if (refCheck.rows.length === 0) break;
+      sufijo++;
+      nuevaRef = `${base}-${sufijo}`;
+    }
+
+    const pagosRes = await db.query(
+      `SELECT * FROM pagos WHERE alumno_id = $1 ORDER BY fecha_pago DESC`,
+      [alumnoId]
+    );
+
+    const cuotasDisponiblesRes = await db.query(
+      `SELECT * FROM cuotas ORDER BY nombre`
+    );
+
+    const cuotasAlumnoRes = await db.query(`
+      SELECT 
+        ca.*, 
+        c.nombre AS nombre_cuota, 
+        c.precio
+      FROM cuotas_alumno ca
+      JOIN cuotas c ON ca.cuota_id = c.id
+      WHERE ca.alumno_id = $1
+      ORDER BY ca.fecha_vencimiento ASC
+    `, [alumnoId]);
+
+    // Filtrar cuotas impagadas
+    const cuotasImpagadas = cuotasAlumnoRes.rows.filter(c => !c.pagado);
+
+    // Si no hay cuotas impagadas, no se permite registrar pago
+    if (cuotasImpagadas.length === 0) {
+      return res.render('pago_form', {
+        alumno: { ...alumno, grupos },
+        pagos: pagosRes.rows,
+        cuotasDisponibles: cuotasDisponiblesRes.rows,
+        cuotasAlumno: [],
+        referenciaSugerida: nuevaRef,
+        modoEdicion: false,
+        errorMsg: 'No puedes registrar un pago porque no hay cuotas impagadas.'
+      });
+    }
+
+    // Renderizar formulario normal
+    res.render('pago_form', {
+      alumno: { ...alumno, grupos },
+      pagos: pagosRes.rows,
+      cuotasDisponibles: cuotasDisponiblesRes.rows,
+      cuotasAlumno: cuotasImpagadas,
+      referenciaSugerida: nuevaRef,
+      modoEdicion: false,
+      errorMsg: null
+    });
+
   } catch (err) {
-    res.status(500).send('Error al buscar alumno');
+    console.error('❌ Error cargando formulario de pagos:', err.message);
+    res.status(500).send('Error cargando datos');
   }
 });
 // GET: Detalles de pagos de un alumno
@@ -403,7 +353,7 @@ router.get('/:id/recibo', async (req, res) => {
     // Generar PDF
     const doc = new PDFDocument({ margin: 40 });
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `inline; filename="recibo_${pago.id}.pdf"`);
+    res.setHeader('Content-disposition', `attachment; filename="recibo_${pago.referencia || 'sin_ref'}.pdf"`);
 
     generarReciboPago(doc, pago, cuotas);
     doc.pipe(res);
@@ -414,7 +364,162 @@ router.get('/:id/recibo', async (req, res) => {
     res.status(500).send('Error al generar el recibo');
   }
 });
+router.get('/ajax/:alumnoId', async (req, res) => {
+  const alumnoId = req.params.alumnoId;
+  const offset = parseInt(req.query.offset || 0);
+  const limit = 5;
 
+  try {
+    const pagosRes = await db.query(`
+      SELECT 
+        p.id AS pago_id,
+        p.fecha_pago,
+        p.importe AS importe_pago,
+        p.medio_pago,
+        p.referencia,
+        p.observaciones,
+        c.nombre AS cuota_nombre,
+        pca.importe_aplicado
+      FROM pagos p
+      JOIN pago_cuota_alumno pca ON p.id = pca.pago_id
+      JOIN cuotas_alumno ca ON pca.cuota_alumno_id = ca.id
+      JOIN cuotas c ON ca.cuota_id = c.id
+      WHERE p.alumno_id = $1
+      ORDER BY p.fecha_pago DESC
+      LIMIT $2 OFFSET $3
+    `, [alumnoId, limit, offset]);
+
+    res.json(pagosRes.rows);
+  } catch (err) {
+    console.error('❌ Error cargando más pagos:', err);
+    res.status(500).json({ error: 'Error al cargar pagos' });
+  }
+});
+// GET /pagos/api/:alumnoId?page=1
+router.get('/api/:alumnoId', async (req, res) => {
+  const alumnoId = req.params.alumnoId;
+  const page = parseInt(req.query.page) || 1;
+  const perPage = 5;
+  const offset = (page - 1) * perPage;
+
+  try {
+    const result = await db.query(`
+      SELECT 
+        p.id AS pago_id,
+        p.fecha_pago,
+        p.importe AS importe_pago,
+        p.medio_pago,
+        p.referencia,
+        p.observaciones,
+        c.nombre AS cuota_nombre,
+        pca.importe_aplicado
+      FROM pagos p
+      JOIN pago_cuota_alumno pca ON p.id = pca.pago_id
+      JOIN cuotas_alumno ca ON pca.cuota_alumno_id = ca.id
+      JOIN cuotas c ON ca.cuota_id = c.id
+      WHERE p.alumno_id = $1
+      ORDER BY p.fecha_pago DESC
+      LIMIT $2 OFFSET $3
+    `, [alumnoId, perPage, offset]);
+
+    res.json(result.rows);
+  } catch (err) {
+    console.error('❌ Error paginando pagos:', err.message);
+    res.status(500).json({ error: 'Error al obtener pagos' });
+  }
+});
+router.get('/:pagoId/editar', async (req, res) => {
+  const { pagoId } = req.params;
+
+  try {
+    const pagoRes = await db.query(`
+      SELECT * FROM pagos WHERE id = $1
+    `, [pagoId]);
+
+    const pago = pagoRes.rows[0];
+    if (!pago) return res.status(404).send('Pago no encontrado');
+
+    const alumnoRes = await db.query(`SELECT * FROM alumnos WHERE id = $1`, [pago.alumno_id]);
+    const alumno = alumnoRes.rows[0];
+
+    if (!alumno) return res.status(404).send('Alumno no encontrado');
+
+    res.render('pago_form', {
+      alumno,
+      pago,
+      modoEdicion: true,
+      errorMsg: null
+    });
+  } catch (err) {
+    console.error('❌ Error cargando edición de pago:', err.message);
+    res.status(500).send('Error cargando datos del pago');
+  }
+});
+router.post('/:pagoId/actualizar', async (req, res) => {
+  const { pagoId } = req.params;
+  const { importe, fecha_pago, medio_pago, referencia, observaciones } = req.body;
+
+  try {
+    await db.query(`
+      UPDATE pagos SET importe = $1, fecha_pago = $2, medio_pago = $3, referencia = $4, observaciones = $5
+      WHERE id = $6
+    `, [importe, fecha_pago, medio_pago, referencia, observaciones, pagoId]);
+
+    const alumnoId = req.body.alumno_id;
+    res.redirect(`/alumnos/${alumnoId}?tab=finanzas`);
+  } catch (err) {
+    console.error('❌ Error al actualizar pago:', err.message);
+    res.status(500).send('Error al actualizar el pago');
+  }
+});
+router.post('/:pagoId/eliminar', async (req, res) => {
+  const { pagoId } = req.params;
+
+  try {
+    // 1. Obtener cuotas afectadas antes de eliminar relaciones
+    const cuotasRes = await db.query(`
+      SELECT pca.cuota_alumno_id, c.precio
+      FROM pago_cuota_alumno pca
+      JOIN cuotas_alumno ca ON ca.id = pca.cuota_alumno_id
+      JOIN cuotas c ON c.id = ca.cuota_id
+      WHERE pca.pago_id = $1
+    `, [pagoId]);
+    const cuotasAfectadas = cuotasRes.rows;
+
+    // 2. Eliminar las relaciones del pago con las cuotas
+    await db.query(`DELETE FROM pago_cuota_alumno WHERE pago_id = $1`, [pagoId]);
+
+    // 3. Eliminar el pago y obtener el alumno_id
+    const pagoRes = await db.query(`DELETE FROM pagos WHERE id = $1 RETURNING alumno_id`, [pagoId]);
+    if (!pagoRes.rows.length) {
+      return res.status(404).send('Pago no encontrado');
+    }
+    const alumnoId = pagoRes.rows[0].alumno_id;
+
+    // 4. Recalcular estado de las cuotas afectadas
+    for (const { cuota_alumno_id, precio } of cuotasAfectadas) {
+      const sumRes = await db.query(`
+        SELECT SUM(importe_aplicado) AS total_pagado
+        FROM pago_cuota_alumno
+        WHERE cuota_alumno_id = $1
+      `, [cuota_alumno_id]);
+
+      const totalPagado = parseFloat(sumRes.rows[0].total_pagado || 0);
+      const pagado = Math.round(totalPagado * 100) >= Math.round(parseFloat(precio) * 100);
+
+      await db.query(
+        `UPDATE cuotas_alumno SET pagado = $1 WHERE id = $2`,
+        [pagado, cuota_alumno_id]
+      );
+    }
+
+    console.log(`✅ Pago ${pagoId} eliminado. Recalculadas ${cuotasAfectadas.length} cuotas.`);
+    res.redirect(`/alumnos/${alumnoId}?tab=finanzas`);
+  } catch (err) {
+    console.error('❌ Error al eliminar pago:', err.message);
+    res.status(500).send('Error al eliminar el pago');
+  }
+});
 
 
 module.exports = router;

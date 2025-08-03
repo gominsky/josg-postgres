@@ -1,44 +1,73 @@
-<% title = 'Registrar Pago'; %>
+<% title = modoEdicion ? 'Editar Pago' : 'Registrar Pago'; %>
 <% hero = false; %>
 
 <h1 class="h1-titulo text-center mb-4"><%= title %></h1>
-
-<form id="form-pago" method="POST" action="/pagos" class="formulario-alumno" style="border: 2px solid #FF9501; border-radius: 0.75rem; padding: 1rem; max-width: 500px; margin: 2rem auto;">
+<% if (errorMsg) { %>
+  <div class="custom-error" role="alert" style="max-width: 500px; margin: 0 auto 1rem;">
+    <%= errorMsg %>
+  </div>
+<% } %>
+<% const deshabilitar = errorMsg ? 'disabled' : '' %>
+<form id="form-pago" method="POST" action="<%= modoEdicion ? '/pagos/' + pago.id + '/actualizar' : '/pagos' %>"
+      class="formulario-alumno"
+      style="border: 2px solid #FF9501; border-radius: 0.75rem; padding: 1rem; max-width: 500px; margin: 2rem auto;">
+  
   <input type="hidden" name="alumno_id" value="<%= alumno.id %>">
 
   <div class="grupo-campos">
     <h2>Datos de Pago</h2>
     <div class="form-grid-2">
       <label>Importe:
-        <input type="number" name="importe" step="0.01" class="form-input" required>
+        <input type="number" name="importe" step="0.01" class="form-input" required
+               value="<%= modoEdicion ? pago.importe : '' %>">
       </label>
 
       <label>Fecha de pago:
-        <input type="date" name="fecha_pago" class="form-input" required value="<%= new Date().toISOString().split('T')[0] %>">
+        <input type="date" name="fecha_pago" class="form-input" required
+               value="<%= modoEdicion && pago.fecha_pago
+                          ? new Date(pago.fecha_pago).toISOString().split('T')[0]
+                          : new Date().toISOString().split('T')[0] %>">
       </label>
 
       <label>Medio de pago:
         <select name="medio_pago" class="form-input">
-          <option value="efectivo">Efectivo</option>
-          <option value="transferencia">Transferencia</option>
-          <option value="tarjeta">Tarjeta</option>
-          <option value="otro">Otro</option>
+          <% ['efectivo', 'transferencia', 'tarjeta', 'otro'].forEach(opcion => { %>
+            <option value="<%= opcion %>" <%= modoEdicion && pago.medio_pago === opcion ? 'selected' : '' %>>
+              <%= opcion.charAt(0).toUpperCase() + opcion.slice(1) %>
+            </option>
+          <% }) %>
         </select>
       </label>
 
       <label>Referencia:
-        <input type="text" name="referencia" class="form-input">
+        <input type="text" name="referencia" class="form-input"
+               value="<%= modoEdicion ? pago.referencia : referenciaSugerida %>">
       </label>
 
       <label>Observaciones:
-        <textarea name="observaciones" class="form-input" rows="2"></textarea>
+        <textarea name="observaciones" class="form-input" rows="2"><%= modoEdicion ? pago.observaciones : '' %></textarea>
       </label>
     </div>
   </div>
 
   <div class="acciones-finales d-flex justify-content-between align-items-center mt-4">
     <a href="/alumnos/<%= alumno.id %>" class="enlace-final-naranja">← Volver</a>
-    <button type="submit" class="btn-main">Registrar pago</button>
+
+    <% if (modoEdicion) { %>
+      <div class="d-flex gap-2">
+        <button type="submit" class="btn-main" <%= deshabilitar %>>Guardar cambios</button>
+      </div>
+    <% } else { %>
+      <button type="submit" class="btn-main" <%= deshabilitar %>>Registrar pago</button>
+    <% } %>
   </div>
 </form>
-
+<% if (modoEdicion) { %>
+  <div class="d-flex gap-2">
+    <form action="/pagos/<%= pago.id %>/eliminar" method="POST"
+      onsubmit="return confirm('¿Eliminar este pago?');"
+      style="display: inline; background-color: transparent;">
+      <button type="submit" class="btn btn-sm btn-danger">Eliminar</button>
+    </form>
+  </div>
+<% } %>

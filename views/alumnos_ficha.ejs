@@ -1,7 +1,9 @@
 <% title = 'Ficha de Alumno' %>
 <% hero = false %>
 <link rel="stylesheet" href="/styles.css">
-
+<script>
+  const alumnoId = <%= alumno.id %>;
+</script>
 <div class="ficha-container">
   <div class="ficha-header">
     <h1 class="h1-titulo"><%= alumno.nombre %> <%= alumno.apellidos %></h1>
@@ -54,17 +56,15 @@
     <div class="ficha-section">
       <h2>Grupos</h2>
       <% alumno.grupos.split(',').forEach(gr => { %>
-        <span class="tag"><%= gr.trim() %></span>
+        <span class="tag"><%= gr.replace(/\s*\(.*?\)\s*/g, '').trim() %></span>
       <% }) %>
     </div>
   <% } %>
 
-  <!-- BOTÓN PARA TOGGLE RESUMEN FINANCIERO -->
   <button id="toggleResumenBtn" class="btn-main-verde mb-3">
     Mostrar resumen financiero
   </button>
 
-  <!-- RESUMEN FINANCIERO OCULTO POR DEFECTO -->
   <div id="resumenFinanciero" class="finanzas-section" style="display: none;">
     <div class="ficha-section">
       <h3>Resumen financiero</h3>
@@ -89,8 +89,8 @@
               <th>Acciones</th>
             </tr>
           </thead>
-          <tbody>
-            <% cuotasAlumno.forEach(c => { %>
+          <tbody id="cuotas-tbody">
+            <% cuotasAlumno.slice(0, 5).forEach(c => { %>
               <tr>
                 <td><%= c.nombre_cuota %></td>
                 <td><%= c.precio %> €</td>
@@ -103,90 +103,102 @@
                 <td><%= c.fecha_pago ? formatDate(c.fecha_pago) : '—' %></td>
                 <td style="text-align: center; vertical-align: middle; width: 60px;">
                   <% if (!c.pagado) { %>
-                    <form action="/cuotas/alumno/eliminar/<%= c.id %>?alumno_id=<%= alumno.id %>&tab=finanzas"
-                          method="POST"
-                          style="margin: 0; padding: 0; display: inline; background-color: transparent;"
-                          onsubmit="return confirm('¿Eliminar esta cuota?');">
-                          <button title="Eliminar cuota"
-                          style="all: unset; cursor: pointer; font-size: 1rem; color: #c00; line-height: 1;">
-                    ✕
-                  </button>
+                    <form action="/cuotas/alumno/eliminar/<%= c.id %>?alumno_id=<%= alumno.id %>&tab=finanzas" method="POST" style="margin: 0; padding: 0; display: inline; background-color: transparent;" onsubmit="return confirm('¿Eliminar esta cuota?');">
+                      <button title="Eliminar cuota" style="all: unset; cursor: pointer; font-size: 1rem; color: #c00; line-height: 1;">
+                        ✕
+                      </button>
                     </form>
                   <% } else { %>
                     —
                   <% } %>
                 </td>
-                
               </tr>
             <% }) %>
           </tbody>
         </table>
-        
+
+        <% if (cuotasAlumno.length > 5) { %>
+          <div class="text-center mt-2">
+            <button id="btn-ver-mas-cuotas" class="btn btn-sm btn-outline-secondary">Ver más cuotas</button>
+          </div>
+        <% } %>
+      </div>
     <% } %>
 
     <% if (pagos && pagos.length > 0) { %>
       <div class="subsection">
         <h2>Pagos</h2>
-        <table class="table">
-         <thead>
-        <tr>
-          <th>Fecha</th>
-          <th>Importe</th>
-          <th>Medio</th>
-          <th>Cuota</th>
-          <th>Referencia</th>
-          <th>PDF</th> <!-- Aquí la columna PDF -->
-        </tr>
-      </thead>
-      <tbody>
-        <% pagos.forEach(p => { %>
-          <tr>
-            <td><%= p.fecha_pago ? p.fecha_pago.split('-').reverse().join('/') : '' %></td>
-            <td><%= p.importe_pago ? Number(p.importe_pago).toFixed(2) + ' €' : '—' %></td>
-            <td><%= p.medio_pago %></td>
-            <td><%= p.cuota_nombre %></td>
-            <td><%= p.referencia || '—' %></td>
-            <td>
-              <a href="/pagos/<%= p.pago_id %>/recibo" target="_blank" class="btn btn-sm btn-outline-dark">PDF</a>
-            </td>
-          </tr>
-        <% }) %>
-      </tbody>
+        <table class="table table-hover clickable-rows">
+          <thead>
+            <tr>
+              <th>Fecha</th>
+              <th>Importe</th>
+              <th>Medio</th>
+              <th>Cuota</th>
+              <th>Referencia</th>
+              <th>PDF</th>
+            </tr>
+          </thead>
+          <tbody id="pagos-tbody">
+            <% pagos.slice(0, 5).forEach(p => { %>
+              <tr data-id="<%= p.pago_id %>" style="cursor: pointer;">
+                <td><%= p.fecha_pago ? p.fecha_pago.split('-').reverse().join('/') : '' %></td>
+                <td><%= Number(p.importe_pago).toFixed(2) %> €</td>
+                <td><%= p.medio_pago %></td>
+                <td><%= p.cuota_nombre %></td>
+                <td><%= p.referencia || '—' %></td>
+                <td>
+                  <a href="/pagos/<%= p.pago_id %>/recibo"
+                     target="_blank"
+                     class="btn btn-sm btn-outline-dark"
+                     onclick="event.stopPropagation()">PDF</a>
+                </td>
+              </tr>
+            <% }) %>
+          </tbody>
         </table>
+
+        <% if (pagos.length > 5) { %>
+          <div class="text-center mt-2">
+            <button id="btn-ver-mas" class="btn btn-sm btn-outline-secondary">Ver más pagos</button>
+          </div>
+        <% } %>
       </div>
     <% } %>
+
     <div class="acciones-financieras">
       <a href="/pagos/nuevo/<%= alumno.id %>" class="enlace-final-naranja">Registrar nuevo pago</a>
+
       <form action="/pagos/generar-cuotas" method="POST" class="form-centrado-etiqueta">
-      <input type="hidden" name="alumno_id" value="<%= alumno.id %>">
+        <input type="hidden" name="alumno_id" value="<%= alumno.id %>">
 
-      <% if (cuotasDisponibles && cuotasDisponibles.length > 0) { %>
-        <div class="form-row">
-          <label style="color: white;">Tipo de cuota:
-            <select name="cuota_id" required>
-              <% cuotasDisponibles.forEach(c => { %>
-                <option value="<%= c.id %>"><%= c.nombre %> - <%= c.precio %> €</option>
-              <% }) %>
-            </select>
-          </label>
+        <% if (cuotasDisponibles && cuotasDisponibles.length > 0) { %>
+          <div class="form-row">
+            <label style="color: white;">Tipo de cuota:
+              <select name="cuota_id" required>
+                <% cuotasDisponibles.forEach(c => { %>
+                  <option value="<%= c.id %>"><%= c.nombre %> - <%= c.precio %> €</option>
+                <% }) %>
+              </select>
+            </label>
 
-          <label style="color: white;">Desde:
-            <input type="date" name="fecha_inicio" required>
-          </label>
-          <label style="color: white;">Hasta:
-            <input type="date" name="fecha_fin" required>
-          </label>
-        </div>
+            <label style="color: white;">Desde:
+              <input type="date" name="fecha_inicio" required>
+            </label>
+            <label style="color: white;">Hasta:
+              <input type="date" name="fecha_fin" required>
+            </label>
+          </div>
 
-        <button type="submit" class="btn-main-blanco">Generar cuotas</button>
-      <% } else { %>
-        <p style="color: white">No hay tipos de cuota disponibles para asignar.</p>
-      <% } %>
-    </form>
+          <button type="submit" class="btn-main-blanco">Generar cuotas</button>
+        <% } else { %>
+          <p style="color: white">No hay tipos de cuota disponibles para asignar.</p>
+        <% } %>
+      </form>
     </div>
-  </div>
+  </div> <!-- ← Cierre de resumenFinanciero -->
 
-<!-- ACCIONES FINALES -->
+  <!-- 🔸 SIEMPRE VISIBLE -->
   <div class="acciones-finales mt-4">
     <div class="volver-izquierda">
       <a href="/alumnos" class="enlace-final-naranja">← Volver</a>
@@ -195,15 +207,13 @@
       <a href="/alumnos/<%= alumno.id %>/editar" class="enlace-final-naranja ms-3">Editar</a>
     </div>
   </div>
-</div>
+</div> <!-- ← Cierre de .ficha-container -->
 
-<!-- SCRIPT DE TOGGLE -->
 <script>
   document.addEventListener('DOMContentLoaded', () => {
     const btnToggle = document.getElementById('toggleResumenBtn');
     const resumen = document.getElementById('resumenFinanciero');
 
-    // Mostrar automáticamente si la URL contiene ?tab=finanzas
     const urlParams = new URLSearchParams(window.location.search);
     const tab = urlParams.get('tab');
     if (tab === 'finanzas') {
@@ -218,6 +228,191 @@
         ? 'Mostrar resumen financiero'
         : 'Ocultar resumen financiero';
     });
-  });
-</script>
 
+    // Ver más pagos
+    let paginaPagos = 2;
+    const btnVerMas = document.getElementById('btn-ver-mas');
+    if (btnVerMas) {
+      btnVerMas.addEventListener('click', async () => {
+        try {
+          const res = await fetch(`/pagos/api/${alumnoId}?page=${paginaPagos}`);
+          const nuevosPagos = await res.json(); 
+          const tbody = document.getElementById('pagos-tbody');
+          nuevosPagos.forEach(p => {
+            const tr = document.createElement('tr');
+            tr.setAttribute('data-id', p.pago_id);
+            tr.style.cursor = 'pointer';
+            tr.innerHTML = `
+              <td>${p.fecha_pago ? new Date(p.fecha_pago).toLocaleDateString('es-ES') : ''}</td>
+              <td>${parseFloat(p.importe_pago).toFixed(2)} €</td>
+              <td>${p.medio_pago}</td>
+              <td>${p.cuota_nombre}</td>
+              <td>${p.referencia || '—'}</td>
+              <td>
+                <a href="/pagos/${p.pago_id}/recibo" target="_blank" class="btn btn-sm btn-outline-dark" onclick="event.stopPropagation()">PDF</a>
+              </td>
+            `;
+
+            tr.addEventListener('click', (e) => {
+              if (e.target.closest('a')) return;
+              window.location.href = `/pagos/${p.pago_id}/editar`;
+            });
+
+            tbody.appendChild(tr);
+          });
+        } catch (error) {
+          console.error('❌ Error cargando más pagos:', error);
+        }
+      });
+    }
+
+    // Ver más cuotas
+    let paginaCuotas = 2;
+    const btnVerMasCuotas = document.getElementById('btn-ver-mas-cuotas');
+    if (btnVerMasCuotas) {
+      btnVerMasCuotas.addEventListener('click', async () => {
+        try {
+          const res = await fetch(`/cuotas/api/<%= alumno.id %>?page=${paginaCuotas}`);
+          const nuevasCuotas = await res.json();
+
+          if (!nuevasCuotas.length) {
+            btnVerMasCuotas.disabled = true;
+            btnVerMasCuotas.innerText = 'No hay más cuotas';
+            return;
+          }
+
+          const tbody = document.getElementById('cuotas-tbody');
+          nuevasCuotas.forEach(c => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+              <td>${c.nombre_cuota}</td>
+              <td>${parseFloat(c.precio).toFixed(2)} €</td>
+              <td>${new Date(c.fecha_vencimiento).toLocaleDateString('es-ES')}</td>
+              <td><span class="badge bg-${c.pagado ? 'success' : 'warning'}">${c.pagado ? 'Pagada' : 'Pendiente'}</span></td>
+              <td>${c.fecha_pago ? new Date(c.fecha_pago).toLocaleDateString('es-ES') : '—'}</td>
+              <td style="text-align: center; vertical-align: middle; width: 60px;">
+                ${!c.pagado ? `
+                  <form action="/cuotas/alumno/eliminar/${c.id}?alumno_id=<%= alumno.id %>&tab=finanzas"
+                        method="POST"
+                        style="margin: 0; padding: 0; display: inline; background-color: transparent;"
+                        onsubmit="return confirm('¿Eliminar esta cuota?');">
+                    <button title="Eliminar cuota"
+                            style="all: unset; cursor: pointer; font-size: 1rem; color: #c00; line-height: 1;">
+                      ✕
+                    </button>
+                  </form>
+                ` : '—'}
+              </td>
+            `;
+            tbody.appendChild(tr);
+          });
+
+          paginaCuotas++;
+        } catch (error) {
+          console.error('❌ Error cargando más cuotas:', error);
+        }
+      });
+    }
+
+    // Edición inline de campos
+    document.querySelectorAll('.editable').forEach(el => {
+      el.addEventListener('click', () => {
+        if (el.querySelector('input')) return;
+
+        const valorAnterior = el.textContent.trim();
+        const campo = el.dataset.campo;
+        const fila = el.closest('tr');
+        const pagoId = fila.dataset.id;
+
+        const input = document.createElement('input');
+        input.value = valorAnterior === '—' ? '' : valorAnterior;
+        input.style.width = '100%';
+
+        el.textContent = '';
+        el.appendChild(input);
+        input.focus();
+
+        input.addEventListener('blur', async () => {
+          const nuevoValor = input.value.trim();
+          el.textContent = nuevoValor || '—';
+
+          try {
+            const res = await fetch(`/pagos/${pagoId}/editar`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({ campo, valor: nuevoValor })
+            });
+
+            if (!res.ok) {
+              throw new Error();
+            }
+          } catch (err) {
+            alert('❌ Error actualizando el valor');
+            el.textContent = valorAnterior;
+          }
+        });
+      });
+    });
+  });
+  document.querySelectorAll('#pagos-tbody tr').forEach(tr => {
+  tr.addEventListener('click', (e) => {
+    if (e.target.closest('a')) return;
+    const pagoId = tr.dataset.id;
+    if (pagoId) {
+      window.location.href = `/pagos/${pagoId}/editar`;
+    }
+  });
+});
+let paginaPagos = 2;
+const btnVerMas = document.getElementById('btn-ver-mas');
+
+if (btnVerMas) {
+  btnVerMas.addEventListener('click', async () => {
+    try {
+      const res = await fetch(`/pagos/api/${alumnoId}?page=${paginaPagos}`);
+      const nuevosPagos = await res.json();
+
+      if (!nuevosPagos.length) {
+        btnVerMas.disabled = true;
+        btnVerMas.innerText = 'No hay más pagos';
+        return;
+      }
+
+      const tbody = document.getElementById('pagos-tbody');
+      nuevosPagos.forEach(p => {
+        const tr = document.createElement('tr');
+        tr.setAttribute('data-id', p.pago_id);
+        tr.style.cursor = 'pointer';
+
+        tr.innerHTML = `
+          <td>${p.fecha_pago ? new Date(p.fecha_pago).toLocaleDateString('es-ES') : ''}</td>
+          <td>${parseFloat(p.importe_pago).toFixed(2)} €</td>
+          <td>${p.medio_pago}</td>
+          <td>${p.cuota_nombre}</td>
+          <td>${p.referencia || '—'}</td>
+          <td>
+            <a href="/pagos/${p.pago_id}/recibo"
+               target="_blank"
+               class="btn btn-sm btn-outline-dark"
+               onclick="event.stopPropagation()">PDF</a>
+          </td>
+        `;
+
+        tr.addEventListener('click', (e) => {
+          if (e.target.closest('a')) return;
+          window.location.href = `/pagos/${p.pago_id}/editar`;
+        });
+
+        tbody.appendChild(tr);
+      });
+
+      paginaPagos++;
+    } catch (error) {
+      console.error('❌ Error cargando más pagos:', error);
+    }
+  });
+}
+
+</script>

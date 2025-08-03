@@ -172,28 +172,39 @@ router.post('/asignar', async (req, res) => {
   }
 });
 router.get('/pendientes', async (req, res) => {
-  const hoy = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+  const buscar = req.query.buscar?.trim().toLowerCase() || '';
 
-  const query = `
-  SELECT 
-    a.nombre || ' ' || a.apellidos AS alumno,
-    c.nombre AS cuota,
-    ca.fecha_vencimiento,
-    ca.pagado,
-    (CURRENT_DATE - ca.fecha_vencimiento::date) AS dias_retraso
+  const queryBase = `
+    SELECT 
+      a.id AS alumno_id,
+      a.nombre || ' ' || a.apellidos AS alumno,
+      c.nombre AS cuota,
+      ca.fecha_vencimiento,
+      ca.pagado,
+      (CURRENT_DATE - ca.fecha_vencimiento::date) AS dias_retraso
     FROM cuotas_alumno ca
     JOIN alumnos a ON a.id = ca.alumno_id
     JOIN cuotas c ON c.id = ca.cuota_id
     WHERE ca.pagado = false AND ca.fecha_vencimiento::date < CURRENT_DATE
-    ORDER BY ca.fecha_vencimiento::date ASC
   `;
+
+  const params = [];
+  let whereExtra = '';
+
+  if (buscar) {
+    params.push(`%${buscar}%`);
+    whereExtra = ` AND (LOWER(a.nombre) || ' ' || LOWER(a.apellidos)) LIKE $${params.length}`;
+  }
+
+  const queryFinal = `${queryBase} ${whereExtra} ORDER BY ca.fecha_vencimiento`;
+
   try {
-    const result = await db.query(query);
+    const result = await db.query(queryFinal, params);
     const cuotasPendientes = result.rows;
 
     res.render('cuotas_pendientes', {
       cuotasPendientes,
-      hoy,
+      buscar,
       hero: false
     });
   } catch (err) {
@@ -201,39 +212,7 @@ router.get('/pendientes', async (req, res) => {
     res.status(500).send('Error obteniendo cuotas pendientes');
   }
 });
-router.get('/pendientes/export', async (req, res) => {
-  const hoy = new Date().toISOString().split('T')[0];
 
-  const query = `
-    SELECT 
-      a.nombre || ' ' || a.apellidos AS alumno,
-      c.nombre AS cuota,
-      ca.fecha_vencimiento,
-      DATE_PART('day', $1::date - ca.fecha_vencimiento) AS dias_retraso,
-      'Pendiente' AS estado
-    FROM cuotas_alumno ca
-    JOIN alumnos a ON a.id = ca.alumno_id
-    JOIN cuotas c ON c.id = ca.cuota_id
-    WHERE ca.pagado = false AND ca.fecha_vencimiento < $1::date
-  `;
-
-  try {
-    const result = await db.query(query, [hoy]);
-
-    const parser = new Parser({
-      fields: ['alumno', 'cuota', 'fecha_vencimiento', 'dias_retraso', 'estado']
-    });
-
-    const csv = parser.parse(result.rows);
-
-    res.header('Content-Type', 'text/csv');
-    res.attachment(`cuotas_pendientes_${hoy}.csv`);
-    res.send(csv);
-  } catch (err) {
-    console.error('Error exportando datos:', err);
-    res.status(500).send('Error exportando datos');
-  }
-});
 router.put('/:id', async (req, res) => {
   const id = req.params.id;
   const { nombre, tipo_id, precio, descripcion } = req.body;
@@ -274,6 +253,29 @@ router.post('/alumno/eliminar/:id', async (req, res) => {
     res.status(500).send('Error al eliminar cuota');
   }
 });
+router.get('/api/:alumnoId', async (req, res) => {
+  const alumnoId = req.params.alumnoId;
+  const page = parseInt(req.query.page) || 1;
+  const perPage = 5;
+  const offset = (page - 1) * perPage;
 
+  try {
+    const result = await db.query(`
+      SELECT 
+        ca.*, 
+        c.nombre AS nombre_cuota, 
+        c.precio
+      FROM cuotas_alumno ca
+      JOIN cuotas c ON ca.cuota_id = c.id
+      WHERE ca.alumno_id = $1
+      ORDER BY ca.fecha_vencimiento ASC
+      LIMIT $2 OFFSET $3
+    `, [alumnoId, perPage, offset]);
 
+    res.json(result.rows);
+  } catch (err) {
+    console.error('❌ Error paginando cuotas:', err.message);
+    res.status(500).json({ error: 'Error al obtener cuotas' });
+  }
+});
 module.exports = router;
