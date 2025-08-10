@@ -3,6 +3,7 @@ const express = require('express');
 const router = express.Router();
 const db = require('../database/db');
 const { Parser } = require('json2csv');
+const { toISODate } = require('../utils/fechas'); // ← nuevo
 
 router.get('/', async (req, res) => {
   try {
@@ -18,6 +19,7 @@ router.get('/', async (req, res) => {
     res.status(500).send('Error al obtener cuotas');
   }
 });
+
 router.get('/nueva', async (req, res) => {
   try {
     const { rows: tipos } = await db.query('SELECT * FROM tipos_cuota');
@@ -27,8 +29,9 @@ router.get('/nueva', async (req, res) => {
     res.status(500).send('Error cargando formulario');
   }
 });
+
 router.get('/editar/:id', async (req, res) => {
-  const id = parseInt(req.params.id, 10); // aseguramos tipo número
+  const id = parseInt(req.params.id, 10);
   try {
     const { rows: cuotaRows } = await db.query(`SELECT * FROM cuotas WHERE id = $1`, [id]);
     const { rows: tipos } = await db.query(`SELECT * FROM tipos_cuota`);
@@ -42,6 +45,7 @@ router.get('/editar/:id', async (req, res) => {
     res.status(500).send('Error cargando formulario');
   }
 });
+
 router.post('/', async (req, res) => {
   const { nombre, precio, descripcion, tipo_id } = req.body;
 
@@ -60,6 +64,7 @@ router.post('/', async (req, res) => {
     res.status(500).send('Error al guardar cuota');
   }
 });
+
 router.post('/editar/:id', async (req, res) => {
   const id = req.params.id;
   const { nombre, tipo_id, precio, descripcion } = req.body;
@@ -80,6 +85,7 @@ router.post('/editar/:id', async (req, res) => {
     res.status(500).send('Error al actualizar cuota');
   }
 });
+
 router.post('/eliminar/:id', async (req, res) => {
   const id = req.params.id;
 
@@ -93,6 +99,7 @@ router.post('/eliminar/:id', async (req, res) => {
     res.status(500).send('Error al eliminar cuota');
   }
 });
+
 router.get('/asignar', async (req, res) => {
   try {
     const gruposQuery = 'SELECT * FROM grupos ORDER BY nombre';
@@ -112,10 +119,21 @@ router.get('/asignar', async (req, res) => {
     res.status(500).send('Error al cargar formulario');
   }
 });
+
 router.post('/asignar', async (req, res) => {
   const { grupo_ids, cuota_id, fecha_inicio, fecha_fin } = req.body;
-  const gruposSeleccionados = Array.isArray(grupo_ids) ? grupo_ids : [grupo_ids];
+
+  // Normalización a ISO y validaciones mínimas
+  const gruposSeleccionados = Array.isArray(grupo_ids) ? grupo_ids : (grupo_ids ? [grupo_ids] : []);
+  const fechaIniISO = toISODate(fecha_inicio);
+  const fechaFinISO = toISODate(fecha_fin);
+
+  if (!gruposSeleccionados.length || !cuota_id || !fechaIniISO || !fechaFinISO) {
+    return res.status(400).send('Parámetros inválidos: grupo(s), cuota y fechas son obligatorios.');
+  }
+
   try {
+    // Alumnos activos de los grupos
     const grupoParams = gruposSeleccionados.map((_, i) => `$${i + 1}`).join(', ');
     const alumnosSQL = `
       SELECT DISTINCT a.id as alumno_id FROM alumnos a
@@ -125,29 +143,31 @@ router.post('/asignar', async (req, res) => {
     const alumnosRes = await db.query(alumnosSQL, gruposSeleccionados);
     const alumnos = alumnosRes.rows;
 
-    const fechaIni = new Date(fecha_inicio);
-    const fechaFin = new Date(fecha_fin);
+    // Fechas base (Date sobre ISO)
+    const fechaIni = new Date(fechaIniISO);
+    const fechaFin = new Date(fechaFinISO);
 
+    // Tipo de cuota (Mensual/Semanal/Puntual)
     const tipoRes = await db.query(`
       SELECT tc.tipo FROM cuotas c
       JOIN tipos_cuota tc ON c.tipo_id = tc.id
       WHERE c.id = $1
     `, [cuota_id]);
-    
+
     if (tipoRes.rows.length === 0) throw new Error('Tipo de cuota no encontrado');
     const tipo = tipoRes.rows[0].tipo;
-    
+
     for (const { alumno_id } of alumnos) {
       let fechaActual = new Date(fechaIni);
       while (fechaActual <= fechaFin) {
         const venc = fechaActual.toISOString().split('T')[0];
-    
+
         const checkSQL = `
           SELECT 1 FROM cuotas_alumno 
           WHERE alumno_id = $1 AND cuota_id = $2 AND fecha_vencimiento = $3
         `;
         const existente = await db.query(checkSQL, [alumno_id, cuota_id, venc]);
-    
+
         if (existente.rowCount === 0) {
           const insertSQL = `
             INSERT INTO cuotas_alumno (alumno_id, cuota_id, fecha_vencimiento, pagado)
@@ -155,7 +175,7 @@ router.post('/asignar', async (req, res) => {
           `;
           await db.query(insertSQL, [alumno_id, cuota_id, venc]);
         }
-    
+
         if (tipo === 'Mensual') {
           fechaActual.setMonth(fechaActual.getMonth() + 1);
         } else if (tipo === 'Semanal') {
@@ -164,13 +184,15 @@ router.post('/asignar', async (req, res) => {
           break;
         }
       }
-    }    
+    }
+
     res.redirect('/alumnos');
   } catch (err) {
     console.error('Error en asignación masiva:', err);
     res.status(500).send('Error durante la asignación');
   }
 });
+
 router.get('/pendientes', async (req, res) => {
   const buscar = req.query.buscar?.trim().toLowerCase() || '';
 
@@ -228,6 +250,7 @@ router.put('/:id', async (req, res) => {
     res.status(500).send('Error al actualizar cuota');
   }
 });
+
 router.delete('/:id', async (req, res) => {
   const id = req.params.id;
 
@@ -239,10 +262,11 @@ router.delete('/:id', async (req, res) => {
     res.status(500).send('Error al eliminar la cuota.');
   }
 });
+
 router.post('/alumno/eliminar/:id', async (req, res) => {
   const cuotaAlumnoId = parseInt(req.params.id, 10);
   const alumnoId = parseInt(req.query.alumno_id, 10);
-  const tab = req.query.tab || ''; // ← leer tab opcional
+  const tab = req.query.tab || '';
 
   try {
     await db.query('DELETE FROM cuotas_alumno WHERE id = $1 AND pagado = false', [cuotaAlumnoId]);
@@ -253,6 +277,7 @@ router.post('/alumno/eliminar/:id', async (req, res) => {
     res.status(500).send('Error al eliminar cuota');
   }
 });
+
 router.get('/api/:alumnoId', async (req, res) => {
   const alumnoId = req.params.alumnoId;
   const page = parseInt(req.query.page) || 1;
@@ -278,4 +303,5 @@ router.get('/api/:alumnoId', async (req, res) => {
     res.status(500).json({ error: 'Error al obtener cuotas' });
   }
 });
+
 module.exports = router;

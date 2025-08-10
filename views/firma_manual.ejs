@@ -6,149 +6,75 @@
     <h1 class="h1-titulo mb-0">Control de asistencia</h1>
     <a href="/eventos" class="btn-main fw-bold px-3 py-2">Eventos</a>
   </div>
-</div>
-
-<!-- 📄 SOLO PARA PDF -->
-<div id="pdf-content" class="container mt-4 solo-pdf p-4" style="background-color: white;">
-  <%- include('partials/pdf-header') %>
 
   <div class="text-center mb-3">
     <h5>Evento: <%= evento.titulo %> (<%= evento.grupo_nombre %>)</h5>
     <p>
-      <strong>Fecha:</strong>
-      <%= new Date(evento.fecha_inicio).toLocaleString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' }) %>,
-      <strong>Hora:</strong> <%= evento.hora_inicio %> - <%= evento.hora_fin %>
+      <strong>Fecha:</strong> <%= iniTxt %>,
+      <strong>Hora:</strong> <%= hIni %> - <%= hFin %>
     </p>
   </div>
 
-  <table class="tabla-estilizada w-100">
-    <thead>
-      <tr>
-        <th>Nombre completo</th>
-        <th>DNI</th>
-        <th>Firmado</th>
-      </tr>
-    </thead>
-    <tbody>
-      <% alumnos.forEach(alumno => { %>
+  <form method="POST" action="/eventos/<%= evento.id %>/firma_manual" style="background-color: transparent;">
+    <table class="tabla-estilizada w-100">
+      <thead>
         <tr>
-          <td class="text-start"><%= alumno.apellidos %>, <%= alumno.nombre %></td>
-          <td><%= alumno.dni %></td>
-          <td><%= firmados.includes(alumno.id) ? '✓' : '' %></td>
+          <th>Nombre completo</th>
+          <th>DNI</th>
+          <th>Firmado</th>
         </tr>
-      <% }) %>
-    </tbody>
-  </table>
-
-  <%- include('partials/pdf-footer') %>
-</div>
-
-<!-- 🌐 SOLO PARA LA WEB -->
-<div class="container mt-4 solo-web">
-  <div class="text-center">
-    <div class="text-center mb-3">
-      <h5>Evento: <%= evento.titulo %> (<%= evento.grupo_nombre %>)</h5>
-      <p>
-        <strong>Fecha:</strong>
-        <%= new Date(evento.fecha_inicio).toLocaleString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' }) %>,
-        <strong>Hora:</strong> <%= evento.hora_inicio %> - <%= evento.hora_fin %>
-      </p>
-    </div>
-    <form method="POST" action="/eventos/<%= evento.id %>/firma_manual" style="background-color: transparent;">
-      <table class="tabla-estilizada">
-        <thead>
+      </thead>
+      <tbody>
+        <% alumnos.forEach(alumno => { %>
           <tr>
-            <th>Nombre completo</th>
-            <th>DNI</th>
-            <th>Firmado</th>
+            <td class="text-start"><%= alumno.apellidos %>, <%= alumno.nombre %></td>
+            <td><%= alumno.dni %></td>
+            <td class="text-center">
+              <input
+                class="form-check-input"
+                type="checkbox"
+                name="alumnosFirmados"
+                value="<%= alumno.id %>"
+                id="alumno_<%= alumno.id %>"
+                <%= firmados.includes(alumno.id) ? 'checked' : '' %>
+              >
+            </td>
           </tr>
-        </thead>
-        <tbody>
-          <% alumnos.forEach(alumno => { %>
-            <tr>
-              <td class="text-start"><%= alumno.apellidos %>, <%= alumno.nombre %></td>
-              <td><%= alumno.dni %></td>
-              <td>
-                <input 
-                  class="form-check-input" 
-                  type="checkbox" 
-                  name="alumnosFirmados" 
-                  value="<%= alumno.id %>"
-                  id="alumno_<%= alumno.id %>"
-                  <%= firmados.includes(alumno.id) ? 'checked' : '' %>
-                >
-              </td>
-            </tr>
-          <% }) %>
-        </tbody>
-      </table>
+        <% }) %>
+      </tbody>
+    </table>
 
-      <div class="text-center mt-4">
-        <button type="submit" class="btn-main fw-bold px-4 py-2">Guardar firmas</button>
-        <button type="button" id="btnPDF" class="btn-main fw-bold px-4 py-2">Exportar PDF</button>
-      </div>
-    </form>
-
-    <div class="volver-bloque-izquierda mt-4">
-      <a href="/eventos" class="enlace-final">← Volver al calendario</a>
+    <div class="text-center mt-4 d-flex gap-2 justify-content-center">
+      <button type="submit" class="btn-main fw-bold px-4 py-2">Guardar firmas</button>
+      <a class="btn-main fw-bold px-4 py-2" href="/eventos/<%= evento.id %>/firmas.pdf">
+        Exportar PDF
+      </a>
     </div>
+  </form>
+
+  <div class="volver-bloque-izquierda mt-4">
+    <a href="/eventos" class="enlace-final">← Volver al calendario</a>
   </div>
 </div>
 
 <script>
+  // Guardado instantáneo vía AJAX (opcional)
   document.addEventListener('DOMContentLoaded', () => {
     const checks = document.querySelectorAll('input[name="alumnosFirmados"]');
-
     checks.forEach(chk => {
       chk.addEventListener('change', () => {
         const alumnoId = chk.value;
         const firmado = chk.checked;
         const eventoId = <%= evento.id %>;
-
         fetch(`/eventos/${eventoId}/firma_manual/ajax`, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ alumno_id: alumnoId, firmado })
         })
         .then(res => res.json())
-        .then(data => {
-          if (!data.success) alert('Error al actualizar firma');
-        })
-        .catch(err => {
-          console.error('Error:', err);
-          alert('Error en la solicitud');
-        });
+        .then(data => { if (!data.success) alert('Error al actualizar firma'); })
+        .catch(() => alert('Error en la solicitud'));
       });
     });
   });
 </script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-<script>
-  document.addEventListener('DOMContentLoaded', () => {
-    const btn = document.getElementById('btnPDF');
-    const pdfContent = document.getElementById('pdf-content');
-
-    if (!btn || !pdfContent) return;
-
-    btn.addEventListener('click', () => {
-      // Mostrar el bloque oculto
-      pdfContent.style.display = 'block';
-
-      const opt = {
-        margin: 0.5,
-        filename: `firmas_evento_<%= evento.id %>.pdf`,
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2 },
-        jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
-      };
-
-      html2pdf().set(opt).from(pdfContent).save().then(() => {
-        // Ocultarlo otra vez después de exportar
-        pdfContent.style.display = 'none';
-      });
-    });
-  });
-</script>
-

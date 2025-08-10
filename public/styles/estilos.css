@@ -1077,45 +1077,9 @@ form {
     padding-top: 15vh;
     padding-bottom: 15vh;
   }
-
-  /* PDF's ***************************************************/
-  /* Modo normal */
-.solo-web {
-  display: block;
-}
-.solo-pdf {
-  display: none;
-}
-
-/* Al imprimir (no lo usa html2pdf, pero mantenlo por si acaso) */
-@media print {
-  .solo-web {
-    display: none !important;
-  }
-  .solo-pdf {
-    display: block !important;
-  }
-}
-#pdf-content {
-  display: none;
-  position: relative;
-  min-height: 1000px; /* ajusta según tu necesidad */
-  padding-bottom: 150px; /* espacio para el footer */
-}
-
-.pdf-footer {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  text-align: right;
-  padding: 1rem;
-  font-size: 0.8rem;
-}
+  
 /*PDF***************************************************/
-  #pdf-content {
-    display: none;
-  }
+
 /*Error***********************************/
 .custom-error {
   background-color: #fff3cd;

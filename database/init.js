@@ -276,8 +276,8 @@ async function init() {
     }
   // 🏛️ GRUPOS BASE
   const grupos = [
-    'OEG (Orquesta Escuela de Granada)',
-    'JOSG (Joven Orquesta Sinfónica de Granada)',
+    'OEG',
+    'JOSG',
     'Aspirantes OEG',
     'Aspirantes JOSG',
     'Música de Cámara'
@@ -355,5 +355,4 @@ async function init() {
     console.error("Error al inicializar la base de datos:", err);
   }
 }
-//init();
 module.exports = init;

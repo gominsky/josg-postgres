@@ -4,7 +4,6 @@ const db = require('../database/db');
 const fs = require('fs');
 const multer = require('multer');
 const path = require('path');
-
 const storage = multer.diskStorage({
   destination: './uploads',
   filename: (req, file, cb) => {
@@ -13,7 +12,7 @@ const storage = multer.diskStorage({
   }
 });
 const upload = multer({ storage });
-
+const { toISODate } = require('../utils/fechas');
 router.get('/nuevo', async (req, res) => {
   try {
     const instrumentos = (await db.query('SELECT * FROM instrumentos')).rows;
@@ -38,7 +37,7 @@ router.post('/', upload.single('foto'), async (req, res) => {
     fecha_nacimiento, dni, centro, profesor_centro,
     instrumentos, grupos
   } = req.body;
-
+  const fechaNacISO = toISODate(fecha_nacimiento);
   const foto = req.file ? req.file.filename : null;
   const activo = req.body.activo === '1' ? true : false;
   const fechaMat = new Date().toISOString().split('T')[0];
@@ -54,7 +53,7 @@ router.post('/', upload.single('foto'), async (req, res) => {
   const paramsInsert = [
     nombre, apellidos, tutor, direccion, codigo_postal,
     municipio, provincia, telefono, email,
-    fecha_nacimiento, dni, centro, profesor_centro,
+    fechaNacISO, dni, centro, profesor_centro,
     foto, activo, fechaMat
   ];
 
@@ -102,7 +101,7 @@ router.put('/:id', upload.single('foto'), async (req, res) => {
   const foto = req.file ? req.file.filename : (fotoActual || null);
   const activo = req.body.activo === '1' ? 1 : 0;
   const fechaBaja = activo === 0 ? new Date().toISOString().split('T')[0] : null;
-
+  const fechaNacISO = toISODate(fecha_nacimiento);
   const consulta = `
     UPDATE alumnos
     SET
@@ -135,7 +134,7 @@ router.put('/:id', upload.single('foto'), async (req, res) => {
     provincia,
     telefono,
     email,
-    fecha_nacimiento,
+    fechaNacISO,
     dni,
     centro,
     profesor_centro,
