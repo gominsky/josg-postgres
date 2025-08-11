@@ -31,7 +31,7 @@
 
     async function enviarFirma({ evento_id, token, ubicacion }) {
       try {
-        const res = await fetch("/control_firmas/api/firmar-qr", {
+        const res = await fetch("/firmas/firmar-qr", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
