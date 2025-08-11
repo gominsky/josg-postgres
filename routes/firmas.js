@@ -41,86 +41,26 @@ router.post('/login', async (req, res) => {
 
 // ------- SOLO QR --------
 async function insertarAsistenciaMadrid({ alumno_id, evento_id, ubicacion }) {
-  // ¿ya hay asistencia previa?
   const ex = await db.query(
     'SELECT id FROM asistencias WHERE alumno_id = $1 AND evento_id = $2',
     [alumno_id, evento_id]
   );
   if (ex.rows[0]) return { yaFirmado: true };
 
-  // Construir INSERT de forma compatible con esquemas que tienen "observaciones"
-  // y con los que NO tienen "ubicacion".
-  // Intento 1: con ubicacion + observaciones
   const nowMadrid = " (now() at time zone 'Europe/Madrid') ";
-  try {
-    await db.query(
-      `INSERT INTO asistencias (alumno_id, evento_id, fecha, hora, tipo, ubicacion, observaciones)
-       VALUES ($1, $2, (${nowMadrid})::date, (${nowMadrid})::time, 'qr', $3, $4)`,
-      [alumno_id, evento_id, ubicacion || null, '']
-    );
-    return { yaFirmado: false };
-  } catch (e1) {
-    // Si falla por columna desconocida (p.ej. no existe "observaciones" o "ubicacion"),
-    // probamos variantes sin esas columnas.
-
-    // Variante 2: sin observaciones (si la tabla no la tiene)
-    if (/column "observaciones" does not exist/i.test(e1.message)) {
-      try {
-        await db.query(
-          `INSERT INTO asistencias (alumno_id, evento_id, fecha, hora, tipo, ubicacion)
-           VALUES ($1, $2, (${nowMadrid})::date, (${nowMadrid})::time, 'qr', $3)`,
-          [alumno_id, evento_id, ubicacion || null]
-        );
-        return { yaFirmado: false };
-      } catch (e2) {
-        // Variante 3: sin ubicacion ni observaciones
-        if (/column "ubicacion" does not exist/i.test(e2.message)) {
-          await db.query(
-            `INSERT INTO asistencias (alumno_id, evento_id, fecha, hora, tipo)
-             VALUES ($1, $2, (${nowMadrid})::date, (${nowMadrid})::time, 'qr')`,
-            [alumno_id, evento_id]
-          );
-          return { yaFirmado: false };
-        }
-        throw e2;
-      }
-    }
-
-    // Variante 2bis: no existe "ubicacion"
-    if (/column "ubicacion" does not exist/i.test(e1.message)) {
-      try {
-        await db.query(
-          `INSERT INTO asistencias (alumno_id, evento_id, fecha, hora, tipo, observaciones)
-           VALUES ($1, $2, (${nowMadrid})::date, (${nowMadrid})::time, 'qr', $3)`,
-          [alumno_id, evento_id, '']
-        );
-        return { yaFirmado: false };
-      } catch (e3) {
-        // Último intento: solo las imprescindibles
-        await db.query(
-          `INSERT INTO asistencias (alumno_id, evento_id, fecha, hora, tipo)
-           VALUES ($1, $2, (${nowMadrid})::date, (${nowMadrid})::time, 'qr')`,
-          [alumno_id, evento_id]
-        );
-        return { yaFirmado: false };
-      }
-    }
-
-    // Si no fue por columnas inexistentes, relanzo para que se vea el error real
-    throw e1;
-  }
+  // Inserta con hora/fecha desde Postgres (zona Madrid)
+  await db.query(
+    `INSERT INTO asistencias (alumno_id, evento_id, fecha, hora, tipo, ubicacion)
+     VALUES ($1, $2, (${nowMadrid})::date, (${nowMadrid})::time, 'qr', $3)`,
+    [alumno_id, evento_id, ubicacion || null]
+  );
+  return { yaFirmado: false };
 }
-
 async function handleFirmarQR(req, res) {
   try {
-    const raw = req.body || {};
-    const alumno_id = Number(raw.alumno_id);
-    const evento_id = Number(raw.evento_id);
-    const token = String(raw.token || '');
-    const ubicacion = raw.ubicacion || null;
-
+    const { alumno_id, evento_id, token, ubicacion } = req.body || {};
     if (!alumno_id || !evento_id || !token) {
-      return res.status(400).json({ error: 'Faltan datos (alumno_id, evento_id, token)' });
+      return res.status(400).json({ success: false, mensaje: 'Faltan datos (alumno_id, evento_id, token)' });
     }
 
     // Validar evento activo + token
@@ -129,22 +69,31 @@ async function handleFirmarQR(req, res) {
       [evento_id, token]
     );
     if (!ev.rows[0]) {
-      return res.status(400).json({ error: 'Evento no válido o inactivo' });
+      return res.status(400).json({ success: false, mensaje: 'Evento no válido o inactivo' });
     }
 
-    const r = await insertarAsistenciaMadrid({ alumno_id, evento_id, ubicacion });
+    const r = await insertarAsistenciaMadrid({ alumno_id: Number(alumno_id), evento_id: Number(evento_id), ubicacion });
+
     if (r.yaFirmado) {
-      return res.status(400).json({ error: 'Ya se ha firmado asistencia para este evento' });
+      // Idempotente: 200 OK pero informamos que ya estaba
+      return res.json({
+        success: true,
+        yaFirmado: true,
+        mensaje: 'Asistencia ya estaba registrada para este evento'
+      });
     }
 
-    return res.json({ success: true, mensaje: 'Asistencia QR registrada' });
+    return res.json({
+      success: true,
+      yaFirmado: false,
+      mensaje: 'Asistencia registrada correctamente'
+    });
+
   } catch (err) {
     console.error('firmar-qr:', err);
-    // Devolvemos mensaje detallado en dev; en prod puedes ocultarlo
-    return res.status(500).json({ error: 'Error interno', detalle: err.message });
+    return res.status(500).json({ success: false, mensaje: 'Error interno' });
   }
 }
-
 router.post('/firmar-qr', handleFirmarQR);
 // Alias para compatibilidad con apps que llamaban POST /firmas/
 router.post('/', handleFirmarQR);
