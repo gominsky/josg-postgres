@@ -109,55 +109,70 @@ router.get('/api/eventos/:id/alumnos', async (req, res) => {
   }
 });
 // control_firmas.js  (reemplaza el handler de POST /api/firmar-alumnos)
+// Reemplaza TODO el handler por este
 router.post('/api/firmar-alumnos', async (req, res) => {
-  const registros = req.body.registros;
+  const registros = req.body?.registros;
   if (!Array.isArray(registros) || registros.length === 0) {
     return res.status(400).json({ success: false, error: 'No se han enviado asistencias' });
   }
 
+  const nowMadrid = " (now() at time zone 'Europe/Madrid') ";
   const errores = [];
-  // hora/fecha ya convertidas a Europa/Madrid (ver sección B)
-  const nowMadrid = ` (now() at time zone 'Europe/Madrid') `;
-  for (const { evento_id, alumno_id, asistio, tipo, ubicacion } of registros) {
+
+  for (const r of registros) {
+    // Normaliza tipos
+    const evento_id  = Number(r.evento_id);
+    const alumno_id  = Number(r.alumno_id);
+    const asistio    = !!r.asistio;
+    const tipoSeg    = (r.tipo === 'qr') ? 'qr' : 'manual';
+    const ubicacion  = (r.ubicacion == null || r.ubicacion === '') ? null : String(r.ubicacion);
+
+    if (!evento_id || !alumno_id) {
+      errores.push({ alumno_id, error: 'evento_id/alumno_id inválidos' });
+      continue;
+    }
+
     try {
-      const result = await db.query(
-        `SELECT id FROM asistencias WHERE evento_id = $1 AND alumno_id = $2`,
+      // ¿ya hay asistencia?
+      const existe = await db.query(
+        `SELECT id FROM asistencias
+          WHERE evento_id = $1::int AND alumno_id = $2::int`,
         [evento_id, alumno_id]
       );
-      const existente = result.rows[0];
-
-      // Validar tipo: 'qr' o 'manual' (default)
-      const tipoSeg = (tipo === 'qr') ? 'qr' : 'manual';
 
       if (asistio) {
-        if (!existente) {
+        if (existe.rowCount === 0) {
+          // INSERT nuevo (observaciones vacío para mantener compatibilidad)
           await db.query(
             `INSERT INTO asistencias (evento_id, alumno_id, fecha, hora, tipo, ubicacion, observaciones)
-             VALUES ($1, $2, (${nowMadrid})::date, (${nowMadrid})::time, $3, $4, '')`,
-            [evento_id, alumno_id, tipoSeg, ubicacion || null]
+             VALUES ($1::int, $2::int, (${nowMadrid})::date, (${nowMadrid})::time, $3::text, $4::text, '')`,
+            [evento_id, alumno_id, tipoSeg, ubicacion]
           );
         } else {
+          // UPDATE existente: refresca fecha/hora/tipo; mantiene ubicación si no mandas nada
           await db.query(
             `UPDATE asistencias
-               SET tipo = $2,
-                   fecha = (${nowMadrid})::date,
-                   hora  = (${nowMadrid})::time,
-                   ubicacion = COALESCE($3, ubicacion)
-             WHERE id = $1`,
-            [existente.id, tipoSeg, ubicacion || null]
+                SET tipo  = $2::text,
+                    fecha = (${nowMadrid})::date,
+                    hora  = (${nowMadrid})::time,
+                    ubicacion = COALESCE($3::text, ubicacion)
+              WHERE id = $1::int`,
+            [Number(existe.rows[0].id), tipoSeg, ubicacion]
           );
         }
       } else {
-        if (existente) {
-          await db.query(`DELETE FROM asistencias WHERE id = $1`, [existente.id]);
+        // Desmarcar asistencia (borrar fila si existía)
+        if (existe.rowCount > 0) {
+          await db.query(`DELETE FROM asistencias WHERE id = $1::int`, [Number(existe.rows[0].id)]);
         }
       }
     } catch (err) {
-      console.error('⚠️ Error al procesar asistencia:', err);
+      console.error('⚠️ Error al procesar asistencia:', err.message);
       errores.push({ alumno_id, error: 'Error en el registro' });
     }
   }
-  res.json({ success: true, errores });
+
+  return res.json({ success: true, errores });
 });
 router.patch('/api/eventos/:id/activar', async (req, res) => {
   const eventoId = req.params.id;
@@ -198,55 +213,4 @@ router.get('/api/eventos/:id/asistencias', async (req, res) => {
     res.status(500).json({ error: 'Error al obtener asistencias' });
   }
 });
-// control_firmas.js — NUEVO endpoint
-router.post('/api/firmar-qr', async (req, res) => {
-  const { evento_id, alumno_id, token, ubicacion } = req.body;
-
-  if (!evento_id || !alumno_id || !token) {
-    return res.status(400).json({ success: false, error: 'Faltan datos (evento_id, alumno_id, token)' });
-  }
-
-  try {
-    // 1) Validar evento, activo y token
-    const ev = await db.query(
-      `SELECT id, activo, token FROM eventos WHERE id = $1`,
-      [evento_id]
-    );
-    const evento = ev.rows[0];
-    if (!evento) return res.status(404).json({ success: false, error: 'Evento no encontrado' });
-    if (!evento.activo) return res.status(403).json({ success: false, error: 'QR desactivado' });
-    if (evento.token !== token) return res.status(403).json({ success: false, error: 'Token inválido' });
-
-    // 2) Upsert de asistencia como 'qr' con hora Madrid
-    const nowMadrid = ` (now() at time zone 'Europe/Madrid') `;
-    const existe = await db.query(
-      `SELECT id FROM asistencias WHERE evento_id = $1 AND alumno_id = $2`,
-      [evento_id, alumno_id]
-    );
-
-    if (!existe.rows[0]) {
-      await db.query(
-        `INSERT INTO asistencias (evento_id, alumno_id, fecha, hora, tipo, ubicacion, observaciones)
-         VALUES ($1, $2, (${nowMadrid})::date, (${nowMadrid})::time, 'qr', $3, '')`,
-        [evento_id, alumno_id, ubicacion || null]
-      );
-    } else {
-      await db.query(
-        `UPDATE asistencias
-            SET tipo='qr',
-                fecha=(${nowMadrid})::date,
-                hora =(${nowMadrid})::time,
-                ubicacion = COALESCE($3, ubicacion)
-          WHERE id=$1`,
-        [existe.rows[0].id, ubicacion || null]
-      );
-    }
-
-    return res.json({ success: true });
-  } catch (err) {
-    console.error('Error firmar-qr:', err);
-    return res.status(500).json({ success: false, error: 'Error interno' });
-  }
-});
-
 module.exports = router;
