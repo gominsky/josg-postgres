@@ -64,7 +64,7 @@
           <p><strong>Inicio:</strong> ${formatearFecha(evento.fecha_inicio)}</p>
         `;
 
-        document.getElementById('observaciones_generales').value = evento.observaciones_generales || '';
+        document.getElementById('observaciones_generales').value = evento.observaciones || '';
 
         tokenQR = evento.token;
         qrActivo = Boolean(evento.activo);

@@ -58,42 +58,55 @@ async function insertarAsistenciaMadrid({ alumno_id, evento_id, ubicacion }) {
 }
 async function handleFirmarQR(req, res) {
   try {
-    const { alumno_id, evento_id, token, ubicacion } = req.body || {};
+    // Normaliza tipos desde el request
+    const raw = req.body || {};
+    const alumno_id = Number(raw.alumno_id);
+    const evento_id = Number(raw.evento_id);
+    const token = raw.token != null ? String(raw.token) : null;
+    const ubicacion = (raw.ubicacion != null && raw.ubicacion !== '') ? String(raw.ubicacion) : null;
+
     if (!alumno_id || !evento_id || !token) {
       return res.status(400).json({ success: false, mensaje: 'Faltan datos (alumno_id, evento_id, token)' });
     }
 
-    // Validar evento activo + token
+    // 1) Valida evento + token con CASTS explícitos
     const ev = await db.query(
-      'SELECT id FROM eventos WHERE id = $1 AND token = $2 AND activo IS TRUE',
-      [evento_id, token]
+      `SELECT id
+         FROM eventos
+        WHERE id = $1::int
+          AND token = $2::text
+          AND activo IS TRUE`,
+      [alumno_id ? evento_id : null, token] // evento_id pos 1, token pos 2
     );
-    if (!ev.rows[0]) {
+    if (ev.rowCount === 0) {
       return res.status(400).json({ success: false, mensaje: 'Evento no válido o inactivo' });
     }
 
-    const r = await insertarAsistenciaMadrid({ alumno_id: Number(alumno_id), evento_id: Number(evento_id), ubicacion });
+    // 2) UPSERT idempotente con tipos explícitos
+    const nowMadrid = " (now() at time zone 'Europe/Madrid') ";
+    const upsert = await db.query(
+      `
+      INSERT INTO asistencias (alumno_id, evento_id, fecha, hora, tipo, ubicacion)
+      VALUES ($1::int, $2::int, (${nowMadrid})::date, (${nowMadrid})::time, 'qr', $3::text)
+      ON CONFLICT ON CONSTRAINT asistencias_alumno_evento_uniq DO NOTHING
+      RETURNING id
+      `,
+      [alumno_id, evento_id, ubicacion] // ubicacion puede ser null: ::text lo acepta
+    );
 
-    if (r.yaFirmado) {
-      // Idempotente: 200 OK pero informamos que ya estaba
-      return res.json({
-        success: true,
-        yaFirmado: true,
-        mensaje: 'Asistencia ya estaba registrada para este evento'
-      });
+    if (upsert.rowCount === 0) {
+      // ya existía
+      return res.json({ success: true, yaFirmado: true, mensaje: 'Asistencia ya estaba registrada para este evento' });
     }
 
-    return res.json({
-      success: true,
-      yaFirmado: false,
-      mensaje: 'Asistencia registrada correctamente'
-    });
+    return res.json({ success: true, yaFirmado: false, mensaje: 'Asistencia registrada correctamente' });
 
   } catch (err) {
     console.error('firmar-qr:', err);
     return res.status(500).json({ success: false, mensaje: 'Error interno' });
   }
 }
+
 router.post('/firmar-qr', handleFirmarQR);
 // Alias para compatibilidad con apps que llamaban POST /firmas/
 router.post('/', handleFirmarQR);
