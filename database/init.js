@@ -144,7 +144,8 @@ async function init() {
         observaciones TEXT,
         tipo TEXT DEFAULT 'qr',
         FOREIGN KEY (evento_id) REFERENCES eventos(id),
-        FOREIGN KEY (alumno_id) REFERENCES alumnos(id)
+        FOREIGN KEY (alumno_id) REFERENCES alumnos(id),
+        CONSTRAINT asistencias_alumno_evento_uniq UNIQUE (alumno_id, evento_id)
       );
     `);
 
