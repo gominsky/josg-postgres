@@ -5,7 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Firmar Asistencia</title>
   <script src="https://unpkg.com/html5-qrcode"></script>
-  <link rel="stylesheet" href="../styles/estilos_app.css" /></head>
+  <link rel="stylesheet" href="../styles/estilos_app.css" />
+</head>
 <body>
   <div class="container">
     <h2>Firmar Asistencia</h2>
@@ -28,49 +29,79 @@
 
     const mensaje = document.getElementById("mensaje");
 
-    function onScanSuccess(decodedText) {
+    async function enviarFirma({ evento_id, token, ubicacion }) {
       try {
-        const datos = JSON.parse(decodedText);
-        const { evento_id, token } = datos;
-
-        if (!evento_id || !token) {
-          mensaje.className = "error";
-          mensaje.innerText = "QR inválido.";
-          return;
-        }
-
-        navigator.geolocation.getCurrentPosition(async (position) => {
-          const ubicacion = `${position.coords.latitude},${position.coords.longitude}`;
-
-          const res = await fetch("/firmas", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ alumno_id, evento_id, token, ubicacion })
-          });
-
-          const data = await res.json();
-
-          if (data.success) {
-            mensaje.className = "success";
-            mensaje.innerText = data.mensaje;
-            qrScanner.clear();
-          } else {
-            mensaje.className = "error";
-            mensaje.innerText = data.error || "No se pudo registrar la asistencia";
-          }
-        }, () => {
-          mensaje.className = "error";
-          mensaje.innerText = "Ubicación no disponible";
+        const res = await fetch("/control_firmas/api/firmar-qr", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            alumno_id: Number(alumno_id),
+            evento_id,
+            token,
+            ...(ubicacion ? { ubicacion } : {})
+          })
         });
 
+        const data = await res.json();
+
+        if (data.success) {
+          mensaje.className = "success";
+          mensaje.innerText = "Asistencia registrada correctamente";
+          try { await qrScanner.stop(); } catch {}
+          try { qrScanner.clear(); } catch {}
+        } else {
+          mensaje.className = "error";
+          mensaje.innerText = data.error || "No se pudo registrar la asistencia";
+        }
       } catch (e) {
         mensaje.className = "error";
+        mensaje.innerText = "Error de red al registrar la asistencia";
+      }
+    }
+
+    function onScanSuccess(decodedText) {
+      let datos;
+      try {
+        datos = JSON.parse(decodedText);
+      } catch {
+        mensaje.className = "error";
         mensaje.innerText = "El QR no es válido.";
+        return;
+      }
+
+      const { evento_id, token } = datos || {};
+      if (!evento_id || !token) {
+        mensaje.className = "error";
+        mensaje.innerText = "QR inválido.";
+        return;
+      }
+
+      // Intentar geolocalización, pero no bloquear si falla
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            const ubicacion = `${pos.coords.latitude},${pos.coords.longitude}`;
+            enviarFirma({ evento_id, token, ubicacion });
+          },
+          () => {
+            mensaje.className = "subtitulo";
+            mensaje.innerText = "Ubicación no disponible; firmando sin ubicación…";
+            enviarFirma({ evento_id, token });
+          },
+          { enableHighAccuracy: true, timeout: 5000 }
+        );
+      } else {
+        enviarFirma({ evento_id, token });
       }
     }
 
     const qrScanner = new Html5Qrcode("reader");
-    qrScanner.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, onScanSuccess);
+    qrScanner.start(
+      { facingMode: "environment" },
+      { fps: 10, qrbox: 250 },
+      onScanSuccess,
+      (errorMessage) => { /* silencioso para no saturar la UI */ }
+    );
   </script>
 </body>
 </html>

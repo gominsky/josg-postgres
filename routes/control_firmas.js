@@ -108,6 +108,7 @@ router.get('/api/eventos/:id/alumnos', async (req, res) => {
     res.status(500).json([]);
   }
 });
+// control_firmas.js  (reemplaza el handler de POST /api/firmar-alumnos)
 router.post('/api/firmar-alumnos', async (req, res) => {
   const registros = req.body.registros;
   if (!Array.isArray(registros) || registros.length === 0) {
@@ -115,25 +116,35 @@ router.post('/api/firmar-alumnos', async (req, res) => {
   }
 
   const errores = [];
-
-  for (const { evento_id, alumno_id, asistio } of registros) {
+  // hora/fecha ya convertidas a Europa/Madrid (ver sección B)
+  const nowMadrid = ` (now() at time zone 'Europe/Madrid') `;
+  for (const { evento_id, alumno_id, asistio, tipo, ubicacion } of registros) {
     try {
       const result = await db.query(
         `SELECT id FROM asistencias WHERE evento_id = $1 AND alumno_id = $2`,
         [evento_id, alumno_id]
       );
       const existente = result.rows[0];
+
+      // Validar tipo: 'qr' o 'manual' (default)
+      const tipoSeg = (tipo === 'qr') ? 'qr' : 'manual';
+
       if (asistio) {
         if (!existente) {
           await db.query(
-            `INSERT INTO asistencias (evento_id, alumno_id, fecha, hora, tipo, observaciones)
-             VALUES ($1, $2, CURRENT_DATE, CURRENT_TIME, 'manual', '')`,
-            [evento_id, alumno_id]
+            `INSERT INTO asistencias (evento_id, alumno_id, fecha, hora, tipo, ubicacion, observaciones)
+             VALUES ($1, $2, (${nowMadrid})::date, (${nowMadrid})::time, $3, $4, '')`,
+            [evento_id, alumno_id, tipoSeg, ubicacion || null]
           );
         } else {
           await db.query(
-            `UPDATE asistencias SET tipo = 'manual', fecha = CURRENT_DATE, hora = CURRENT_TIME WHERE id = $1`,
-            [existente.id]
+            `UPDATE asistencias
+               SET tipo = $2,
+                   fecha = (${nowMadrid})::date,
+                   hora  = (${nowMadrid})::time,
+                   ubicacion = COALESCE($3, ubicacion)
+             WHERE id = $1`,
+            [existente.id, tipoSeg, ubicacion || null]
           );
         }
       } else {
@@ -185,6 +196,56 @@ router.get('/api/eventos/:id/asistencias', async (req, res) => {
     res.json(result.rows);
   } catch (err) {
     res.status(500).json({ error: 'Error al obtener asistencias' });
+  }
+});
+// control_firmas.js — NUEVO endpoint
+router.post('/api/firmar-qr', async (req, res) => {
+  const { evento_id, alumno_id, token, ubicacion } = req.body;
+
+  if (!evento_id || !alumno_id || !token) {
+    return res.status(400).json({ success: false, error: 'Faltan datos (evento_id, alumno_id, token)' });
+  }
+
+  try {
+    // 1) Validar evento, activo y token
+    const ev = await db.query(
+      `SELECT id, activo, token FROM eventos WHERE id = $1`,
+      [evento_id]
+    );
+    const evento = ev.rows[0];
+    if (!evento) return res.status(404).json({ success: false, error: 'Evento no encontrado' });
+    if (!evento.activo) return res.status(403).json({ success: false, error: 'QR desactivado' });
+    if (evento.token !== token) return res.status(403).json({ success: false, error: 'Token inválido' });
+
+    // 2) Upsert de asistencia como 'qr' con hora Madrid
+    const nowMadrid = ` (now() at time zone 'Europe/Madrid') `;
+    const existe = await db.query(
+      `SELECT id FROM asistencias WHERE evento_id = $1 AND alumno_id = $2`,
+      [evento_id, alumno_id]
+    );
+
+    if (!existe.rows[0]) {
+      await db.query(
+        `INSERT INTO asistencias (evento_id, alumno_id, fecha, hora, tipo, ubicacion, observaciones)
+         VALUES ($1, $2, (${nowMadrid})::date, (${nowMadrid})::time, 'qr', $3, '')`,
+        [evento_id, alumno_id, ubicacion || null]
+      );
+    } else {
+      await db.query(
+        `UPDATE asistencias
+            SET tipo='qr',
+                fecha=(${nowMadrid})::date,
+                hora =(${nowMadrid})::time,
+                ubicacion = COALESCE($3, ubicacion)
+          WHERE id=$1`,
+        [existe.rows[0].id, ubicacion || null]
+      );
+    }
+
+    return res.json({ success: true });
+  } catch (err) {
+    console.error('Error firmar-qr:', err);
+    return res.status(500).json({ success: false, error: 'Error interno' });
   }
 });
 
