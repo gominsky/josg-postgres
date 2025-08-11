@@ -6,87 +6,140 @@
   <title>Firmar Asistencia</title>
   <script src="https://unpkg.com/html5-qrcode"></script>
   <link rel="stylesheet" href="../styles/estilos_app.css" />
+  <style>
+    #reader { max-width: 480px; margin: 0 auto; }
+    #mensaje { margin-top: 12px; font-weight: 600; }
+  </style>
 </head>
 <body>
   <div class="container">
     <h2>Firmar Asistencia</h2>
     <div id="reader"></div>
-    <p id="mensaje" class=""></p>
+    <p id="mensaje"></p>
     <button onclick="logout()">Cerrar sesión</button>
   </div>
+
   <script>
-    document.addEventListener("DOMContentLoaded", () => {
-      const mensaje = document.getElementById("mensaje");
-    
-      async function enviarFirma(datos) {
-        try {
-          const res = await fetch("/firmas/firmar-qr", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(datos)
-          });
-          const data = await res.json();
-    
-          if (data.success) {
-            mensaje.className = "subtitulo";
-            mensaje.style.color = "green";
-            mensaje.innerText = "✅ Asistencia registrada correctamente";
-          } else {
-            mensaje.className = "subtitulo";
-            mensaje.style.color = "red";
-            mensaje.innerText = `❌ Error: ${data.error || "No se pudo registrar la asistencia"}`;
+    const alumno_id = localStorage.getItem('alumno_id');
+    if (!alumno_id) {
+      alert("No has iniciado sesión.");
+      location.href = "index.html";
+    }
+
+    function logout() {
+      localStorage.removeItem('alumno_id');
+      location.href = 'index.html';
+    }
+
+    const mensaje = document.getElementById("mensaje");
+    let sending = false; // evita dobles envíos por escaneos repetidos
+    let qrScanner;
+
+    function pintarMensaje(texto, ok = true) {
+      mensaje.className = "subtitulo";
+      mensaje.style.color = ok ? "green" : "red";
+      mensaje.innerText = texto;
+    }
+
+    async function enviarFirma(payload) {
+      try {
+        const res = await fetch("/firmas/firmar-qr", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+
+        // Si el servidor no responde 2xx, lo tratamos como error visible
+        if (!res.ok) {
+          const txt = await res.text().catch(() => "");
+          throw new Error(`HTTP ${res.status} ${res.statusText} ${txt}`);
+        }
+
+        const data = await res.json();
+
+        if (data.success) {
+          const msg = data.mensaje
+            || (data.yaFirmado
+                ? "✅ Asistencia ya estaba registrada para este evento"
+                : "✅ Asistencia registrada correctamente");
+          pintarMensaje(msg, true);
+          // Detener escáner para evitar múltiples firmas
+          try { await qrScanner.stop(); } catch {}
+          try { qrScanner.clear(); } catch {}
+        } else {
+          pintarMensaje(`❌ ${data.error || "No se pudo registrar la asistencia"}`, false);
+          sending = false; // permitir reintento
+        }
+      } catch (err) {
+        console.error("Firma QR ->", err);
+        pintarMensaje("❌ Error de red al registrar la asistencia", false);
+        sending = false; // permitir reintento
+      }
+    }
+
+    async function firmarConPosibleUbicacion({ evento_id, token }) {
+      const base = {
+        alumno_id: Number(alumno_id),
+        evento_id: Number(evento_id),
+        token: String(token)
+      };
+
+      // Si no hay soporte de geolocalización, firmar sin ruido
+      if (!navigator.geolocation) return enviarFirma(base);
+
+      // Si podemos, miramos permiso para evitar prompts innecesarios
+      try {
+        if (navigator.permissions && navigator.permissions.query) {
+          const st = await navigator.permissions.query({ name: "geolocation" });
+          if (st.state === "denied") {
+            return enviarFirma(base); // sin avisos
           }
-        } catch (err) {
-          mensaje.className = "subtitulo";
-          mensaje.style.color = "red";
-          mensaje.innerText = "❌ Error de red al registrar asistencia";
         }
+      } catch { /* ignorar silenciosamente */ }
+
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const ubicacion = `${pos.coords.latitude},${pos.coords.longitude}`;
+          enviarFirma({ ...base, ubicacion });
+        },
+        () => {
+          // Cualquier fallo: firmar sin ubicación, sin mostrar aviso
+          enviarFirma(base);
+        },
+        { enableHighAccuracy: false, timeout: 8000, maximumAge: 60000 }
+      );
+    }
+
+    function onScanSuccess(decodedText) {
+      if (sending) return; // debouncing
+      let datos;
+      try {
+        datos = JSON.parse(decodedText);
+      } catch {
+        pintarMensaje("❌ QR inválido", false);
+        return;
       }
-    
-      async function firmarConPosibleUbicacion({ evento_id, token, alumno_id }) {
-        if (!navigator.geolocation) {
-          return enviarFirma({ evento_id, token, alumno_id });
-        }
-    
-        try {
-          if (navigator.permissions && navigator.permissions.query) {
-            const st = await navigator.permissions.query({ name: "geolocation" });
-            if (st.state === "denied") {
-              return enviarFirma({ evento_id, token, alumno_id });
-            }
-          }
-        } catch {}
-    
-        navigator.geolocation.getCurrentPosition(
-          (pos) => {
-            const ubicacion = `${pos.coords.latitude},${pos.coords.longitude}`;
-            enviarFirma({ evento_id, token, alumno_id, ubicacion });
-          },
-          () => {
-            // Falla: firmar en silencio
-            enviarFirma({ evento_id, token, alumno_id });
-          },
-          { enableHighAccuracy: false, timeout: 8000, maximumAge: 60000 }
-        );
+
+      const { evento_id, token } = datos || {};
+      if (!evento_id || !token) {
+        pintarMensaje("❌ QR inválido", false);
+        return;
       }
-    
-      // Aquí integras tu lector QR
-      function onScanSuccess(decodedText) {
-        try {
-          const payload = JSON.parse(decodedText);
-          const { evento_id, token, alumno_id } = payload;
-          firmarConPosibleUbicacion({ evento_id, token, alumno_id });
-        } catch (err) {
-          mensaje.className = "subtitulo";
-          mensaje.style.color = "red";
-          mensaje.innerText = "❌ QR inválido";
-        }
-      }
-    
-      // Inicializar escáner...
-      // const html5QrcodeScanner = new Html5QrcodeScanner(...);
-      // html5QrcodeScanner.render(onScanSuccess);
-    });
-    </script>    
+
+      sending = true;
+      firmarConPosibleUbicacion({ evento_id, token });
+    }
+
+    // Inicializa el escáner
+    (function initScanner() {
+      qrScanner = new Html5Qrcode("reader");
+      qrScanner.start(
+        { facingMode: "environment" },
+        { fps: 10, qrbox: 250 },
+        onScanSuccess,
+        () => { /* errores de decode silenciosos para no saturar */ }
+      );
+    })();
+  </script>
 </body>
 </html>
