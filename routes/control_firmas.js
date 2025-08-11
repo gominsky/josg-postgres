@@ -175,7 +175,7 @@ router.patch('/api/eventos/:id/observaciones-generales', async (req, res) => {
   const { observaciones } = req.body;
 
   try {
-    await db.query(`UPDATE eventos SET observaciones_generales = $1 WHERE id = $2`, [observaciones, eventoId]);
+    await db.query(`UPDATE eventos SET observaciones = $1 WHERE id = $2`, [observaciones, eventoId]);
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ success: false, error: 'No se pudo actualizar observaciones' });
