@@ -37,7 +37,7 @@
 
     function pintarMensaje(texto, ok = true) {
       mensaje.className = "subtitulo";
-      mensaje.style.color = ok ? "green" : "red";
+      mensaje.style.color = ok ? "black" : "red";
       mensaje.innerText = texto;
     }
 
@@ -60,7 +60,7 @@
         if (data.success) {
           const msg = data.mensaje
             || (data.yaFirmado
-                ? "✅ Asistencia ya estaba registrada para este evento"
+                ? "✅ Ya estaba registrada las asistencia para este evento"
                 : "✅ Asistencia registrada correctamente");
           pintarMensaje(msg, true);
           // Detener escáner para evitar múltiples firmas

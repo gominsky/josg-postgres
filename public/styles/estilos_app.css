@@ -310,3 +310,24 @@ input[type="checkbox"]:checked::after {
 .asistencia-detalle a {
   text-decoration: underline;
 }
+.fc .fc-h-event .fc-event-main,
+  .fc .fc-daygrid-event .fc-event-main,
+  .fc .fc-timegrid-event .fc-event-main {
+    background-color: #000 !important;
+    color: #fff !important;
+  }
+
+  /* Bordes del evento */
+  .fc .fc-h-event,
+  .fc .fc-daygrid-event,
+  .fc .fc-timegrid-event {
+    border-color: #000 !important;
+  }
+
+  /* “Dot events” (en month con puntito + texto) */
+  .fc .fc-daygrid-dot-event .fc-event-title {
+    color: #000 !important;
+  }
+  .fc .fc-daygrid-dot-event .fc-event-dot {
+    border-color: #000 !important; /* el puntito */
+  }

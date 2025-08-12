@@ -33,23 +33,36 @@
     }
 
     async function cargarAsistencias() {
-      const res = await fetch(`/control_firmas/api/eventos/${evento_id}/asistencias`);
-      const asistencias = await res.json();
+      try {
+        // 🚫 Evita caché agregando parámetro único y opción no-store
+        const url = `/control_firmas/api/eventos/${evento_id}/asistencias?ts=${Date.now()}`;
+        const res = await fetch(url, { cache: 'no-store' });
 
-      const lista = asistencias.map(a => `
-        <div class="asistencia-item">
-          <div class="asistencia-nombre">${a.nombre} ${a.apellidos}</div>
-          <div class="asistencia-detalle">
-            <span>📅 ${formatearFecha(a.fecha)} · ${formatearHora(a.hora)}</span>
-            <span>| Tipo: ${a.tipo}</span>
-            <span>| 📍 ${a.ubicacion ? `<a href='https://www.google.com/maps?q=${a.ubicacion}' target='_blank'>Ver</a>` : 'Sin datos'}</span>
+        if (!res.ok) {
+          throw new Error(`Error HTTP: ${res.status}`);
+        }
+
+        const asistencias = await res.json();
+
+        const lista = asistencias.map(a => `
+          <div class="asistencia-item">
+            <div class="asistencia-nombre">${a.nombre} ${a.apellidos}</div>
+            <div class="asistencia-detalle">
+              <span>📅 ${formatearFecha(a.fecha)} · ${formatearHora(a.hora)}</span>
+              <span>| Tipo: ${a.tipo}</span>
+              <span>| 📍 ${a.ubicacion ? `<a href='https://www.google.com/maps?q=${a.ubicacion}' target='_blank'>Ver</a>` : 'Sin datos'}</span>
+            </div>
           </div>
-        </div>
-      `).join("");
+        `).join("");
 
-      document.getElementById("lista-asistencias").innerHTML = lista;
+        document.getElementById("lista-asistencias").innerHTML = lista;
+      } catch (error) {
+        console.error("Error cargando asistencias:", error);
+        document.getElementById("lista-asistencias").innerHTML = "<p class='error'>Error al cargar las asistencias</p>";
+      }
     }
 
+    // Cargar inmediatamente
     cargarAsistencias();
   </script>
 </body>
