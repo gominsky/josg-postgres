@@ -317,21 +317,14 @@ async function init() {
   WITH parsed AS (
     SELECT
       i.id AS informe_id,
-      regexp_match(
-        i.informe,
-        '^[[:space:]]*Prueba[[:space:]]+de[[:space:]]+atril[[:space:]]+([^[:space:]]+)[[:space:]]+(.+)[[:space:]]+([0-9]{2}/[0-9]{2}T[1-4])[[:space:]]*$',
-        'i'
-      ) AS m
+      /* trimestre: token tipo 25/26T1 en el título */
+      trim( (regexp_match(i.informe, '([0-9]{2}/[0-9]{2}T[1-4])', 'i'))[1] ) AS trimestre,
+      NULLIF(trim(g.nombre), '')   AS grupo,
+      NULLIF(trim(ins.nombre), '') AS instrumento
     FROM informes i
-  ),
-  tokens AS (
-    SELECT
-      informe_id,
-      trim(m[1]) AS grupo,
-      trim(m[2]) AS instrumento_raw,
-      trim(m[3]) AS trimestre
-    FROM parsed
-    WHERE m IS NOT NULL
+    LEFT JOIN grupos g        ON g.id  = i.grupo_id
+    LEFT JOIN instrumentos ins ON ins.id = i.instrumento_id
+    WHERE i.informe ~* 'Prueba[[:space:]]+de[[:space:]]+atril'
   ),
   campos AS (
     SELECT ic.informe_id, ic.id AS campo_id, ic.nombre AS campo_nombre
@@ -343,36 +336,30 @@ async function init() {
   ),
   pivot AS (
     SELECT
-      t.grupo,
-      t.instrumento_raw,
-      t.trimestre,
+      p.informe_id,
+      p.trimestre,
+      p.grupo,
+      p.instrumento,
       r.fila,
-      /* alumno_id: por campo 'alumno_id' o por columna ir.alumno_id */
+      /* alumno_id: por campo 'alumno_id' o por columna */
       COALESCE(
         MAX(CASE WHEN c.campo_nombre ILIKE '%alumno_id%' THEN NULLIF(r.valor,'') END),
         MAX(r.alumno_id)::text
       ) AS alumno_id,
-      /* Puntuación: Puntuación/Puntuacion/Score/Puntos */
+      /* Puntuación */
       MAX(CASE WHEN c.campo_nombre ILIKE '%puntuaci%' OR c.campo_nombre ILIKE '%score%' OR c.campo_nombre ILIKE '%punto%'
                THEN NULLIF(r.valor,'') END) AS puntuacion_raw,
-      /* Asistencia: Asistencia/Asiste/Presencia/Presente */
+      /* Asistencia */
       MAX(CASE WHEN c.campo_nombre ILIKE '%asist%' OR c.campo_nombre ILIKE '%presenc%' OR c.campo_nombre ILIKE '%present%'
                THEN NULLIF(r.valor,'') END) AS asistencia_raw
-    FROM tokens t
-    LEFT JOIN res    r ON r.informe_id = t.informe_id
+    FROM parsed p
+    LEFT JOIN res    r ON r.informe_id = p.informe_id
     LEFT JOIN campos c ON c.informe_id = r.informe_id AND c.campo_id = r.campo_id
-    GROUP BY t.grupo, t.instrumento_raw, t.trimestre, r.fila
+    GROUP BY p.informe_id, p.trimestre, p.grupo, p.instrumento, r.fila
   )
   SELECT
     grupo,
-    CASE
-      WHEN instrumento_raw ~* 'violin[[:space:]]*ii|violín[[:space:]]*ii|vln[[:space:]]*ii' THEN 'Violín II'
-      WHEN instrumento_raw ~* 'violin[[:space:]]*i\\b|violín[[:space:]]*i\\b|vln[[:space:]]*i\\b' THEN 'Violín I'
-      WHEN instrumento_raw ~* 'viola' THEN 'Viola'
-      WHEN instrumento_raw ~* 'violonchelo|cello' THEN 'Violonchelo'
-      WHEN instrumento_raw ~* 'contrabajo' THEN 'Contrabajo'
-      ELSE instrumento_raw
-    END AS instrumento,
+    instrumento,
     trimestre,
     alumno_id,
     NULLIF(puntuacion_raw,'')::numeric AS puntuacion,
@@ -383,7 +370,9 @@ async function init() {
       ELSE FALSE
     END AS asistencia
   FROM pivot
-  WHERE alumno_id IS NOT NULL OR puntuacion_raw IS NOT NULL OR asistencia_raw IS NOT NULL;
+  WHERE grupo IS NOT NULL
+    AND instrumento IS NOT NULL
+    AND (alumno_id IS NOT NULL OR puntuacion_raw IS NOT NULL OR asistencia_raw IS NOT NULL);
 `);
     // ============ FIN AÑADIDOS ============
 
