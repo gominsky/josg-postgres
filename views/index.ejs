@@ -34,7 +34,7 @@
       <p>Bienvenido, <%= usuario.nombre %> (<%= usuario.rol %>)</p>
       <div id="menu-principal" class="dashboard-grid">
         <% if (usuario.rol === 'admin' || usuario.rol === 'docente') { %>
-          <a href="/alumnos" class="card-index">Alumnos</a>
+          <a href="/alumnos" class="card-index">Músicos</a>
           <a href="/profesores" class="card-index">Docentes</a>
           <a href="/eventos" class="card-index">Eventos</a>
           <a href="/guardias" class="card-index">Guardias</a>

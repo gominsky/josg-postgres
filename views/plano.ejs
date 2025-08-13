@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <title>Plano cuerdas</title>
+  <style>body{font-family:system-ui,Segoe UI,Roboto,Arial}</style>
+</head>
+<body>
+  <h1>Plano cuerdas — <%= grupo %> — <%= trimestre %></h1>
+
+  <form method="GET" action="/plano/view">
+    <label>Grupo: <input name="grupo" value="<%= grupo %>"></label>
+    <label>Trimestre (25-26T1): <input name="trimestre" value="<%= trimestre %>"></label>
+    <button type="submit">Ver</button>
+  </form>
+
+  <p>
+    <!-- PNG para máxima compatibilidad; cambia a .svg si prefieres vectorial en pantalla -->
+    <img src="/plano/<%= encodeURIComponent(grupo) %>/<%= encodeURIComponent(trimestre) %>.png"
+         alt="Plano cuerdas" style="max-width:100%;height:auto"/>
+  </p>
+</body>
+</html>

@@ -259,6 +259,134 @@ async function init() {
       );
     `);
 
+    // ============ AÑADIDOS PARA EL PLANO DE ORQUESTA ============
+
+    // 🎯 Tabla para posiciones en el plano
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS layout_posiciones (
+        id SERIAL PRIMARY KEY,
+        layout_id TEXT NOT NULL,
+        instrumento TEXT NOT NULL,
+        atril INT NOT NULL,
+        puesto INT NOT NULL,
+        x NUMERIC NOT NULL,
+        y NUMERIC NOT NULL,
+        angulo NUMERIC DEFAULT 0,
+        UNIQUE(layout_id, instrumento, atril, puesto)
+      );
+    `);
+
+    // Índices útiles para consultas de informes/resultado
+    await db.query(`CREATE INDEX IF NOT EXISTS idx_informes_informe ON informes (informe);`);
+    await db.query(`CREATE INDEX IF NOT EXISTS idx_inf_campos_informe_nombre ON informe_campos(informe_id, nombre);`);
+    await db.query(`CREATE INDEX IF NOT EXISTS idx_inf_resultados_fk ON informe_resultados(informe_id, campo_id, fila);`);
+
+    // Insertar coordenadas iniciales si la tabla está vacía
+    const countLayout = await db.query(`SELECT COUNT(*) FROM layout_posiciones`);
+    if (parseInt(countLayout.rows[0].count) === 0) {
+      await db.query(`
+        INSERT INTO layout_posiciones(layout_id,instrumento,atril,puesto,x,y,angulo) VALUES
+        ('escenario_cuerdas_v1','Violín I',1,1,0.22,0.22,-15),
+        ('escenario_cuerdas_v1','Violín I',1,2,0.27,0.22,-15),
+        ('escenario_cuerdas_v1','Violín I',2,1,0.20,0.30,-10),
+        ('escenario_cuerdas_v1','Violín I',2,2,0.28,0.30,-10),
+        ('escenario_cuerdas_v1','Violín II',1,1,0.38,0.24,0),
+        ('escenario_cuerdas_v1','Violín II',1,2,0.43,0.24,0),
+        ('escenario_cuerdas_v1','Viola',1,1,0.55,0.30,5),
+        ('escenario_cuerdas_v1','Viola',1,2,0.60,0.30,5),
+        ('escenario_cuerdas_v1','Violonchelo',1,1,0.68,0.40,10),
+        ('escenario_cuerdas_v1','Violonchelo',1,2,0.73,0.40,10),
+        ('escenario_cuerdas_v1','Contrabajo',1,1,0.82,0.45,15),
+        ('escenario_cuerzas_v1','Contrabajo',1,2,0.87,0.45,15) -- ⚠️ si copias, corrige 'cuerzas'->'cuerdas'
+      ON CONFLICT DO NOTHING;
+      `);
+      // Corrige el posible typo del insert anterior (por si se pega tal cual)
+      await db.query(`
+        UPDATE layout_posiciones
+        SET layout_id = 'escenario_cuerdas_v1'
+        WHERE layout_id = 'escenario_cuerzas_v1';
+      `);
+      console.log("Layout de cuerdas insertado.");
+    }
+
+    // 👁️ Vista normalizada para pruebas de atril (trimestre 25/26T1)
+    
+    console.log("Vista 'pruebas_atril_norm' creada/actualizada.");
+    await db.query(`
+  CREATE OR REPLACE VIEW pruebas_atril_norm AS
+  WITH parsed AS (
+    SELECT
+      i.id AS informe_id,
+      regexp_match(
+        i.informe,
+        '^[[:space:]]*Prueba[[:space:]]+de[[:space:]]+atril[[:space:]]+([^[:space:]]+)[[:space:]]+(.+)[[:space:]]+([0-9]{2}/[0-9]{2}T[1-4])[[:space:]]*$',
+        'i'
+      ) AS m
+    FROM informes i
+  ),
+  tokens AS (
+    SELECT
+      informe_id,
+      trim(m[1]) AS grupo,
+      trim(m[2]) AS instrumento_raw,
+      trim(m[3]) AS trimestre
+    FROM parsed
+    WHERE m IS NOT NULL
+  ),
+  campos AS (
+    SELECT ic.informe_id, ic.id AS campo_id, ic.nombre AS campo_nombre
+    FROM informe_campos ic
+  ),
+  res AS (
+    SELECT ir.informe_id, ir.campo_id, ir.fila, trim(ir.valor) AS valor, ir.alumno_id
+    FROM informe_resultados ir
+  ),
+  pivot AS (
+    SELECT
+      t.grupo,
+      t.instrumento_raw,
+      t.trimestre,
+      r.fila,
+      /* alumno_id: por campo 'alumno_id' o por columna ir.alumno_id */
+      COALESCE(
+        MAX(CASE WHEN c.campo_nombre ILIKE '%alumno_id%' THEN NULLIF(r.valor,'') END),
+        MAX(r.alumno_id)::text
+      ) AS alumno_id,
+      /* Puntuación: Puntuación/Puntuacion/Score/Puntos */
+      MAX(CASE WHEN c.campo_nombre ILIKE '%puntuaci%' OR c.campo_nombre ILIKE '%score%' OR c.campo_nombre ILIKE '%punto%'
+               THEN NULLIF(r.valor,'') END) AS puntuacion_raw,
+      /* Asistencia: Asistencia/Asiste/Presencia/Presente */
+      MAX(CASE WHEN c.campo_nombre ILIKE '%asist%' OR c.campo_nombre ILIKE '%presenc%' OR c.campo_nombre ILIKE '%present%'
+               THEN NULLIF(r.valor,'') END) AS asistencia_raw
+    FROM tokens t
+    LEFT JOIN res    r ON r.informe_id = t.informe_id
+    LEFT JOIN campos c ON c.informe_id = r.informe_id AND c.campo_id = r.campo_id
+    GROUP BY t.grupo, t.instrumento_raw, t.trimestre, r.fila
+  )
+  SELECT
+    grupo,
+    CASE
+      WHEN instrumento_raw ~* 'violin[[:space:]]*ii|violín[[:space:]]*ii|vln[[:space:]]*ii' THEN 'Violín II'
+      WHEN instrumento_raw ~* 'violin[[:space:]]*i\\b|violín[[:space:]]*i\\b|vln[[:space:]]*i\\b' THEN 'Violín I'
+      WHEN instrumento_raw ~* 'viola' THEN 'Viola'
+      WHEN instrumento_raw ~* 'violonchelo|cello' THEN 'Violonchelo'
+      WHEN instrumento_raw ~* 'contrabajo' THEN 'Contrabajo'
+      ELSE instrumento_raw
+    END AS instrumento,
+    trimestre,
+    alumno_id,
+    NULLIF(puntuacion_raw,'')::numeric AS puntuacion,
+    CASE
+      WHEN asistencia_raw ILIKE 's%' THEN TRUE
+      WHEN asistencia_raw ILIKE 'y%' THEN TRUE
+      WHEN asistencia_raw ~* '^(1|true|presente)$' THEN TRUE
+      ELSE FALSE
+    END AS asistencia
+  FROM pivot
+  WHERE alumno_id IS NOT NULL OR puntuacion_raw IS NOT NULL OR asistencia_raw IS NOT NULL;
+`);
+    // ============ FIN AÑADIDOS ============
+
     // Sembrar usuario admin si no existe
     const result = await db.query("SELECT COUNT(*) FROM usuarios WHERE rol = 'admin'");
     if (parseInt(result.rows[0].count) === 0) {
@@ -275,83 +403,84 @@ async function init() {
       );
       console.log("Usuario admin por defecto creado.");
     }
-  // 🏛️ GRUPOS BASE
-  const grupos = [
-    'OEG',
-    'JOSG',
-    'Aspirantes OEG',
-    'Aspirantes JOSG',
-    'Música de Cámara'
-  ];
 
-  const resGrupos = await db.query('SELECT COUNT(*) FROM grupos');
-  if (parseInt(resGrupos.rows[0].count) === 0) {
-    for (const nombre of grupos) {
-      await db.query('INSERT INTO grupos (nombre) VALUES ($1)', [nombre]);
+    // 🏛️ GRUPOS BASE
+    const grupos = [
+      'OEG',
+      'JOSG',
+      'Aspirantes OEG',
+      'Aspirantes JOSG',
+      'Música de Cámara'
+    ];
+
+    const resGrupos = await db.query('SELECT COUNT(*) FROM grupos');
+    if (parseInt(resGrupos.rows[0].count) === 0) {
+      for (const nombre of grupos) {
+        await db.query('INSERT INTO grupos (nombre) VALUES ($1)', [nombre]);
+      }
+      console.log("Grupos base insertados.");
     }
-    console.log("Grupos base insertados.");
-  }
 
-  // 💳 TIPOS DE CUOTA
-  const tiposCuota = ['Mensual', 'Semanal', 'Puntual', 'Otra'];
+    // 💳 TIPOS DE CUOTA
+    const tiposCuota = ['Mensual', 'Semanal', 'Puntual', 'Otra'];
 
-  const resTipos = await db.query('SELECT COUNT(*) FROM tipos_cuota');
-  if (parseInt(resTipos.rows[0].count) === 0) {
-    for (const tipo of tiposCuota) {
-      await db.query('INSERT INTO tipos_cuota (tipo) VALUES ($1)', [tipo]);
+    const resTipos = await db.query('SELECT COUNT(*) FROM tipos_cuota');
+    if (parseInt(resTipos.rows[0].count) === 0) {
+      for (const tipo of tiposCuota) {
+        await db.query('INSERT INTO tipos_cuota (tipo) VALUES ($1)', [tipo]);
+      }
+      console.log("Tipos de cuota insertados.");
     }
-    console.log("Tipos de cuota insertados.");
-  }
 
-  // 💰 CUOTAS BASE
-  const cuotasBase = [
-    { nombre: 'Mensualidad', precio: 50, tipo: 'Mensual' },
-    { nombre: 'Extraordinaria', precio: 100, tipo: 'Puntual' },
-    { nombre: 'Matrícula', precio: 100, tipo: 'Puntual' }
-  ];
+    // 💰 CUOTAS BASE
+    const cuotasBase = [
+      { nombre: 'Mensualidad', precio: 50, tipo: 'Mensual' },
+      { nombre: 'Extraordinaria', precio: 100, tipo: 'Puntual' },
+      { nombre: 'Matrícula', precio: 100, tipo: 'Puntual' }
+    ];
 
-  const resCuotas = await db.query('SELECT COUNT(*) FROM cuotas');
-  if (parseInt(resCuotas.rows[0].count) === 0) {
-    for (const cuota of cuotasBase) {
-      const tipoId = await db.query('SELECT id FROM tipos_cuota WHERE tipo = $1', [cuota.tipo]);
-      if (tipoId.rows.length > 0) {
+    const resCuotas = await db.query('SELECT COUNT(*) FROM cuotas');
+    if (parseInt(resCuotas.rows[0].count) === 0) {
+      for (const cuota of cuotasBase) {
+        const tipoId = await db.query('SELECT id FROM tipos_cuota WHERE tipo = $1', [cuota.tipo]);
+        if (tipoId.rows.length > 0) {
+          await db.query(
+            'INSERT INTO cuotas (nombre, precio, tipo_id) VALUES ($1, $2, $3)',
+            [cuota.nombre, cuota.precio, tipoId.rows[0].id]
+          );
+        }
+      }
+      console.log("Cuotas base insertadas.");
+    }
+
+    // 🎻 INSTRUMENTOS BASE
+    const instrumentos = [
+      { nombre: 'Violín', familia: 'Cuerda' },
+      { nombre: 'Viola', familia: 'Cuerda' },
+      { nombre: 'Violonchelo', familia: 'Cuerda' },
+      { nombre: 'Contrabajo', familia: 'Cuerda' },
+      { nombre: 'Flauta', familia: 'Viento madera' },
+      { nombre: 'Oboe', familia: 'Viento madera' },
+      { nombre: 'Clarinete', familia: 'Viento madera' },
+      { nombre: 'Fagot', familia: 'Viento madera' },
+      { nombre: 'Trompeta', familia: 'Viento metal' },
+      { nombre: 'Trompa', familia: 'Viento metal' },
+      { nombre: 'Trombón', familia: 'Viento metal' },
+      { nombre: 'Tuba', familia: 'Viento metal' },
+      { nombre: 'Percusión', familia: 'Percusión' },
+      { nombre: 'Batería', familia: 'Percusión' }
+    ];
+
+    const resInstru = await db.query('SELECT COUNT(*) FROM instrumentos');
+    if (parseInt(resInstru.rows[0].count) === 0) {
+      for (const instr of instrumentos) {
         await db.query(
-          'INSERT INTO cuotas (nombre, precio, tipo_id) VALUES ($1, $2, $3)',
-          [cuota.nombre, cuota.precio, tipoId.rows[0].id]
+          'INSERT INTO instrumentos (nombre, familia) VALUES ($1, $2)',
+          [instr.nombre, instr.familia]
         );
       }
+      console.log("Instrumentos base insertados.");
     }
-    console.log("Cuotas base insertadas.");
-  }
-
-  // 🎻 INSTRUMENTOS BASE
-  const instrumentos = [
-    { nombre: 'Violín', familia: 'Cuerda' },
-    { nombre: 'Viola', familia: 'Cuerda' },
-    { nombre: 'Violonchelo', familia: 'Cuerda' },
-    { nombre: 'Contrabajo', familia: 'Cuerda' },
-    { nombre: 'Flauta', familia: 'Viento madera' },
-    { nombre: 'Oboe', familia: 'Viento madera' },
-    { nombre: 'Clarinete', familia: 'Viento madera' },
-    { nombre: 'Fagot', familia: 'Viento madera' },
-    { nombre: 'Trompeta', familia: 'Viento metal' },
-    { nombre: 'Trompa', familia: 'Viento metal' },
-    { nombre: 'Trombón', familia: 'Viento metal' },
-    { nombre: 'Tuba', familia: 'Viento metal' },
-    { nombre: 'Percusión', familia: 'Percusión' },
-    { nombre: 'Batería', familia: 'Percusión' }
-  ];
-
-  const resInstru = await db.query('SELECT COUNT(*) FROM instrumentos');
-  if (parseInt(resInstru.rows[0].count) === 0) {
-    for (const instr of instrumentos) {
-      await db.query(
-        'INSERT INTO instrumentos (nombre, familia) VALUES ($1, $2)',
-        [instr.nombre, instr.familia]
-      );
-    }
-    console.log("Instrumentos base insertados.");
-  }
   } catch (err) {
     console.error("Error al inicializar la base de datos:", err);
   }

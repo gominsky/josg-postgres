@@ -1,4 +1,4 @@
-<% title = 'Ficha de Alumno' %>
+<% title = 'Ficha del músico' %>
 <% hero = false %>
 <link rel="stylesheet" href="/styles.css">
 <script>
@@ -11,7 +11,7 @@
   </div>
 
   <div class="ficha-section">
-    <h2>Información del alumno</h2>
+    <h2>Información del músico</h2>
     <div class="info-flex">
       <% if (alumno.foto) { %>
         <img src="/uploads/<%= alumno.foto %>" alt="Foto del alumno" class="foto-perfil">
@@ -77,7 +77,7 @@
 
     <% if (cuotasAlumno && cuotasAlumno.length > 0) { %>
       <div class="subsection">
-        <h3>Cuotas del alumno</h3>
+        <h3>Cuotas</h3>
         <table class="table table-sm">
           <thead>
             <tr>

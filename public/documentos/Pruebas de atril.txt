@@ -1,0 +1,5 @@
+Pruebas de atril:
+	Ir a Informes/+ Listado dinámico
+	Crear listado siguíendo este patrón para el nombre: Prueba de atril {GRUPO} {INSTRUMENTO} {TRIMESTRE}
+		(dónde trimestre llevará el formato 25/26T1, 25/26T2,...)
+	En el nuevo formulario pulsar + "Añadir campo" y añadir los siguientes: Nombre: Puntuación, tipo: numero; Nombre: Asistencia, tipo: si/no
