@@ -86,65 +86,152 @@ function twoRowsLeftToRight({ xLeft, yBottom, yTop, dx }, n, instrumento) {
 
 // === layout automático con reglas para Vln I/II, Viola, Violonchelo y Contrabajo ===
 function autoLayoutFromCounts(counts) {
-  // violines (izquierda), dx ancho
-  const specVln = {
-    'Violín I':  { xRight: 0.46, yBottom: 0.86, yTop: 0.74, dx: 0.08 },
-    'Violín II': { xRight: 0.44, yBottom: 0.52, yTop: 0.40, dx: 0.08 }, // más arriba
+  // Separación: cuerdas más juntas para liberar centro
+  const dxStrings = 0.10; // antes ~0.12
+  const dxWinds   = 0.12; // vientos con buen aire
+
+  // Fila 1 (abajo/público): cuerdas
+  const row1 = { yBottom: 0.88, yTop: 0.72 };
+  // Capa intermedia para Vln II / Viola (un paso más atrás que su par de abajo)
+  const row1mid = { yBottom: 0.68, yTop: 0.56 };
+
+  // Fila 2 (antepenúltima): Flauta / Oboe
+  const row2 = { yBottom: 0.50, yTop: 0.40, dx: dxWinds };
+
+  // Fila 3 (penúltima): Clarinete / Fagot / Trompa / Trompeta
+  const row3 = { yBottom: 0.38, yTop: 0.30, dx: dxWinds };
+
+  // Fila 4 (última): Trombón / Tuba / Percusión (fila simple)
+  const row4y = 0.24;
+
+  // ===== CUERDAS (más juntas y algo más centradas) =====
+  const specStrings = {
+    // Izquierda, más cerca del centro
+    'Violín I': {
+      xRight: 0.42, yBottom: row1.yBottom, yTop: row1.yTop, dx: dxStrings, dir: 'R2L'
+    },
+    // Encima de Vln I, muy cerquita
+    'Violín II': {
+      xRight: 0.41, yBottom: row1mid.yBottom, yTop: row1mid.yTop, dx: dxStrings, dir: 'R2L'
+    },
+
+    // Derecha, también más cerca del centro
+    'Violonchelo': {
+      xLeft: 0.56, yBottom: row1.yBottom, yTop: row1.yTop, dx: dxStrings, dir: 'L2R'
+    },
+    // Encima de chelos, cerquita
+    'Viola': {
+      xLeft: 0.58, yBottom: row1mid.yBottom, yTop: row1mid.yTop, dx: dxStrings, dir: 'L2R'
+    },
   };
 
-  // derecha (chelos abajo, violas arriba)
-  const specRight = {
-    'Violonchelo': { xLeft: 0.60, yBottom: 0.86, yTop: 0.74, dx: 0.08 },
-    'Viola':       { xLeft: 0.62, yBottom: 0.52, yTop: 0.40, dx: 0.08 }, // más arriba
+  // ===== MADERA (fila 2: flauta/oboe) =====
+  const specRow2 = {
+    // Centradas dejando hueco a izquierda/derecha
+    'Flauta':   { xLeft: 0.34, yBottom: row2.yBottom, yTop: row2.yTop, dx: row2.dx },
+    'Oboe':     { xLeft: 0.48, yBottom: row2.yBottom, yTop: row2.yTop, dx: row2.dx },
   };
+
+  // ===== MADERA GRAVE + METALES LIGEROS (fila 3) =====
+  const specRow3 = {
+    // Clarinetes bien en la zona alta del centro (¡ya no abajo!)
+    'Clarinete': { xLeft: 0.40, yBottom: row3.yBottom, yTop: row3.yTop, dx: row3.dx },
+    'Fagot':     { xLeft: 0.54, yBottom: row3.yBottom, yTop: row3.yTop, dx: row3.dx },
+    'Trompa':    { xLeft: 0.68, yBottom: row3.yBottom, yTop: row3.yTop, dx: row3.dx },
+    'Trompeta':  { xLeft: 0.82, yBottom: row3.yBottom, yTop: row3.yTop, dx: row3.dx },
+  };
+
+  // ===== ÚLTIMA FILA (simple) =====
+  const specRow4 = {
+    'Trombón':   { xLeft: 0.40, y: row4y, dx: dxWinds },
+    'Tuba':      { xLeft: 0.60, y: row4y, dx: dxWinds },
+    'Percusión': { xLeft: 0.80, y: row4y, dx: dxWinds },
+  };
+
+  // ===== Contrabajos: más ABAJO que antes (antes 0.20) =====
+  const contrasRow = { y: 0.32, xRight: 0.92, dx: 0.12 }; // fila simple, derecha→izquierda
 
   const posiciones = [];
 
   for (const [inst, n] of Object.entries(counts)) {
-    if (n <= 0) continue;
+    if (!n) continue;
 
-    if (specVln[inst]) {
-      posiciones.push(...twoRowsRightToLeft(specVln[inst], n, inst));
-      continue;
-    }
-    if (specRight[inst]) {
-      posiciones.push(...twoRowsLeftToRight(specRight[inst], n, inst));
-      continue;
-    }
-
-    if (inst === 'Contrabajo') {
-      // fila única atrás, más alta; de derecha → izquierda
-      const y = 0.20;
-      const xRight = 0.92, dx = 0.09;
-      for (let i = 0; i < n; i++) {
-        const x = xRight - i * dx;
-        posiciones.push({ instrumento: inst, atril: i + 1, puesto: 1, x, y, angulo: 0 });
+    // CUERDAS
+    if (specStrings[inst]) {
+      const s = specStrings[inst];
+      if (s.dir === 'R2L') {
+        posiciones.push(...twoRowsRightToLeft(
+          { xRight: s.xRight, yBottom: s.yBottom, yTop: s.yTop, dx: s.dx }, n, inst
+        ));
+      } else {
+        posiciones.push(...twoRowsLeftToRight(
+          { xLeft: s.xLeft, yBottom: s.yBottom, yTop: s.yTop, dx: s.dx }, n, inst
+        ));
       }
       continue;
     }
 
-    // fallback si aparecen otros instrumentos
-    const x0 = 0.52, y0 = 0.66, dx = 0.10, dy = 0.10;
+    // FILA 2
+    if (specRow2[inst]) {
+      const s = specRow2[inst];
+      posiciones.push(...twoRowsLeftToRight(
+        { xLeft: s.xLeft, yBottom: s.yBottom, yTop: s.yTop, dx: s.dx }, n, inst
+      ));
+      continue;
+    }
+
+    // FILA 3
+    if (specRow3[inst]) {
+      const s = specRow3[inst];
+      posiciones.push(...twoRowsLeftToRight(
+        { xLeft: s.xLeft, yBottom: s.yBottom, yTop: s.yTop, dx: s.dx }, n, inst
+      ));
+      continue;
+    }
+
+    // FILA 4 (simple)
+    if (specRow4[inst]) {
+      const s = specRow4[inst];
+      for (let i = 0; i < n; i++) {
+        posiciones.push({ instrumento: inst, atril: i + 1, puesto: 1, x: s.xLeft + i * s.dx, y: s.y, angulo: 0 });
+      }
+      continue;
+    }
+
+    // CONTRABAJOS (fila simple, más abajo)
+    if (inst === 'Contrabajo') {
+      for (let i = 0; i < n; i++) {
+        posiciones.push({ instrumento: inst, atril: i + 1, puesto: 1, x: contrasRow.xRight - i * contrasRow.dx, y: contrasRow.y, angulo: 0 });
+      }
+      continue;
+    }
+
+    // Fallback (por si llegara algo no contemplado): lo colocamos en fila 2
+    const x0 = 0.18, yB = row2.yBottom, yT = row2.yTop, dx = dxWinds;
     const filas = Math.ceil(n / 2);
     for (let f = 0; f < filas; f++) {
       const atril = f + 1;
-      const y = y0 + f * dy;
+      const y = (f % 2 === 0) ? yB : yT;
       const rem = n - f * 2;
+      const xf = x0 + f * dx;
       if (rem >= 2) {
-        posiciones.push({ instrumento: inst, atril, puesto: 1, x: x0 - dx/2, y, angulo: 0 });
-        posiciones.push({ instrumento: inst, atril, puesto: 2, x: x0 + dx/2, y, angulo: 0 });
+        posiciones.push({ instrumento: inst, atril, puesto: 1, x: xf, y: yB, angulo: 0 });
+        posiciones.push({ instrumento: inst, atril, puesto: 2, x: xf, y: yT, angulo: 0 });
       } else if (rem === 1) {
-        posiciones.push({ instrumento: inst, atril, puesto: 1, x: x0, y, angulo: 0 });
+        posiciones.push({ instrumento: inst, atril, puesto: 1, x: xf, y: yB, angulo: 0 });
       }
     }
   }
 
-  posiciones.sort((a,b)=>
-    a.instrumento.localeCompare(b.instrumento,'es') ||
+  // Orden estable para numeración 1..N por instrumento
+  posiciones.sort((a,b) =>
+    a.instrumento.localeCompare(b.instrumento, 'es') ||
     a.atril - b.atril || a.puesto - b.puesto
   );
+
   return posiciones;
 }
+
 
 /* ===================== Ruta principal ===================== */
 
