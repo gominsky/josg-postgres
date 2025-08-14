@@ -20,29 +20,21 @@ function colorPorInstrumento(inst) {
   return colores[inst] || '#999';
 }
 
-// Normaliza nombres del informe → anclajes del layout (acepta “ViolinI/ViolínI/Violín I/1”, etc.)
+// (opcional) normalizador si algún informe viejo trae texto libre
 function normalizaInstrumento(s) {
   if (!s) return s;
   const t = s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g,'').trim();
-
-  // violines (con o sin espacio entre palabra y numeral)
-  // ejemplos que casan: "violin", "violin1", "violinI", "violini", "violin2", "violinii",
-  // "vln", "vln1", "vln2", "primerosviolines", "segundosviolines"
   if (/^(violin|vln|violines)/.test(t)) {
     if (/(ii|2|segundos)/.test(t)) return 'Violín II';
     return 'Violín I';
   }
-
   if (/^viola$/.test(t)) return 'Viola';
   if (/^(violonchelo|cello)$/.test(t)) return 'Violonchelo';
   if (/^contrabajo$/.test(t)) return 'Contrabajo';
-
-  // fallback: si venía con espacios raros pero era “violin …”
   if (/^violin/.test(t)) return 'Violín I';
   return s;
 }
 
-// Autolayout dinámico en 0..1 según conteo por instrumento
 // === helpers de filas dobles ===
 
 // violines: derecha → izquierda (1 abajo dcha, 2 arriba dcha, 3 abajo siguiente a la izq, ...)
@@ -79,17 +71,14 @@ function twoRowsLeftToRight({ xLeft, yBottom, yTop, dx }, n, instrumento) {
 function autoLayoutFromCounts(counts) {
   // violines (izquierda), dx ancho
   const specVln = {
-    // Vln I: dos filas abajo-izquierda
     'Violín I':  { xRight: 0.46, yBottom: 0.86, yTop: 0.74, dx: 0.08 },
-
-    // Vln II: MUCHO más arriba que Vln I
-    'Violín II': { xRight: 0.44, yBottom: 0.52, yTop: 0.40, dx: 0.08 },
+    'Violín II': { xRight: 0.44, yBottom: 0.52, yTop: 0.40, dx: 0.08 }, // más arriba
   };
 
-  // derecha (chelos abajo, violas MUCHO más arriba)
+  // derecha (chelos abajo, violas arriba)
   const specRight = {
     'Violonchelo': { xLeft: 0.60, yBottom: 0.86, yTop: 0.74, dx: 0.08 },
-    'Viola':       { xLeft: 0.62, yBottom: 0.52, yTop: 0.40, dx: 0.08 },
+    'Viola':       { xLeft: 0.62, yBottom: 0.52, yTop: 0.40, dx: 0.08 }, // más arriba
   };
 
   const posiciones = [];
@@ -97,21 +86,18 @@ function autoLayoutFromCounts(counts) {
   for (const [inst, n] of Object.entries(counts)) {
     if (n <= 0) continue;
 
-    // Violines: derecha → izquierda
     if (specVln[inst]) {
       posiciones.push(...twoRowsRightToLeft(specVln[inst], n, inst));
       continue;
     }
-
-    // Violas/Chelos: izquierda → derecha
     if (specRight[inst]) {
       posiciones.push(...twoRowsLeftToRight(specRight[inst], n, inst));
       continue;
     }
 
     if (inst === 'Contrabajo') {
-      // fila única atrás, aún más alta
-      const y = 0.20; // estaba en 0.28
+      // fila única atrás, más alta; de derecha → izquierda
+      const y = 0.20;
       const xRight = 0.92, dx = 0.09;
       for (let i = 0; i < n; i++) {
         const x = xRight - i * dx;
@@ -120,7 +106,7 @@ function autoLayoutFromCounts(counts) {
       continue;
     }
 
-    // fallback
+    // fallback si aparecen otros instrumentos
     const x0 = 0.52, y0 = 0.66, dx = 0.10, dy = 0.10;
     const filas = Math.ceil(n / 2);
     for (let f = 0; f < filas; f++) {
@@ -143,20 +129,47 @@ function autoLayoutFromCounts(counts) {
   return posiciones;
 }
 
+// Leyenda SVG (cuadro mismo color que los círculos)
+function legendSVG(W, H) {
+  const items = [
+    ['Violín I', colorPorInstrumento('Violín I')],
+    ['Violín II', colorPorInstrumento('Violín II')],
+    ['Viola', colorPorInstrumento('Viola')],
+    ['Violonchelo', colorPorInstrumento('Violonchelo')],
+    ['Contrabajo', colorPorInstrumento('Contrabajo')],
+  ];
 
-function etiquetaPosicion(inst, puesto) {
-  if (inst === 'Violín I' || inst === 'Violín II' || inst === 'Viola' || inst === 'Violonchelo') {
-    return puesto === 1 ? 'Abajo' : 'Arriba';
+  // panel arriba a la izquierda
+  const panelX = 16;
+  const panelY = 16;
+  const rowH = 20;     // altura de cada línea
+  const pad = 8;       // padding interno
+  const boxW = 150;    // ancho más reducido
+  const boxH = pad*2 + items.length*rowH;
+
+  let s = `
+    <g transform="translate(${panelX},${panelY})">
+      <rect x="0" y="0" width="${boxW}" height="${boxH}" rx="8" fill="white" stroke="#ccc"/>
+  `;
+
+  let y = pad + 3;
+  for (const [name, col] of items) {
+    s += `
+      <g transform="translate(${pad},${y - 12})">
+        <rect width="14" height="14" rx="3" fill="${col}" stroke="#333" stroke-opacity="0.18"></rect>
+        <text x="20" y="12" font-size="11" fill="#333"
+              font-family="system-ui,Segoe UI,Roboto,Arial">${name}</text>
+      </g>`;
+    y += rowH;
   }
-  if (inst === 'Contrabajo') return 'Fila'; // una sola fila; si prefieres, devuelve '—'
-  return puesto === 1 ? 'Izq' : 'Der';
+
+  s += `</g>`;
+  return s;
 }
-
-
 
 /* ===================== Ruta principal ===================== */
 
-// GET /plano/:grupo/:trimestreFriendly.:ext  (ej: /plano/OEG/25-26T1.svg o /plano/OEG/T1.svg)
+// GET /plano/:grupo/:trimestreFriendly.:ext
 router.get('/:grupo/:trimestreFriendly.:ext', async (req, res) => {
   const { grupo, trimestreFriendly, ext } = req.params;
 
@@ -209,6 +222,7 @@ router.get('/:grupo/:trimestreFriendly.:ext', async (req, res) => {
        ORDER BY instrumento, puntuacion DESC, alumno_id ASC`,
       [grupo, trimestreFinal]
     );
+
     // 2) Nombres de alumnos
     const ids = [...new Set(ranking.map(r => r.alumno_id).filter(Boolean))];
     let nombrePorAlumno = new Map();
@@ -264,32 +278,32 @@ router.get('/:grupo/:trimestreFriendly.:ext', async (req, res) => {
 
       const cx = p.x * W, cy = p.y * H;
       const color = colorPorInstrumento(p.instrumento);
-      const etiqueta = `${p.instrumento} • Atril ${p.atril} • ${etiquetaPosicion(p.instrumento, p.puesto)}`;
       const nombreAlumno = (nombrePorAlumno.get?.(asig.alumno_id)) || asig.alumno_id || '';
 
       nodos += `
         <g transform="translate(${cx},${cy}) rotate(${p.angulo})">
           <circle r="36" fill="${color}" fill-opacity="0.9"></circle>
           <circle r="38" fill="none" stroke="white" stroke-width="2"></circle>
+
           <!-- número dentro del círculo -->
           <text y="8" text-anchor="middle" font-weight="800" font-size="20" fill="#fff"
-          font-family="system-ui,Segoe UI,Roboto,Arial">${asig.seat}</text>
+                font-family="system-ui,Segoe UI,Roboto,Arial">${asig.seat}</text>
 
           <!-- nombre debajo del círculo (más pequeño) -->
           <text y="54" text-anchor="middle" font-size="9" fill="#333"
-                font-family="system-ui,Segoe UI,Roboto,Arial">
-  ${String(nombreAlumno).replace(/&/g,'&amp;')}
-</text> 
+                font-family="system-ui,Segoe UI,Roboto,Arial">${String(nombreAlumno).replace(/&/g,'&amp;')}</text>
         </g>`;
     }
 
     const svg = `
       <svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
         <rect width="100%" height="100%" rx="36" fill="#faf7f2"></rect>
-        <text x="${W / 2}" y="48" text-anchor="middle" font-size="24" font-weight="700">
-          Plano de cuerdas — ${grupo} — ${trimestreFinal}
+        <text x="${W / 2}" y="48" text-anchor="middle" font-size="24" font-weight="700"
+              font-family="system-ui,Segoe UI,Roboto,Arial">
+          Pruebas de atril  ${grupo}  ${trimestreFinal}
         </text>
         ${nodos}
+        ${legendSVG(W, H)}
       </svg>`;
 
     // 7) Salida
@@ -297,8 +311,11 @@ router.get('/:grupo/:trimestreFriendly.:ext', async (req, res) => {
 
     if (ext === 'pdf') {
       try {
-        const doc = new PDFDocument({ size: [W, H], margin: 0,
-          info: { Title: `Plano cuerdas — ${grupo} — ${trimestreFinal}`, Author: 'JOSG' }});
+        const doc = new PDFDocument({
+          size: [W, H],
+          margin: 0,
+          info: { Title: `Pruebas de atril  ${grupo}  ${trimestreFinal}`, Author: 'JOSG' }
+        });
         res.type('application/pdf');
         doc.pipe(res);
         SVGtoPDF(doc, svg, 0, 0, { width: W, height: H, preserveAspectRatio: 'xMinYMin meet', assumePt: true });
