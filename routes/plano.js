@@ -232,7 +232,6 @@ function autoLayoutFromCounts(counts) {
   return posiciones;
 }
 
-
 /* ===================== Ruta principal ===================== */
 
 // GET /plano/:grupo/:trimestreFriendly.:ext
