@@ -11,14 +11,31 @@ const SVGtoPDF = require('svg-to-pdfkit');
 // Colores por instrumento
 function colorPorInstrumento(inst) {
   const colores = {
-    'Violín I': '#4e79a7',
-    'Violín II': '#59a14f',
-    'Viola': '#f28e2b',
-    'Violonchelo': '#e15759',
-    'Contrabajo': '#b07aa1',
+    // 🎻 Cuerdas (gama marrón)
+    'Violín I':     '#8B4513', // SaddleBrown
+    'Violín II':    '#A0522D', // Sienna
+    'Viola':        '#CD853F', // Peru
+    'Violonchelo':  '#D2691E', // Chocolate
+    'Contrabajo':   '#DEB887', // BurlyWood
+
+    // 🎼 Madera (gama gris-plateada)
+    'Flauta':       '#C0C0C0', // Silver
+    'Oboe':         '#A9A9A9', // DarkGray
+    'Clarinete':    '#808080', // Gray
+    'Fagot':        '#696969', // DimGray
+
+    // 🎺 Metales (gama dorado-naranja)
+    'Trompa':       '#FFD700', // Gold
+    'Trompeta':     '#FFA500', // Orange
+    'Trombón':      '#FF8C00', // DarkOrange
+    'Tuba':         '#DAA520', // GoldenRod
+
+    // 🥁 Percusión (rojo)
+    'Percusión':    '#B22222', // FireBrick
   };
   return colores[inst] || '#999';
 }
+
 
 // (opcional) normalizador si algún informe viejo trae texto libre
 function normalizaInstrumento(s) {
@@ -129,44 +146,6 @@ function autoLayoutFromCounts(counts) {
   return posiciones;
 }
 
-// Leyenda SVG (cuadro mismo color que los círculos)
-function legendSVG(W, H) {
-  const items = [
-    ['Violín I', colorPorInstrumento('Violín I')],
-    ['Violín II', colorPorInstrumento('Violín II')],
-    ['Viola', colorPorInstrumento('Viola')],
-    ['Violonchelo', colorPorInstrumento('Violonchelo')],
-    ['Contrabajo', colorPorInstrumento('Contrabajo')],
-  ];
-
-  // panel arriba a la izquierda
-  const panelX = 16;
-  const panelY = 16;
-  const rowH = 20;     // altura de cada línea
-  const pad = 8;       // padding interno
-  const boxW = 150;    // ancho más reducido
-  const boxH = pad*2 + items.length*rowH;
-
-  let s = `
-    <g transform="translate(${panelX},${panelY})">
-      <rect x="0" y="0" width="${boxW}" height="${boxH}" rx="8" fill="white" stroke="#ccc"/>
-  `;
-
-  let y = pad + 3;
-  for (const [name, col] of items) {
-    s += `
-      <g transform="translate(${pad},${y - 12})">
-        <rect width="14" height="14" rx="3" fill="${col}" stroke="#333" stroke-opacity="0.18"></rect>
-        <text x="20" y="12" font-size="11" fill="#333"
-              font-family="system-ui,Segoe UI,Roboto,Arial">${name}</text>
-      </g>`;
-    y += rowH;
-  }
-
-  s += `</g>`;
-  return s;
-}
-
 /* ===================== Ruta principal ===================== */
 
 // GET /plano/:grupo/:trimestreFriendly.:ext
@@ -245,6 +224,45 @@ router.get('/:grupo/:trimestreFriendly.:ext', async (req, res) => {
     for (const r of ranking) counts[r.instrumento] = (counts[r.instrumento] || 0) + 1;
     const posiciones = autoLayoutFromCounts(counts);
 
+    // === Leyenda dinámica (solo instrumentos presentes) ===
+    const presentesSet = new Set(posiciones.map(p => p.instrumento));
+    // Orden opcional para mostrar (solo los que estén presentes)
+    const ordenLeyenda = [
+  // Cuerdas
+  'Violín I', 'Violín II', 'Viola', 'Violonchelo', 'Contrabajo',
+  // Madera (antepenúltima y penúltima filas en tu plan)
+  'Flauta', 'Oboe', 'Clarinete', 'Fagot',
+  // Metal
+  'Trompa', 'Trompeta', 'Trombón', 'Tuba',
+  // Percusión
+  'Percusión'
+];
+    const instrumentosPresentes = ordenLeyenda.filter(n => presentesSet.has(n));
+
+    // Config panel compacto arriba-izquierda
+    const legendCfg = { x: 16, y: 16, pad: 8, rowH: 20, boxW: 150 };
+    const boxH = legendCfg.pad * 2 + instrumentosPresentes.length * legendCfg.rowH;
+
+    let leyendaItems = '';
+    let y = legendCfg.pad + 3;
+    for (const inst of instrumentosPresentes) {
+      const color = colorPorInstrumento(inst);
+      leyendaItems += `
+        <g transform="translate(${legendCfg.pad},${y - 12})">
+          <rect width="14" height="14" rx="3" fill="${color}" stroke="#333" stroke-opacity="0.18"></rect>
+          <text x="20" y="12" font-size="11" fill="#333"
+                font-family="system-ui,Segoe UI,Roboto,Arial">${inst}</text>
+        </g>`;
+      y += legendCfg.rowH;
+    }
+
+    const leyendaSVG = instrumentosPresentes.length
+      ? `<g transform="translate(${legendCfg.x},${legendCfg.y})">
+           <rect x="0" y="0" width="${legendCfg.boxW}" height="${boxH}" rx="8" fill="white" stroke="#ccc"/>
+           ${leyendaItems}
+         </g>`
+      : '';
+
     // 4) Agrupar por instrumento
     const porInstrumento = new Map();
     for (const r of ranking) {
@@ -294,16 +312,31 @@ router.get('/:grupo/:trimestreFriendly.:ext', async (req, res) => {
                 font-family="system-ui,Segoe UI,Roboto,Arial">${String(nombreAlumno).replace(/&/g,'&amp;')}</text>
         </g>`;
     }
+    // 6.5) Marca del Director (centro inferior)
+    const cxDir = W / 2;
+    const cyDir = H - 50; // un poco por encima del borde inferior
 
-    const svg = `
+    const director = `
+      <g aria-label="Director">
+        <!-- punto del director -->
+        <circle cx="${cxDir}" cy="${cyDir}" r="20" fill="#000"></circle>
+        <!-- fino anillo blanco para resaltar sobre fondos oscuros -->
+        <circle cx="${cxDir}" cy="${cyDir}" r="22" fill="none" stroke="#fff" stroke-width="2"></circle>
+        <!-- etiqueta -->
+        <text x="${cxDir}" y="${cyDir + 34}" text-anchor="middle" font-size="12" fill="#000"
+              font-family="system-ui,Segoe UI,Roboto,Arial">Director</text>
+      </g>`;
+
+        const svg = `
       <svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
         <rect width="100%" height="100%" rx="36" fill="#faf7f2"></rect>
         <text x="${W / 2}" y="48" text-anchor="middle" font-size="24" font-weight="700"
               font-family="system-ui,Segoe UI,Roboto,Arial">
           Pruebas de atril  ${grupo}  ${trimestreFinal}
         </text>
+        ${leyendaSVG || ''}  <!-- si usas leyenda dinámica -->
         ${nodos}
-        ${legendSVG(W, H)}
+        ${director}
       </svg>`;
 
     // 7) Salida
@@ -345,3 +378,4 @@ router.get('/view', (req, res) => {
 });
 
 module.exports = router;
+

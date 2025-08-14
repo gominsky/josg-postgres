@@ -6,7 +6,11 @@
   const isHoras       = informe.informe.startsWith('Porcentaje de horas de asistencia');
   const camposMostrar = isHoras ? campos.slice(1) : campos;
 %>
-
+<style>
+  .formulario-centrado {
+    max-width: 55% !important;
+  }
+</style>
 <div class="row align-items-start mb-3">
   <div class="col-md-8 offset-md-1">
     <h1 class="h1-titulo mb-2"><%= informe.informe %></h1>
@@ -40,7 +44,7 @@
           <% if (tieneAlumnos) { %>
             <th class="sortable" style="width:200px;min-width:200px;text-align:left;">Músico</th>
             <th class="col-grupo sortable">Grupo</th>
-            <th class="col-inst  sortable">Instrumento</th>
+            <th class="col-inst sortable" style="width:150px; min-width:150px;">Instrumento</th>
           <% } %>
           <% camposMostrar.forEach(campo => { %>
             <th class="sortable"><%= campo.nombre %></th>
@@ -54,7 +58,7 @@
             <% if (tieneAlumnos) { %>
               <td class="text-start" style="width:200px;min-width:200px;"><%= fila.apellidos %>, <%= fila.nombre %></td>
               <td class="col-grupo"><%= fila.grupos      || '—' %></td>
-              <td class="col-inst"><%= fila.instrumentos || '—' %></td>
+              <td class="col-inst" style="width:150px; min-width:150px;"><%= fila.instrumentos || '—' %></td>
             <% } %>
             <% camposMostrar.forEach(campo => {
                  const valor = fila.valores[campo.id] || '';
@@ -115,7 +119,7 @@
           <tr>
             <% if (tieneAlumnos) { %><td style="border:1px solid #ccc;padding:6px;width:180mm;min-width:180mm;"><%= fila.apellidos %>, <%= fila.nombre %></td><% } %>
             <td class="pdf-grupo" style="border:1px solid #ccc;padding:6px;"><%= fila.grupos || '—' %></td>
-            <td class="pdf-inst"  style="border:1px solid #ccc;padding:6px;"><%= fila.instrumentos || '—' %></td>
+            <th class="pdf-inst" style="border:1px solid #ccc;padding:6px;width:40mm;min-width:40mm;">Instrumento</th>
             <% camposMostrar.forEach(campo => { %>
               <td style="border:1px solid #ccc;padding:6px;"><%= fila.valores[campo.id] || '' %></td>
             <% }) %>
