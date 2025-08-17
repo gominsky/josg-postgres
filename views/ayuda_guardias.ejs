@@ -1,0 +1,142 @@
+<% title = 'Ayuda · Guardias' %>
+<% hero  = false %>
+
+<div id="help-wrap" class="container my-4">
+  <style>
+    :root{
+      --accent-50:#fff6e8; --accent-100:#ffeed7; --accent-200:#ffe0b3; --accent-300:#ffd08a;
+      --accent-400:#ffb554; --accent-500:#ff9500; --accent-600:#e07f00; --accent-700:#c26c00;
+      --text-main:#212529; --muted:#6c757d; --border:rgba(0,0,0,.08);
+      --shadow:0 1px 2px rgba(0,0,0,.04); --shadow-lg:0 6px 18px rgba(0,0,0,.08);
+    }
+    @media (min-width: 992px){ #help-wrap.container{ max-width:1320px; } }
+    .panel-card{ background:#fff; color:var(--text-main); border:1px solid var(--border);
+      border-radius:18px; box-shadow:var(--shadow); padding:16px 18px 20px; }
+    .panel-header{ display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:10px; }
+    .panel-header .h1-titulo{ margin:0; font-size:clamp(1.4rem,1.1rem + 1.2vw,2rem); font-weight:700; }
+    .toc{ display:flex; gap:10px; flex-wrap:wrap; margin:8px 0 0; }
+    .toc a{ display:inline-flex; align-items:center; gap:6px; padding:.4rem .7rem; border-radius:999px;
+      background:var(--accent-100); color:var(--accent-700); border:1px solid var(--accent-200);
+      text-decoration:none; font-weight:600; font-size:.9rem; }
+    .toc a:hover{ background:var(--accent-200); }
+    .section{ margin-top:18px; }
+    .section h2{ font-size:1.25rem; margin:0 0 .4rem; font-weight:800; }
+    .section p{ margin:.25rem 0 .5rem; color:#2b2b2b; }
+    .list{ margin:.35rem 0 .2rem 1.1rem; }
+    .list li{ margin:.18rem 0; }
+    .hint{ background:var(--accent-50); border:1px dashed var(--accent-300); border-radius:12px; padding:.65rem .75rem; color:#503200; }
+    .kbd{ font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono","Courier New", monospace;
+      background:#f6f6f6; border:1px solid #e3e3e3; border-radius:6px; padding:.05rem .35rem; }
+    .footer-links{ margin-top:16px; display:flex; gap:12px; flex-wrap:wrap; }
+    .volver-link{ color:var(--accent-700); font-weight:600; text-decoration:none; }
+    .volver-link:hover{ text-decoration:underline; }
+  </style>
+
+  <div class="panel-card">
+    <div class="panel-header">
+      <h1 class="h1-titulo">Ayuda · Guardias</h1>
+      <a href="/guardias" class="volver-link">Ir a Guardias →</a>
+    </div>
+
+    <!-- Índice -->
+    <nav class="toc" aria-label="Índice">
+      <a href="#que-es">¿Qué es?</a>
+      <a href="#planilla">Planilla</a>
+      <a href="#asignar">Asignación automática</a>
+      <a href="#editar">Edición / notas</a>
+      <a href="#pdf">Informe PDF</a>
+      <a href="#reglas">Reglas del sistema</a>
+      <a href="#faq">FAQ</a>
+    </nav>
+
+    <!-- Introducción -->
+    <section id="que-es" class="section">
+      <h2>¿Qué es el módulo de Guardias?</h2>
+      <p>Gestiona las <strong>guardias</strong> de cada evento y grupo. El sistema sugiere automáticamente parejas disponibles, equilibrando la carga y cumpliendo reglas de novatos.</p>
+      <div class="hint">Cada evento puede tener hasta <strong>dos miembros</strong> de guardia.</div>
+    </section>
+
+    <!-- Planilla -->
+    <section id="planilla" class="section">
+      <h2>Planilla</h2>
+      <ul class="list">
+        <li>Filtra por <strong>grupo</strong> y <strong>fechas</strong>. Usa los chips: <span class="kbd">Este mes</span>, <span class="kbd">Este trimestre</span>, <span class="kbd">Este año</span>.</li>
+        <li>Acciones: <em>ver</em> planilla, <em>asignar</em> guardias (una o múltiples), <em>eliminar</em> y <em>editar</em>.</li>
+        <li>Los filtros se conservan en la URL para volver al mismo estado.</li>
+      </ul>
+    </section>
+
+    <!-- Asignación automática -->
+    <section id="asignar" class="section">
+      <h2>Asignación automática</h2>
+      <ul class="list">
+        <li><strong>Individual:</strong> botón “Asignar guardia” en un evento sin guardia.</li>
+        <li><strong>Múltiple:</strong> desde la pantalla principal, indicando fechas (y opcionalmente grupo).</li>
+        <li><strong>Equidad:</strong> se priorizan alumnos con <em>menos guardias actuales</em>.</li>
+        <li><strong>Disponibilidad:</strong> nadie puede tener dos guardias el mismo día.</li>
+        <li><strong>Novatos:</strong> el sistema evita <u>dos novatos juntos</u> en la misma guardia.</li>
+      </ul>
+      <div class="hint">
+        <strong>Definición de novato:</strong> un alumno es novato si su <em>fecha de matrícula</em> es posterior al <u>1 de enero</u> del año del curso correspondiente (el curso empieza en septiembre) y lleva <u>menos de 2 guardias</u> en el curso. Al completar 2 guardias deja de ser novato.
+      </div>
+    </section>
+
+    <!-- Edición -->
+    <section id="editar" class="section">
+      <h2>Edición y notas</h2>
+      <ul class="list">
+        <li>Haz clic en una fila de la planilla para abrir <strong>edición</strong>.</li>
+        <li>Al guardar, se valida: disponibilidad del día y la regla de <em>no</em> dos novatos juntos.</li>
+        <li>Las <strong>notas</strong> sirven para incidencias, cambios o aclaraciones.</li>
+      </ul>
+    </section>
+
+    <!-- PDF -->
+    <section id="pdf" class="section">
+      <h2>Informe PDF</h2>
+      <ul class="list">
+        <li>Genera un PDF por <strong>grupo</strong> y <strong>rango de fechas</strong>.</li>
+        <li>Requiere indicar fechas y grupo en la pantalla principal.</li>
+      </ul>
+    </section>
+
+    <!-- Reglas -->
+    <section id="reglas" class="section">
+      <h2>Reglas del sistema</h2>
+      <ul class="list">
+        <li>Solo se asignan alumnos <strong>activos</strong> del grupo.</li>
+        <li>Se evita que un alumno tenga <strong>dos guardias</strong> el mismo día.</li>
+        <li><strong>No</strong> se permite asignar <strong>dos novatos</strong> juntos.</li>
+        <li><strong>Cambio de curso (septiembre):</strong> el sistema pone a <em>cero</em> las <strong>guardias actuales</strong>. El <strong>histórico</strong> global se mantiene.</li>
+        <li>La <strong>carga actual</strong> se equilibra preferentemente en la asignación.</li>
+      </ul>
+      <p class="hint">El algoritmo no fuerza “veterano+novato”, solo impide “novato+novato”. Si necesitas otras reglas, consúltalo con coordinación.</p>
+    </section>
+
+    <!-- FAQ -->
+    <section id="faq" class="section">
+      <h2>Preguntas frecuentes</h2>
+
+      <div class="panel-card" style="padding:12px 14px; margin-bottom:10px;">
+        <h3 style="margin:0 0 .25rem; font-size:1rem;">¿Cómo sé si alguien es novato?</h3>
+        <p>Se calcula automáticamente con la fecha de matrícula y las guardias del curso. Al hacer 2 guardias, deja de ser novato.</p>
+      </div>
+
+      <div class="panel-card" style="padding:12px 14px; margin-bottom:10px;">
+        <h3 style="margin:0 0 .25rem; font-size:1rem;">Intenté guardar y me sale aviso de novatos</h3>
+        <p>La combinación seleccionada tiene dos novatos. Cambia uno de los alumnos o intercambia con otro compañero.</p>
+      </div>
+
+      <div class="panel-card" style="padding:12px 14px;">
+        <h3 style="margin:0 0 .25rem; font-size:1rem;">¿Cuándo se “resetea” la carga actual?</h3>
+        <p>Al comenzar el curso (septiembre) la carga actual de todos pasa a 0. El histórico total sigue sumando.</p>
+      </div>
+    </section>
+
+    <div class="footer-links">
+      <a class="volver-link" href="/guardias">← Volver a Guardias</a>
+      <a class="volver-link" href="/eventos">← Ir a Eventos</a>
+      <a class="volver-link" href="/">← Inicio</a>
+    </div>
+  </div>
+</div>

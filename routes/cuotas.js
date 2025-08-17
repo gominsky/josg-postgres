@@ -325,4 +325,8 @@ router.get('/api/:alumnoId', async (req, res) => {
   }
 });
 
+// routes/cuotas.js (o el router que uses para cuotas)
+router.get('/ayuda', (req, res) => {
+  res.render('ayuda_cuotas', { title: 'Ayuda · Cuotas', hero: false });
+});
 module.exports = router;

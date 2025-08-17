@@ -3,13 +3,6 @@ const express = require('express');
 const router = express.Router();
 const db = require('../database/db');
 
-// Helpers
-const getCursoActual = () => {
-  const hoy = new Date();
-  const año = hoy.getFullYear();
-  return hoy.getMonth() >= 7 ? `${año}/${año + 1}` : `${año - 1}/${año}`;
-};
-
 const dayjs = require('dayjs');
 require('dayjs/locale/es');
 dayjs.locale('es');
@@ -17,7 +10,83 @@ dayjs.locale('es');
 const { generarPdfGuardias } = require('../utils/pdfGuardias');
 const { toISODate } = require('../utils/fechas');
 
+/* =========================
+   Helpers de curso/rollover
+   ========================= */
+const getCursoActual = () => {
+  const hoy = new Date();
+  const y = hoy.getFullYear();
+  // 0=ene … 8=sep → desde sep pertenece a y/(y+1)
+  return hoy.getMonth() >= 8 ? `${y}/${y+1}` : `${y-1}/${y}`;
+};
+
+// Resetea guardias_actual cuando empieza curso nuevo, sin tablas auxiliares.
+async function ensureRolloverSiToca(db) {
+  const cursoNuevo = getCursoActual();
+
+  // ¿ya hay alguna guardia del curso nuevo?
+  const { rows } = await db.query(
+    `SELECT EXISTS(SELECT 1 FROM guardias WHERE curso = $1) AS hay_actual`,
+    [cursoNuevo]
+  );
+  const hayActual = rows[0]?.hay_actual;
+
+  if (hayActual) return; // ya estamos en el curso nuevo con al menos una guardia, no tocar
+
+  // Si aún no hay guardias del curso nuevo, aseguramos que guardias_actual esté a 0 (idempotente).
+  await db.query(`UPDATE alumnos SET guardias_actual = 0 WHERE guardias_actual <> 0`);
+}
+
+/* ==========================================
+   Detección dinámica columna de matriculación
+   ========================================== */
+let MAT_COL; // cache: string | null | undefined
+async function getMatriculaColumnName(dbOrClient) {
+  if (MAT_COL !== undefined) return MAT_COL;
+  const candidatos = ['fecha_matricula','fecha_alta','matricula','f_matricula','fecha_inscripcion'];
+  const { rows } = await dbOrClient.query(
+    `SELECT column_name
+       FROM information_schema.columns
+      WHERE table_schema = 'public'
+        AND table_name   = 'alumnos'
+        AND column_name = ANY($1)
+      ORDER BY array_position($1, column_name)
+      LIMIT 1`,
+    [candidatos]
+  );
+  MAT_COL = rows[0]?.column_name || null;
+  if (MAT_COL) {
+    console.log(`ℹ️ Usando columna de matrícula: ${MAT_COL}`);
+  } else {
+    console.warn('⚠️ No se encontró columna de matrícula en "alumnos"; se desactiva la regla de novatos.');
+  }
+  return MAT_COL;
+}
+
+/* ==================
+   Reglas de "novato"
+   ================== */
+// 1 de enero del año base del curso (curso empieza en septiembre).
+function corteDelCurso(fechaRef) {
+  const d = new Date(fechaRef);
+  const baseYear = (d.getMonth() >= 8) ? d.getFullYear() : (d.getFullYear() - 1); // 8=sep
+  return new Date(baseYear, 0, 1);
+}
+// Novato si: matrícula >= corteDelCurso(fechaRef) Y guardias_actual < 2
+function esNovatoAlumno(alumno, fechaRef) {
+  if (!alumno || !('fecha_matricula' in alumno) || !alumno.fecha_matricula) return false;
+  const corte = corteDelCurso(fechaRef);
+  const mat = new Date(alumno.fecha_matricula);
+  const ga  = Number(alumno.guardias_actual || 0);
+  return mat >= corte && ga < 2;
+}
+
+/* =========================
+   LISTADO (BUSCADOR SIMPLE)
+   ========================= */
 router.get('/', async (req, res) => {
+  await ensureRolloverSiToca(db);
+
   const { desde, hasta, busqueda, grupo } = req.query;
   const desdeISO = toISODate(desde);
   const hastaISO = toISODate(hasta);
@@ -90,10 +159,12 @@ router.get('/', async (req, res) => {
   }
 });
 
-// Listado (antes guardias_lista) => ahora 'guardias_mostrar.ejs'
-// GET /guardias  y /guardias/mostrar
-// GET /guardias  y /guardias/mostrar
+/* =========
+   PLANILLA
+   ========= */
+// GET /guardias y /guardias/mostrar
 router.get(['/', '/mostrar'], async (req, res) => {
+  await ensureRolloverSiToca(db);
   try {
     let { desde = '', hasta = '', grupo = '' } = req.query;
     const params = [];
@@ -121,7 +192,6 @@ router.get(['/', '/mostrar'], async (req, res) => {
         e.fecha_fin,
         g.nombre             AS grupo,
         gu.id                AS guardia_id,
-        -- Nombres de alumnos de guardia (apellido, nombre). Ajusta si tu esquema usa otros campos.
         COALESCE(a1.apellidos || ', ' || a1.nombre, '-') AS guardia1,
         COALESCE(a2.apellidos || ', ' || a2.nombre, '-') AS guardia2
       FROM eventos e
@@ -171,8 +241,11 @@ router.get('/evento/:eventoId', async (req, res) => {
   }
 });
 
-// Crear UNA guardia automática para un evento
+/* ==============================
+   GENERAR UNA GUARDIA AUTOMÁTICA
+   ============================== */
 router.post('/generar', async (req, res) => {
+  await ensureRolloverSiToca(db);
   const { evento_id, desde, hasta } = req.body;
   const curso = getCursoActual();
   const client = await db.connect();
@@ -192,9 +265,11 @@ router.post('/generar', async (req, res) => {
     const fechaStr = toISODate(evento.fecha_inicio); // "YYYY-MM-DD"
     const grupo_id = evento.grupo_id;
 
-    // Alumnos activos del grupo
+    // Alumnos activos del grupo (trae matrícula si existe)
+    const matCol = await getMatriculaColumnName(client);
+    const cols = `a.id, a.nombre, a.apellidos, a.guardias_actual${matCol ? `, a.${matCol} AS fecha_matricula` : ''}`;
     const alumnosResult = await client.query(`
-      SELECT a.id, a.nombre, a.apellidos, a.guardias_actual
+      SELECT ${cols}
       FROM alumnos a
       JOIN alumno_grupo ag ON ag.alumno_id = a.id
       WHERE ag.grupo_id = $1 AND a.activo = TRUE
@@ -218,11 +293,13 @@ router.post('/generar', async (req, res) => {
       return res.redirect('/guardias');
     }
 
-    // Parejas por menor carga
+    // Parejas por menor carga evitando novato+novato (según fecha del evento)
     let parejas = [];
     for (let i = 0; i < disponibles.length; i++) {
       for (let j = i + 1; j < disponibles.length; j++) {
-        parejas.push([disponibles[i], disponibles[j]]);
+        const p = [disponibles[i], disponibles[j]];
+        if (esNovatoAlumno(p[0], evento.fecha_inicio) && esNovatoAlumno(p[1], evento.fecha_inicio)) continue; // ⛔️
+        parejas.push(p);
       }
     }
     parejas = parejas
@@ -253,7 +330,7 @@ router.post('/generar', async (req, res) => {
       VALUES ($1, $2, $3, $4, $5, NULL)
     `, [evento_id, fechaStr, a1.id, a2.id, curso]);
 
-    // Actual y Histórico (como acordado: conteo por asignación, no por asistencia)
+    // Actual y Histórico (conteo por asignación)
     await client.query(`UPDATE alumnos SET guardias_actual = guardias_actual + 1, guardias_hist = guardias_hist + 1 WHERE id = $1`, [a1.id]);
     await client.query(`UPDATE alumnos SET guardias_actual = guardias_actual + 1, guardias_hist = guardias_hist + 1 WHERE id = $1`, [a2.id]);
 
@@ -271,6 +348,9 @@ router.post('/generar', async (req, res) => {
   }
 });
 
+/* ======
+   EDITAR
+   ====== */
 router.get('/editar/:id', async (req, res) => {
   const { id } = req.params;
   const { desde, hasta, grupo } = req.query;
@@ -311,7 +391,7 @@ router.get('/editar/:id', async (req, res) => {
 
     const disponibles = alumnos.filter(a => !ocupados.has(a.id));
 
-    // Parejas posibles
+    // Parejas posibles (informativas)
     let parejas = [];
     for (let i = 0; i < disponibles.length; i++) {
       for (let j = i + 1; j < disponibles.length; j++) {
@@ -340,6 +420,7 @@ router.get('/editar/:id', async (req, res) => {
 
 // Guardar cambios en una guardia (y ajustar contadores si cambian alumnos)
 router.post('/guardar', async (req, res) => {
+  await ensureRolloverSiToca(db);
   const { id, alumno_id_1, alumno_id_2, notas, desde, hasta, grupo } = req.body;
   const client = await db.connect();
 
@@ -403,6 +484,31 @@ router.post('/guardar', async (req, res) => {
       }
     }
 
+    // 3bis) Evitar novato+novato en edición manual (usa el día de la guardia para el corte)
+    if (n1 && n2) {
+      const matCol = await getMatriculaColumnName(client);
+      let selectCols = 'id, guardias_actual';
+      if (matCol) selectCols = `id, ${matCol} AS fecha_matricula, guardias_actual`;
+
+      const novRes = await client.query(
+        `SELECT ${selectCols} FROM alumnos WHERE id = ANY($1::int[])`,
+        [[n1, n2]]
+      );
+      const mapa = Object.fromEntries(novRes.rows.map(r => [r.id, r]));
+      const aN1 = mapa[n1], aN2 = mapa[n2];
+
+      const esN1 = esNovatoAlumno(aN1, dia);
+      const esN2 = esNovatoAlumno(aN2, dia);
+
+      if (esN1 && esN2) {
+        await client.query('ROLLBACK');
+        client.release();
+        req.session.mensaje = '⚠️ No se puede asignar a dos novatos en la misma guardia.';
+        const qs = buildQs({ desde, hasta, grupo });
+        return res.redirect('/guardias' + qs);
+      }
+    }
+
     // 4) Actualizar guardia
     await client.query(`
       UPDATE guardias
@@ -420,7 +526,7 @@ router.post('/guardar', async (req, res) => {
       await client.query(`
         UPDATE alumnos
            SET guardias_actual = GREATEST(guardias_actual - 1, 0),
-                t   = GREATEST(guardias_hist - 1, 0)
+               guardias_hist   = GREATEST(guardias_hist - 1, 0)
          WHERE id = $1
       `, [uid]);
     }
@@ -447,7 +553,9 @@ router.post('/guardar', async (req, res) => {
   }
 });
 
-// helper local (ponlo arriba del archivo si no existe)
+/* ==============
+   Helper de QS
+   ============== */
 function buildQs({ desde, hasta, grupo }) {
   const params = [];
   if (desde) params.push(`desde=${encodeURIComponent(desde)}`);
@@ -456,7 +564,11 @@ function buildQs({ desde, hasta, grupo }) {
   return params.length ? `?${params.join('&')}` : '';
 }
 
+/* =======================
+   ELIMINAR UNA GUARDIA
+   ======================= */
 router.post('/eliminar/:id', async (req, res) => {
+  await ensureRolloverSiToca(db);
   const guardiaId = req.params.id;
   const { desde, hasta, grupo } = req.query;
 
@@ -521,28 +633,37 @@ router.post('/eliminar/:id', async (req, res) => {
   }
 });
 
+/* ==============================
+   GENERAR GUARDIAS MÚLTIPLES
+   ============================== */
 router.post('/generar-multiples', async (req, res) => {
+  await ensureRolloverSiToca(db);
+
   const { desde, hasta, grupo } = req.body;
   const desdeISO = toISODate(desde);
   const hastaISO = toISODate(hasta);
   const curso = getCursoActual();
 
-  let sqlEventos = `
-    SELECT e.id AS evento_id, e.fecha_inicio, e.grupo_id
-    FROM eventos e
-    LEFT JOIN guardias g ON g.evento_id = e.id
-    WHERE e.fecha_inicio BETWEEN $1 AND $2 AND g.id IS NULL
-  `;
-  const paramsEventos = [desdeISO, hastaISO];
-
-  if (grupo) {
-    sqlEventos += ' AND e.grupo_id = $3';
-    paramsEventos.push(grupo);
-  }
-
-  sqlEventos += ' ORDER BY e.fecha_inicio ASC';
-
   try {
+    if (!desdeISO || !hastaISO) {
+      return res.send('<script>alert("Indica un rango de fechas válido."); window.history.back();</script>');
+    }
+
+    let sqlEventos = `
+      SELECT e.id AS evento_id, e.fecha_inicio, e.grupo_id
+      FROM eventos e
+      LEFT JOIN guardias g ON g.evento_id = e.id
+      WHERE e.fecha_inicio BETWEEN $1 AND $2 AND g.id IS NULL
+    `;
+    const paramsEventos = [desdeISO, hastaISO];
+
+    if (grupo) {
+      sqlEventos += ' AND e.grupo_id = $3';
+      paramsEventos.push(grupo);
+    }
+
+    sqlEventos += ' ORDER BY e.fecha_inicio ASC';
+
     const eventosRes = await db.query(sqlEventos, paramsEventos);
     const eventos = eventosRes.rows;
 
@@ -554,16 +675,15 @@ router.post('/generar-multiples', async (req, res) => {
     const ocupadosPorFecha = {};
 
     for (const evento of eventos) {
-      if (!evento.fecha_inicio) {
-        console.warn('⚠️ Evento sin fecha_inicio:', evento);
-        continue;
-      }
+      if (!evento.fecha_inicio) continue;
 
       const fechaStr = toISODate(evento.fecha_inicio); // YYYY-MM-DD
 
-      // Alumnos activos del grupo
+      // Alumnos activos del grupo (trae matrícula si existe)
+      const matCol = await getMatriculaColumnName(db);
+      const cols = `a.id, a.nombre, a.apellidos, a.guardias_actual${matCol ? `, a.${matCol} AS fecha_matricula` : ''}`;
       const alumnosRes = await db.query(`
-        SELECT a.id, a.nombre, a.apellidos, a.guardias_actual
+        SELECT ${cols}
         FROM alumnos a
         JOIN alumno_grupo ag ON a.id = ag.alumno_id
         WHERE ag.grupo_id = $1 AND a.activo = TRUE
@@ -572,43 +692,47 @@ router.post('/generar-multiples', async (req, res) => {
       const alumnos = alumnosRes.rows;
       if (!alumnos.length) continue;
 
-      // Ocupados ese día
-      const guardiasDiaRes = await db.query(`
-        SELECT alumno_id_1, alumno_id_2
-        FROM guardias
-        WHERE DATE(fecha) = DATE($1)
-      `, [fechaStr]);
-
+      // Ocupados ese día (cache por fecha)
       if (!ocupadosPorFecha[fechaStr]) {
-        const ocupados = new Set();
+        const guardiasDiaRes = await db.query(`
+          SELECT alumno_id_1, alumno_id_2
+          FROM guardias
+          WHERE DATE(fecha) = DATE($1)
+        `, [fechaStr]);
+        const occ = new Set();
         guardiasDiaRes.rows.forEach(g => {
-          if (g.alumno_id_1) ocupados.add(g.alumno_id_1);
-          if (g.alumno_id_2) ocupados.add(g.alumno_id_2);
+          if (g.alumno_id_1) occ.add(g.alumno_id_1);
+          if (g.alumno_id_2) occ.add(g.alumno_id_2);
         });
-        ocupadosPorFecha[fechaStr] = ocupados;
+        ocupadosPorFecha[fechaStr] = occ;
       }
-
       const ocupados = ocupadosPorFecha[fechaStr];
       const disponibles = alumnos.filter(a => !ocupados.has(a.id));
+      if (!disponibles.length) continue;
 
-      // Parejas por menor carga
+      // Parejas por menor carga evitando novato+novato
       let parejas = [];
       for (let i = 0; i < disponibles.length; i++) {
         for (let j = i + 1; j < disponibles.length; j++) {
-          parejas.push([disponibles[i], disponibles[j]]);
+          const p = [disponibles[i], disponibles[j]];
+          if (esNovatoAlumno(p[0], evento.fecha_inicio) && esNovatoAlumno(p[1], evento.fecha_inicio)) continue; // ⛔️
+          parejas.push(p);
         }
       }
 
       parejas = parejas
         .sort(() => Math.random() - 0.5)
-        .sort((a, b) => ((a[0].guardias_actual||0)+(a[1].guardias_actual||0)) - ((b[0].guardias_actual||0)+(b[1].guardias_actual||0)));
+        .sort((a, b) =>
+          ((a[0].guardias_actual||0)+(a[1].guardias_actual||0)) -
+          ((b[0].guardias_actual||0)+(b[1].guardias_actual||0))
+        );
 
       if (parejas.length > 0) {
         const [a1, a2] = parejas[0];
         try {
           await db.query('BEGIN');
 
-          // seguridad: por si entre medias se creó una guardia
+          // Por si entre medias se creó una guardia
           const chk = await db.query(`SELECT 1 FROM guardias WHERE evento_id = $1`, [evento.evento_id]);
           if (chk.rowCount === 0) {
             await db.query(`
@@ -635,14 +759,21 @@ router.post('/generar-multiples', async (req, res) => {
     }
 
     req.session.mensaje = 'Guardias generadas correctamente ✅';
-    res.redirect('/guardias');
+    // Vuelve a la planilla manteniendo filtros
+    const qs = new URLSearchParams({ desde: desde||'', hasta: hasta||'', grupo: grupo||'' }).toString();
+    return res.redirect('/guardias' + (qs ? `?${qs}` : ''));
 
   } catch (err) {
-    console.error('❌ Error al generar guardias:', err.message);
-    res.status(500).send('Error interno al generar guardias');
+    console.error('❌ Error al generar guardias:', err);
+    return res.status(500).send(
+      '<script>alert("Error al generar guardias múltiples. Revisa la consola del servidor para el detalle."); window.history.back();</script>'
+    );
   }
 });
 
+/* =====
+   PDF
+   ===== */
 router.post('/informe', async (req, res) => {
   const { desde, hasta, grupo } = req.body;
   const desdeISO = toISODate(desde);
@@ -682,5 +813,19 @@ router.post('/informe', async (req, res) => {
   }
 });
 
-module.exports = router;
+/* =====
+   AYUDA
+   ===== */
+router.get('/ayuda', (req, res) => {
+  const locals = { title: 'Ayuda · Guardias', hero: false };
+  // Intentamos ambos nombres por si el fichero tiene "s" o no
+  req.app.render('ayudas_guardias', locals, (err, html) => {
+    if (!err && html) return res.send(html);
+    req.app.render('ayuda_guardias', locals, (err2, html2) => {
+      if (!err2 && html2) return res.send(html2);
+      res.status(404).send('No se encontró la plantilla de ayuda (ayudas_guardias.ejs / ayuda_guardias.ejs).');
+    });
+  });
+});
 
+module.exports = router;

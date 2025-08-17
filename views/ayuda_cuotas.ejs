@@ -1,0 +1,250 @@
+<% title = 'Ayuda · Cuotas' %>
+<% hero  = false %>
+
+<div id="help-cuotas" class="container my-4">
+  <!-- ===== Estilos: mismos tokens que ayudas_guardias / contabilidad (sin azules) ===== -->
+  <style>
+    :root{
+      --accent-50:#fff6e8; --accent-100:#ffeed7; --accent-200:#ffe0b3; --accent-300:#ffd08a;
+      --accent-400:#ffb554; --accent-500:#ff9500; --accent-600:#e07f00; --accent-700:#c26c00;
+      --text-main:#212529; --muted:#6c757d; --border:rgba(0,0,0,.08);
+      --shadow:0 1px 2px rgba(0,0,0,.04); --shadow-lg:0 6px 18px rgba(0,0,0,.08);
+    }
+    @media (min-width: 992px){ #help-cuotas.container{ max-width:1320px; } }
+
+    /* Tarjeta principal */
+    .panel-card{ background:#fff; color:var(--text-main); border:1px solid var(--border);
+      border-radius:18px; box-shadow:var(--shadow); padding:16px 18px 20px; }
+    .panel-header{ display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:10px; }
+    .panel-header .h1-titulo{ margin:0; font-size:clamp(1.4rem,1.1rem + 1.2vw,2rem); font-weight:700; }
+
+    /* Enlaces SIN azules */
+    #help-cuotas a{ color:var(--accent-700); text-decoration:none; }
+    #help-cuotas a:hover{ text-decoration:underline; }
+
+    /* Índice tipo chips */
+    .toc{ display:flex; gap:10px; flex-wrap:wrap; margin:8px 0 0; }
+    .toc a{ display:inline-flex; align-items:center; gap:6px; padding:.4rem .7rem; border-radius:999px;
+      background:var(--accent-100); color:var(--accent-700); border:1px solid var(--accent-200);
+      text-decoration:none; font-weight:600; font-size:.9rem; }
+    .toc a:hover{ background:var(--accent-200); text-decoration:none; }
+
+    /* Secciones */
+    .section{ margin-top:18px; }
+    .section h2{ font-size:1.25rem; margin:0 0 .45rem; font-weight:800; }
+    .section h3{ font-size:1.05rem; margin:.6rem 0 .35rem; font-weight:800; }
+    .section p{ margin:.25rem 0 .5rem; color:#2b2b2b; }
+
+    .list{ margin:.35rem 0 .2rem 1.1rem; }
+    .list li{ margin:.18rem 0; }
+
+    .hint{ background:var(--accent-50); border:1px dashed var(--accent-300); border-radius:12px; padding:.65rem .75rem; color:#503200; }
+    .kbd{ font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono","Courier New", monospace;
+      background:#f6f6f6; border:1px solid #e3e3e3; border-radius:6px; padding:.05rem .35rem; }
+
+    .mini{ font-size:.92rem; color:var(--muted); }
+    .volver-link{ font-weight:600; }
+    .callout{ border-left:4px solid var(--accent-500); padding:.55rem .75rem; background:#fffdfa; border-radius:10px; }
+    .grid-2{ display:grid; gap:12px; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); }
+    .ok{ font-weight:700; color:#2f7a2f; }
+    .warn{ font-weight:700; color:#a35a00; }
+  </style>
+
+  <div class="panel-card">
+    <div class="panel-header">
+      <h1 class="h1-titulo">Ayuda · Cuotas</h1>
+      <a href="/cuotas" class="volver-link">Ir a Cuotas →</a>
+    </div>
+
+    <!-- Índice -->
+    <nav class="toc" aria-label="Índice">
+      <a href="#que-es">¿Qué es?</a>
+      <a href="#flujo">Flujo rápido</a>
+      <a href="#tipos">Tipos de cuota</a>
+      <a href="#cuotas">Cuotas (crear/editar)</a>
+      <a href="#asignar">Asignar a grupos</a>
+      <a href="#pendientes">Pendientes</a>
+      <a href="#pagos">Registrar pagos</a>
+      <a href="#finanzas-alumno">Finanzas en ficha de alumno</a>
+      <a href="#buenas-practicas">Buenas prácticas</a>
+      <a href="#errores-comunes">Errores comunes</a>
+      <a href="#faq">FAQ</a>
+    </nav>
+
+    <!-- Introducción -->
+    <section id="que-es" class="section">
+      <h2>¿Qué es el módulo de Cuotas?</h2>
+      <p>Gestiona <strong>cuotas</strong> (nombre, importe, tipo) y su <strong>asignación</strong> a grupos por periodo, con consulta de <strong>pendientes</strong> y registro de <strong>pagos</strong>.</p>
+      <p class="mini">Accesos: <a href="/cuotas/mostrar">Listado</a> · <a href="/cuotas/nueva">Nueva cuota</a> · <a href="/tipos_cuotas">Tipos</a> · <a href="/cuotas/asignar">Asignar</a> · <a href="/cuotas/pendientes">Pendientes</a></p>
+    </section>
+
+    <!-- Flujo -->
+    <section id="flujo" class="section">
+      <h2>Flujo rápido recomendado</h2>
+      <ol class="list">
+        <li>Configura tus <strong>Tipos de cuota</strong> (p.ej. matrícula, mensualidad, material) en <a href="/tipos_cuotas">Tipos</a>.</li>
+        <li>Crea la(s) <strong>Cuota(s)</strong> con <em>nombre</em>, <em>precio</em> y <em>tipo</em> desde <a href="/cuotas/nueva">Nueva cuota</a>.</li>
+        <li>Ve a <a href="/cuotas/asignar">Asignar a grupos</a>, selecciona grupos, cuota y periodo, y confirma.</li>
+        <li>Consulta <a href="/cuotas/pendientes">Pendientes</a> y ve <a href="#pagos">registrando pagos</a>.</li>
+      </ol>
+      <div class="hint">Usa periodos (Desde/Hasta) para mensualidades, trimestres o todo el curso.</div>
+    </section>
+
+    <!-- Tipos -->
+    <section id="tipos" class="section">
+      <h2>Tipos de cuota</h2>
+      <ul class="list">
+        <li>Gestiona tipos en <a href="/tipos_cuotas">Listado</a> y <a href="/tipos_cuotas/nueva">Nuevo tipo</a>.</li>
+        <li>Sirven para clasificar: <em>matrícula</em>, <em>mensualidad</em>, <em>licencia</em>, <em>material</em>, etc.</li>
+      </ul>
+      <p class="mini">Si cambias la política, puedes editar o desactivar tipos; para importes distintos convive mejor con cuotas nuevas.</p>
+    </section>
+
+    <!-- Cuotas CRUD -->
+    <section id="cuotas" class="section">
+      <h2>Cuotas (crear / editar)</h2>
+      <ul class="list">
+        <li>Desde <a href="/cuotas/nueva">Nueva cuota</a> define: <em>Nombre</em>, <em>Precio (€)</em>, <em>Tipo</em> y <em>Descripción</em> (opcional).</li>
+        <li>En <a href="/cuotas/mostrar">Listado</a> puedes editar o eliminar cuotas existentes.</li>
+      </ul>
+      <div class="hint">Si cambias importes a mitad de curso, crea una <strong>nueva cuota</strong> para mantener la trazabilidad y evitar re-cálculos retroactivos.</div>
+    </section>
+
+    <!-- Asignar -->
+    <section id="asignar" class="section">
+      <h2>Asignar cuotas a grupos</h2>
+      <ul class="list">
+        <li>En <a href="/cuotas/asignar">Asignar</a> selecciona uno o varios <strong>grupos</strong>.</li>
+        <li>Elige la <strong>cuota</strong> (verás su nombre e importe) y el <strong>periodo</strong> con <em>fecha inicio</em> y <em>fin</em>.</li>
+        <li>Confirma con <em>Asignar cuotas</em> para generar los recibos del rango.</li>
+      </ul>
+      <p class="mini">Las asignaciones masivas agilizan la carga de mensualidades para varios grupos a la vez.</p>
+    </section>
+
+    <!-- Pendientes -->
+    <section id="pendientes" class="section">
+      <h2>Pendientes de pago</h2>
+      <ul class="list">
+        <li>Consulta <a href="/cuotas/pendientes">Pendientes</a> con <em>alumno</em>, <em>cuota</em>, <em>vencimiento</em> y <em>días de retraso</em>.</li>
+        <li>Usa el <strong>buscador</strong> para filtrar por alumno o concepto al instante.</li>
+        <li>Desde cada fila puedes ir a <strong>Registrar pago</strong>.</li>
+      </ul>
+      <div class="hint">Los días de retraso ayudan a priorizar la gestión de cobros; combina este listado con el informe de caja si lo tienes.</div>
+    </section>
+
+    <!-- Pagos -->
+    <section id="pagos" class="section">
+      <h2>Registrar pagos</h2>
+      <ul class="list">
+        <li>Accede desde <em>Pendientes</em> o la <em>ficha del alumno</em>.</li>
+        <li>Indica: <em>Importe</em>, <em>Fecha</em>, <em>Medio</em> (efectivo/transferencia/tarjeta/otro), <em>Referencia</em> y <em>Observaciones</em> (opcional).</li>
+        <li>Puedes <strong>editar/eliminar</strong> un pago si hubo error.</li>
+      </ul>
+      <div class="hint">Recomendado: anotar una <strong>referencia</strong> (nº recibo, transferencia, TPV) para conciliación.</div>
+    </section>
+
+    <!-- Finanzas alumno -->
+    <section id="finanzas-alumno" class="section">
+      <h2>Finanzas en la ficha del alumno</h2>
+      <p>Desde la <strong>Ficha del alumno</strong> puedes abrir un bloque de finanzas con un botón de alternancia <em>“Mostrar/ocultar resumen financiero”</em>. Incluye totales y tablas de <em>Cuotas</em> y <em>Pagos</em>, con acciones rápidas (PDF, eliminar cuota impagada, registrar pago, generar cuotas).</p>
+
+      <h3>Resumen</h3>
+      <ul class="list">
+        <li><strong>Total cuotas generadas</strong>, <strong>Total pagado</strong> y <strong>Total pendiente</strong>.</li>
+        <li>Actualiza en vivo al registrar/eliminar pagos o cuotas.</li>
+      </ul>
+
+      <h3>Tabla de Cuotas</h3>
+      <ul class="list">
+        <li>Columnas: <em>Nombre</em>, <em>Importe</em>, <em>Vencimiento</em>, <em>Estado</em>, <em>Fecha de pago</em>, <em>Acciones</em>.</li>
+        <li><strong>Eliminar cuota</strong> (solo si está pendiente) con confirmación — útil si generaste una cuota por error.</li>
+        <li>Botón <em>Ver más cuotas</em> para paginación incremental.</li>
+      </ul>
+
+      <h3>Tabla de Pagos</h3>
+      <ul class="list">
+        <li>Columnas: <em>Fecha</em>, <em>Importe</em>, <em>Medio</em>, <em>Cuota</em>, <em>Referencia</em>, <em>PDF</em>.</li>
+        <li><strong>PDF del recibo</strong> con enlace directo (abre en nueva pestaña).</li>
+        <li><strong>Click en la fila</strong> para ir a la edición del pago; el clic sobre el PDF no cambia de pantalla.</li>
+        <li>Botón <em>Ver más pagos</em> para paginación incremental.</li>
+      </ul>
+
+      <h3>Acciones rápidas</h3>
+      <ul class="list">
+        <li><strong>Registrar nuevo pago</strong> desde la propia ficha del alumno.</li>
+        <li><strong>Generar cuotas</strong> seleccionando un <em>tipo de cuota</em> y un <em>rango de fechas</em>.</li>
+      </ul>
+
+      <div class="hint">
+        <strong>Tip:</strong> abre la ficha directamente con el bloque de finanzas desplegado añadiendo <span class="kbd">?tab=finanzas</span> a la URL.
+      </div>
+    </section>
+
+    <!-- Buenas prácticas (análisis) -->
+    <section id="buenas-practicas" class="section">
+      <h2>Buenas prácticas y criterios</h2>
+      <div class="grid-2">
+        <div class="callout">
+          <h3>Modelado</h3>
+          <ul class="list">
+            <li>Usa <strong>Tipos de cuota</strong> estables (mensualidad, matrícula) y crea una <em>nueva cuota</em> cuando cambie el importe.</li>
+            <li>Prefiere <strong>asignaciones por periodo</strong> (Desde/Hasta) en vez de cuotas sueltas: facilita masivos y reporting.</li>
+            <li>Para alumnos que se incorporan tarde, asigna desde su <em>fecha de alta</em> o genera una cuota parcial.</li>
+          </ul>
+        </div>
+        <div class="callout">
+          <h3>Operativa</h3>
+          <ul class="list">
+            <li>Registra <strong>pagos parciales</strong> como movimientos separados con observación “parcial”.</li>
+            <li>La <strong>referencia</strong> (transferencia/TPV/nº recibo) reduce incidencias de conciliación.</li>
+            <li>Si eliminas una cuota pendiente por error de generación, vuelve a <em>Asignar</em> el rango correcto.</li>
+          </ul>
+        </div>
+      </div>
+      <div class="mini" style="margin-top:8px;">
+        Nota: si necesitas topes (p.ej., evitar que los pagos superen el total de la cuota) o reglas especiales (becas/bonificaciones), se pueden añadir validaciones a medida.
+      </div>
+    </section>
+
+    <!-- Errores comunes (análisis) -->
+    <section id="errores-comunes" class="section">
+      <h2>Errores comunes y cómo evitarlos</h2>
+      <ul class="list">
+        <li><span class="warn">Asignar dos veces el mismo periodo a un grupo:</span> filtra por fechas y revisa “Pendientes” antes de una asignación masiva.</li>
+        <li><span class="warn">Modificar una cuota usada en meses anteriores:</span> crea una <em>cuota nueva</em> para los meses futuros.</li>
+        <li><span class="warn">Borrar cuotas ya pagadas:</span> evita hacerlo; mejor revertir por pago de ajuste/abono.</li>
+        <li><span class="ok">Paginación de tablas:</span> usa “Ver más” para no cargar todo de golpe y mantener la interfaz fluida.</li>
+      </ul>
+    </section>
+
+    <!-- FAQ -->
+    <section id="faq" class="section">
+      <h2>Preguntas frecuentes</h2>
+
+      <div class="panel-card" style="padding:12px 14px; margin-bottom:10px;">
+        <h3 style="margin:0 0 .25rem; font-size:1rem;">¿Tengo que crear la cuota cada mes?</h3>
+        <p>No. Crea una cuota (p.ej. “Mensualidad”) y <strong>asígnala por periodo</strong> al/los grupo(s) necesarios.</p>
+      </div>
+
+      <div class="panel-card" style="padding:12px 14px; margin-bottom:10px;">
+        <h3 style="margin:0 0 .25rem; font-size:1rem;">¿Qué pasa si un alumno se incorpora tarde?</h3>
+        <p>Asigna la cuota sólo desde su <em>fecha de alta</em> o crea una cuota parcial para ese caso.</p>
+      </div>
+
+      <div class="panel-card" style="padding:12px 14px;">
+        <h3 style="margin:0 0 .25rem; font-size:1rem;">¿Cómo registro un pago parcial?</h3>
+        <p>Registra el pago con el importe cobrado y añade una observación “pago parcial”. Podrás registrar otro para completar.</p>
+      </div>
+    </section>
+
+    <div class="mini" style="margin-top:14px;">
+      ¿Necesitas un informe específico (por tipo, por grupo, por periodo)? Dínoslo y lo valoramos.
+    </div>
+
+    <div class="mt-3">
+      <a class="volver-link" href="/cuotas">← Volver a Cuotas</a>
+      <span class="mx-2">·</span>
+      <a class="volver-link" href="/">Inicio</a>
+    </div>
+  </div>
+</div>
