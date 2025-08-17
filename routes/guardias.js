@@ -90,6 +90,72 @@ router.get('/', async (req, res) => {
   }
 });
 
+// Listado (antes guardias_lista) => ahora 'guardias_mostrar.ejs'
+// GET /guardias  y /guardias/mostrar
+// GET /guardias  y /guardias/mostrar
+router.get(['/', '/mostrar'], async (req, res) => {
+  try {
+    let { desde = '', hasta = '', grupo = '' } = req.query;
+    const params = [];
+    const where  = [];
+
+    // Filtramos por fechas del EVENTO (no por gu.fecha texto)
+    if (desde) {
+      params.push(desde);
+      where.push(`e.fecha_inicio::date >= $${params.length}::date`);
+    }
+    if (hasta) {
+      params.push(hasta);
+      where.push(`e.fecha_inicio::date <= $${params.length}::date`);
+    }
+    if (grupo && grupo !== '' && grupo !== 'todos') {
+      params.push(grupo);
+      where.push(`e.grupo_id = $${params.length}`);
+    }
+
+    const sql = `
+      SELECT
+        e.id                 AS evento_id,
+        e.titulo             AS evento,
+        e.fecha_inicio,
+        e.fecha_fin,
+        g.nombre             AS grupo,
+        gu.id                AS guardia_id,
+        -- Nombres de alumnos de guardia (apellido, nombre). Ajusta si tu esquema usa otros campos.
+        COALESCE(a1.apellidos || ', ' || a1.nombre, '-') AS guardia1,
+        COALESCE(a2.apellidos || ', ' || a2.nombre, '-') AS guardia2
+      FROM eventos e
+      LEFT JOIN grupos    g  ON g.id  = e.grupo_id
+      LEFT JOIN guardias  gu ON gu.evento_id = e.id
+      LEFT JOIN alumnos   a1 ON a1.id = gu.alumno_id_1
+      LEFT JOIN alumnos   a2 ON a2.id = gu.alumno_id_2
+      ${where.length ? 'WHERE ' + where.join(' AND ') : ''}
+      ORDER BY e.fecha_inicio ASC
+      LIMIT 500;
+    `;
+
+    const { rows: guardias } = await db.query(sql, params);
+    const { rows: grupos    } = await db.query('SELECT id, nombre FROM grupos ORDER BY nombre ASC');
+
+    res.render('guardias_mostrar', {
+      title: 'Planilla de guardias',
+      hero: false,
+      guardias, grupos, desde, hasta, grupo
+    });
+  } catch (e) {
+    console.error(e);
+    res.render('guardias_mostrar', {
+      title: 'Planilla de guardias',
+      hero: false,
+      guardias: [],
+      grupos: [],
+      desde: '',
+      hasta: '',
+      grupo: ''
+    });
+  }
+});
+
 router.get('/evento/:eventoId', async (req, res) => {
   const { eventoId } = req.params;
 

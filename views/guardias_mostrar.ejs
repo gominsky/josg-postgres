@@ -1,0 +1,118 @@
+<% title = 'Planilla de guardias' %>
+<% hero  = false %>
+
+<div class="header-compact">
+  <h1 class="h1-titulo">Planilla de guardias</h1>
+</div>
+
+<% if ((guardias||[]).length>0) { %>
+  <div class="mx-auto" style="max-width:1200px; padding:0 1rem;">
+    <div class="table-responsive mt-3">
+      <table class="tabla-estilizada tabla-tight tabla-hover">
+        <thead>
+          <tr>
+            <th>Fecha</th>
+            <th>Evento</th>
+            <th>Grupo</th>
+            <th>Guardia 1</th>
+            <th>Guardia 2</th>
+            <th class="text-center">Eliminar / sugerir guardia</th>
+          </tr>
+        </thead>
+        <tbody>
+        <% guardias.forEach(g => { %>
+          <tr class="fila-enlace clickable-row <% if (typeof selectedId !== 'undefined' && selectedId == g.guardia_id) { %>fila-seleccionada<% } %>"
+              <% if (g.guardia_id) { %>
+                onclick="location.href='/guardias/editar/<%= g.guardia_id %>?desde=<%= desde %>&hasta=<%= hasta %>&grupo=<%= grupo %>'"
+              <% } %>>
+            <td>
+              <%= new Date(g.fecha_inicio).toLocaleString('es-ES', {
+                day:'2-digit', month:'2-digit', year:'numeric',
+                hour:'2-digit', minute:'2-digit'
+              }).replace(',', '') %>
+            </td>
+            <td><%= g.evento %></td>
+            <td><%= g.grupo %></td>
+            <td><%= g.guardia1 || '-' %></td>
+            <td><%= g.guardia2 || '-' %></td>
+            <td class="text-center" onclick="event.stopPropagation();">
+              <% if (g.guardia_id) { %>
+                <form method="POST" action="/guardias/eliminar/<%= g.guardia_id %>?desde=<%= encodeURIComponent(desde || '') %>&hasta=<%= encodeURIComponent(hasta || '') %>&grupo=<%= encodeURIComponent(grupo || '') %>" onsubmit="event.stopPropagation()" style="display:inline;background:transparent;">
+                  <button type="submit" class="btn btn-sm text-danger fw-bold" style="font-size:1rem;line-height:1;" title="Eliminar">×</button>
+                </form>
+              <% } else { %>
+                <form method="POST" action="/guardias/generar" style="margin:0;display:inline;background:transparent;">
+                  <input type="hidden" name="evento_id" value="<%= g.evento_id %>">
+                  <input type="hidden" name="desde" value="<%= desde %>">
+                  <input type="hidden" name="hasta" value="<%= hasta %>">
+                  <button type="submit" class="btn-primary-negro btn-sm px-2 py-1" style="font-size:.8rem;line-height:1;">Asignar guardia</button>
+                </form>
+              <% } %>
+            </td>
+          </tr>
+        <% }) %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+<% } else { %>
+  <p class="mt-4" style="text-align:center;">No hay eventos registrados con esos filtros.</p>
+<% } %>
+
+<div class="volver-bloque-izquierda mt-4">
+  <a href="/guardias?<%= new URLSearchParams({ desde: desde||'', hasta: hasta||'', grupo: grupo||'' }).toString() %>" class="enlace-final">← Volver</a>
+</div>
+<script>
+    (() => {
+      // helper: post x-www-form-urlencoded y luego recargar
+      const postForm = (url, form) => {
+        const data = new URLSearchParams(new FormData(form));
+        return fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
+          body: data.toString(),
+          redirect: 'follow'
+        });
+      };
+    
+      // 1) Asignar guardia (botón por fila)
+      document.querySelectorAll('form[action="/guardias/generar"]').forEach(form => {
+        form.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          const btn = form.querySelector('button[type="submit"]');
+          if (btn) { btn.disabled = true; btn.textContent = 'Asignando…'; }
+          try { await postForm(form.action, form); }
+          finally { location.reload(); } // 👈 vuelves a la misma planilla con filtros
+        });
+      });
+    
+      // 2) Asignar guardias MÚLTIPLES (el botón con formaction dentro del form de filtros)
+      const filtrosForm = document.getElementById('filtro-form');
+      if (filtrosForm) {
+        filtrosForm.addEventListener('submit', async (e) => {
+          const submitter = e.submitter;
+          const fa = submitter?.getAttribute('formaction');
+          if (fa === '/guardias/generar-multiples') {
+            e.preventDefault();
+            submitter.disabled = true; submitter.textContent = 'Asignando…';
+            try { await postForm(fa, filtrosForm); }
+            finally { location.reload(); }
+          }
+          // si no es el botón de múltiples, deja que el form haga su GET normal (Filtrar)
+        });
+      }
+    
+      // 3) Eliminar guardia (botón × por fila)
+      document.querySelectorAll('form[action^="/guardias/eliminar"]').forEach(form => {
+        form.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          if (!confirm('¿Eliminar guardia?')) return;
+          const btn = form.querySelector('button[type="submit"]');
+          if (btn) { btn.disabled = true; btn.textContent = 'Eliminando…'; }
+          try { await postForm(form.action, form); }
+          finally { location.reload(); }
+        });
+      });
+    })();
+    </script>
+    

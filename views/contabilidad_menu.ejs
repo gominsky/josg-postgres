@@ -1,0 +1,53 @@
+<% title = 'Contabilidad' %>
+<% hero = false %>
+
+<div class="container my-4">
+  <div class="panel-card">
+    <div class="panel-header">
+      <h1 class="h1-titulo"><%= title %></h1>
+      <a href="/" class="volver-link">← Volver al inicio</a>
+    </div>
+
+    <div class="action-grid">
+      <a href="/facturas" class="action-card">
+        <div class="icon-badge" aria-hidden="true">💳</div>
+        <div>
+          <p class="action-title">Listado de facturas</p>
+          <p class="action-desc">Pendientes, parciales y pagadas.</p>
+        </div>
+      </a>
+
+      <a href="/facturas/nueva" class="action-card">
+        <div class="icon-badge" aria-hidden="true">➕</div>
+        <div>
+          <p class="action-title">Nueva factura</p>
+          <p class="action-desc">Registra una factura recibida.</p>
+        </div>
+      </a>
+
+      <a href="/proveedores" class="action-card">
+        <div class="icon-badge" aria-hidden="true">🏢</div>
+        <div>
+          <p class="action-title">Proveedores</p>
+          <p class="action-desc">Altas y edición.</p>
+        </div>
+      </a>
+
+      <a href="/categorias_gasto" class="action-card">
+        <div class="icon-badge" aria-hidden="true">🏷️</div>
+        <div>
+          <p class="action-title">Categorías de gasto</p>
+          <p class="action-desc">Organiza tus gastos.</p>
+        </div>
+      </a>
+
+      <a href="/cuentas" class="action-card">
+        <div class="icon-badge" aria-hidden="true">🏦</div>
+        <div>
+          <p class="action-title">Cuentas</p>
+          <p class="action-desc">Banco y caja.</p>
+        </div>
+      </a>
+    </div>
+  </div>
+</div>

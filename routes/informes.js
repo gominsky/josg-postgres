@@ -5,28 +5,142 @@ const db = require('../database/db');
 const fs = require('fs');
 const { isAuthenticated } = require('../middleware/auth');
 const { toISODate } = require('../utils/fechas');
-
+router.use(express.json());
+// ⛔️ Anti-caché para todo lo de /ficha (GET y POST)
+router.use('/ficha', (req, res, next) => {
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+  res.set('Pragma', 'no-cache');
+  res.set('Expires', '0');
+  next();
+});
 // Redirigir a lista
 router.get('/', (req, res) => {
-  res.redirect('/informes/lista');
+  res.redirect('/informes/certificados');
 });
 
 router.get('/ficha', async (req, res) => {
   try {
-    const gruposResult = await db.query('SELECT * FROM grupos ORDER BY nombre');
-    const instrumentosResult = await db.query('SELECT * FROM instrumentos ORDER BY nombre');
+    const [gruposResult, instrumentosResult] = await Promise.all([
+      db.query('SELECT * FROM grupos ORDER BY nombre'),
+      db.query('SELECT * FROM instrumentos ORDER BY nombre')
+    ]);
+
+    const q = req.query || {};
+    const norm = v => (v == null ? '' : String(v));
+
+    const rawGrupo = norm(q.grupo);          // 'todos' | 'ninguno' | <id> | ''
+    const rawInst  = norm(q.instrumento);    // 'todos' | <id> | ''
+    const f1ISO    = toISODate(q.fecha);
+    const f2ISO    = toISODate(q.fecha_fin); // no lo usamos para alumnos, sólo para nombre si quisieras
+
+    // Mapeo robusto ('' → 'todos')
+    const selGrupo = rawGrupo === '' ? 'todos' : rawGrupo;
+    const selInst  = rawInst  === '' ? 'todos' : rawInst;
+
+    let alumnos  = [];
+    let filtrado = false;
+
+    // Si venimos desde “Informes y certificados” con algún filtro, filtramos YA
+    const vieneConFiltros = (rawGrupo !== '' || rawInst !== '' || !!f1ISO);
+    if (vieneConFiltros) {
+      filtrado = true;
+
+      // Sólo “sin alumnos” si el grupo es literalmente 'ninguno'
+      if (selGrupo !== 'ninguno') {
+        let sql = `
+          SELECT DISTINCT a.id, a.nombre, a.apellidos
+          FROM alumnos a
+          LEFT JOIN alumno_grupo ag ON a.id = ag.alumno_id
+          LEFT JOIN alumno_instrumento ai ON a.id = ai.alumno_id
+          WHERE a.activo = true
+        `;
+        const params = [];
+        let i = 1;
+
+        if (selGrupo !== 'todos') {
+          sql += ` AND ag.grupo_id = $${i++}`;
+          params.push(selGrupo);
+        }
+        if (selInst !== 'todos') {
+          sql += ` AND ai.instrumento_id = $${i++}`;
+          params.push(selInst);
+        }
+
+        sql += ' ORDER BY a.apellidos, a.nombre';
+
+        const { rows: base } = await db.query(sql, params);
+
+        // añade nombres de grupos/instrumentos de cada alumno
+        alumnos = await Promise.all(base.map(async a => {
+          const [gRes, iRes] = await Promise.all([
+            db.query(`
+              SELECT g.nombre
+              FROM grupos g
+              JOIN alumno_grupo ag ON g.id = ag.grupo_id
+              WHERE ag.alumno_id = $1
+              ORDER BY g.nombre
+            `, [a.id]),
+            db.query(`
+              SELECT i.nombre
+              FROM instrumentos i
+              JOIN alumno_instrumento ai ON i.id = ai.instrumento_id
+              WHERE ai.alumno_id = $1
+              ORDER BY i.nombre
+            `, [a.id])
+          ]);
+          return {
+            id: a.id,
+            nombre: a.nombre,
+            apellidos: a.apellidos,
+            grupos: gRes.rows.map(r => r.nombre).join(', '),
+            instrumentos: iRes.rows.map(r => r.nombre).join(', ')
+          };
+        }));
+      }
+    }
+
+    // Resuelve nombre legible (ids -> nombres) para el título sugerido
+    const nombreDeGrupo = (() => {
+      if (selGrupo === 'todos') return 'Todos';
+      if (selGrupo === 'ninguno') return 'Ninguno';
+      const g = gruposResult.rows.find(x => String(x.id) === String(selGrupo));
+      return g ? g.nombre : (selGrupo || '');
+    })();
+    const nombreDeInstr = (() => {
+      if (selInst === 'todos') return 'Todos';
+      const i = instrumentosResult.rows.find(x => String(x.id) === String(selInst));
+      return i ? i.nombre : (selInst || '');
+    })();
+
+    // Nombre sugerido sin fecha_fin ni guiones
+    const construirNombreSugerido = ({ g, i, d1 }) => {
+      const partes = ['Listado'];
+      if (g) partes.push(g === 'Ninguno' ? 'Sin alumnos' : `Grupo ${g}`);
+      if (i) partes.push(`Instr. ${i}`);
+      if (d1) partes.push(d1);
+      return partes.join(' ');
+    };
+    const nombreInforme = construirNombreSugerido({
+      g: nombreDeGrupo,
+      i: nombreDeInstr,
+      d1: f1ISO || ''
+    });
 
     res.render('informe_form', {
       grupos: gruposResult.rows,
       instrumentos: instrumentosResult.rows,
-      alumnos: [],
+      alumnos,                  // ← ya filtrados (o vacío si 'ninguno')
       campos: [],
-      nombreInforme: '',
-      grupoSeleccionado: 'todos',
-      instrumentoSeleccionado: 'todos',
-      fechaHoy: new Date().toISOString().split('T')[0], // ISO hoy
+      nombreInforme,
+      grupoSeleccionado: selGrupo,
+      instrumentoSeleccionado: selInst,
+      profesorSeleccionado: null,
+      fechaHoy: f1ISO || new Date().toISOString().slice(0,10),
+      fecha_fin: '',            // ya no mostramos fecha_fin en el título
       showGroup: false,
-      showInstrument: false
+      showInstrument: false,
+      desdeIC: vieneConFiltros, // oculta selects y pinta “Filtros recibidos”
+      filtrado
     });
   } catch (error) {
     console.error('Error cargando formulario de informe:', error);
@@ -111,7 +225,39 @@ router.post('/ficha/guardar-json', async (req, res) => {
   } = req.body;
 
   const parsedResultados = JSON.parse(resultados || '[]');
-  const parsedCampos = JSON.parse(campos_json || '[]');
+  const parsedCampos     = JSON.parse(campos_json || '[]');
+
+  // ---- Normalización y AUTO-CAMPOS "Prueba de atril ..." ----
+  const norm = (s) => (s || '')
+    .toString()
+    .toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')   // quita tildes
+    .replace(/[^\w\s]/g, ' ')                           // quita punct.
+    .replace(/\s+/g, ' ')                               // espacios a 1
+    .trim();
+
+  const esPruebaAtril = norm(nombre_informe).startsWith('prueba de atril');
+
+  // Limpia/normaliza el array recibido
+  const normalizeCampo = (c) => ({
+    nombre: (c?.nombre ?? '').toString().trim(),
+    tipo: ['texto','numero','booleano'].includes(c?.tipo) ? c.tipo : 'texto',
+    obligatorio: !!c?.obligatorio
+  });
+  let camposWork = parsedCampos.map(normalizeCampo);
+
+  if (esPruebaAtril) {
+    const tieneNombre = (arr, ...nombres) =>
+      arr.some(c => nombres.some(n => norm(c.nombre) === norm(n)));
+
+    if (!tieneNombre(camposWork, 'Puntuación', 'Puntuacion')) {
+      camposWork.push({ nombre: 'Puntuación', tipo: 'numero',   obligatorio: false });
+    }
+    if (!tieneNombre(camposWork, 'Asistencia')) {
+      camposWork.push({ nombre: 'Asistencia', tipo: 'booleano', obligatorio: false });
+    }
+  }
+  // ---- FIN AUTO-CAMPOS ----
 
   const fechaISO = toISODate(fecha) || new Date().toISOString().slice(0, 10);
   const grupoIdFinal = ['ninguno', 'todos', '', null, undefined].includes(grupo_id) ? null : Number(grupo_id);
@@ -130,7 +276,7 @@ router.post('/ficha/guardar-json', async (req, res) => {
       );
       informeIdFinal = insert.rows[0].id;
     } else {
-      // Actualizar nombre (y fecha por si quieres mantener el corte)
+      // Actualizar nombre y fecha
       await db.query(
         `UPDATE informes SET informe = $1, fecha = $2 WHERE id = $3`,
         [nombre_informe, fechaISO, informeIdFinal]
@@ -141,14 +287,14 @@ router.post('/ficha/guardar-json', async (req, res) => {
     await db.query(`DELETE FROM informe_resultados WHERE informe_id = $1`, [informeIdFinal]);
     await db.query(`DELETE FROM informe_campos WHERE informe_id = $1`, [informeIdFinal]);
 
-    // 3. Insertar campos
+    // 3. Insertar campos (usando el array ya normalizado + posibles auto-campos)
     const campoInsert = `
       INSERT INTO informe_campos (informe_id, nombre, tipo, obligatorio)
       VALUES ($1, $2, $3, $4)
       RETURNING id
     `;
     const camposIds = [];
-    for (const campo of parsedCampos) {
+    for (const campo of camposWork) {
       const r = await db.query(campoInsert, [
         informeIdFinal,
         campo.nombre,
@@ -166,6 +312,7 @@ router.post('/ficha/guardar-json', async (req, res) => {
     for (const r of parsedResultados) {
       for (let i = 0; i < camposIds.length; i++) {
         const campoId = camposIds[i];
+        // Si añadimos auto-campos en servidor, no habrá valor: caerá a '' (ok)
         const valor = r[`campo_${i}`] ?? '';
         await db.query(resultadoInsert, [
           informeIdFinal,
@@ -322,10 +469,34 @@ router.post('/ficha/filtrar', async (req, res) => {
   const showGroup = !!mostrar_grupo;
   const showInstrument = !!mostrar_instrumento;
 
-  const fechaISO = toISODate(fecha);
-  const fechaFinISO = toISODate(fecha_fin);
-
+  const fechaISO    = toISODate(fecha)     || new Date().toISOString().slice(0, 10);
+  const fechaFinISO = toISODate(fecha_fin) || fechaISO;
+  
+    
   try {
+    // 👉 Modo "sin alumnos" literal
+    if (grupo_id === 'ninguno') {
+      const [gruposRes, instrumentosRes] = await Promise.all([
+        db.query('SELECT * FROM grupos ORDER BY nombre'),
+        db.query('SELECT * FROM instrumentos ORDER BY nombre')
+      ]);
+
+      return res.render('informe_form', {
+        grupos: gruposRes.rows,
+        instrumentos: instrumentosRes.rows,
+        alumnos: [],                     // sin alumnos
+        campos: [],
+        nombreInforme: nombre_informe,
+        grupoSeleccionado: 'ninguno',    // activa el mensaje "sin alumnos"
+        instrumentoSeleccionado: instrumento_id || 'todos',
+        profesorSeleccionado: null,
+        fechaHoy: fechaISO || new Date().toISOString().slice(0, 10),
+        fecha_fin: fechaFinISO || '',
+        showGroup,
+        showInstrument,
+        filtrado: true
+      });
+    }
     let sql = `
       SELECT DISTINCT a.id, a.nombre, a.apellidos
       FROM alumnos a
@@ -384,23 +555,44 @@ router.post('/ficha/filtrar', async (req, res) => {
     }));
 
     const [gruposRes, instrumentosRes] = await Promise.all([
-      db.query('SELECT * FROM grupos ORDER BY nombre'),
-      db.query('SELECT * FROM instrumentos ORDER BY nombre')
+      db.query('SELECT id, nombre FROM grupos ORDER BY nombre'),
+      db.query('SELECT id, nombre FROM instrumentos ORDER BY nombre')
     ]);
 
+    // Sugerir nombre si viene vacío
+    const gName = (() => {
+      if (grupo_id === 'todos')   return null;
+      if (grupo_id === 'ninguno') return 'Ninguno';
+      const g = gruposRes.rows.find(x => String(x.id) === String(grupo_id));
+      return g ? g.nombre : null;
+    })();
+    const iName = (() => {
+      if (instrumento_id === 'todos') return null;
+      const i = instrumentosRes.rows.find(x => String(x.id) === String(instrumento_id));
+      return i ? i.nombre : null;
+    })();
+    const sugerido = (() => {
+      const piezas = ['Listado'];
+      if (gName) piezas.push(gName === 'Ninguno' ? 'Sin alumnos' : `${gName}`);
+      if (iName) piezas.push(`${iName}`);
+      if (fechaISO) piezas.push(fechaISO);   // sin fecha_fin
+      return piezas.join(' ');
+    })();    
     res.render('informe_form', {
       grupos: gruposRes.rows,
       instrumentos: instrumentosRes.rows,
       alumnos,
       campos: [],
-      nombreInforme: nombre_informe,
+      nombreInforme: nombre_informe && nombre_informe.trim() ? nombre_informe.trim() : sugerido,
       grupoSeleccionado: grupo_id,
       instrumentoSeleccionado: instrumento_id,
       profesorSeleccionado: null,
-      fechaHoy: fechaISO || new Date().toISOString().slice(0, 10),
-      fecha_fin: fechaFinISO || '',
+      fechaHoy: fechaISO,
+      fecha_fin: fechaFinISO,
       showGroup,
-      showInstrument
+      showInstrument,
+      desdeIC: true,                                                     // 👈 mantenemos el modo “solo nombre” en el paso 1
+      filtrado: (grupo_id === 'ninguno') || (alumnos && alumnos.length)  // 👈 para “saltar” al paso 2
     });
 
   } catch (err) {
@@ -421,6 +613,22 @@ router.post('/eliminar/:id', async (req, res) => {
   } catch (err) {
     console.error('Error al eliminar informe:', err);
     res.status(500).send('Error al eliminar informe');
+  }
+});
+
+// Guardar solo el título del informe (AJAX blur)
+router.post('/titulo/:id', async (req, res) => {
+  const id = req.params.id;
+  const nombre = (req.body?.nombre_informe || '').trim();
+  if (!nombre) {
+    return res.status(400).json({ ok: false, error: 'Título vacío' });
+  }
+  try {
+    await db.query('UPDATE informes SET informe = $1 WHERE id = $2', [nombre, id]);
+    return res.json({ ok: true });
+  } catch (err) {
+    console.error('❌ Error actualizando título:', err);
+    return res.status(500).json({ ok: false, error: 'Error de servidor' });
   }
 });
 

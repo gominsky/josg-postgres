@@ -1,0 +1,21 @@
+<% title = 'Cuotas' %>
+<% hero = false %>
+
+<div class="encabezado-lista">
+  <h1 class="h1-titulo">Listado de Cuotas</h1>
+</div>
+<% if (cuotas.length === 0) { %>
+  <p class="enlace-final" style="text-align: center; margin-top: 2rem;">No hay cuotas registradas.</p>
+<% } else { %>
+  <div class="dashboard-grid">
+    <% cuotas.forEach(c => { %>
+      <a href="/cuotas/editar/<%= c.id %>" class="card-cobre">
+        <div style="font-weight: 600; font-size: 1rem;"><%= c.nombre %></div>
+        <div><strong><%= parseFloat(c.precio).toFixed(2) %> €</strong></div>
+      </a>
+    <% }) %>
+  </div>
+<% } %>
+<div class="volver-bloque-izquierda">
+  <a href="/cuotas" class="enlace-final">← Volver a cuotas</a>
+</div>

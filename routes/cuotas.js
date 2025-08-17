@@ -20,6 +20,27 @@ router.get('/', async (req, res) => {
   }
 });
 
+// rutas/cuotas.js
+router.get('/mostrar', async (req, res) => {
+  try {
+    const { rows } = await db.query(
+      'SELECT id, nombre, precio FROM cuotas ORDER BY nombre ASC'
+    );
+    res.render('cuotas_mostrar', {
+      title: 'Cuotas',
+      hero: false,
+      cuotas: rows || []
+    });
+  } catch (e) {
+    console.error(e);
+    res.render('cuotas_mostrar', {
+      title: 'Cuotas',
+      hero: false,
+      cuotas: []   // evita que reviente la vista
+    });
+  }
+});
+
 router.get('/nueva', async (req, res) => {
   try {
     const { rows: tipos } = await db.query('SELECT * FROM tipos_cuota');

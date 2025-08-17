@@ -1,10 +1,9 @@
 <% title = 'Listado de músicos' %>
 <% hero = false %>
-<div>
-  <div>
-    <h1 class="h1-titulo">Listado de músicos</h1>
-    <a href="/alumnos/nuevo" class="btn-main" style="display: inline-block; font-size: 1rem; margin-left: 38rem;">+ Añadir músico</a>
-  </div>
+<div class="header-compact">
+  <h1 class="h1-titulo">Listado de músicos</h1>
+  <a href="/alumnos/nuevo" class="btn-main btn-add">+ Añadir músico</a>
+</div>
 
 <form method="GET" id="filtro-form" class="formulario-centrado">
   <div class="campo-filtro">
@@ -31,6 +30,7 @@
     <input id="busqueda-alumnos" type="text" class="form-centrado-select" placeholder="Nombre, apellidos, instrumentos...">
   </div>
 </form>
+
 <% if (alumnos.length > 0) { %>
   <div class="dashboard-grid" id="grid-alumnos">
     <% alumnos.forEach(alumno => { %>
@@ -57,14 +57,14 @@
     <a href="/" class="enlace-final">← Volver al inicio</a>
   <% } %>
 </div>
+
 <script>
   document.getElementById('busqueda-alumnos').addEventListener('input', function () {
     const filtro = this.value.toLowerCase().trim();
     const tarjetas = document.querySelectorAll('#grid-alumnos .card');
-
-    tarjetas.forEach(tarjeta => {
-      const texto = tarjeta.textContent.toLowerCase();
-      tarjeta.style.display = texto.includes(filtro) ? '' : 'none';
+    tarjetas.forEach(t => {
+      const texto = t.textContent.toLowerCase();
+      t.style.display = texto.includes(filtro) ? '' : 'none';
     });
   });
 </script>

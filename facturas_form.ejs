@@ -1,0 +1,163 @@
+<% title = factura ? 'Editar factura' : 'Nueva factura' %>
+<% hero = false %>
+
+<div class="container my-4">
+  <div class="filtros-card">
+    <div class="filtros-header">
+      <h1 class="h1-titulo"><%= title %></h1>
+      <a href="/facturas" class="volver-link">← Volver</a>
+    </div>
+
+    <form method="POST" action="<%= factura ? '/facturas/'+factura.id : '/facturas' %>">
+      <div class="row g-3">
+        <div class="col-md-4">
+          <label class="form-label">Proveedor</label>
+          <select name="proveedor_id" class="form-select form-select-sm" required>
+            <% (proveedores||[]).forEach(p => { %>
+              <option value="<%= p.id %>" <%= factura && factura.proveedor_id===p.id ? 'selected':'' %>><%= p.nombre %></option>
+            <% }) %>
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Número</label>
+          <input type="text" class="form-control form-control-sm" name="numero" value="<%= factura?.numero||'' %>" required>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Categoría</label>
+          <select name="categoria_id" class="form-select form-select-sm">
+            <option value="">—</option>
+            <% (categorias||[]).forEach(c => { %>
+              <option value="<%= c.id %>" <%= factura && factura.categoria_id===c.id ? 'selected':'' %>><%= c.nombre %></option>
+            <% }) %>
+          </select>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">Cuenta</label>
+          <select name="cuenta_id" class="form-select form-select-sm">
+            <option value="">—</option>
+            <% (cuentas||[]).forEach(c => { %>
+              <option value="<%= c.id %>" <%= factura && factura.cuenta_id===c.id ? 'selected':'' %>><%= c.nombre %></option>
+            <% }) %>
+          </select>
+        </div>
+
+        <div class="col-md-3">
+          <label class="form-label">Emisión</label>
+          <input type="date" class="form-control form-control-sm" name="fecha_emision" value="<%= (factura?.fecha_emision||'').slice(0,10) %>" required>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Vencimiento</label>
+          <input type="date" class="form-control form-control-sm" name="fecha_vencimiento" value="<%= (factura?.fecha_vencimiento||'').slice(0,10) %>">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Concepto</label>
+          <input type="text" class="form-control form-control-sm" name="concepto" value="<%= factura?.concepto||'' %>">
+        </div>
+
+        <div class="col-4 col-md-3">
+          <label class="form-label">Base</label>
+          <input id="base" type="number" step="0.01" class="form-control form-control-sm" name="base_imponible" value="<%= factura?.base_imponible||0 %>">
+        </div>
+        <div class="col-4 col-md-3">
+          <label class="form-label">IVA %</label>
+          <input id="iva" type="number" step="0.01" class="form-control form-control-sm" name="iva_pct" value="<%= factura?.iva_pct||21 %>">
+        </div>
+        <div class="col-4 col-md-3">
+          <label class="form-label">Total</label>
+          <input id="total" type="number" step="0.01" class="form-control form-control-sm" name="total" value="<%= factura?.total||0 %>">
+        </div>
+
+        <% if (factura) { %>
+          <div class="col-md-3">
+            <label class="form-label">Estado</label>
+            <select name="estado" class="form-select form-select-sm">
+              <option value="pendiente" <%= factura.estado==='pendiente'?'selected':'' %>>Pendiente</option>
+              <option value="parcial"   <%= factura.estado==='parcial'  ?'selected':'' %>>Parcial</option>
+              <option value="pagada"    <%= factura.estado==='pagada'   ?'selected':'' %>>Pagada</option>
+              <option value="anulada"   <%= factura.estado==='anulada'  ?'selected':'' %>>Anulada</option>
+            </select>
+          </div>
+        <% } %>
+
+        <div class="col-12">
+          <label class="form-label">Notas</label>
+          <textarea class="form-control form-control-sm" name="notas"><%= factura?.notas||'' %></textarea>
+        </div>
+      </div>
+
+      <div class="text-end mt-3">
+        <% if (factura) { %>
+          <button class="btn btn-outline-danger me-2" formaction="/facturas/<%= factura.id %>/eliminar" formmethod="POST" onclick="return confirm('¿Eliminar factura?')">Eliminar</button>
+        <% } %>
+        <button class="btn-main">Guardar</button>
+      </div>
+    </form>
+  </div>
+
+  <% if (factura) { %>
+    <div class="panel-card mt-3">
+      <div class="panel-header">
+        <h2 class="h1-titulo" style="font-size:1.2rem">Pagos</h2>
+        <div class="muted">Pagado: <strong><%= Number(factura.total_pagado).toFixed(2) %> €</strong> · Pendiente: <strong><%= Number(factura.pendiente).toFixed(2) %> €</strong></div>
+      </div>
+
+      <form class="row g-2 align-items-end" method="POST" action="/pagos">
+        <input type="hidden" name="factura_id" value="<%= factura.id %>">
+        <div class="col-6 col-md-3"><label class="form-label">Fecha</label><input type="date" class="form-control form-control-sm" name="fecha" required></div>
+        <div class="col-6 col-md-3"><label class="form-label">Importe</label><input type="number" step="0.01" class="form-control form-control-sm" name="importe" required></div>
+        <div class="col-6 col-md-3">
+          <label class="form-label">Cuenta</label>
+          <select name="cuenta_id" class="form-select form-select-sm" required>
+            <% (cuentas||[]).forEach(c => { %><option value="<%= c.id %>"><%= c.nombre %></option><% }) %>
+          </select>
+        </div>
+        <div class="col-6 col-md-3">
+          <label class="form-label">Método</label>
+          <select name="metodo" class="form-select form-select-sm">
+            <option>transferencia</option><option>tarjeta</option><option>efectivo</option><option>domiciliacion</option><option>otro</option>
+          </select>
+        </div>
+        <div class="col-12 col-md-4"><label class="form-label">Referencia</label><input type="text" class="form-control form-control-sm" name="referencia"></div>
+        <div class="col-12 col-md-8"><label class="form-label">Notas</label><input type="text" class="form-control form-control-sm" name="notas"></div>
+        <div class="col-12 text-end"><button class="btn-main">Añadir pago</button></div>
+      </form>
+
+      <% if ((pagos||[]).length) { %>
+        <div class="table-responsive mt-2">
+          <table class="tabla-estilizada tabla-tight">
+            <thead><tr><th>Fecha</th><th>Cuenta</th><th>Método</th><th>Referencia</th><th class="text-end">Importe</th><th></th></tr></thead>
+            <tbody>
+              <% pagos.forEach(p => { %>
+                <tr>
+                  <td><%= new Date(p.fecha).toLocaleDateString('es-ES') %></td>
+                  <td><%= p.cuenta %></td>
+                  <td><%= p.metodo %></td>
+                  <td><%= p.referencia||'' %></td>
+                  <td class="text-end"><%= Number(p.importe).toFixed(2) %> €</td>
+                  <td class="text-end">
+                    <form method="POST" action="/pagos/<%= p.id %>/eliminar" onsubmit="return confirm('¿Eliminar pago?')">
+                      <button class="btn btn-sm btn-outline-danger">Eliminar</button>
+                    </form>
+                  </td>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        </div>
+      <% } %>
+    </div>
+  <% } %>
+</div>
+
+<script>
+  const base = document.getElementById('base');
+  const iva  = document.getElementById('iva');
+  const tot  = document.getElementById('total');
+  function recalc(){
+    const b = parseFloat(base?.value||0);
+    const p = parseFloat(iva?.value||0);
+    if (!isNaN(b) && !isNaN(p)) tot.value = (b * (1 + p/100)).toFixed(2);
+  }
+  base?.addEventListener('input', recalc);
+  iva?.addEventListener('input', recalc);
+</script>

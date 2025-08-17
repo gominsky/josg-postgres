@@ -258,6 +258,158 @@ async function init() {
         FOREIGN KEY (campo_id) REFERENCES informe_campos(id) ON DELETE CASCADE
       );
     `);
+        // ============================
+    // CONTABILIDAD: ESQUEMA BÁSICO
+    // ============================
+
+    // Función + trigger genérico para updated_at
+    await db.query(`
+      CREATE OR REPLACE FUNCTION set_updated_at()
+      RETURNS TRIGGER AS $$
+      BEGIN
+        NEW.updated_at = NOW();
+        RETURN NEW;
+      END;
+      $$ LANGUAGE plpgsql;
+    `);
+
+    // ---------- PROVEEDORES ----------
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS proveedores (
+        id          SERIAL PRIMARY KEY,
+        nombre      TEXT NOT NULL,
+        cif         TEXT,
+        email       TEXT,
+        telefono    TEXT,
+        direccion   TEXT,
+        notas       TEXT,
+        activo      BOOLEAN NOT NULL DEFAULT TRUE,
+        created_at  TIMESTAMP NOT NULL DEFAULT NOW(),
+        updated_at  TIMESTAMP NOT NULL DEFAULT NOW()
+      );
+    `);
+    await db.query(`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'trg_proveedores_updated_at') THEN
+          CREATE TRIGGER trg_proveedores_updated_at
+          BEFORE UPDATE ON proveedores
+          FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+        END IF;
+      END $$;
+    `);
+
+    // ---------- CATEGORÍAS DE GASTO (jerárquicas opcionales) ----------
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS categorias_gasto (
+        id       SERIAL PRIMARY KEY,
+        nombre   TEXT NOT NULL,
+        codigo   TEXT,
+        padre_id INT REFERENCES categorias_gasto(id) ON DELETE SET NULL
+      );
+    `);
+
+    // ---------- CUENTAS (banco / caja) ----------
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS cuentas (
+        id             SERIAL PRIMARY KEY,
+        nombre         TEXT NOT NULL,
+        tipo           TEXT NOT NULL CHECK (tipo IN ('banco','caja')),
+        iban           TEXT,
+        saldo_inicial  NUMERIC(12,2) DEFAULT 0,
+        fecha_saldo    DATE,
+        activo         BOOLEAN NOT NULL DEFAULT TRUE
+      );
+    `);
+
+    // ---------- FACTURAS RECIBIDAS (proveedores) ----------
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS facturas_prov (
+        id                SERIAL PRIMARY KEY,
+        proveedor_id      INT NOT NULL REFERENCES proveedores(id),
+        categoria_id      INT REFERENCES categorias_gasto(id),
+        cuenta_id         INT REFERENCES cuentas(id),       -- cuenta sugerida (opcional)
+        numero            TEXT NOT NULL,                    -- Nº factura del proveedor
+        fecha_emision     DATE NOT NULL,
+        fecha_vencimiento DATE,
+        concepto          TEXT,
+        base_imponible    NUMERIC(12,2) NOT NULL DEFAULT 0,
+        iva_pct           NUMERIC(5,2)  NOT NULL DEFAULT 21,
+        total             NUMERIC(12,2) NOT NULL,           -- base + IVA
+        estado            TEXT NOT NULL DEFAULT 'pendiente'
+                         CHECK (estado IN ('borrador','pendiente','parcial','pagada','anulada')),
+        adjunto_path      TEXT,
+        notas             TEXT,
+        created_at        TIMESTAMP NOT NULL DEFAULT NOW(),
+        updated_at        TIMESTAMP NOT NULL DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS idx_facturas_prov_proveedor   ON facturas_prov(proveedor_id);
+      CREATE INDEX IF NOT EXISTS idx_facturas_prov_estado      ON facturas_prov(estado);
+      CREATE INDEX IF NOT EXISTS idx_facturas_prov_vencimiento ON facturas_prov(fecha_vencimiento);
+      CREATE INDEX IF NOT EXISTS idx_facturas_prov_numero      ON facturas_prov(numero);
+    `);
+    await db.query(`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'trg_facturas_prov_updated_at') THEN
+          CREATE TRIGGER trg_facturas_prov_updated_at
+          BEFORE UPDATE ON facturas_prov
+          FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+        END IF;
+      END $$;
+    `);
+
+    // ---------- PAGOS DE PROVEEDORES (parciales o totales) ----------
+    // Nota: se llama pagos_prov para no colisionar con tu tabla "pagos" de alumnos
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS pagos_prov (
+        id          SERIAL PRIMARY KEY,
+        factura_id  INT NOT NULL REFERENCES facturas_prov(id) ON DELETE CASCADE,
+        cuenta_id   INT NOT NULL REFERENCES cuentas(id),
+        fecha       DATE NOT NULL,
+        importe     NUMERIC(12,2) NOT NULL CHECK (importe >= 0),
+        metodo      TEXT NOT NULL CHECK (metodo IN ('transferencia','tarjeta','efectivo','domiciliacion','otro')),
+        referencia  TEXT,
+        notas       TEXT,
+        created_at  TIMESTAMP NOT NULL DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS idx_pagos_prov_factura ON pagos_prov(factura_id);
+      CREATE INDEX IF NOT EXISTS idx_pagos_prov_fecha   ON pagos_prov(fecha);
+    `);
+
+    // ---------- VISTA: saldos y estado calculado ----------
+    await db.query(`
+      CREATE OR REPLACE VIEW v_facturas_prov_saldos AS
+      SELECT
+        f.*,
+        COALESCE(SUM(p.importe), 0) AS total_pagado,
+        GREATEST(f.total - COALESCE(SUM(p.importe), 0), 0) AS pendiente,
+        CASE
+          WHEN f.estado = 'anulada'                     THEN 'anulada'
+          WHEN COALESCE(SUM(p.importe), 0) = 0          THEN 'pendiente'
+          WHEN COALESCE(SUM(p.importe), 0) < f.total    THEN 'parcial'
+          WHEN COALESCE(SUM(p.importe), 0) >= f.total   THEN 'pagada'
+          ELSE f.estado
+        END AS estado_calc
+      FROM facturas_prov f
+      LEFT JOIN pagos_prov p ON p.factura_id = f.id
+      GROUP BY f.id;
+    `);
+
+    // ---------- Semillas mínimas de cuentas (si no existen) ----------
+    await db.query(`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (SELECT 1 FROM cuentas WHERE nombre = 'Banco') THEN
+          INSERT INTO cuentas (nombre, tipo) VALUES ('Banco', 'banco');
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM cuentas WHERE nombre = 'Caja') THEN
+          INSERT INTO cuentas (nombre, tipo) VALUES ('Caja', 'caja');
+        END IF;
+      END $$;
+    `);
+
+    console.log('Esquema de contabilidad creado/actualizado (proveedores, categorías, cuentas, facturas_prov, pagos_prov, vista de saldos).');
 
     // ============ AÑADIDOS PARA EL PLANO DE ORQUESTA ============
 
@@ -445,6 +597,8 @@ async function init() {
     // 🎻 INSTRUMENTOS BASE
     const instrumentos = [
       { nombre: 'Violín', familia: 'Cuerda' },
+      { nombre: 'Violín I', familia: 'Cuerda' },
+      { nombre: 'Violín II', familia: 'Cuerda' },
       { nombre: 'Viola', familia: 'Cuerda' },
       { nombre: 'Violonchelo', familia: 'Cuerda' },
       { nombre: 'Contrabajo', familia: 'Cuerda' },

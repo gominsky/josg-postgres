@@ -1,58 +1,69 @@
-<!-- Modal flotante para nuevo/editar evento -->
-
-<div class="modal fade" id="eventoModal" tabindex="-1" aria-labelledby="eventoModalLabel" aria-hidden="true">
+<!-- ===== Modal flotante — cabecera negra + naranja (sin transparencias) ===== -->
+<div class="modal fade modal-sheet" id="eventoModal" tabindex="-1" aria-labelledby="eventoModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content">
-      <form id="eventoForm">
-        <input type="hidden" name="id">
-        <div class="modal-header header-naranja text-white">
-          <h5 class="modal-title mb-0" id="eventoModalTitulo">Nuevo evento</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+    <form id="eventoForm" class="modal-content" style="background-color: transparent; box-shadow: none;">
+      <input type="hidden" name="id">
+
+      <!-- Cabecera completa -->
+      <div class="sheet-head">
+        <!-- franja naranja superior -->
+        <div class="sheet-accent" aria-hidden="true"></div>
+        <h5 class="modal-title mb-0" id="eventoModalTitulo">Nuevo evento</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+
+      <!-- Cuerpo -->
+      <div class="modal-body">
+        <div class="mb-3">
+          <label for="titulo" class="form-label">Título</label>
+          <input type="text" name="titulo" id="titulo" class="form-control" placeholder="Ensayo de cuerdas…" required>
+          <div class="form-text">Un título corto y claro.</div>
         </div>
-        <div class="modal-body">
-          <div class="mb-3">
-            <label for="titulo" class="form-label fw-bold text-black">Título</label>
-            <input type="text" name="titulo" id="titulo" class="form-control" required>
-          </div>
-          <div class="mb-3">
-            <label for="descripcion" class="form-label fw-bold text-black">Descripción</label>
-            <textarea name="descripcion" id="descripcion" class="form-control"></textarea>
-          </div>
-          <div class="mb-3">
-            <label for="grupo_id" class="form-label fw-bold text-black">Grupos</label>
-            <select name="grupo_id" id="grupo_id" class="form-select" required>
-              <% if (grupos && grupos.length > 0) { %>
-                <% grupos.forEach(a => { %>
-                  <option value="<%= a.id %>"><%= a.nombre %></option>
-                <% }) %>
-              <% } else { %>
-                <option disabled selected>No hay grupos disponibles</option>
-              <% } %>
-            </select>
-          </div>
-          <div class="mb-3">
-            <label for="fecha_inicio" class="form-label fw-bold text-black">Fecha y hora de inicio</label>
+
+        <div class="mb-3">
+          <label for="descripcion" class="form-label">Descripción</label>
+          <textarea name="descripcion" id="descripcion" class="form-control" rows="3" placeholder="Notas, repertorio, etc."></textarea>
+        </div>
+
+        <div class="mb-3">
+          <label for="grupo_id" class="form-label">Grupo</label>
+          <select name="grupo_id" id="grupo_id" class="form-select" required>
+            <% if (grupos && grupos.length > 0) { %>
+              <option value="" disabled selected>Selecciona un grupo…</option>
+              <% grupos.forEach(a => { %>
+                <option value="<%= a.id %>"><%= a.nombre %></option>
+              <% }) %>
+            <% } else { %>
+              <option disabled selected>No hay grupos disponibles</option>
+            <% } %>
+          </select>
+        </div>
+
+        <div class="row when-row">
+          <div class="col-sm-6">
+            <label for="fecha_inicio" class="form-label">Fecha y hora de inicio</label>
             <input type="datetime-local" name="fecha_inicio" id="fecha_inicio" class="form-control" required>
           </div>
-          <div class="mb-3">
-            <label for="fecha_fin" class="form-label fw-bold text-black">Fecha y hora de fin</label>
+          <div class="col-sm-6">
+            <label for="fecha_fin" class="form-label">Fecha y hora de fin</label>
             <input type="datetime-local" name="fecha_fin" id="fecha_fin" class="form-control" required>
           </div>
-          <div class="form-check">
-            <input type="checkbox" name="activo" id="activo" class="form-check-input">
-            <label class="form-check-label fw-bold text-black" for="activo">Activar QR para este evento</label>
-          </div>
         </div>
-        <div class="modal-footer">
-          <button type="submit" class="btn-primary-negro">Guardar</button>
-          <button type="button" id="btnEliminar" class="btn-danger d-none">Eliminar</button>
-          <button type="button" id="btnQR" class="btn-primary-negro d-none">Ver QR</button>
-          <button type="button" id="btnFirmaManual" class="btn-primary-negro d-none">Listado alumnos</button>
+        <div class="form-check form-switch mt-3 qr-block">
+          <input type="checkbox" name="activo" id="activo" class="form-check-input">
+          <label for="activo" class="form-check-label ms-2">Activar QR para este evento</label>
         </div>
-      </form>
-    </div>
+      <!-- Pie -->
+      <div class="modal-footer">
+        <button type="submit" class="btn-primary-negro">Guardar</button>
+        <button type="button" id="btnFirmaManual" class="btn-primary-negro d-none">Listado</button>
+        <button type="button" id="btnQR" class="btn-primary-negro d-none">Ver QR</button>
+        <button type="button" id="btnEliminar" class="btn-primary-negro d-none">Eliminar</button>
+      </div>
+    </form>
   </div>
 </div>
+
 
   <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>

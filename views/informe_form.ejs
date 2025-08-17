@@ -3,67 +3,82 @@
 
 <div class="container my-4">
   <div class="row g-4">
-    <!-- Filtros del informe -->
+
+    <!-- ========== PASO 1: NOMBRE (y filtros ocultos recibidos) ========== -->
     <div class="col-md-5">
       <div class="formulario-centrado p-3 rounded">
         <form action="/informes/ficha/filtrar" method="POST" id="form-filtrar">
-          <h2 class="h5 mb-3 text-dark text-center fw-bold">Listado dinámico</h2>
+          <h2 class="h5 mb-3 text-dark text-center fw-bold">Crear informe/listado</h2>
+
+          <!-- Campo: Nombre del informe / archivo -->
           <div class="mb-2">
             <label class="form-label form-label-sm fw-bold">Nombre</label>
-            <input type="text" name="nombre_informe" class="form-control form-control-sm" value="<%= nombreInforme || '' %>">
+            <input type="text"
+                   name="nombre_informe"
+                   class="form-control form-control-sm"
+                   value="<%= nombreInforme || '' %>"
+                   placeholder="Ej.: Listado Grupo X Instr. Y 2025-06-01">
           </div>
 
-          <div class="mb-3">
-            <label for="grupo_id" class="form-label fw-bold">Grupo</label>
-            <select class="form-select form-select-sm" name="grupo_id" id="grupo_id" required>
-              <option value="todos" <%= grupoSeleccionado==='todos'? 'selected':'' %>>Todos</option>
-              <option value="ninguno" <%= grupoSeleccionado==='ninguno'? 'selected':'' %>>Ninguno</option>
-              <% grupos.forEach(grupo => { %>
-                <option value="<%= grupo.id %>" <%= grupoSeleccionado==grupo.id? 'selected':'' %>><%= grupo.nombre %></option>
-              <% }) %>
-            </select>
+          <!-- Filtros ocultos heredados de Informes y certificados -->
+          <input type="hidden" name="grupo_id"        value="<%= grupoSeleccionado %>">
+          <input type="hidden" name="instrumento_id"  value="<%= instrumentoSeleccionado %>">
+          <input type="hidden" name="fecha"           value="<%= fechaHoy %>">
+          <input type="hidden" name="fecha_fin"       value="<%= typeof fecha_fin !== 'undefined' ? fecha_fin : fechaHoy %>">
+
+          <!-- Resumen visual con NOMBRES (no IDs) y sin fecha_fin -->
+          <%
+            const resumenGrupo = (() => {
+              const gs = (typeof grupoSeleccionado === 'undefined' ? 'todos' : grupoSeleccionado);
+              if (gs === 'todos' || gs === '' || gs == null) return 'Todos';
+              if (gs === 'ninguno') return 'Ninguno';
+              const g = (grupos || []).find(x => String(x.id) === String(gs));
+              return g ? g.nombre : String(gs);
+            })();
+
+            const resumenInst = (() => {
+              if (grupoSeleccionado === 'ninguno') return 'Ninguno';  // 👈 regla pedida
+              const isel = (typeof instrumentoSeleccionado === 'undefined' ? 'todos' : instrumentoSeleccionado);
+              if (isel === 'todos' || isel === '' || isel == null) return 'Todos';
+              const i = (instrumentos || []).find(x => String(x.id) === String(isel));
+              return i ? i.nombre : String(isel);
+            })();
+          %>
+
+          <div class="small text-muted mb-2">Filtros recibidos:</div>
+          <div class="d-flex flex-wrap gap-2 mb-3">
+            <span class="badge-soft">Grupo: <strong><%= resumenGrupo %></strong></span>
+            <span class="badge-soft">Instrumento: <strong><%= resumenInst %></strong></span>
+            <span class="badge-soft">Fecha: <strong><%= fechaHoy %></strong></span>
           </div>
 
-          <div class="mb-3">
-            <label for="instrumento_id" class="form-label fw-bold">Instrumento</label>
-            <select class="form-select form-select-sm" name="instrumento_id" id="instrumento_id" required>
-              <option value="todos" <%= instrumentoSeleccionado==='todos'? 'selected':'' %>>Todos</option>
-              <% instrumentos.forEach(inst => { %>
-                <option value="<%= inst.id %>" <%= instrumentoSeleccionado==inst.id? 'selected':'' %>><%= inst.nombre %></option>
-              <% }) %>
-            </select>
-          </div>
-
-          <div class="mb-2">
-            <label class="form-label form-label-sm fw-bold">Fecha</label>
-            <input type="date" name="fecha" class="form-control form-control-sm" required value="<%= fechaHoy %>">
-          </div>
           <div class="d-flex justify-content-center gap-2 mb-3">
-            <button type="submit" class="btn-main-blanco fw-bold px-3 py-1">Crear listado</button>
+            <button type="submit" class="btn-main-blanco fw-bold px-3 py-1">Guardar nombre</button>
           </div>
         </form>
       </div>
     </div>
 
-    <!-- Resultados dinámicos -->
-    <div class="col-md-7">
+    <!-- ========== PASO 2: CAMPOS + ALUMNOS ========== -->
+    <div class="col-md-7" id="seccion-campos">
       <% if (grupoSeleccionado==='ninguno') { %>
         <div class="mensaje-ok text-center">Informe sin alumnos, añade campos.</div>
       <% } else if (alumnos && alumnos.length) { %>
-        <div class="mensaje-ok text-center">Alumnos filtrados, añade campos.</div>
+        <div class="mensaje-ok text-center">Alumnos filtrados, añade campos para ver la tabla.</div>
       <% } %>
 
       <% if (grupoSeleccionado==='ninguno' || (alumnos && alumnos.length)) { %>
         <form id="form-informe" method="POST" action="/informes/ficha/guardar-json" class="formulario-centrado">
+          <!-- hidden coherentes con backend -->
           <input type="hidden" name="nombre_informe" value="<%= nombreInforme %>">
           <input type="hidden" name="grupo_id" value="<%= grupoSeleccionado %>">
           <input type="hidden" name="instrumento_id" value="<%= instrumentoSeleccionado %>">
-          <input type="hidden" name="profesor_id" value="<%= profesorSeleccionado %>">
+          <input type="hidden" name="profesor_id" value="<%= typeof profesorSeleccionado==='undefined' ? '' : profesorSeleccionado %>">
           <input type="hidden" name="fecha" value="<%= fechaHoy %>">
+          <input type="hidden" name="campos_json" id="campos-json">
+          <input type="hidden" name="resultados" id="resultados-json">
           <input type="hidden" name="mostrar_grupo" value="<%= showGroup? '1':'0' %>">
           <input type="hidden" name="mostrar_instrumento" value="<%= showInstrument? '1':'0' %>">
-          <input type="hidden" name="resultados" id="resultados-json">
-          <input type="hidden" name="campos_json" id="campos-json">
 
           <h2 class="h5 mb-3 text-dark text-center">Elegir campos para el informe</h2>
           <div class="text-center mb-3">
@@ -90,80 +105,183 @@
         </form>
 
         <script>
-          const campos  = [];
-          const alumnos = <%- JSON.stringify(alumnos) %>;
-          const showGrp = <%= showGroup? 'true':'false' %>;
-          const showInst = <%= showInstrument? 'true':'false' %>;
+          // ===== Datos iniciales desde servidor =====
+          const campos = <%- JSON.stringify((campos || []).map(c => ({
+            nombre: c.nombre,
+            tipo: c.tipo,
+            obligatorio: c.obligatorio ? 1 : 0
+          }))) %>;
+          const alumnos = <%- JSON.stringify(alumnos || []) %>;
+          const showGrp = <%= showGroup ? 'true' : 'false' %>;
+          const showInst = <%= showInstrument ? 'true' : 'false' %>;
 
+          // ===== Render de alumnos en función de los campos =====
           function renderTablaAlumnos(camposFinal) {
             const cont = document.getElementById('alumnos-container');
-            if (!alumnos.length || !camposFinal.length) return cont.innerHTML = '';
+            if (!alumnos.length || !camposFinal.length) { cont.innerHTML = ''; return; }
+
             let html = '<table class="table table-sm table-bordered"><thead><tr>';
             html += '<th>Alumno</th>';
             if (showGrp)  html += '<th>Grupo</th>';
             if (showInst) html += '<th>Instrumento</th>';
-            camposFinal.forEach((c,i) => html += '<th>'+ (c.nombre||'Campo '+(i+1)) +'</th>');
+            camposFinal.forEach((c,i) => html += '<th>' + (c.nombre || ('Campo ' + (i+1))) + '</th>');
             html += '</tr></thead><tbody>';
+
             alumnos.forEach(al => {
-              html += '<tr><td>'+ al.apellidos +', '+ al.nombre +'</td>';
-              if (showGrp)  html += '<td>'+ al.grupos +'</td>';
-              if (showInst) html += '<td>'+ al.instrumentos +'</td>';
-              camposFinal.forEach((campo,idx) => {
+              html += '<tr>';
+              html += '<td>' + al.apellidos + ', ' + al.nombre + '</td>';
+              if (showGrp)  html += '<td>' + (al.grupos || '') + '</td>';
+              if (showInst) html += '<td>' + (al.instrumentos || '') + '</td>';
+
+              camposFinal.forEach((campo, idx) => {
                 const nm = `r_${al.id}_${idx}`;
-                let inp = campo.tipo==='texto'
-                  ? `<input type="text" class="form-control form-control-sm" name="${nm}">`
-                  : campo.tipo==='numero'
-                    ? `<input type="number" class="form-control form-control-sm" name="${nm}" step="0.01">`
-                    : `<input type="checkbox" class="form-check-input" name="${nm}">`;
+                let inp = '';
+                if (campo.tipo === 'texto') {
+                  inp = `<input type="text" class="form-control form-control-sm" name="${nm}">`;
+                } else if (campo.tipo === 'numero') {
+                  inp = `<input type="number" class="form-control form-control-sm" name="${nm}" step="0.01">`;
+                } else { // booleano
+                  inp = `<input type="checkbox" class="form-check-input" name="${nm}">`;
+                }
                 html += `<td>${inp}</td>`;
               });
+
               html += '</tr>';
             });
+
             html += '</tbody></table>';
             cont.innerHTML = html;
           }
 
+          // ===== Gestión de la lista de campos =====
           function addCampo() {
             const tbody = document.querySelector('#tabla-campos tbody');
             const idx = campos.length;
             campos.push({ nombre:'', tipo:'texto', obligatorio:0 });
+
             const tr = document.createElement('tr');
             tr.innerHTML = `
-              <td><input type="text" class="form-control form-control-sm" data-idx="${idx}" data-prop="nombre" oninput="updateCampo(${idx},'nombre',this.value)"></td>
+              <td><input type="text" class="form-control form-control-sm"
+                         data-idx="${idx}" oninput="updateCampo(${idx},'nombre',this.value)"></td>
               <td>
-                <select class="form-select form-select-sm" data-idx="${idx}" data-prop="tipo" onchange="updateCampo(${idx},'tipo',this.value)">
+                <select class="form-select form-select-sm" data-idx="${idx}"
+                        onchange="updateCampo(${idx},'tipo',this.value)">
                   <option value="texto">Texto</option>
                   <option value="numero">Número</option>
                   <option value="booleano">Sí/No</option>
                 </select>
               </td>
-              <td class="text-center"><input type="checkbox" class="form-check-input" data-idx="${idx}" data-prop="obligatorio" onchange="updateCampo(${idx},'obligatorio',this.checked?1:0)"></td>
+              <td class="text-center">
+                <input type="checkbox" class="form-check-input"
+                       onchange="updateCampo(${idx},'obligatorio',this.checked?1:0)">
+              </td>
               <td><button type="button" class="btn btn-sm text-danger" onclick="removeCampo(${idx})">×</button></td>
             `;
             tbody.appendChild(tr);
             renderTablaAlumnos(campos);
           }
 
-          function updateCampo(i,prop,val) {
-            campos[i][prop] = prop==='obligatorio'? (val?1:0) : val;
-            renderTablaAlumnos(campos);
-          }
-          function removeCampo(i) {
-            campos.splice(i,1);
-            document.querySelectorAll('#tabla-campos tbody tr')[i].remove();
+          function updateCampo(i, prop, val) {
+            campos[i][prop] = (prop === 'obligatorio') ? (val ? 1 : 0) : val;
             renderTablaAlumnos(campos);
           }
 
-          document.getElementById('form-informe').addEventListener('submit', e => {
+          function removeCampo(i) {
+            campos.splice(i, 1);
+            const rows = document.querySelectorAll('#tabla-campos tbody tr');
+            if (rows[i]) rows[i].remove();
+            renderTablaAlumnos(campos);
+          }
+
+          // ===== Envío: empaquetar para tu backend =====
+          // Tu backend espera en parsedResultados: r["campo_0"], r["campo_1"], ...
+          document.getElementById('form-informe').addEventListener('submit', (e) => {
+            // 1) Campos
             document.getElementById('campos-json').value = JSON.stringify(campos);
-            const resultados = [];
+
+            // 2) Resultados agrupados por alumno, con keys campo_0..campo_n
+            const porAlumno = new Map(); // id -> obj
             document.querySelectorAll('#alumnos-container input').forEach(el => {
-              const [_,alId,idx] = el.name.split('_');
-              const valor = el.type==='checkbox'? (el.checked?'1':'0') : el.value;
-              resultados.push({ alumno_id:+alId, campo_index:+idx, valor });
+              const m = el.name.match(/^r_(\d+)_(\d+)$/); // r_alId_idxCampo
+              if (!m) return;
+              const alId = Number(m[1]);
+              const idxCampo = Number(m[2]);
+              const valor = (el.type === 'checkbox') ? (el.checked ? '1' : '0') : el.value;
+
+              if (!porAlumno.has(alId)) porAlumno.set(alId, { alumno_id: alId });
+              porAlumno.get(alId)[`campo_${idxCampo}`] = valor;
             });
+
+            const resultados = Array.from(porAlumno.values());
             document.getElementById('resultados-json').value = JSON.stringify(resultados);
           });
+
+          // ===== Normalización & "Prueba de atril" =====
+          function norm(s) {
+            return (s || '')
+              .toLowerCase()
+              .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+              .replace(/[^\w\s]/g, ' ')
+              .replace(/\s+/g, ' ')
+              .trim();
+          }
+          function esPruebaAtril(nombre) {
+            return norm(nombre).startsWith('prueba de atril');
+          }
+
+          function syncCamposUI() {
+            const tbody = document.querySelector('#tabla-campos tbody');
+            tbody.innerHTML = '';
+            campos.forEach((c, idx) => {
+              const tr = document.createElement('tr');
+              tr.innerHTML = `
+                <td><input type="text" class="form-control form-control-sm"
+                           value="${c.nombre}"
+                           oninput="updateCampo(${idx},'nombre',this.value)"></td>
+                <td>
+                  <select class="form-select form-select-sm"
+                          onchange="updateCampo(${idx},'tipo',this.value)">
+                    <option value="texto"    ${c.tipo==='texto'?'selected':''}>Texto</option>
+                    <option value="numero"   ${c.tipo==='numero'?'selected':''}>Número</option>
+                    <option value="booleano" ${c.tipo==='booleano'?'selected':''}>Sí/No</option>
+                  </select>
+                </td>
+                <td class="text-center">
+                  <input type="checkbox" class="form-check-input"
+                         ${c.obligatorio ? 'checked' : ''}
+                         onchange="updateCampo(${idx},'obligatorio',this.checked?1:0)">
+                </td>
+                <td><button type="button" class="btn btn-sm text-danger" onclick="removeCampo(${idx})">×</button></td>
+              `;
+              tbody.appendChild(tr);
+            });
+            renderTablaAlumnos(campos);
+          }
+
+          function ensureCamposPruebaAtril(nombre) {
+            if (!esPruebaAtril(nombre)) return;
+            const tiene = (t) => campos.some(c => norm(c.nombre) === norm(t));
+            let cambiado = false;
+            if (!tiene('Puntuación') && !tiene('Puntuacion')) {
+              campos.push({ nombre: 'Puntuación', tipo: 'numero', obligatorio: 0 });
+              cambiado = true;
+            }
+            if (!tiene('Asistencia')) {
+              campos.push({ nombre: 'Asistencia', tipo: 'booleano', obligatorio: 0 });
+              cambiado = true;
+            }
+            if (cambiado) syncCamposUI();
+          }
+
+          // Hook al input de nombre (del paso 1)
+          const inputNombre = document.querySelector('input[name="nombre_informe"]');
+          if (inputNombre) {
+            inputNombre.addEventListener('input', () => ensureCamposPruebaAtril(inputNombre.value));
+            ensureCamposPruebaAtril(inputNombre.value); // también al cargar
+          }
+
+          // Al cargar, pinta lo que haya en `campos`
+          document.addEventListener('DOMContentLoaded', syncCamposUI);
         </script>
       <% } %>
     </div>
@@ -173,3 +291,14 @@
 <div class="volver-bloque-izquierda mt-4">
   <a href="/informes" class="enlace-final">← Volver</a>
 </div>
+
+<% /* Scroll automático al paso 2 si ya hay filtrado (alumnos o 'ninguno') */ %>
+<% if (typeof filtrado !== 'undefined' && filtrado) { %>
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('seccion-campos')?.scrollIntoView({ behavior:'smooth', block:'start' });
+  });
+</script>
+<% } %>
+
+

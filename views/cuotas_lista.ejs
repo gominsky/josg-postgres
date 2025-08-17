@@ -1,32 +1,178 @@
 <% title = 'Cuotas' %>
-<% hero = false %>
+<% hero  = false %>
 
-<div class="encabezado-lista">
-  <h1 class="h1-titulo">Listado de Cuotas</h1>
-  <div style="text-align: center; margin-top: 1rem;">
-    <a href="/cuotas/nueva" class="btn-main">+ Añadir cuota</a>
-    <a href="/tipos_cuotas" class="btn-main">Ver tipos de cuota</a>
-  </div>
-</div>
-<% if (cuotas.length === 0) { %>
-  <p class="enlace-final" style="text-align: center; margin-top: 2rem;">No hay cuotas registradas.</p>
-<% } else { %>
-  <div class="dashboard-grid">
-    <% cuotas.forEach(c => { %>
-      <a href="/cuotas/editar/<%= c.id %>" class="card-cobre">
-        <div style="font-weight: 600; font-size: 1rem;"><%= c.nombre %></div>
-        <div><strong><%= parseFloat(c.precio).toFixed(2) %> €</strong></div>
+<div id="cuotas-wrap" class="container my-4">
+  <style>
+    :root{
+      --accent-50:  #fff6e8;
+      --accent-100: #ffeed7;
+      --accent-200: #ffe0b3;
+      --accent-300: #ffd08a;
+      --accent-400: #ffb554;
+      --accent-500: #ff9500;
+      --accent-600: #e07f00;
+      --accent-700: #c26c00;
+      --text-main:  #212529;
+      --muted:      #6c757d;
+      --border:     rgba(0,0,0,.08);
+      --shadow:     0 1px 2px rgba(0,0,0,.04);
+      --shadow-lg:  0 6px 18px rgba(0,0,0,.08);
+    }
+
+    @media (min-width: 992px){
+      #cuotas-wrap.container{ max-width: 1320px; }
+    }
+
+    .panel-card{
+      background:#fff; color:var(--text-main);
+      border:1px solid var(--border);
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+      padding: 14px 16px 18px;
+    }
+    .panel-header{
+      display:flex; align-items:center; justify-content:space-between; gap: 12px;
+      margin-bottom: 10px;
+    }
+    .panel-header .h1-titulo{
+      margin:0; font-size: clamp(1.4rem, 1.1rem + 1.2vw, 2rem); font-weight: 700; color: var(--text-main);
+    }
+    .volver-link{ color: var(--accent-700); text-decoration:none; font-weight:600; }
+    .volver-link:hover{ text-decoration:underline; }
+
+    .action-grid{
+      display: grid; gap: 16px; margin-top: 12px;
+      grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+    }
+    @media (min-width: 1400px){
+      .action-grid{ grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); }
+    }
+
+    .action-card{
+      width:100%; display:flex; align-items:center; gap:14px; text-align:left;
+      background: linear-gradient(180deg,#ffffff, #fdfcfa);
+      border:1px solid var(--border); border-radius: 16px; padding: 14px 16px;
+      box-shadow: var(--shadow);
+      transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease, background .15s ease;
+      color: inherit; text-decoration: none;
+    }
+    .action-card:hover, .action-card:focus{
+      transform: translateY(-2px); box-shadow: var(--shadow-lg); border-color: var(--accent-200);
+      text-decoration: none; background: #fff;
+    }
+    .icon-badge{
+      width: 44px; height: 44px; border-radius: 999px; flex-shrink: 0;
+      display:flex; align-items:center; justify-content:center;
+      background: var(--accent-100); border: 1px solid var(--accent-200); color: var(--accent-700);
+    }
+    .action-title{ font-weight: 700; margin:0; color: var(--text-main); }
+    .action-desc{ margin:.15rem 0 0; color: var(--muted); font-size:.92rem; }
+  </style>
+
+  <div class="panel-card">
+    <div class="panel-header">
+      <h1 class="h1-titulo"><%= title %></h1>
+      <a href="/configuracion" class="volver-link">← Volver a configuración</a>
+    </div>
+
+    <div class="action-grid">
+      <!-- 1) Listado de cuotas (PRIMERO) -->
+      <a href="/cuotas/mostrar" class="action-card" aria-label="Listado de cuotas">
+        <div class="icon-badge" aria-hidden="true">
+          <!-- Lista + € -->
+          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 16 16" fill="currentColor">
+            <path d="M3 3h8a.5.5 0 0 1 0 1H3a.5.5 0 0 1 0-1m0 3h8a.5.5 0 0 1 0 1H3a.5.5 0 0 1 0-1m0 3h5a.5.5 0 0 1 0 1H3a.5.5 0 0 1 0-1"/>
+            <path d="M11.5 8a3.5 3.5 0 1 1 0 7a3.5 3.5 0 0 1 0-7m.75 1a.5.5 0 0 0 0-1h-1a1.75 1.75 0 0 0 0 3.5H12a.75.75 0 0 1 0 1.5h-1a.5.5 0 0 0 0 1h1a1.75 1.75 0 1 0 0-3.5h-.75A.75.75 0 1 1 12 9z"/>
+          </svg>
+        </div>
+        <div>
+          <p class="action-title">Listado de cuotas</p>
+          <p class="action-desc">Ver y gestionar todas las cuotas creadas.</p>
+        </div>
       </a>
-    <% }) %>
+
+      <!-- 2) Añadir cuota -->
+      <a href="/cuotas/nueva" class="action-card" aria-label="Añadir cuota">
+        <div class="icon-badge" aria-hidden="true">
+          <!-- Plus + moneda -->
+          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22"
+               viewBox="0 0 16 16" fill="currentColor">
+            <path d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1M7.5 4a.5.5 0 0 1 1 0v2h2a.5.5 0 0 1 0 1h-2v2a.5.5 0 0 1-1 0V7H5.5a.5.5 0 0 1 0-1H7.5z"/>
+          </svg>
+        </div>
+        <div>
+          <p class="action-title">Añadir cuota</p>
+          <p class="action-desc">Crear una nueva cuota con su precio y periodo.</p>
+        </div>
+      </a>
+
+      <!-- 3) Listado de tipos de cuota -->
+      <a href="/tipos_cuotas" class="action-card" aria-label="Tipos de cuota">
+        <div class="icon-badge" aria-hidden="true">
+          <!-- Etiquetas -->
+          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22"
+               viewBox="0 0 16 16" fill="currentColor">
+            <path d="M2 2h5l5 5-5 5H2V2zm10.5 5L7.5 2H14l-1.5 5z"/>
+          </svg>
+        </div>
+        <div>
+          <p class="action-title">Listado de tipos de cuota</p>
+          <p class="action-desc">Configura y categoriza las cuotas.</p>
+        </div>
+      </a>
+      <!-- 4) Nuevo tipo de cuota -->
+<a href="/tipos_cuotas/nueva" class="action-card" aria-label="Crear nuevo tipo de cuota">
+  <div class="icon-badge" aria-hidden="true" title="Nuevo tipo de cuota">
+    <!-- icono etiqueta + “+” -->
+    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22"
+         viewBox="0 0 24 24" fill="none" stroke="currentColor"
+         stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+      <!-- etiqueta -->
+      <path d="M20 10.5L13.5 4H6a2 2 0 0 0-2 2v7.5l6.5 6.5a2 2 0 0 0 2.8 0L20 13.3a2 2 0 0 0 0-2.8z"/>
+      <circle cx="9" cy="7.5" r="1.2"/>
+      <!-- plus -->
+      <path d="M19 5v4M17 7h4"/>
+    </svg>
   </div>
-<% } %>
-<div style="display: flex; justify-content: center; gap: 1rem; margin-top: 2rem;">
-  <a href="/cuotas/asignar" class="btn-main" style="text-decoration: none; white-space: nowrap;">Asignar por grupos</a>
-  <a href="/cuotas/pendientes" class="btn-main" style="text-decoration: none; white-space: nowrap;">Pendientes de pago</a>
-</div>
-<div class="volver-bloque-izquierda">
-  <a href="/configuracion" class="enlace-final">← Volver a configuración</a>
-</div>
+  <div>
+    <p class="action-title">Nuevo tipo de cuota</p>
+    <p class="action-desc">Crear un tipo de cuota desde cero.</p>
+  </div>
+</a>
 
+      <!-- 5) Asignar por grupos -->
+      <a href="/cuotas/asignar" class="action-card" aria-label="Asignar cuotas por grupos">
+        <div class="icon-badge" aria-hidden="true">
+          <!-- Usuarios + flecha -->
+          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22"
+               viewBox="0 0 16 16" fill="currentColor">
+            <path d="M10 5a2 2 0 1 0-4 0 2 2 0 0 0 4 0z"/>
+            <path d="M14 14s-1-1.5-6-1.5S2 14 2 14s1-4 6-4 6 4 6 4z"/>
+            <path d="M12.5 8.5a.5.5 0 0 1 .5.5v1h1a.5.5 0 0 1 0 1h-1v1a.5.5 0 0 1-1 0v-1H11a.5.5 0 0 1 0-1h1v-1a.5.5 0 0 1 .5-.5z"/>
+          </svg>
+        </div>
+        <div>
+          <p class="action-title">Asignar por grupos</p>
+          <p class="action-desc">Aplica cuotas de forma masiva a grupos.</p>
+        </div>
+      </a>
 
+      <!-- 6) Pendientes de pago -->
+      <a href="/cuotas/pendientes" class="action-card" aria-label="Pendientes de pago">
+        <div class="icon-badge" aria-hidden="true">
+          <!-- Campana/alerta + € -->
+          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22"
+               viewBox="0 0 16 16" fill="currentColor">
+            <path d="M8 16a2 2 0 0 0 2-2H6a2 2 0 0 0 2 2z"/>
+            <path d="M8 1.918 6.5 3.5 5 5h6L9.5 3.5 8 1.918zM8 1a2 2 0 0 1 2 2v.086A5.002 5.002 0 0 1 13 8v2l1 1v1H2v-1l1-1V8a5.002 5.002 0 0 1 3-4.914V3a2 2 0 0 1 2-2z"/>
+          </svg>
+        </div>
+        <div>
+          <p class="action-title">Pendientes de pago</p>
+          <p class="action-desc">Consulta recibos y estados de cobro.</p>
+        </div>
+      </a>
+    </div>
+  </div>
+</div>
 

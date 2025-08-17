@@ -9,23 +9,98 @@
 <style>
   .formulario-centrado {
     max-width: 55% !important;
+    margin: 0 auto;               /* 👈 centra de verdad el bloque */
+  }
+  .titulo-bloque {
+    color: #212529;               /* color base (como h1 en Bootstrap) */
+  }
+  .h1-titulo {
+    font-size: clamp(1.6rem, 2vw + 1rem, 2.6rem);
+    color: inherit;               /* 👈 hereda de .titulo-bloque */
+  }
+  .meta-informe {
+    color: inherit;               /* 👈 igual que el título */
+    padding-left: 0;              /* evita indentación del UL */
+  }
+  .estado-titulo { color: inherit; opacity:.7; }
+    /* ancho como el formulario, pero ligeramente desplazado a la izquierda */
+    .encabezado-izq{
+    max-width: 55%;
+    margin: 0 auto;                 /* base centrada */
+    margin-left: calc((100% - 55%) / 2 - 16px); /* empuja 16px hacia la izquierda */
+  }
+
+  /* colores/alineación unificados */
+  .titulo-bloque { color: #212529; }
+  .h1-titulo { font-size: clamp(1.6rem, 2vw + 1rem, 2.6rem); color: inherit; }
+  .meta-informe { color: inherit; padding-left: 0; }
+  .estado-titulo { color: inherit; opacity: .7; }
+
+  /* si en pantallas pequeñas prefieres volver a centro, anula el empuje */
+  @media (max-width: 768px){
+    .encabezado-izq{ margin-left: auto; }
+  }
+  .encabezado-izq { max-width: 55%; margin: 0 auto; }
+  .titulo-bloque .h1-titulo{
+  margin: .5rem 0 .75rem 0;  /* top | right | bottom | left */
+}
+
+  /* Lista de metadatos en columnas: etiqueta fija + valor flexible */
+  .meta-informe { 
+    margin: .15rem 0 0 0; 
+    padding-left: 0; 
+  }
+  .meta-informe li { 
+    list-style: none; 
+    margin: 2px 0; 
+    line-height: 1.25;
+  }
+  /* La “columna” de la etiqueta: mismo ancho para alinear los valores */
+  .meta-informe li > strong {
+    display: inline-block;
+    min-width: 92px;          /* ajusta si quieres más/menos sangría */
+    font-weight: 700;
+    color: #212529;
+  }
+
+  /* El estado del título en la misma columna visual */
+  #estado-titulo { 
+    display: block; 
+    margin: 2px 0 0 0; 
   }
 </style>
-<div class="row align-items-start mb-3">
-  <div class="col-md-8 offset-md-1">
-    <h1 class="h1-titulo mb-2"><%= informe.informe %></h1>
-    <ul class="list-unstyled texto-base mb-0">
-      <li><strong>Fecha:</strong> <%= new Date(informe.fecha).toLocaleDateString('es-ES') %></li>
-      <% if (showGroup) { %><li><strong>Grupo:</strong> <%= informe.informeGrupo %></li><% } %>
-      <% if (showInstrument) { %><li><strong>Instrumento:</strong> <%= informe.informeInstrumento %></li><% } %>
-    </ul>
+<div class="encabezado-izq">
+  <div class="d-flex flex-column flex-md-row align-items-start justify-content-between gap-2">
+    <div class="titulo-bloque flex-grow-1">
+      <!-- textarea del título -->
+      <textarea
+        name="nombre_informe"
+        id="titulo-informe"
+        class="h1-titulo"
+        style="border:none;background:transparent;width:100%;font-weight:700;outline:none;padding:0;line-height:1.15;resize:none;overflow:hidden;white-space:pre-wrap;word-break:break-word;"
+        rows="1"
+        title="Editar título del informe"
+        oninput="autoResizeTitulo()"
+        onblur="guardarTitulo()"
+      ><%= informe.informe %></textarea>
+
+      <small id="estado-titulo" class="estado-titulo" style="margin-left:.5rem;"></small>
+
+      <!-- metadatos -->
+      <ul class="meta-informe list-unstyled mb-0" style="margin-top:.25rem;">
+        <li><strong>Fecha:</strong> <%= new Date(informe.fecha).toLocaleDateString('es-ES') %></li>
+        <% if (showGroup) { %><li><strong>Grupo:</strong> <%= informe.informeGrupo %></li><% } %>
+        <% if (showInstrument) { %><li><strong>Instrumento:</strong> <%= informe.informeInstrumento %></li><% } %>
+      </ul>
+    </div>
   </div>
-  <div class="col-md-3 d-flex justify-content-end align-items-center gap-3">
-    <form method="POST" action="/informes/eliminar/<%= informe.id %>" onsubmit="return confirm('¿Eliminar informe completo?')" style="background-color: transparent;">
-      <button type="submit" class="btn-main"><div>Eliminar informe</div></button>
-    </form>
-  </div>
-</div>
+</div> 
+  <!-- Aviso de guardado correcto -->
+  <% if (typeof ok !== 'undefined' && ok) { %>
+    <div class="alert alert-success py-2 px-3" role="alert" id="flash-ok" style="max-width:55%; margin:0 auto 12px;">
+      Cambios guardados correctamente.
+    </div>
+  <% } %>
 
 <form id="form-guardar" method="POST" action="/informes/detalle/<%= informe.id %>" class="formulario-centrado" style="background-color: transparent;">
   <input type="hidden" name="resultados" id="resultados-json">
@@ -36,22 +111,33 @@
     <button id="toggleInst"  type="button" class="btn btn-sm btn-outline-secondary">Ocultar/Mostrar Instrumento</button>
   </div>
   <% } %>
-
+  
   <div class="table-responsive">
-    <table class="tabla-estilizada table-sm align-middle text-center">
-      <thead class="table-light">
+    <!-- Estado vacío -->
+    <div id="empty-state" class="<%= filas.length===0 ? '' : 'd-none' %> py-4 text-center text-muted">
+      <% if (!tieneAlumnos) { %>
+        <div class="mb-2">Aún no hay registros.</div>
+        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="addCampo()">+ Añadir el primer registro</button>
+      <% } else { %>
+        <div>No hay datos para mostrar.</div>
+      <% } %>
+    </div>
+    <div>
+    <!-- Tabla (el thead se oculta si no hay filas) -->
+    <table id="tabla-principal" class="tabla-estilizada table-sm align-middle text-center table-stable">
+      <thead class="table-light" id="thead-principal" style="<%= filas.length===0 ? 'display:none' : '' %>">
         <tr>
           <% if (tieneAlumnos) { %>
-            <th class="sortable" style="width:200px;min-width:200px;text-align:left;">Músico</th>
-            <th class="col-grupo sortable">Grupo</th>
-            <th class="col-inst sortable" style="width:150px; min-width:150px;">Instrumento</th>
+            <th class="sortable col-musico">Músico</th>
+            <th class="sortable col-grupo">Grupo</th>
+            <th class="sortable col-inst">Instrumento</th>
           <% } %>
           <% camposMostrar.forEach(campo => { %>
             <th class="sortable"><%= campo.nombre %></th>
           <% }) %>
           <th>Acciones</th>
         </tr>
-      </thead>
+      </thead>    
       <tbody id="tabla-resultados-body">
         <% filas.forEach((fila, filaIndex) => { %>
           <tr>
@@ -77,7 +163,7 @@
               </td>
             <% }) %>
             <td>
-              <button type="button" class="btn btn-sm text-danger fw-bold" onclick="this.closest('tr').remove()">×</button>
+              <button type="button" class="btn btn-sm text-danger fw-bold" onclick="removeRow(this)">×</button>
             </td>
           </tr>
         <% }) %>
@@ -85,300 +171,392 @@
     </table>
   </div>
 
-  <div class="text-center mt-3 mb-4">
+  <!-- 🔘 Botonera SIEMPRE visible (dentro del form) -->
+  <div class="text-center mt-3 mb-4" id="acciones-informe">
     <% if (!tieneAlumnos) { %>
-      <button type="button" class="btn-main" onclick="addCampo()">+ Añadir registro</button>
+      <button type="button" class="btn-main me-2" onclick="addCampo()">+ Añadir registro</button>
     <% } %>
-    <button type="submit" class="btn btn-dark btn-sm me-2">Guardar cambios</button>
-    <button type="button" id="btnPDF" class="btn btn-dark btn-sm">Exportar PDF</button>
-  </div>
+      <!-- 👇 Nuevo botón eliminar: NO hay form anidado -->
+      <button
+        type="submit"
+        id="btnEliminar"
+        class="btn btn-dark btn-sm me-2"
+        formaction="/informes/eliminar/<%= informe.id %>"
+        formmethod="POST"
+        onclick="return confirm('¿Eliminar informe completo?')">
+        Eliminar informe
+      </button>
+      <button type="submit" id="btnGuardar" class="btn btn-dark btn-sm me-2">Guardar cambios</button>
+      <button type="button" id="btnPDF" class="btn btn-dark btn-sm">Exportar PDF</button>
+    </div>
+  <!-- Contenido base para PDF (oculto) -->
+<div id="pdf-content" style="display:none; background:white; color:black; font-size:12px;">
+  <h2 style="text-align:center;margin:8px 0 0;font-size:1.05rem;"><strong><%= informe.informe %></strong></h2>
+  <p style="font-size:10px;margin:16px 0;"><strong>Fecha del informe:</strong> <%= new Date(informe.fecha).toLocaleDateString('es-ES') %></p>
+  <% if (showGroup) { %><p class="pdf-grupo" style="font-size:10px;margin:4px 0;"><strong>Grupo:</strong> <%= informe.informeGrupo %></p><% } %>
+  <% if (showInstrument) { %><p class="pdf-inst"  style="font-size:10px;margin:4px 0;"><strong>Instrumento:</strong> <%= informe.informeInstrumento %></p><% } %>
 
-  <!-- Contenido base para el PDF (oculto en pantalla; se usa para exportar) -->
-  <div id="pdf-content" style="display:none; background:white; color:black; font-size:12px;">
-    <!-- Título/subtítulos -->
-    <h2 style="text-align:center;margin:8px 0 0;font-size:1.05rem;"><strong><%= informe.informe %></strong></h2>
-    <p style="font-size:10px;margin:16px 0;"><strong>Fecha del informe:</strong> <%= new Date(informe.fecha).toLocaleDateString('es-ES') %></p>
-    <% if (showGroup) { %><p class="pdf-grupo" style="font-size:10px;margin:4px 0;"><strong>Grupo:</strong> <%= informe.informeGrupo %></p><% } %>
-    <% if (showInstrument) { %><p class="pdf-inst"  style="font-size:10px;margin:4px 0;"><strong>Instrumento:</strong> <%= informe.informeInstrumento %></p><% } %>
-
-    <!-- Tabla (Grupo/Instrumento SIEMPRE presentes en el HTML del PDF;
-         luego el script los quitará si en pantalla están ocultos) -->
-    <table style="width:100%;border-collapse:collapse;margin-top:12px;font-size:11px;">
-      <thead>
-        <tr style="background-color:#f0f0f0;">
-          <% if (tieneAlumnos) { %><th style="border:1px solid #ccc;padding:6px;width:180mm;min-width:180mm;">Músico</th><% } %>
-          <th class="pdf-grupo" style="border:1px solid #ccc;padding:6px;">Grupo</th>
-          <th class="pdf-inst"  style="border:1px solid #ccc;padding:6px;">Instrumento</th>
+  <table style="width:100%;border-collapse:collapse;margin-top:12px;font-size:11px;">
+    <thead>
+      <tr style="background-color:#f0f0f0;">
+        <% if (tieneAlumnos) { %><th style="border:1px solid #ccc;padding:6px;">Músico</th><% } %>
+        <th class="pdf-grupo" style="border:1px solid #ccc;padding:6px;">Grupo</th>
+        <th class="pdf-inst"  style="border:1px solid #ccc;padding:6px;">Instrumento</th>
+        <% camposMostrar.forEach(campo => { %>
+          <th style="border:1px solid #ccc;padding:6px;"><%= campo.nombre %></th>
+        <% }) %>
+      </tr>
+    </thead>
+    <tbody>
+      <% filas.forEach(fila => { %>
+        <tr>
+          <% if (tieneAlumnos) { %><td style="border:1px solid #ccc;padding:6px;"><%= fila.apellidos %>, <%= fila.nombre %></td><% } %>
+          <td class="pdf-grupo" style="border:1px solid #ccc;padding:6px;"><%= fila.grupos || '—' %></td>
+          <td class="pdf-inst"  style="border:1px solid #ccc;padding:6px;"><%= fila.instrumentos || '—' %></td>
           <% camposMostrar.forEach(campo => { %>
-            <th style="border:1px solid #ccc;padding:6px;"><%= campo.nombre %></th>
+            <td style="border:1px solid #ccc;padding:6px;"><%= fila.valores[campo.id] || '' %></td>
           <% }) %>
         </tr>
-      </thead>
-      <tbody>
-        <% filas.forEach(fila => { %>
-          <tr>
-            <% if (tieneAlumnos) { %><td style="border:1px solid #ccc;padding:6px;width:180mm;min-width:180mm;"><%= fila.apellidos %>, <%= fila.nombre %></td><% } %>
-            <td class="pdf-grupo" style="border:1px solid #ccc;padding:6px;"><%= fila.grupos || '—' %></td>
-            <th class="pdf-inst" style="border:1px solid #ccc;padding:6px;width:40mm;min-width:40mm;">Instrumento</th>
-            <% camposMostrar.forEach(campo => { %>
-              <td style="border:1px solid #ccc;padding:6px;"><%= fila.valores[campo.id] || '' %></td>
-            <% }) %>
-          </tr>
-        <% }) %>
-      </tbody>
-    </table>
-  </div>
-</form>
+      <% }) %>
+    </tbody>
+  </table>
+</div>
 
+</form>
 <div class="volver-bloque-izquierda mb-4">
   <a href="/informes" class="enlace-final">← Volver</a>
 </div>
 
 <script>
-  // Ordenación de columnas en pantalla
-  document.querySelectorAll('.tabla-estilizada th.sortable').forEach((th, idx) => {
-    let asc = true;
-    th.style.cursor = 'pointer';
-    th.addEventListener('click', () => {
-      const table = th.closest('table');
-      const tbody = table.querySelector('tbody');
-      const rows  = Array.from(tbody.querySelectorAll('tr'));
-      rows.sort((a, b) => {
-        const cellA = a.children[idx].dataset.value ?? a.children[idx].textContent.trim();
-        const cellB = b.children[idx].dataset.value ?? b.children[idx].textContent.trim();
-        const numA  = parseFloat(cellA);
-        const numB  = parseFloat(cellB);
-        let res;
-        if (!isNaN(numA) && !isNaN(numB)) res = numA - numB;
-        else res = String(cellA).localeCompare(cellB);
-        return asc ? res : -res;
-      });
-      rows.forEach(r => tbody.appendChild(r));
-      asc = !asc;
-    });
-  });
-
-  // Flags de visibilidad desde servidor
-  const showGroup      = <%= showGroup ? 'true' : 'false' %>;
-  const showInstrument = <%= showInstrument ? 'true' : 'false' %>;
-
-  let nextFila = <%= filas.length %>;
-  const campos        = <%- JSON.stringify(campos) %>;
-  const camposMostrar = <%- JSON.stringify(camposMostrar) %>;
-
-  function addCampo() {
-    const tbody = document.getElementById('tabla-resultados-body');
-    const fila  = document.createElement('tr');
-    const id    = nextFila++;
-    let html    = `<td class="text-start">-</td>`;
-    if (showGroup)      html += `<td class="col-grupo">—</td>`;
-    if (showInstrument) html += `<td class="col-inst">—</td>`;
-    camposMostrar.forEach(campo => {
-      const name = `r_null_${id}_${campo.id}`;
-      if (campo.tipo === 'texto')         html += `<td><input type="text" class="form-control form-control-sm" name="\${name}"></td>`;
-      else if (campo.tipo === 'numero')   html += `<td><input type="number" step="0.01" class="form-control form-control-sm" name="\${name}"></td>`;
-      else if (campo.tipo === 'booleano') html += `<td><input type="checkbox" class="form-check-input" name="\${name}"></td>`;
-      else                                html += `<td><input type="text" class="form-control form-control-sm" name="\${name}"></td>`;
-    });
-    html += `<td><button type="button" class="btn btn-sm text-danger fw-bold" onclick="this.closest('tr').remove()">X</button></td>`;
-    fila.innerHTML = html;
-    tbody.appendChild(fila);
-  }
-
-  // Recopila valores antes de enviar
-  document.getElementById('form-guardar').addEventListener('submit', function() {
-    const resultados = [];
-    document.querySelectorAll('#tabla-resultados-body input').forEach(el => {
-      const m = el.name.match(/^r_(.+?)_(.+?)_(\d+)$/);
-      if (!m) return;
-      const alumno_id = m[1] === 'null' ? null : parseInt(m[1], 10);
-      const filaIdx   = isNaN(m[2]) ? null : parseInt(m[2], 10);
-      const campo_id  = parseInt(m[3], 10);
-      const valor     = el.type === 'checkbox' ? (el.checked ? '1' : '0') : el.value;
-      resultados.push({ alumno_id, fila: filaIdx, campo_id, valor });
-    });
-    document.getElementById('resultados-json').value = JSON.stringify(resultados);
-  });
-
-  // Toggle columnas (pantalla)
-  function toggleCol(selector) {
-    document.querySelectorAll(selector).forEach(el => {
-      el.style.display = (el.style.display === 'none' ? '' : 'none');
-    });
-  }
-  const tg = document.getElementById('toggleGrupo');
-  const ti = document.getElementById('toggleInst');
-  if (tg) tg.addEventListener('click', () => toggleCol('.col-grupo'));
-  if (ti) ti.addEventListener('click', () => toggleCol('.col-inst'));
-</script>
-<!-- jsPDF + AutoTable -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
-
-<script>
-document.addEventListener('DOMContentLoaded', () => {
-  const btn   = document.getElementById('btnPDF');
-  const srcEl = document.getElementById('pdf-content');
-  if (!btn || !srcEl) return;
-
-  btn.type = 'button';
-  btn.addEventListener('click', async () => {
-    const { jsPDF } = window.jspdf;
-
-    // 1) Clona el contenido base (no tocamos la vista)
-    const clone = srcEl.cloneNode(true);
-    clone.style.display = 'block';
-
-    // Quita wrappers que rompen medición/autotable
-    clone.querySelectorAll('.table-responsive').forEach(w => {
-      const t = w.querySelector('table');
-      if (t) w.replaceWith(t);
-    });
-
-    // 2) Respeta visibilidad (como en pantalla)
-    const isVisible = (selector) => {
-      const els = [...document.querySelectorAll(selector)];
-      return els.some(el => {
-        const cs = getComputedStyle(el);
-        return el.offsetParent !== null && cs.display !== 'none' && cs.visibility !== 'hidden';
-      });
-    };
-    const showGroup = isVisible('.col-grupo');
-    const showInst  = isVisible('.col-inst');
-    if (!showGroup) clone.querySelectorAll('.pdf-grupo').forEach(el => el.remove());
-    if (!showInst)  clone.querySelectorAll('.pdf-inst') .forEach(el => el.remove());
-
-    // 3) Mantén el mismo ORDEN que en pantalla
-    const screenBody = document.querySelector('#tabla-resultados-body');
-    if (screenBody) {
-      const firma = (tr, ths) => {
-        const cells = [...tr.children].map(td => td.textContent.trim());
-        const idxA = ths.findIndex(th => /\bAlumno\b/i.test(th.textContent));
-        const idxG = ths.findIndex(th => /\bGrupo\b/i.test(th.textContent));
-        const idxI = ths.findIndex(th => /\bInstrumento\b/i.test(th.textContent));
-        const pick = [];
-        if (idxA >= 0 && cells[idxA]) pick.push(cells[idxA]);
-        if (idxG >= 0 && cells[idxG]) pick.push(cells[idxG]);
-        if (idxI >= 0 && cells[idxI]) pick.push(cells[idxI]);
-        return pick.length ? pick.join('|') : cells.join('|');
-      };
-      const thsScreen = [...document.querySelectorAll('.tabla-estilizada thead th')];
-      const orderKeys = [...screenBody.querySelectorAll('tr')].map(tr => firma(tr, thsScreen));
-
-      const thsClone  = [...clone.querySelectorAll('table thead th')];
-      const bodyClone = clone.querySelector('tbody');
-      if (bodyClone) {
-        const rows   = [...bodyClone.querySelectorAll('tr')];
-        const withK  = rows.map(tr => ({ tr, key: firma(tr, thsClone) }));
-        const posMap = new Map(orderKeys.map((k,i)=>[k,i]));
-        withK.sort((a,b) => (posMap.get(a.key) ?? 1e9) - (posMap.get(b.key) ?? 1e9));
-        withK.forEach(({tr}) => bodyClone.appendChild(tr));
-      }
+  (() => {
+    /* ====== Flags y datos desde servidor ====== */
+    const hasAlumnos     = <%= tieneAlumnos ? 'true' : 'false' %>;
+    const showGroup      = <%= showGroup ? 'true' : 'false' %>;
+    const showInstrument = <%= showInstrument ? 'true' : 'false' %>;
+    let   nextFila       = <%= filas.length %>;
+    const campos         = <%- JSON.stringify(campos) %>;
+    const camposMostrar  = <%- JSON.stringify(camposMostrar) %>;
+  
+    /* ====== Utilidades de UI ====== */
+    function checkHeader() {
+      const thead = document.getElementById('thead-principal');
+      const tbody = document.getElementById('tabla-resultados-body');
+      const empty = document.getElementById('empty-state');
+      if (!thead || !tbody) return;
+      const hasRows = !!tbody.querySelector('tr');
+      thead.style.display = hasRows ? '' : 'none';
+      if (empty) empty.classList.toggle('d-none', hasRows);
     }
-
-    // 4) Mete el clon para medir
-    document.body.appendChild(clone);
-    const tableEl = clone.querySelector('table');
-    if (!tableEl) { alert('No se encontró la tabla en #pdf-content'); clone.remove(); return; }
-
-    // 5) Mide anchos del THEAD para fijarlos en todas las páginas
-    const headRow = tableEl.querySelector('thead tr');
-    const headCells = headRow ? [...headRow.children] : [];
-    const cellWidthsPx = headCells.map(th => th.getBoundingClientRect().width || 100);
-    const totalPx = cellWidthsPx.reduce((a,b)=>a+b,0) || 1;
-
-    // 6) Crea PDF y define márgenes/espacios
-    const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
-    const wmm = pdf.internal.pageSize.getWidth();
-    const hmm = pdf.internal.pageSize.getHeight();
-
-    const LEFT_MM   = 20;
-    const RIGHT_MM  = 20;
-    const FOOTER_MM = 20;
-
-    // Header de página (logo/títulos) — reserva arriba
-    const PAGE_HEADER_MM = 32;      // aire superior para header
-    const START_Y = PAGE_HEADER_MM + 2; // tabla arranca justo debajo del header
-
-    // Logo opcional
-    async function loadLogo(){
-      return new Promise(res=>{
-        const img=new Image();
-        img.crossOrigin='anonymous'; img.referrerPolicy='no-referrer';
-        img.onload=()=>{
-          try{
-            const c=document.createElement('canvas'); c.width=img.naturalWidth; c.height=img.naturalHeight;
-            c.getContext('2d').drawImage(img,0,0);
-            res({ dataURL:c.toDataURL('image/png'), w:img.naturalWidth, h:img.naturalHeight });
-          }catch{ res(null); }
+  
+    function addCampo() {
+      const tbody = document.getElementById('tabla-resultados-body');
+      const tr    = document.createElement('tr');
+      const id    = nextFila++;
+      let html    = '';
+  
+      if (hasAlumnos) {
+        html += `<td class="col-musico">-</td>`;
+        if (showGroup)      html += `<td class="col-grupo">—</td>`;
+        if (showInstrument) html += `<td class="col-inst">—</td>`;
+      }
+      camposMostrar.forEach(campo => {
+        const name = `r_null_${id}_${campo.id}`; // r_<alumno|null>_<fila>_<campoId>
+        if (campo.tipo === 'texto')         html += `<td><input type="text"   class="form-control form-control-sm" name="${name}" autocomplete="off"></td>`;
+        else if (campo.tipo === 'numero')   html += `<td><input type="number" step="0.01" class="form-control form-control-sm" name="${name}" autocomplete="off"></td>`;
+        else if (campo.tipo === 'booleano') html += `<td><input type="checkbox" class="form-check-input" name="${name}" autocomplete="off"></td>`;
+        else                                html += `<td><input type="text"   class="form-control form-control-sm" name="${name}" autocomplete="off"></td>`;
+      });
+      html += `<td><button type="button" class="btn btn-sm text-danger fw-bold" onclick="removeRow(this)">×</button></td>`;
+  
+      tr.innerHTML = html;
+      tbody.appendChild(tr);
+      checkHeader();
+    }
+    function removeRow(btn) { btn.closest('tr')?.remove(); checkHeader(); }
+    window.addCampo  = addCampo;
+    window.removeRow = removeRow;
+  
+    /* ====== Ordenación simple de columnas ====== */
+    document.querySelectorAll('.tabla-estilizada th.sortable').forEach((th, idx) => {
+      let asc = true;
+      th.style.cursor = 'pointer';
+      th.addEventListener('click', () => {
+        const tbody = th.closest('table')?.querySelector('tbody');
+        if (!tbody) return;
+        const rows = Array.from(tbody.querySelectorAll('tr'));
+        rows.sort((a, b) => {
+          const cellA = a.children[idx]?.dataset.value ?? a.children[idx]?.textContent.trim();
+          const cellB = b.children[idx]?.dataset.value ?? b.children[idx]?.textContent.trim();
+          const numA  = parseFloat(cellA), numB = parseFloat(cellB);
+          const res   = (!isNaN(numA) && !isNaN(numB)) ? (numA - numB) : String(cellA).localeCompare(cellB);
+          return asc ? res : -res;
+        });
+        rows.forEach(r => tbody.appendChild(r));
+        asc = !asc;
+      });
+    });
+  
+    /* ====== Toggle columnas SIN saltos (añade clase a la tabla) ====== */
+    const tabla = document.getElementById('tabla-principal');
+    document.getElementById('toggleGrupo')?.addEventListener('click', () => {
+      tabla?.classList.toggle('hide-grupo');
+    });
+    document.getElementById('toggleInst')?.addEventListener('click', () => {
+      tabla?.classList.toggle('hide-inst');
+    });
+  
+    /* ====== Serializar antes de enviar + GUARDIA para “Eliminar” ====== */
+    const form = document.getElementById('form-guardar');
+    form?.addEventListener('submit', (e) => {
+      // 👉 Si el submit viene del botón Eliminar, no serializamos nada
+      if (e.submitter && e.submitter.id === 'btnEliminar') return;
+  
+      const resultados = [];
+      document.querySelectorAll('#tabla-resultados-body input').forEach(el => {
+        const m = el.name.match(/^r_(.+?)_(.+?)_(\d+)$/);
+        if (!m) return;
+        const alumno_id = m[1] === 'null' ? null : parseInt(m[1], 10);
+        const filaIdx   = isNaN(m[2]) ? null : parseInt(m[2], 10);
+        const campo_id  = parseInt(m[3], 10);
+        const valor     = el.type === 'checkbox' ? (el.checked ? '1' : '0') : el.value;
+        resultados.push({ alumno_id, fila: filaIdx, campo_id, valor });
+      });
+      document.getElementById('resultados-json').value = JSON.stringify(resultados);
+  
+      // Feedback “Guardando…”
+      const btn = document.getElementById('btnGuardar');
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Guardando…';
+      }
+      sessionStorage.setItem('guardarInformes:<%= informe.id %>', 'saving');
+    });
+     /* ====== Al cargar ====== */
+    document.addEventListener('DOMContentLoaded', () => {
+      const flash = document.getElementById('flash-ok');
+      if (flash) setTimeout(() => flash.remove(), 3000);
+  
+      // “✓ guardado” si venimos de guardar
+      const key = 'guardarInformes:<%= informe.id %>';
+      const btn = document.getElementById('btnGuardar');
+      const fueOk = new URLSearchParams(location.search).get('ok') === '1';
+      if (btn) {
+        if (fueOk && sessionStorage.getItem(key) === 'saving') {
+          sessionStorage.removeItem(key);
+          btn.disabled = false;
+          btn.classList.remove('btn-dark'); btn.classList.add('btn-success');
+          btn.textContent = '✓ guardado';
+          setTimeout(() => {
+            btn.classList.remove('btn-success'); btn.classList.add('btn-dark');
+            btn.textContent = 'Guardar cambios';
+          }, 3000);
+        } else {
+          btn.disabled = false;
+          btn.classList.remove('btn-success'); btn.classList.add('btn-dark');
+          btn.textContent = 'Guardar cambios';
+        }
+      }
+  
+      window.autoResizeTitulo?.();
+      checkHeader();
+    });
+  })();
+  </script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const btn    = document.getElementById('btnPDF');
+      const srcEl  = document.getElementById('pdf-content');
+      const tabla  = document.getElementById('tabla-principal') || document.querySelector('.tabla-estilizada');
+      if (!btn || !srcEl) return;
+    
+      const camposMostrar = <%- JSON.stringify(camposMostrar) %>;
+    
+      const hasAutoTable = () =>
+        !!(window.jspdf && window.jspdf.jsPDF && window.jspdf.jsPDF.API && window.jspdf.jsPDF.API.autoTable);
+    
+      btn.type = 'button';
+      btn.addEventListener('click', async () => {
+        if (!hasAutoTable()) { alert('jsPDF o AutoTable no están cargados.'); return; }
+        const { jsPDF } = window.jspdf;
+    
+        // ——— Clona plantilla oculta y respeta visibilidad de columnas ———
+        const clone = srcEl.cloneNode(true);
+        clone.style.display = 'block';
+    
+        const ocultoGrupo = tabla?.classList?.contains('hide-grupo');
+        const ocultoInst  = tabla?.classList?.contains('hide-inst');
+        if (ocultoGrupo) clone.querySelectorAll('.pdf-grupo').forEach(el => el.remove());
+        if (ocultoInst)  clone.querySelectorAll('.pdf-inst') .forEach(el => el.remove());
+    
+        // Mantén el mismo orden de filas que en pantalla
+        const screenBody = document.querySelector('#tabla-resultados-body');
+        if (screenBody) {
+          const firma = (tr, ths) => {
+            const cells = [...tr.children].map(td => td.textContent.trim());
+            const reMus = /m[úu]sico/i, reGru = /grupo/i, reIns = /instrumento/i;
+            const idxA = ths.findIndex(th => reMus.test(th.textContent));
+            const idxG = ths.findIndex(th => reGru.test(th.textContent));
+            const idxI = ths.findIndex(th => reIns.test(th.textContent));
+            const pick = [];
+            if (idxA >= 0 && cells[idxA]) pick.push(cells[idxA]);
+            if (idxG >= 0 && cells[idxG]) pick.push(cells[idxG]);
+            if (idxI >= 0 && cells[idxI]) pick.push(cells[idxI]);
+            return pick.length ? pick.join('|') : cells.join('|');
+          };
+          const thsScreen = [...document.querySelectorAll('.tabla-estilizada thead th')];
+          const orderKeys = [...screenBody.querySelectorAll('tr')].map(tr => firma(tr, thsScreen));
+    
+          const thsClone  = [...clone.querySelectorAll('table thead th')];
+          const bodyClone = clone.querySelector('tbody');
+          if (bodyClone) {
+            const rows   = [...bodyClone.querySelectorAll('tr')];
+            const withK  = rows.map(tr => ({ tr, key: firma(tr, thsClone) }));
+            const posMap = new Map(orderKeys.map((k,i)=>[k,i]));
+            withK.sort((a,b) => (posMap.get(a.key) ?? 1e9) - (posMap.get(b.key) ?? 1e9));
+            withK.forEach(({tr}) => bodyClone.appendChild(tr));
+          }
+        }
+    
+        // Inserta clon para medir cabeceras
+        document.body.appendChild(clone);
+        const tableEl   = clone.querySelector('table');
+        if (!tableEl) { alert('No se encontró la tabla en #pdf-content'); clone.remove(); return; }
+    
+        const headRow   = tableEl.querySelector('thead tr');
+        const headCells = headRow ? [...headRow.children] : [];
+        const cellWidthsPx = headCells.map(th => th.getBoundingClientRect().width || 100);
+        const totalPx      = cellWidthsPx.reduce((a,b)=>a+b,0) || 1;
+    
+        const tipos = headCells.map(th => {
+          const label = (th.textContent||'').trim();
+          const c = camposMostrar.find(cm => cm.nombre === label);
+          return c ? c.tipo : 'texto';
+        });
+    
+        // ——— PDF y geometría ———
+        const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+        const wmm = pdf.internal.pageSize.getWidth();
+        const hmm = pdf.internal.pageSize.getHeight();
+    
+        const LEFT_MM   = 20;
+        const RIGHT_MM  = 20;
+        const FOOTER_MM = 20;
+    
+        // Header bloqueado + margen top en TODAS las páginas
+        const HEADER_TOP_MM = 12;
+        const HEADER_H_MM   = 28;     // alto total (logo + líneas + título)
+        const TOP_MARGIN    = HEADER_TOP_MM + HEADER_H_MM; // ← reserva fija
+        const reportTitle   = `<%= (informe.informe || '').replace(/"/g,'\\"') %>`;
+    
+        // Logo
+        async function loadLogo(){
+          return new Promise(res=>{
+            const img=new Image();
+            img.crossOrigin='anonymous'; img.referrerPolicy='no-referrer';
+            img.onload=()=>{
+              try{
+                const c=document.createElement('canvas'); c.width=img.naturalWidth; c.height=img.naturalHeight;
+                c.getContext('2d').drawImage(img,0,0);
+                res({ dataURL:c.toDataURL('image/png'), w:img.naturalWidth, h:img.naturalHeight });
+              }catch{ res(null); }
+            };
+            img.onerror=()=>res(null);
+            img.src='/imagenes/logoJOSG.png';
+          });
+        }
+        const logoInfo = await loadLogo();
+    
+        // Dibuja header/footer en CADA página (y la tabla respeta margin.top)
+        const drawPageDecor = (data) => {
+          const { pageNumber } = data;
+    
+          // HEADER (logo + textos)
+          if (logoInfo) {
+            const targetH = 12; // mm
+            const lw = targetH * (logoInfo.w / logoInfo.h);
+            const lx = LEFT_MM;
+            const ly = HEADER_TOP_MM;
+            try { pdf.addImage(logoInfo.dataURL, 'PNG', lx, ly, lw, targetH); } catch {}
+          }
+          const textX = LEFT_MM + (logoInfo ? 28 : 0);
+          const yOrg  = HEADER_TOP_MM + 6;
+          const yWeb  = HEADER_TOP_MM + 11;
+          pdf.setTextColor(0,0,0);
+          pdf.setFont('helvetica','bold'); pdf.setFontSize(11);
+          pdf.text('Asociación Joven Orquesta de Granada', textX, yOrg);
+          pdf.setFont('helvetica','normal'); pdf.setFontSize(8);
+          pdf.text('www.josg.org – info@josg.org',        textX, yWeb);
+    
+          // Título del informe bajo el bloque, sin solapar
+          if (pageNumber === 1) {
+            const titleMaxW = wmm - LEFT_MM - RIGHT_MM;
+            pdf.setFont('helvetica','bold'); pdf.setFontSize(12);
+            const lines = pdf.splitTextToSize(reportTitle, titleMaxW);
+            pdf.text(lines, LEFT_MM, HEADER_TOP_MM + 20);
+          }
+    
+          // FOOTER
+          const footerTop = hmm - FOOTER_MM;
+          pdf.setDrawColor(180);
+          pdf.line(LEFT_MM, footerTop, wmm - RIGHT_MM, footerTop);
+          pdf.setFont('helvetica','normal'); pdf.setFontSize(7);
+          const footerText =
+    'Asociación Joven Orquesta de Granada\n' +
+    'CIF: G-18651067 · www.josg.org · Tfno: 682445971\n' +
+    'C/ Andrés Segovia 60, 18007 Granada\n' +
+    'Sede de ensayos: Teatro Maestro Francisco Alonso, C/ Ribera del Beiro 34, 18012 Granada';
+          pdf.text(footerText, LEFT_MM, footerTop + 5, { maxWidth: wmm - LEFT_MM - RIGHT_MM });
+          pdf.setFontSize(8);
+          pdf.text('Página ' + pageNumber + ' de ' + pdf.internal.getNumberOfPages(), wmm/2, hmm - FOOTER_MM/2, { align:'center' });
         };
-        img.onerror=()=>res(null);
-        img.src='/imagenes/logoJOSG.png';
+    
+        // ——— Estilos de tabla ———
+        const usableWidthMM = wmm - LEFT_MM - RIGHT_MM;
+        const columnStyles = {};
+        headCells.forEach((th, i) => {
+          columnStyles[i] = {
+            cellWidth: usableWidthMM * (cellWidthsPx[i] / totalPx),
+            halign: (tipos[i]==='numero' ? 'right' : (tipos[i]==='booleano' ? 'center' : 'left'))
+          };
+        });
+    
+        const baseLineColor = [190,190,190];
+        const headStyles = {
+          fillColor: [240,240,240],
+          textColor: [0,0,0],
+          halign: 'left',
+          fontStyle: 'bold',
+          fontSize: 9,
+          lineColor: baseLineColor,
+          lineWidth: 0.3               // ← borde visible como el resto de la tabla
+        };
+        const bodyStyles = {
+          fontSize: 9,
+          cellPadding: 2,
+          overflow: 'linebreak',
+          lineColor: baseLineColor,
+          lineWidth: 0.2
+        };
+    
+        // ——— AutoTable: margen top fijo en TODAS las páginas + header/footer ———
+        pdf.autoTable({
+          html: tableEl,
+          startY: TOP_MARGIN,                            // 1ª página
+          margin: { top: TOP_MARGIN, left: LEFT_MM, right: RIGHT_MM, bottom: FOOTER_MM }, // resto
+          styles: bodyStyles,
+          headStyles,
+          columnStyles,
+          theme: 'grid',
+          showHead: 'everyPage',
+          rowPageBreak: 'avoid',
+          didDrawPage: drawPageDecor                      // header/footer por página
+        });
+    
+        pdf.save('informe.pdf');
+        clone.remove();
       });
-    }
-    const logoInfo = await loadLogo();
-
-    // Header/Footer por página
-    const drawPageDecor = (data) => {
-      const { pageNumber } = data;
-      // HEADER (sin línea)
-      if (logoInfo) {
-        const targetH = 12; // mm (ajusta 14/16 si lo quieres más grande)
-        const lw = targetH * (logoInfo.w / logoInfo.h);
-        const lx = LEFT_MM;
-        const ly = PAGE_HEADER_MM - (targetH + 2); // un poco por encima del contenido
-        try { pdf.addImage(logoInfo.dataURL, 'PNG', lx, ly, lw, targetH); } catch {}
-      }
-      const textX = LEFT_MM + (logoInfo ? 28 : 0);
-      const textBaseY = PAGE_HEADER_MM - 4;
-      pdf.setTextColor(0,0,0);
-      pdf.setFont('helvetica','bold'); pdf.setFontSize(11);
-      pdf.text('Asociación Joven Orquesta de Granada', textX, textBaseY - 5);
-      pdf.setFont('helvetica','normal'); pdf.setFontSize(8);
-      pdf.text('www.josg.org – info@josg.org',        textX, textBaseY - 0);
-
-      // FOOTER
-      const footerTop = hmm - FOOTER_MM;
-      pdf.setDrawColor(180);
-      pdf.line(LEFT_MM, footerTop, wmm - RIGHT_MM, footerTop);
-      pdf.setFont('helvetica','normal'); pdf.setFontSize(7);
-      const footerText =
-'Asociación Joven Orquesta de Granada\n' +
-'CIF: G-18651067 · www.josg.org · Tfno: 682445971\n' +
-'C/ Andrés Segovia 60, 18007 Granada\n' +
-'Sede de ensayos: Teatro Maestro Francisco Alonso, C/ Ribera del Beiro 34, 18012 Granada';
-      pdf.text(footerText, LEFT_MM, footerTop + 5, { maxWidth: wmm - LEFT_MM - RIGHT_MM });
-      pdf.setFontSize(8);
-      pdf.text('Página ' + pageNumber + ' de ' + pdf.internal.getNumberOfPages(), wmm/2, hmm - FOOTER_MM/2, { align:'center' });
-    };
-
-    // 7) AutoTable: usa tu HTML, repite CABECERA en TODAS las páginas
-    const usableWidthMM = wmm - LEFT_MM - RIGHT_MM;
-
-    // Fijamos los anchos proporcionales en mm para que todas las páginas coincidan
-    const columnStyles = {};
-    headCells.forEach((th, i) => {
-      columnStyles[i] = { cellWidth: usableWidthMM * (cellWidthsPx[i] / totalPx) };
     });
-
-    const headStyles = { fillColor: [240,240,240], textColor: [0,0,0], halign: 'left', fontStyle: 'bold', fontSize: 9 };
-    const bodyStyles = { fontSize: 9, cellPadding: 2, overflow: 'linebreak' };
-
-    pdf.autoTable({
-      html: tableEl,                           // lee <thead>/<tbody> de tu clon
-      startY: START_Y,                         // tabla empieza bajo el header
-      margin: { left: LEFT_MM, right: RIGHT_MM, bottom: FOOTER_MM },
-      styles: bodyStyles,
-      headStyles,
-      columnStyles,
-      theme: 'grid',
-      showHead: 'everyPage',                   // 👈 AutoTable repite cabecera en TODAS
-      rowPageBreak: 'avoid',                   // intenta no partir filas
-      willDrawPage: drawPageDecor              // solo header/footer globales (sin cabecera manual)
-    });
-
-    pdf.save('informe.pdf');
-    clone.remove();
-  });
-});
-</script>
+    </script>    
+  

@@ -1,45 +1,381 @@
 <% title = 'Informes y certificados' %>
 <% hero = false %>
 
-<div class="container my-4">
-  <div class="row justify-content-center">
-    <div class="col-12">
-      <div class="bg-transparent border-0 p-0 shadow-none">
-        <form action="/informes/horas" method="GET" class="row gx-3 gy-2 align-items-center">
-          <div class="col-auto">
-            <label for="grupo" class="form-label fw-bold">Grupo</label>
-            <select id="grupo" name="grupo" class="form-select form-select-sm">
-              <option value="" selected>Todos</option>
-              <% grupos.forEach(g => { %>
-                <option value="<%= g.id %>"><%= g.nombre %></option>
-              <% }) %>
-            </select>
-          </div>
-          <div class="col-auto">
-            <label for="instrumento" class="form-label fw-bold">Instrumento</label>
-            <select id="instrumento" name="instrumento" class="form-select form-select-sm">
-              <option value="" selected>Todos</option>
-              <% instrumentos.forEach(i => { %>
-                <option value="<%= i.id %>"><%= i.nombre %></option>
-              <% }) %>
-            </select>
-          </div>
-          <div class="col-auto">
-            <label for="fecha" class="form-label fw-bold">Fecha inicio</label>
-            <input type="date" id="fecha" name="fecha" class="form-control form-control-sm" required>
-          </div>
-          <div class="col-auto">
-            <label for="fecha_fin" class="form-label fw-bold">Fecha fin</label>
-            <input type="date" id="fecha_fin" name="fecha_fin" class="form-control form-control-sm">
-          </div>
-          <div class="col-auto d-grid">
-            <button type="submit" formaction="/informes/horas" formmethod="GET" class="btn-main-blanco px-4 py-2">% Horas</button>
-          </div>
-        </form>
+<div id="ic-wrap" class="container my-4">
+
+  <!-- ====== ESTILOS ====== -->
+  <style>
+    :root{
+      /* Naranja corporativo */
+      --accent-50:  #fff6e8;
+      --accent-100: #ffeed7;
+      --accent-200: #ffe0b3;
+      --accent-300: #ffd08a;
+      --accent-400: #ffb554;
+      --accent-500: #ff9500; /* principal */
+      --accent-600: #e07f00;
+      --accent-700: #c26c00;
+      --text-main:  #212529;
+      --muted:      #6c757d;
+      --border:     rgba(0,0,0,.08);
+      --shadow:     0 1px 2px rgba(0,0,0,.04);
+      --shadow-lg:  0 6px 18px rgba(0,0,0,.08);
+    }
+
+    /* Contenedor un poco más ancho en desktop */
+    @media (min-width: 992px){
+      #ic-wrap.container{ max-width: 1320px; }
+    }
+
+    .filtros-card{
+      background:#fff; color:var(--text-main);
+      border:1px solid var(--border);
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+      padding: 14px 16px 18px;
+    }
+
+    /* Título dentro del contenedor */
+    .filtros-header{
+      display:flex; align-items:center; justify-content:space-between; gap: 12px;
+      margin-bottom: 10px;
+    }
+    .filtros-header .h1-titulo{
+      margin:0;
+      font-size: clamp(1.4rem, 1.1rem + 1.2vw, 2rem);
+      font-weight: 700;
+      color: var(--text-main);
+    }
+    .volver-link{
+      color: var(--accent-700); text-decoration:none; font-weight:600;
+    }
+    .volver-link:hover{ text-decoration:underline; }
+
+    /* Labels y campos — buen contraste */
+    .filtros-card .form-label{
+      color: var(--text-main);
+      font-weight: 600;
+      margin-bottom: .35rem;
+    }
+
+    /* Inputs de fecha: 100% en móvil; más estrechos en desktop */
+    .date-input{
+      width: 100%;
+      min-width: 140px;
+      max-width: 100%;
+    }
+    @media (min-width: 992px){
+      .date-input{
+        width: 10.5rem !important;
+        min-width: 10.5rem !important;
+        padding-left: .35rem !important;
+        padding-right: .35rem !important;
+        font-size: .9rem;
+        display: inline-block;
+      }
+      .date-input::-webkit-datetime-edit{ padding: 0; }
+      .date-input::-webkit-calendar-picker-indicator{ padding: 0 .15rem; }
+    }
+
+    /* Chips de rango */
+    .chips { display:flex; gap:.5rem; flex-wrap:wrap; }
+    .chip{
+      background: var(--accent-100);
+      color: var(--accent-700);
+      border: 1px solid var(--accent-200);
+      border-radius: 999px;
+      padding: .35rem .7rem;
+      font-size: .85rem;
+      cursor: pointer; user-select:none;
+      transition: background .15s ease, border-color .15s ease, color .15s ease, transform .05s ease;
+    }
+    .chip:hover{ background: var(--accent-200); }
+    .chip:active{ transform: scale(.98); }
+    .chip.active{
+      background: var(--accent-400);
+      color:#5b2b00;
+      border-color: var(--accent-500);
+    }
+
+    /* Grid de tarjetas de acción (más ancho) */
+    .action-grid{
+      display: grid; gap: 16px; margin-top: 14px;
+      grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+    }
+    @media (min-width: 1400px){
+      .action-grid{ grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); }
+    }
+
+    .action-card{
+      width:100%;
+      display:flex; align-items:center; gap:14px;
+      text-align:left;
+      background: linear-gradient(180deg,#ffffff, #fdfcfa);
+      border:1px solid var(--border);
+      border-radius: 16px;
+      padding: 14px 16px;
+      box-shadow: var(--shadow);
+      transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+      color: inherit; text-decoration: none;
+    }
+    .action-card:hover, .action-card:focus{
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-lg);
+      border-color: var(--accent-200);
+      text-decoration: none;
+    }
+
+    .icon-badge{
+      width: 44px; height: 44px; border-radius: 999px; flex-shrink: 0;
+      display:flex; align-items:center; justify-content:center;
+      background: var(--accent-100);
+      border: 1px solid var(--accent-200);
+      color: var(--accent-700);
+    }
+    .action-title{ font-weight: 700; margin:0; color: var(--text-main); }
+    .action-desc{ margin:.15rem 0 0; color: var(--muted); font-size:.92rem; }
+    .req-line{ margin:.25rem 0 0; }
+    .badge-soft{
+      display:inline-block;
+      background: var(--accent-100);
+      color: var(--accent-700);
+      border: 1px solid var(--accent-300);
+      padding: .18rem .5rem;
+      border-radius: 999px;
+      font-size: .78rem;
+      font-weight: 600;
+    }
+    .action-card { text-decoration: none; color: inherit; }
+    .action-card:hover, .action-card:focus { text-decoration: none; }
+  </style>
+
+  <!-- ====== FORMULARIO + TARJETAS ====== -->
+  <form id="filtros-form" action="/informes/horas" method="GET" class="filtros-card">
+    <!-- Título dentro del contenedor -->
+    <div class="filtros-header">
+      <h1 class="h1-titulo"><%= title %></h1>
+    </div>
+
+    <!-- Fila 1: Grupo + Instrumento -->
+    <div class="row g-3 align-items-end">
+      <div class="col-12 col-md-6">
+        <label for="grupo" class="form-label">Grupo</label>
+        <select id="grupo" name="grupo" class="form-select form-select-sm">
+          <option value="todos" selected>Todos</option>
+          <option value="ninguno">Ninguno</option> <!-- 👈 para listados sin alumnos -->
+          <% grupos.forEach(g => { %>
+            <option value="<%= g.id %>"><%= g.nombre %></option>
+          <% }) %>
+        </select>
+      </div>
+
+      <div class="col-12 col-md-6">
+        <label for="instrumento" class="form-label">Instrumento</label>
+        <select id="instrumento" name="instrumento" class="form-select form-select-sm">
+          <option value="" selected>Todos</option>
+          <% instrumentos.forEach(i => { %>
+            <option value="<%= i.id %>"><%= i.nombre %></option>
+          <% }) %>
+        </select>
       </div>
     </div>
-  </div>
+
+    <!-- Fila 2: Fechas (4 columnas) -->
+    <div class="row g-3 align-items-end mt-0">
+      <div class="col-12 col-sm-6 col-lg-3">
+        <label for="fecha" class="form-label">Fecha inicio</label>
+        <input type="date" id="fecha" name="fecha" class="form-control form-control-sm date-input">
+      </div>
+      <div class="col-12 col-sm-6 col-lg-3">
+        <label for="fecha_fin" class="form-label">Fecha fin</label>
+        <input type="date" id="fecha_fin" name="fecha_fin" class="form-control form-control-sm date-input">
+      </div>
+      <div class="col-12 col-lg-6">
+        <label class="form-label">Rango rápido</label>
+        <div class="chips">
+          <span class="chip" data-range="30d">Últ. 30 días</span>
+          <span class="chip" data-range="q">Últ. trimestre</span>
+          <span class="chip" data-range="ytd">Año actual</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Fichas -->
+    <div class="action-grid">
+      <!-- Informes guardados (histórico) -->
+      <a href="/informes/lista" class="action-card" aria-label="Ir al listado de informes guardados">
+        <div class="icon-badge" aria-hidden="true">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"
+              viewBox="0 0 16 16" fill="currentColor">
+            <path d="M2 4.5a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5zm0 4a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5zm0 4a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1 0 1z"/>
+          </svg>
+        </div>
+        <div>
+          <p class="action-title">Informes guardados</p>
+          <p class="action-desc">Consulta todos los informes y listados generados hasta la fecha.</p>
+          <p class="req-line"><span class="badge-soft">Histórico completo</span></p>
+        </div>
+      </a>
+
+      <!-- Listado / Tabla dinámica (lleva filtros) -->
+      <a href="#" id="cardFicha" class="action-card">
+        <div class="icon-badge" aria-hidden="true">
+          <!-- icono "tabla" -->
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"
+              viewBox="0 0 16 16">
+            <path d="M1 2.5A1.5 1.5 0 0 1 2.5 1h11A1.5 1.5 0 0 1 15 2.5v11A1.5 1.5 0 0 1 13.5 15h-11A1.5 1.5 0 0 1 1 13.5v-11zM2 5h12V2.5a.5.5 0 0 0-.5-.5H2.5a.5.5 0 0 0-.5.5V5zm12 1H2v7.5a.5.5 0 0 0 .5.5H5V6h9zM6 14h3V6H6v8zm4 0h3V6h-3v8z"/>
+          </svg>
+        </div>
+        <div>
+          <p class="action-title">Listado / Tabla dinámica</p>
+          <p class="action-desc">Construye listados y tablas eligiendo registros y campos, con guardado rápido. Para generar listados sin alumnos únicamente seleccionar Ninguno en grupo</p>
+          <p class="req-line"><span class="badge-soft">Requiere: Fecha, grupo e instrumento</span></p>
+        </div>
+      </a>
+
+      <!-- Porcentaje de asistencia -->
+      <button type="submit" class="action-card" formaction="/informes/horas" formmethod="GET" id="cardHoras">
+        <div class="icon-badge" aria-hidden="true">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"
+               viewBox="0 0 16 16"><path d="M8 3.5a.5.5 0 0 1 .5.5v4.25l3 1.8a.5.5 0 0 1-.5.866l-3.5-2.1A.5.5 0 0 1 7.25 8V4a.5.5 0 0 1 .5-.5z"/><path d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16m0-1A7 7 0 1 1 8 1a7 7 0 0 1 0 14"/></svg>
+        </div>
+        <div>
+          <p class="action-title">Porcentaje de asistencia</p>
+          <p class="action-desc">Genera el informe a partir de los filtros.</p>
+          <p class="req-line">
+            <span class="badge-soft">Requiere: Fechas, grupo e instrumento</span>
+          </p>
+        </div>
+      </button>
+
+      <!-- Distribución (últimas pruebas de atril) -->
+      <button type="button" id="cardPlano" class="action-card">
+        <div class="icon-badge" aria-hidden="true">
+          <!-- mapa -->
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"
+               viewBox="0 0 16 16"><path d="M15.817.113A.5.5 0 0 1 16 .5v13.99a.5.5 0 0 1-.683.472L10 12.566l-4.64 2.022a.5.5 0 0 1-.36 0L.183 13.887A.5.5 0 0 1 0 13.5V-.49a.5.5 0 0 1 .683-.472L6 1.434l4.64-2.022a.5.5 0 0 1 .36 0zM6 2.434l-4-1.74V13.566l4 1.74zM10 1.566l-4 1.74v11.74l4-1.74zM15 13.566V1.26l-4-1.74v12.306z"/></svg>
+        </div>
+        <div>
+          <p class="action-title">Distribución (últimas pruebas de atril)</p>
+          <p class="action-desc">Abre el PDF más reciente del grupo seleccionado.</p>
+          <p class="req-line"><span class="badge-soft">Requiere: Grupo</span></p>
+        </div>
+      </button>
+    </div>
+  </form>
+
   <div class="volver-bloque-izquierda mt-4">
-    <a href="/informes" class="enlace-final">← Volver a Informes</a>
+    <a href="/" class="volver-link">← Volver al inicio</a>
   </div>
 </div>
+
+<script>
+  (function () {
+    const form       = document.getElementById('filtros-form');
+    const elGrupo    = document.getElementById('grupo');
+    const elInstr    = document.getElementById('instrumento');
+    const elFecha    = document.getElementById('fecha');
+    const elFechaFin = document.getElementById('fecha_fin');
+    const cardPlano  = document.getElementById('cardPlano');
+    cardFicha?.addEventListener('click', (e) => {
+      e.preventDefault();
+      const qs = new URLSearchParams();
+      if (elGrupo?.value)    qs.set('grupo', elGrupo.value);
+      if (elInstr?.value)    qs.set('instrumento', elInstr.value);
+      if (elFecha?.value)    qs.set('fecha', elFecha.value);
+      if (elFechaFin?.value) qs.set('fecha_fin', elFechaFin.value);
+
+      qs.set('_ts', Date.now()); // cache-buster para abrir la ficha “limpia”
+      location.href = '/informes/ficha?' + qs.toString();
+    });
+
+    // ==== Chips: rangos rápidos ====
+    const fmt = d => d.toISOString().slice(0,10);
+    const setRange = (a, b) => { elFecha.value = fmt(a); elFechaFin.value = fmt(b); };
+    const setActive = chip => {
+      document.querySelectorAll('.chip').forEach(c=>c.classList.remove('active'));
+      chip?.classList.add('active');
+    };
+
+    document.querySelectorAll('.chip[data-range]').forEach(chip => {
+      chip.addEventListener('click', () => {
+        const now = new Date();
+        const end = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const kind = chip.dataset.range;
+
+        if (kind === '30d') {
+          const start = new Date(end); start.setDate(start.getDate() - 29);
+          setRange(start, end);
+        } else if (kind === 'q') {
+          // Último trimestre natural completo anterior
+          const m = end.getMonth(); const q = Math.floor(m/3); // 0..3
+          const prevQ = (q + 3) % 4; const y = q===0 ? end.getFullYear()-1 : end.getFullYear();
+          const startM = prevQ * 3; const endM = startM + 2;
+          const start = new Date(y, startM, 1);
+          const finish = new Date(y, endM + 1, 0); // último día del mes
+          setRange(start, finish);
+        } else if (kind === 'ytd') {
+          setRange(new Date(end.getFullYear(), 0, 1), end);
+        }
+        setActive(chip);
+        updateURL();
+      });
+    });
+
+    // ==== Plano (avisa si falta grupo o si es 'ninguno') ====
+    cardPlano?.addEventListener('click', () => {
+      const grupo = elGrupo?.value;
+      if (!grupo || grupo === 'ninguno') { alert('Selecciona un grupo válido primero.'); return; }
+      window.open(`/plano/latest/${encodeURIComponent(grupo)}.pdf`, '_blank', 'noopener');
+    });
+
+    // ==== Porcentaje: solo requiere Fecha ====
+    form?.addEventListener('submit', (e) => {
+      const target = e.submitter;
+      if (elFecha.value && !elFechaFin.value) elFechaFin.value = elFecha.value; // comodidad
+
+      if (target && target.getAttribute('formaction') === '/informes/horas') {
+        if (!elFecha.value) {
+          e.preventDefault();
+          alert('Para % Horas de asistencia falta: Fecha inicio');
+          return false;
+        }
+      }
+      updateURL(); // persistir filtros al enviar
+    });
+
+    // ==== Listado / Tabla dinámica: llevar filtros a /informes/ficha ====
+    cardFicha?.addEventListener('click', (e) => {
+      e.preventDefault();
+      const qs = new URLSearchParams();
+      if (elGrupo?.value) qs.set('grupo', elGrupo.value);          // "" = Todos -> no se envía
+      if (elInstr?.value) qs.set('instrumento', elInstr.value);
+      if (elFecha?.value) qs.set('fecha', elFecha.value);
+      if (elFechaFin?.value) qs.set('fecha_fin', elFechaFin.value);
+      location.href = '/informes/ficha' + (qs.toString() ? ('?' + qs.toString()) : '');
+    });
+
+    // ==== Persistir filtros en la URL (y restaurarlos) ====
+    const campos = ['grupo','instrumento','fecha','fecha_fin'];
+    function loadFromURL(){
+      const p = new URLSearchParams(location.search);
+      campos.forEach(id=>{
+        const el = document.getElementById(id);
+        if (el && p.has(id)) el.value = p.get(id);
+      });
+    }
+    function updateURL(){
+      const p = new URLSearchParams(location.search);
+      campos.forEach(id=>{
+        const el = document.getElementById(id);
+        if (!el) return;
+        if (el.value) p.set(id, el.value); else p.delete(id);
+      });
+      history.replaceState(null,'', `${location.pathname}?${p.toString()}`);
+    }
+    loadFromURL();
+    campos.forEach(id=>{
+      document.getElementById(id)?.addEventListener('change', updateURL);
+    });
+  })();
+</script>

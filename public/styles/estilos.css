@@ -547,6 +547,40 @@ h1, h2, h3, h4, h5,p {
   border-bottom: 1px solid #000;
   text-align: left;
 }
+/* Mantén el ancho: nada “salta” al ocultar */
+.tabla-estilizada.table-stable { table-layout: fixed; width: 100%; }
+.tabla-estilizada th, .tabla-estilizada td { vertical-align: middle; }
+
+/* Anchos coherentes (ajusta a tu gusto) */
+th.col-musico, td.col-musico { width: 200px; min-width: 200px; text-align: left; }
+th.col-grupo,  td.col-grupo  { width: 140px; min-width: 140px; }
+th.col-inst,   td.col-inst   { width: 150px; min-width: 150px; }
+
+/* Ocultar preservando ancho: solo ocultamos contenido */
+.hide-grupo  th.col-grupo,  .hide-grupo  td.col-grupo,
+.hide-inst   th.col-inst,   .hide-inst   td.col-inst {
+  opacity: 0; pointer-events: none;
+  transition: opacity .15s ease;
+}
+
+/* Evita “brinco” de los botones si hay/ no hay filas */
+#acciones-informe { min-height: 38px; }  /* altura aprox. de la botonera */
+ /* Colapsa completamente Grupo/Instrumento cuando el <table> tenga las clases */
+ #tabla-principal.hide-grupo th.col-grupo,
+ #tabla-principal.hide-grupo td.col-grupo,
+ #tabla-principal.hide-inst  th.col-inst,
+ #tabla-principal.hide-inst  td.col-inst {
+   display: none !important;
+ }
+
+ /* Un pelín de suavidad (no obliga, pero ayuda a que no “salte”) */
+ #tabla-principal th, #tabla-principal td {
+   transition: width .18s ease, opacity .18s ease;
+ }
+ /* Evita “bailes” verticales de la botonera cuando no hay filas */
+ #acciones-informe { min-height: 40px; }
+ 
+
 /* fila como enlace */
 .fila-enlace {
   cursor: pointer;
@@ -777,85 +811,145 @@ h1, h2, h3, h4, h5,p {
 .fc-daygrid-event-dot {
   display: none !important;
 }
-
-/*Modal calendario ********************************************************************/
-/* estilos_gestion.css - solo reglas CSS, sin HTML */
-
-/* Modal personalizado */
-.header-naranja {
-  background-color: var(--naranja);
-  color: white;
-  padding: 1rem 1.25rem;
+/*Listado alumnos y docentes cabecera**************************************************/
+ /* Barra de cabecera compacta alineada con el formulario */
+ .header-compact {
+  max-width: 55rem;      /* ajusta si tu .formulario-centrado usa otro ancho */
+  margin: 0 auto 12px;   /* centrado y separada del form */
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border-top-left-radius: 0.5rem;
-  border-top-right-radius: 0.5rem;
+  gap: .75rem;
 }
-
-.header-naranja .modal-title {
-  font-size: 1.25rem;
-  font-weight: bold;
+.header-compact .h1-titulo {
   margin: 0;
-  color: white;
+  font-size: clamp(1.25rem, 1rem + 1.2vw, 1.8rem);
+  line-height: 1.15;
 }
 
-.bg-white {
-  background-color: #ffffff !important; /* fondo blanco para el modal */
+/* Fila de filtros compacta (opcionalmente en una fila en pantallas medianas) */
+#filtro-form.formulario-centrado {
+  max-width: 55rem;      /* igual que la cabecera para alinear */
+  margin-top: 0;         /* pegado justo bajo la cabecera */
 }
-.text-black {
-  color: #000000 !important; /* texto negro para labels y campos */
+#filtro-form .campo-filtro {
+  display: flex;
+  flex-direction: column;
+  gap: .25rem;
+  margin-bottom: .5rem;
 }
-
-/* Botones del modal */
-.btn-primary-negro {
-  background-color: #000000;
-  color: #ffffff;
-  border: none;
-  padding: 0.5rem 1rem;
-  border-radius: 0.5rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: transform 0.2s, box-shadow 0.2s;
-}
-.btn-primary-negro:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+@media (min-width: 768px) {
+  #filtro-form {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: .75rem 1rem;
+    align-items: end;
+  }
 }
 
-.btn-danger {
-  background-color: #FF0000;
-  color: #ffffff;
-  border: none;
-  padding: 0.5rem 1rem;
-  border-radius: 0.5rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: transform 0.2s, box-shadow 0.2s;
+/* Botón principal consistente */
+.btn-add {
+  white-space: nowrap;
 }
-.btn-danger:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+/*Modal calendario ********************************************************************/
+/* ===== Estilos del modal ===== */
+:root{ --accent: #ff9500; }
+
+.modal-sheet .modal-content{
+  background: #fff;                 /* sin transparencias */
+  border: 1px solid rgba(0,0,0,.06);
+  border-radius: 18px;
+  box-shadow: 0 16px 40px rgba(0,0,0,.14);
+  overflow: hidden;                 /* cabecera redondeada superior */
 }
 
-/* Asegurar que form-check-input y form-select funcionen */
-.form-check-input,
-.form-select,
-.form-control {
-  cursor: pointer;
+/* Cabecera negra con acento naranja */
+.sheet-head{
+  position: relative;
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px 16px;
+  background: #000;
+  color: var(--accent);
+}
+.sheet-head .sheet-accent{
+  position: absolute; left: 0; right: 0; top: 0; height: 6px;
+  background: var(--accent);        /* franja naranja superior */
+}
+.sheet-head .modal-title{
+  margin: 0;
+  color: var(--accent);
+  font-weight: 800;
+  letter-spacing: .2px;
 }
 
-/* Asegurar que el modal no se cierre al hacer clic dentro */
-.modal-content {
-  pointer-events: auto;
-  background-color: #FF9501;
+/* Aspa en naranja */
+.sheet-head .btn-close{
+  margin-left: auto;
+  --bs-btn-close-bg: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 16 16'%3E%3Cpath stroke='%23ff9500' stroke-linecap='round' stroke-width='1.8' d='M3.2 3.2 12.8 12.8M12.8 3.2 3.2 12.8'/%3E%3C/svg%3E");
+  width: 1.2rem; height: 1.2rem; opacity: 1; filter: none;
+}
+.sheet-head .btn-close:hover{ opacity: .85; }
+
+/* Cuerpo y pie sin transparencias */
+.modal-body{ background: #fff; }
+.modal-footer{ background:#fff; border-top: 1px solid rgba(0,0,0,.06); }
+
+/* Tipografía de labels y ayudas */
+.form-label{ font-weight: 600; color: #111; }
+.form-text{ color: #6c757d; }
+
+/* Switch QR en negro (no azul) */
+.form-check-input{ border-color: #222; }
+.form-check-input:checked{ background-color: #000; border-color: #000; }
+.form-check-input:focus{ box-shadow: 0 0 0 .2rem rgba(0,0,0,.15); border-color:#000; }
+
+/* Campos de fecha: separación vertical pareja */
+.when-row .form-label{ margin-bottom: .35rem; }
+
+
+/* Fechas en dos columnas responsivas */
+.modal-sheet .when-row{ row-gap: .75rem; }
+
+/* Switch QR en negro (sin azul Bootstrap) */
+.modal-sheet .form-switch .form-check-input{
+  width: 2.6em; height: 1.3em; cursor:pointer;
+}
+.modal-sheet .form-check-input:checked{
+  background-color:#000; border-color:#000;
+}
+.modal-sheet .form-check-input:focus{
+  box-shadow: 0 0 0 .2rem rgba(0,0,0,.18);
+  border-color:#000;
 }
 
-/* Mantener backdrop activo */
-.modal {
-  pointer-events: auto;
+/* Más separación del footer y un pelín entre el toggle y el texto */
+.qr-block{ margin-bottom: 16px; }       /* separa del botón Guardar */
+.form-switch .form-check-label{ margin-left: .5rem; }  /* separa del switch */
+/* Título de la cabecera en blanco */
+.modal-sheet .sheet-head .modal-title{
+  color: #fff !important;
 }
 
+/* (opcional) aspa en blanco también */
+.modal-sheet .sheet-head .btn-close{
+  filter: invert(1) grayscale(100%) brightness(110%);
+  opacity: .9;
+}
+.modal-sheet .sheet-head .btn-close:hover{ opacity: 1; }
+
+/* Texto del switch en negro y con aire */
+.qr-block .form-check-label{
+  color: #000 !important;
+  margin-left: .5rem;     /* separa del switch */
+}
+.qr-block{ margin-bottom: 16px; } /* separa del footer/botones */
+
+/* Botones */
+.btn-primary-negro{
+  background:#212529; color:#fff; border:none; border-radius:.6rem; padding:.45rem .8rem; font-weight:700;
+}
+.btn-primary-negro:hover{ filter:brightness(.95); }
+.btn-danger{ border-radius:.6rem; padding:.45rem .8rem; font-weight:700; }
 
 /*Finanzas ********************************************************************/
 /* Toggle resumen financiero */

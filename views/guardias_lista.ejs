@@ -1,139 +1,322 @@
-<% title = 'Planilla de Guardias' %>
-<% hero = false %>
+<% title = 'Planilla de guardias' %>
+<% hero  = false %>
 
-<h1 class="text-center mb-4">Planilla de Guardias</h1>
+<div id="g-wrap" class="container my-4">
+  <!-- ====== ESTILOS ====== -->
+  <style>
+    :root{
+      --accent-50:#fff6e8; --accent-100:#ffeed7; --accent-200:#ffe0b3; --accent-300:#ffd08a;
+      --accent-400:#ffb554; --accent-500:#ff9500; --accent-600:#e07f00; --accent-700:#c26c00;
+      --text-main:#212529; --muted:#6c757d; --border:rgba(0,0,0,.08);
+      --shadow:0 1px 2px rgba(0,0,0,.04); --shadow-lg:0 6px 18px rgba(0,0,0,.08);
+    }
+    @media (min-width: 992px){ #g-wrap.container{ max-width:1320px; } }
 
-<!-- Filtros + acciones -->
-<div class="mb-4">
-  <form id="filtro-form" method="GET" action="/guardias" class="d-flex flex-column gap-3">
-    <div class="d-flex flex-wrap gap-3 justify-content-center">
-      <div class="campo-filtro">
-        <label for="desde" class="form-centrado-etiqueta">Desde</label>
-        <input type="date" id="desde" name="desde" value="<%= desde %>" class="form-centrado-select" />
-      </div>
-      <div class="campo-filtro">
-        <label for="hasta" class="form-centrado-etiqueta">Hasta</label>
-        <input type="date" id="hasta" name="hasta" value="<%= hasta %>" class="form-centrado-select" />
-      </div>
-      <div class="campo-filtro">
-        <label for="grupo" class="form-centrado-etiqueta">Grupo</label>
-        <select id="grupo" name="grupo" class="form-centrado-select">
+    .filtros-card{ background:#fff; color:var(--text-main); border:1px solid var(--border);
+      border-radius:18px; box-shadow:var(--shadow); padding:14px 16px 18px; }
+    .filtros-header{ display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:10px; }
+    .filtros-header .h1-titulo{ margin:0; font-size:clamp(1.4rem,1.1rem + 1.2vw,2rem); font-weight:700; color:var(--text-main); }
+
+    .filtros-card .form-label{ color:var(--text-main); font-weight:600; margin-bottom:.35rem; }
+    .date-input{ width:100%; min-width:140px; max-width:100%; }
+    @media (min-width: 992px){
+      .date-input{ width:10.5rem !important; min-width:10.5rem !important; padding-left:.35rem !important; padding-right:.35rem !important; font-size:.9rem; display:inline-block; }
+      .date-input::-webkit-datetime-edit{ padding:0; }
+      .date-input::-webkit-calendar-picker-indicator{ padding:0 .15rem; }
+    }
+
+    .chips{ display:flex; gap:.5rem; flex-wrap:wrap; }
+    .chip{ background:var(--accent-100); color:var(--accent-700); border:1px solid var(--accent-200);
+      border-radius:999px; padding:.35rem .7rem; font-size:.85rem; cursor:pointer; user-select:none;
+      transition:background .15s, border-color .15s, color .15s, transform .05s; }
+    .chip:hover{ background:var(--accent-200); }
+    .chip:active{ transform:scale(.98); }
+    .chip.active{ background:var(--accent-400); color:#5b2b00; border-color:var(--accent-500); }
+
+    .action-grid{ display:grid; gap:16px; margin-top:14px; grid-template-columns:repeat(auto-fit,minmax(340px,1fr)); }
+    @media (min-width: 1400px){ .action-grid{ grid-template-columns:repeat(auto-fit,minmax(380px,1fr)); } }
+
+    .action-card{ width:100%; display:flex; align-items:center; gap:14px; text-align:left;
+      background:linear-gradient(180deg,#ffffff,#fdfcfa); border:1px solid var(--border);
+      border-radius:16px; padding:14px 16px; box-shadow:var(--shadow);
+      transition:transform .15s, box-shadow .15s, border-color .15s; color:inherit; text-decoration:none; }
+    .action-card:hover,.action-card:focus{ transform:translateY(-2px); box-shadow:var(--shadow-lg); border-color:var(--accent-200); text-decoration:none; }
+
+    .icon-badge{ width:44px; height:44px; border-radius:999px; flex-shrink:0; display:flex; align-items:center; justify-content:center;
+      background:var(--accent-100); border:1px solid var(--accent-200); color:var(--accent-700); }
+    .action-title{ margin:0; font-weight:700; color:var(--text-main); }
+    .action-desc{ margin:.15rem 0 0; color:var(--muted); font-size:.92rem; }
+    .badge-soft{ display:inline-block; background:var(--accent-100); color:var(--accent-700); border:1px solid var(--accent-300);
+      padding:.18rem .5rem; border-radius:999px; font-size:.78rem; font-weight:600; }
+  </style>
+
+  <!-- ====== FORMULARIO + TARJETAS ====== -->
+  <form id="filtros-form" class="filtros-card" action="/guardias/mostrar" method="GET">
+    <div class="filtros-header">
+      <h1 class="h1-titulo"><%= title %></h1>
+    </div>
+
+    <!-- Fila 1: Grupo -->
+    <div class="row g-3 align-items-end">
+      <div class="col-12 col-md-6">
+        <label for="grupo" class="form-label">Grupo</label>
+        <select id="grupo" name="grupo" class="form-select form-select-sm">
           <option value="">Todos</option>
-          <% grupos.forEach(function(g) { %>
-            <option value="<%= g.id %>" <%= grupo == g.id ? 'selected' : '' %>><%= g.nombre %></option>
+          <% (grupos||[]).forEach(g => { %>
+            <option value="<%= g.id %>" <%= String(grupo||'')===String(g.id)?'selected':'' %>><%= g.nombre %></option>
           <% }) %>
         </select>
       </div>
     </div>
 
-    <!-- BOTONES EN LA SEGUNDA FILA CENTRADOS -->
-    <div class="d-flex gap-3 justify-content-center mt-3">
-      <button type="submit" class="btn-main-blanco px-4 py-2">Filtrar</button>
-      <button formaction="/guardias/generar-multiples" formmethod="POST" class="btn-main-blanco fw-bold px-4 py-2">
-        Asignar guardias múltiples
-      </button>
-      <button type="button" onclick="validarYGenerarPDF()" class="btn-main-blanco fw-bold px-4 py-2">
-        Generar PDF
-      </button>
+    <!-- Fila 2: Fechas (Desde / Hasta + chips) -->
+    <div class="row g-3 align-items-end mt-0">
+      <div class="col-12 col-sm-6 col-lg-3">
+        <label for="desde" class="form-label">Fecha inicio</label>
+        <input type="date" id="desde" name="desde" value="<%= typeof desde!=='undefined'?desde:'' %>" class="form-control form-control-sm date-input">
+      </div>
+      <div class="col-12 col-sm-6 col-lg-3">
+        <label for="hasta" class="form-label">Fecha fin</label>
+        <input type="date" id="hasta" name="hasta" value="<%= typeof hasta!=='undefined'?hasta:'' %>" class="form-control form-control-sm date-input">
+      </div>
+      <div class="col-12 col-lg-6">
+        <label class="form-label">Rango rápido</label>
+        <div class="chips">
+          <span class="chip" data-range="mes">Este mes</span>
+          <span class="chip" data-range="trim">Este trimestre</span>
+          <span class="chip" data-range="anio">Este año</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tarjetas de acción -->
+    <div class="action-grid">
+      <!-- Ver planilla -->
+      <a href="#" id="cardVer" class="action-card" aria-label="Ver planilla de guardias">
+        <div class="icon-badge" aria-hidden="true">
+          <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="1.5" y="3" width="13" height="11" rx="2"></rect>
+            <path d="M1.5 6h13M6 6v8M10 6v8"></path>
+          </svg>
+        </div>
+        <div>
+          <p class="action-title">Ver planilla</p>
+          <p class="action-desc">Mostrar tabla filtrada de guardias.</p>
+          <span class="badge-soft">Usa los filtros de arriba</span>
+        </div>
+      </a>
+
+      <!-- Asignar guardias múltiples -->
+      <a href="#" id="cardAsignar" class="action-card" aria-label="Asignar guardias múltiples">
+        <div class="icon-badge" aria-hidden="true">
+          <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M10.5 13v-1a3 3 0 0 0-3-3H5a3 3 0 0 0-3 3v1"/><circle cx="6.5" cy="5.5" r="2.2"/>
+            <path d="M13 5.5v4M15 7.5h-4"/>
+          </svg>
+        </div>
+        <div>
+          <p class="action-title">Asignar guardias múltiples</p>
+          <p class="action-desc">Asignación automática en el rango de fechas.</p>
+          <span class="badge-soft">Requiere: fechas</span>
+        </div>
+      </a>
+
+      <!-- Generar PDF -->
+      <a href="#" id="cardPDF" class="action-card" aria-label="Generar PDF">
+        <div class="icon-badge" aria-hidden="true">
+          <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9.5 1.5H4A1.5 1.5 0 0 0 2.5 3v10A1.5 1.5 0 0 0 4 14.5h8A1.5 1.5 0 0 0 13.5 13V5.5z"/>
+            <path d="M9.5 1.5V5.5h4M5.5 9h5M5.5 12h3"/>
+          </svg>
+        </div>
+        <div>
+          <p class="action-title">Generar PDF</p>
+          <p class="action-desc">Informe por grupo y periodo.</p>
+          <span class="badge-soft">Requiere: fechas y grupo</span>
+        </div>
+      </a>
+
+      <!-- Ir a Eventos -->
+      <a href="/eventos" class="action-card" aria-label="Volver a eventos">
+        <div class="icon-badge" aria-hidden="true">
+          <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="1.5" y="2.5" width="13" height="12" rx="2"/><path d="M11.5 1.5v3M4.5 1.5v3M1.5 6.5h13"/>
+          </svg>
+        </div>
+        <div>
+          <p class="action-title">Eventos</p>
+          <p class="action-desc">Abrir calendario.</p>
+        </div>
+      </a>
     </div>
   </form>
-</div>
 
-<% if (guardias.length > 0) { %>
-  <div class="mx-auto" style="max-width: 1200px; padding: 0 1rem;">
-    <div class="table-responsive mt-4">
-      <table class="tabla-estilizada">
-        <thead>
-          <tr>
-            <th>Fecha</th>
-            <th>Evento</th>
-            <th>Grupo</th>
-            <th>Guardia 1</th>
-            <th>Guardia 2</th>
-            <th>Eliminar / sugerir guardia</th>
-          </tr>
-        </thead>
-        <tbody>
-        <% guardias.forEach(g => { %>
-          <tr class="fila-enlace clickable-row <% if (typeof selectedId !== 'undefined' && selectedId == g.guardia_id) { %>fila-seleccionada<% } %>"
-              <% if (g.guardia_id) { %>
-                onclick="location.href='/guardias/editar/<%= g.guardia_id %>?desde=<%= desde %>&hasta=<%= hasta %>'"
-              <% } %>
-          >
-            <td>
-              <%= new Date(g.fecha_inicio).toLocaleString('es-ES', {
-                day: '2-digit', month: '2-digit', year: 'numeric',
-                hour: '2-digit', minute: '2-digit'
-              }).replace(',', '') %>
-            </td>
-            <td><%= g.evento %></td>
-            <td><%= g.grupo %></td>
-            <td><%= g.guardia1 || '-' %></td>
-            <td><%= g.guardia2 || '-' %></td>
-            <td class="text-center" onclick="event.stopPropagation();">
-              <% if (g.guardia_id) { %>
-                <form method="POST" action="/guardias/eliminar/<%= g.guardia_id %>?desde=<%= encodeURIComponent(desde || '') %>&hasta=<%= encodeURIComponent(hasta || '') %>&grupo=<%= encodeURIComponent(grupo || '') %>" onsubmit="event.stopPropagation(); return confirm('¿Eliminar guardia?');" style="display:inline; background-color: transparent;">
-                  <button type="submit" class="btn btn-sm text-danger fw-bold" style="font-size: 1rem; line-height: 1;" onclick="event.stopPropagation();">×</button>
-                </form>
-              <% } else { %>
-                <form method="POST" action="/guardias/generar" style="margin: 0; display: inline; background-color: transparent;">
-                  <input type="hidden" name="evento_id" value="<%= g.evento_id %>">
-                  <input type="hidden" name="desde" value="<%= desde %>">
-                  <input type="hidden" name="hasta" value="<%= hasta %>">
-                  <button type="submit" class="btn-primary-negro btn-sm px-2 py-1" style="font-size: 0.75rem; line-height: 1;">Asignar guardia</button>
-                </form>
-              <% } %>
-            </td>
-          </tr>
-        <% }) %>
-        </tbody>
-      </table> 
-    </div>
+  <div class="volver-bloque-izquierda mt-4">
+    <a href="/" class="enlace-final">← Volver al inicio</a>
   </div>
-<% } else { %>
-  <p class="mt-4" style="text-align: center;">No hay eventos registrados.</p>
-<% } %>
-
-<div class="volver-bloque-izquierda mt-4">
-  <a href="/eventos" class="enlace-final">← Volver a Eventos</a>
 </div>
 
-<!-- Script para validar e invocar PDF -->
 <script>
-function validarYGenerarPDF() {
-  const desde = document.getElementById('desde').value;
-  const hasta = document.getElementById('hasta').value;
-  const grupo = document.getElementById('grupo').value;
+(() => {
+  const form   = document.getElementById('filtros-form');
+  const elDesde= document.getElementById('desde');
+  const elHasta= document.getElementById('hasta');
+  const elGrupo= document.getElementById('grupo');
 
-  if (!desde || !hasta || !grupo) {
-    alert("⚠️ Debes indicar un rango de fechas y un grupo para generar el PDF.");
-    return;
+  const cardVer      = document.getElementById('cardVer');
+  const cardAsignar  = document.getElementById('cardAsignar');
+  const cardPDF      = document.getElementById('cardPDF');
+
+  // RANGOS RÁPIDOS (chips)
+  const fmt = d => d.toISOString().slice(0,10);
+  const setRange = (a,b) => { elDesde.value = fmt(a); elHasta.value = fmt(b); };
+  const setActive = chip => {
+    document.querySelectorAll('.chip').forEach(c=>c.classList.remove('active'));
+    chip?.classList.add('active');
+  };
+  document.querySelectorAll('.chip[data-range]').forEach(chip=>{
+    chip.addEventListener('click', ()=>{
+      const now = new Date();
+      const end = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const kind = chip.dataset.range;
+      if (kind === '30d') {
+        const start = new Date(end); start.setDate(start.getDate() - 29);
+        setRange(start, end);
+      } else if (kind === 'q') {
+        const m = end.getMonth(); const q = Math.floor(m/3);
+        const prevQ = (q + 3) % 4; const y = q===0 ? end.getFullYear()-1 : end.getFullYear();
+        const start = new Date(y, prevQ*3, 1);
+        const finish= new Date(y, prevQ*3 + 3, 0);
+        setRange(start, finish);
+      } else if (kind === 'ytd') {
+        setRange(new Date(end.getFullYear(),0,1), end);
+      }
+      setActive(chip); updateURL();
+    });
+  });
+
+  // Persistir filtros en la URL
+  const campos = ['grupo','desde','hasta'];
+  function loadFromURL(){
+    const p = new URLSearchParams(location.search);
+    campos.forEach(id=>{
+      const el = document.getElementById(id);
+      if (el && p.has(id)) el.value = p.get(id);
+    });
+  }
+  function updateURL(){
+    const p = new URLSearchParams(location.search);
+    campos.forEach(id=>{
+      const el = document.getElementById(id);
+      if (!el) return;
+      if (el.value) p.set(id, el.value); else p.delete(id);
+    });
+    const qs = p.toString();
+    history.replaceState(null, '', `${location.pathname}${qs ? ('?' + qs) : ''}`);
+  }
+  loadFromURL();
+  campos.forEach(id=>document.getElementById(id)?.addEventListener('change', updateURL));
+
+  // Acciones
+  function qsFromFiltros(){
+    const p = new URLSearchParams();
+    if (elDesde.value) p.set('desde', elDesde.value);
+    if (elHasta.value) p.set('hasta', elHasta.value);
+    if (elGrupo.value) p.set('grupo', elGrupo.value);
+    return p.toString();
   }
 
-  const form = document.createElement('form');
-  form.method = 'POST';
-  form.action = '/guardias/informe';
+  // Ver planilla
+  cardVer?.addEventListener('click', (e)=>{
+    e.preventDefault();
+    const qs = qsFromFiltros();
+    location.href = '/guardias/mostrar' + (qs ? ('?' + qs) : '');
+  });
 
-  const inputDesde = document.createElement('input');
-  inputDesde.type = 'hidden';
-  inputDesde.name = 'desde';
-  inputDesde.value = desde;
+  // Asignar múltiples (POST)
+  cardAsignar?.addEventListener('click', (e)=>{
+    e.preventDefault();
+    if (!elDesde.value || !elHasta.value) { alert('Indica un rango de fechas.'); return; }
+    const f = document.createElement('form');
+    f.method = 'POST'; f.action = '/guardias/generar-multiples';
+    for (const [k,v] of Object.entries({desde: elDesde.value, hasta: elHasta.value, grupo: elGrupo.value||''})) {
+      const i = document.createElement('input'); i.type='hidden'; i.name=k; i.value=v;
+      f.appendChild(i);
+    }
+    document.body.appendChild(f); f.submit();
+  });
 
-  const inputHasta = document.createElement('input');
-  inputHasta.type = 'hidden';
-  inputHasta.name = 'hasta';
-  inputHasta.value = hasta;
+  // Generar PDF (POST) — requiere fechas y grupo
+  cardPDF?.addEventListener('click', (e)=>{
+    e.preventDefault();
+    if (!elDesde.value || !elHasta.value || !elGrupo.value) {
+      alert('⚠️ Para el PDF necesitas indicar fechas y un grupo.'); return;
+    }
+    const f = document.createElement('form');
+    f.method = 'POST'; f.action = '/guardias/informe';
+    for (const [k,v] of Object.entries({desde: elDesde.value, hasta: elHasta.value, grupo: elGrupo.value})) {
+      const i = document.createElement('input'); i.type='hidden'; i.name=k; i.value=v;
+      f.appendChild(i);
+    }
+    document.body.appendChild(f); f.submit();
+  });
 
-  const inputGrupo = document.createElement('input');
-  inputGrupo.type = 'hidden';
-  inputGrupo.name = 'grupo';
-  inputGrupo.value = grupo;
-
-  form.appendChild(inputDesde);
-  form.appendChild(inputHasta);
-  form.appendChild(inputGrupo);
-
-  document.body.appendChild(form);
-  form.submit();
-}
+})();
 </script>
+<script>
+  (() => {
+    const elDesde = document.getElementById('desde');
+    const elHasta = document.getElementById('hasta');
+    if (!elDesde || !elHasta) return;
+  
+    const pad = n => String(n).padStart(2, '0');
+    const fmt = (y, m, d) => `${y}-${pad(m+1)}-${pad(d)}`; // m: 0..11
+  
+    function rangoMesActual() {
+      const now  = new Date();
+      const y    = now.getFullYear();
+      const m    = now.getMonth();          // 0..11
+      const last = new Date(y, m + 1, 0).getDate();
+      elDesde.value = fmt(y, m, 1);
+      elHasta.value = fmt(y, m, last);
+    }
+  
+    function rangoTrimestreActual() {
+      const now   = new Date();
+      const y     = now.getFullYear();
+      const m     = now.getMonth();         // 0..11
+      const q     = Math.floor(m / 3);      // 0..3 (Q1=0 -> ene-mar)
+      const mIni  = q * 3;
+      const mFin  = mIni + 2;
+      const last  = new Date(y, mFin + 1, 0).getDate();
+      elDesde.value = fmt(y, mIni, 1);
+      elHasta.value = fmt(y, mFin, last);
+    }
+  
+    function rangoAnioActual() {
+      const y = new Date().getFullYear();
+      elDesde.value = `${y}-01-01`;
+      elHasta.value = `${y}-12-31`;
+    }
+  
+    const setActive = chip => {
+      document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+    };
+  
+    document.querySelectorAll('.chip[data-range]').forEach(chip => {
+      chip.addEventListener('click', () => {
+        const k = chip.dataset.range;
+        if (k === 'mes')  rangoMesActual();
+        if (k === 'trim') rangoTrimestreActual();
+        if (k === 'anio') rangoAnioActual();
+        setActive(chip);
+  
+        // ¿Quieres que se aplique el filtro automáticamente?
+        // document.getElementById('filtro-form')?.submit();
+      });
+    });
+  })();
+  </script>
+  
+

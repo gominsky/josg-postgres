@@ -2,22 +2,16 @@
 <% hero = false %>
 
 <div class="container mt-4">
-  <div class="d-flex justify-content-between align-items-center mb-3">
     <h1 class="h1-titulo"><%= title %></h1>
-    <div>
-      <a href="/informes/certificados" class="btn-main me-2">+ Informes y Certificados</a>
-      <a href="/informes/ficha" class="btn-main">+ Listado dinámico</a>
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+      <input
+        id="busqueda-informes"
+        type="text"
+        placeholder="Buscar por nombre, grupo..."
+        class="form-control"
+        style="max-width: 300px;"
+      >
     </div>
-  </div>
-
-  <div class="d-flex justify-content-center mb-4">
-    <form id="busqueda-form">
-      <div class="campo-filtro">
-        <label for="busqueda">Buscar</label>
-        <input type="text" id="busqueda-informes" class="form-centrado-select" placeholder="Nombre, fecha...">
-      </div>
-    </form>
-  </div>
 
   <% if (informes.length === 0) { %>
     <p class="mt-4 text-center">No hay informes disponibles.</p>
@@ -26,17 +20,17 @@
       <table class="tabla-estilizada" id="tabla-informes">
         <thead class="table-light text-center">
           <tr>
-            <th>Informe</th>
-            <th>Fecha</th>
-            <th>Grupo</th>
-            <th>Instrumento</th>
+            <th class="sortable" data-type="text">Informe</th>
+            <th class="sortable" data-type="date">Fecha</th>
+            <th class="sortable" data-type="text">Grupo</th>
+            <th class="sortable" data-type="text">Instrumento</th>
           </tr>
         </thead>
         <tbody>
           <% informes.forEach(i => { %>
             <tr class="fila-enlace clickable-row" onclick="location.href='/informes/detalle/<%= i.id %>'">
               <td><%= i.informe %></td>
-              <td><%= new Date(i.fecha).toLocaleDateString('es-ES') %></td>
+              <td data-value="<%= i.fecha %>"><%= new Date(i.fecha).toLocaleDateString('es-ES') %></td>
               <td><%= i.grupo || '—' %></td>
               <td><%= i.instrumento || '—' %></td>
             </tr>
@@ -47,7 +41,7 @@
   <% } %>
 
   <div class="volver-bloque-izquierda mt-4">
-    <a href="/" class="enlace-final">← Volver al inicio</a>
+    <a href="/informes" class="enlace-final">← Volver a informes</a>
   </div>
 </div>
 
@@ -58,4 +52,59 @@
       fila.style.display = fila.textContent.toLowerCase().includes(filtro) ? '' : 'none';
     });
   });
+</script>
+<script>
+  (function () {
+    const table = document.getElementById('tabla-informes');
+    if (!table) return;
+
+    const ths = table.querySelectorAll('thead th.sortable');
+    ths.forEach((th, idx) => {
+      th.setAttribute('aria-sort', 'none');
+
+      th.addEventListener('click', () => {
+        // limpiar estado en otros <th>
+        ths.forEach(o => { if (o !== th) { o.classList.remove('sorted-asc','sorted-desc'); o.setAttribute('aria-sort','none'); } });
+
+        // alternar asc/desc
+        const asc = !th.classList.contains('sorted-asc');
+        th.classList.toggle('sorted-asc',  asc);
+        th.classList.toggle('sorted-desc', !asc);
+        th.setAttribute('aria-sort', asc ? 'ascending' : 'descending');
+
+        const tbody = table.querySelector('tbody');
+        const rows  = Array.from(tbody.querySelectorAll('tr'));
+
+        const type = th.dataset.type || 'text';
+        const collator = new Intl.Collator('es', { numeric: true, sensitivity: 'base' });
+
+        const key = (tr) => {
+          const cell = tr.children[idx];
+          const raw  = cell?.dataset?.value ?? cell?.textContent?.trim() ?? '';
+          if (type === 'date') {
+            // usamos ISO de data-value (YYYY-MM-DD) para ordenar estable
+            return String(raw);
+          }
+          const n = Number(String(raw).replace(',', '.'));
+          if (!Number.isNaN(n) && raw !== '') return n;
+          return String(raw).toLowerCase();
+        };
+
+        rows.sort((a, b) => {
+          const ka = key(a), kb = key(b);
+          let cmp;
+          if (typeof ka === 'number' && typeof kb === 'number') {
+            cmp = ka - kb;
+          } else if (type === 'date') {
+            cmp = ka < kb ? -1 : ka > kb ? 1 : 0; // ISO lexicográfico
+          } else {
+            cmp = collator.compare(ka, kb);
+          }
+          return asc ? cmp : -cmp;
+        });
+
+        rows.forEach(r => tbody.appendChild(r));
+      });
+    });
+  })();
 </script>
