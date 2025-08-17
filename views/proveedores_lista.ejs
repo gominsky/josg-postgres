@@ -1,0 +1,85 @@
+<% title = 'Proveedores' %>
+<% hero  = false %>
+
+<!-- Cabecera compacta con CTA -->
+<div class="header-compact">
+  <h1 class="h1-titulo">Proveedores</h1>
+  <a href="/proveedores/nuevo" class="btn-main btn-add">+ Nuevo proveedor</a>
+</div>
+
+<!-- Filtros -->
+<form method="GET" id="filtro-form" class="formulario-centrado">
+  <div class="campo-filtro">
+    <label for="estado" class="form-centrado-etiqueta">Estado</label>
+    <select id="estado" name="estado" class="form-centrado-select" onchange="document.getElementById('filtro-form').submit()">
+      <option value="">Todos</option>
+      <option value="1" <%= estado === '1' ? 'selected' : '' %>>Activos</option>
+      <option value="0" <%= estado === '0' ? 'selected' : '' %>>Inactivos</option>
+    </select>
+  </div>
+
+  <div class="campo-filtro">
+    <label for="busqueda-proveedores" class="form-centrado-etiqueta">Buscar</label>
+    <input id="busqueda-proveedores" type="text" name="q" value="<%= q || '' %>" class="form-centrado-select" placeholder="Nombre, CIF/NIF, email, teléfono…">
+  </div>
+</form>
+
+<!-- Grid tarjetas -->
+<% if ((proveedores || []).length > 0) { %>
+  <div class="dashboard-grid" id="grid-proveedores">
+    <% proveedores.forEach(p => { %>
+      <a href="/proveedores/<%= p.id %>" class="card <%= p.activo ? 'activo' : 'pasivo' %>"
+         data-activo="<%= p.activo ? '1':'0' %>" data-texto="<%= (p.nombre + ' ' + (p.nif_cif||'') + ' ' + (p.email||'') + ' ' + (p.telefono||'')).toLowerCase() %>">
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:.5rem;">
+          <div style="font-weight:600;"><%= p.nombre %></div>
+          <span class="badge-dot <%= p.activo ? 'dot-ok' : 'dot-off' %>" title="<%= p.activo ? 'Activo' : 'Inactivo' %>"></span>
+        </div>
+        <div style="font-size:.9rem; color:#666; margin-top:.2rem;">
+          <%= p.nif_cif || '—' %>
+          <% if (p.email) { %> · <%= p.email %><% } %>
+          <% if (p.telefono) { %> · <%= p.telefono %><% } %>
+        </div>
+      </a>
+    <% }) %>
+  </div>
+<% } else { %>
+  <p class="mt-4" style="text-align:center;">No hay proveedores con esos filtros.</p>
+<% } %>
+
+<div class="volver-bloque-izquierda">
+  <a href="/contabilidad" class="enlace-final">← Volver a contabilidad</a>
+</div>
+
+<script>
+  (() => {
+    const input = document.getElementById('busqueda-proveedores');
+    const estado = document.getElementById('estado');
+    const cards = () => document.querySelectorAll('#grid-proveedores .card');
+
+    function filtrar() {
+      const q = (input?.value || '').toLowerCase().trim();
+      const est = estado?.value || '';
+      cards().forEach(card => {
+        const txt = card.getAttribute('data-texto') || '';
+        const act = card.getAttribute('data-activo');
+        const pasaTexto = !q || txt.includes(q);
+        const pasaEstado = !est || act === est;
+        card.style.display = (pasaTexto && pasaEstado) ? '' : 'none';
+      });
+    }
+
+    input?.addEventListener('input', filtrar);
+    // (el <select> dispara submit en servidor; si quieres filtrar también en vivo, descomenta:)
+    // estado?.addEventListener('change', (e)=>{ e.preventDefault(); filtrar(); });
+
+    // Primera pasada (por si llega con ?q=…)
+    filtrar();
+  })();
+</script>
+
+<style>
+  /* opcional: puntitos de estado si tu CSS global no los define */
+  .badge-dot{ width:8px; height:8px; border-radius:50%; display:inline-block; }
+  .dot-ok{ background:#2ecc71; }
+  .dot-off{ background:#bdc3c7; }
+</style>

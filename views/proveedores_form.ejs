@@ -1,0 +1,202 @@
+<% const isEdit = !!(proveedor && proveedor.id); %>
+<% title = isEdit ? 'Editar proveedor' : 'Nuevo proveedor' %>
+<% hero  = false %>
+
+<div class="container my-4" style="max-width: 980px;">
+  <!-- Estilos locales, muy suaves -->
+  <style>
+    .panel-card{
+      background:#fff; color:#212529;
+      border:1px solid rgba(0,0,0,.08);
+      border-radius:18px; box-shadow:0 1px 2px rgba(0,0,0,.04);
+      padding:16px 18px 18px;
+    }
+    .panel-header{
+      display:flex; align-items:center; justify-content:space-between; gap:12px;
+      margin-bottom:8px;
+    }
+    .panel-header .h1-titulo{ margin:0; font-size:clamp(1.3rem,1rem + 1.2vw,2rem); font-weight:700; }
+    .volver-link{ color:#c26c00; font-weight:600; text-decoration:none; }
+    .volver-link:hover{ text-decoration:underline; }
+
+    .section-title{
+      margin: 18px 0 8px; font-size:.9rem; font-weight:700; letter-spacing:.02em;
+      color:#444; display:flex; align-items:center; gap:.5rem;
+    }
+    .section-title::before{
+      content:""; display:inline-block; width:10px; height:10px; border-radius:999px;
+      background:#ffeed7; border:1px solid #ffe0b3;
+    }
+    .hint{ font-size:.85rem; color:#6c757d; margin-top:.15rem; }
+
+    .btn-row{ display:flex; gap:.5rem; flex-wrap:wrap; }
+    .btn-main{ cursor:pointer; }
+    .btn-outline-danger{ border-radius:10px; }
+
+    /* Inputs un poco más “compactos” */
+    .form-control, .form-select{ border-radius:10px; }
+    .form-check-input{ cursor:pointer; }
+    .form-switch .form-check-input{ width:3rem; height:1.5rem; }
+    .form-switch .form-check-input:checked{
+      background-color:#111; border-color:#111;
+    }
+  </style>
+
+  <div class="panel-card">
+    <div class="panel-header">
+      <h1 class="h1-titulo"><%= title %></h1>
+      <a href="/proveedores" class="volver-link">← Volver</a>
+    </div>
+
+    <% if (typeof error !== 'undefined' && error) { %>
+      <div class="alert alert-danger py-2 mb-3"><%= error %></div>
+    <% } %>
+
+    <!-- Un único <form>; para “Desactivar” usamos formaction/formmethod -->
+    <form id="proveedorForm" method="POST" action="<%= isEdit ? ('/proveedores/' + proveedor.id) : '/proveedores/nuevo' %>">
+      <!-- IDENTIFICACIÓN -->
+      <div class="section-title">Identificación</div>
+      <div class="row g-3">
+        <div class="col-md-8">
+          <label class="form-label">Nombre*</label>
+          <input name="nombre" class="form-control" required autofocus
+                 placeholder="Nombre fiscal o comercial"
+                 autocomplete="organization"
+                 value="<%= proveedor?.nombre || '' %>">
+          <div class="hint">Usa el nombre fiscal (o comercial si procede).</div>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">CIF/NIF</label>
+          <input name="nif_cif" class="form-control"
+                 placeholder="Ej. B12345678"
+                 value="<%= proveedor?.nif_cif || '' %>">
+        </div>
+      </div>
+
+      <!-- CONTACTO -->
+      <div class="section-title">Contacto</div>
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label class="form-label">Email</label>
+          <input name="email" type="email" class="form-control"
+                 autocomplete="email"
+                 placeholder="facturacion@proveedor.com"
+                 value="<%= proveedor?.email || '' %>">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Teléfono</label>
+          <input name="telefono" class="form-control"
+                 autocomplete="tel"
+                 placeholder="+34 600 000 000"
+                 value="<%= proveedor?.telefono || '' %>">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Persona de contacto</label>
+          <input name="contacto" class="form-control"
+                 placeholder="Nombre y apellidos"
+                 value="<%= proveedor?.contacto || '' %>">
+        </div>
+      </div>
+
+      <!-- DIRECCIÓN -->
+      <div class="section-title">Dirección</div>
+      <div class="row g-3">
+        <div class="col-12">
+          <label class="form-label">Dirección</label>
+          <input name="direccion" class="form-control"
+                 placeholder="Calle, número, piso…"
+                 autocomplete="street-address"
+                 value="<%= proveedor?.direccion || '' %>">
+        </div>
+        <div class="col-md-5">
+          <label class="form-label">Municipio</label>
+          <input name="municipio" class="form-control"
+                 autocomplete="address-level2"
+                 value="<%= proveedor?.municipio || '' %>">
+        </div>
+        <div class="col-md-5">
+          <label class="form-label">Provincia</label>
+          <input name="provincia" class="form-control"
+                 autocomplete="address-level1"
+                 value="<%= proveedor?.provincia || '' %>">
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">C.P.</label>
+          <input name="codigo_postal" class="form-control"
+                 inputmode="numeric" pattern="[0-9]*" maxlength="10"
+                 autocomplete="postal-code"
+                 value="<%= proveedor?.codigo_postal || '' %>">
+        </div>
+      </div>
+
+      <!-- BANCARIOS -->
+      <div class="section-title">Bancarios</div>
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label class="form-label">IBAN</label>
+          <input name="iban" id="iban" class="form-control"
+                 placeholder="ES12 3456 7890 1234 5678 9012"
+                 value="<%= proveedor?.iban || '' %>">
+          <div class="hint">Se acepta con o sin espacios; lo formateamos automáticamente.</div>
+        </div>
+      </div>
+
+      <!-- NOTAS -->
+      <div class="section-title">Notas</div>
+      <div class="row g-3">
+        <div class="col-12">
+          <label class="form-label">Observaciones / notas internas</label>
+          <textarea name="notas" rows="3" class="form-control"
+                    placeholder="Condiciones de pago, persona de facturación, etc."><%= proveedor?.notas || '' %></textarea>
+        </div>
+      </div>
+
+      <!-- ACTIVO (solo en edición) -->
+      <% if (isEdit) { %>
+        <div class="form-check form-switch mt-3">
+          <input class="form-check-input" type="checkbox" id="activo" name="activo" <%= proveedor.activo ? 'checked' : '' %>>
+          <label class="form-check-label" for="activo">Proveedor activo</label>
+        </div>
+      <% } %>
+
+      <!-- BOTONES -->
+      <div class="btn-row mt-4">
+        <button class="btn-main" type="submit">Guardar</button>
+
+        <% if (isEdit) { %>
+          <button
+            type="submit"
+            class="btn btn-outline-danger"
+            formaction="/proveedores/<%= proveedor.id %>/eliminar"
+            formmethod="POST"
+            onclick="return confirm('¿Desactivar proveedor?');">
+            Desactivar
+          </button>
+        <% } %>
+
+        <a class="btn btn-outline-secondary" href="/proveedores">Cancelar</a>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  // Formateo suave del IBAN (agrupa en bloques de 4)
+  (function(){
+    const el = document.getElementById('iban');
+    if (!el) return;
+    const format = v => v
+      .replace(/\s+/g,'')
+      .toUpperCase()
+      .replace(/(.{4})/g,'$1 ')
+      .trim();
+
+    el.addEventListener('input', () => {
+      const pos = el.selectionStart;
+      const raw = el.value;
+      el.value = format(raw);
+      // no complicamos caret; suficiente para mejorar legibilidad
+    });
+  })();
+</script>
+

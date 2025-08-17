@@ -1,0 +1,314 @@
+<% /* views/facturas_form.ejs */ %>
+<% hero = false %>
+
+<div id="factura-wrap" class="container my-4">
+
+  <!-- ====== ESTILOS LOCALES ====== -->
+  <style>
+    :root{
+      --accent-50:  #fff6e8;
+      --accent-100: #ffeed7;
+      --accent-200: #ffe0b3;
+      --accent-300: #ffd08a;
+      --accent-400: #ffb554;
+      --accent-500: #ff9500; /* principal */
+      --accent-600: #e07f00;
+      --accent-700: #c26c00;
+      --text-main:  #212529;
+      --muted:      #6c757d;
+      --border:     rgba(0,0,0,.08);
+      --shadow:     0 1px 2px rgba(0,0,0,.04);
+      --shadow-lg:  0 6px 18px rgba(0,0,0,.08);
+    }
+    @media (min-width: 992px){
+      #factura-wrap.container{ max-width: 980px; }
+    }
+    .panel-card{
+      background:#fff; color:var(--text-main);
+      border:1px solid var(--border);
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+      padding: 16px 18px 18px;
+    }
+    .form-head{
+      display:flex; align-items:center; justify-content:space-between; gap: 12px;
+      margin-bottom: 12px;
+    }
+    .form-head .h1-titulo{
+      margin:0; font-size: clamp(1.3rem, 1.1rem + 1.1vw, 1.9rem); font-weight: 700; color: var(--text-main);
+    }
+    .volver-link{ color: var(--accent-700); text-decoration:none; font-weight:600; }
+    .volver-link:hover{ text-decoration:underline; }
+
+    .form-label{ color: var(--text-main); font-weight: 600; margin-bottom:.35rem; }
+    .help-text{ color: var(--muted); font-size:.88rem; margin-top:.25rem; }
+
+    .grid-2{
+      display:grid; gap:14px;
+      grid-template-columns: 1fr;
+    }
+    @media (min-width: 768px){
+      .grid-2{ grid-template-columns: 1fr 1fr; }
+    }
+
+    .box-muted{
+      background: linear-gradient(180deg,#ffffff, #fdfcfa);
+      border:1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px;
+    }
+    .money-row{
+      display:grid; gap:10px; grid-template-columns: 1fr 1fr 1fr;
+    }
+    @media (max-width: 576px){
+      .money-row{ grid-template-columns: 1fr; }
+    }
+    .money-row .form-control[readonly]{ background:#f8f9fa; }
+
+    .actions{
+      display:flex; gap:10px; flex-wrap:wrap; justify-content:flex-end; margin-top: 14px;
+    }
+
+    .flash-ok{
+      background:#e9f7ef; color:#186a3b; border:1px solid #c8e6d1;
+      border-radius: 10px; padding:8px 10px; font-weight: 600; margin: 8px 0 0;
+    }
+
+    /* Botoncito "nuevo proveedor" */
+    .link-soft{
+      font-size:.9rem; color: var(--accent-700); cursor:pointer; text-decoration:none;
+    }
+    .link-soft:hover{ text-decoration: underline; }
+  </style>
+
+  <!-- ====== FORMULARIO ====== -->
+  <form method="POST" action="/contabilidad/facturas/guardar" class="panel-card" id="form-factura" novalidate>
+    <% if (EDIT && factura?.id) { %>
+      <input type="hidden" name="id" value="<%= factura.id %>">
+    <% } %>
+
+    <div class="form-head">
+      <h1 class="h1-titulo"><%= title %></h1>
+      <a href="/contabilidad" class="volver-link">← Volver</a>
+    </div>
+
+    <% if (typeof ok !== 'undefined' && ok) { %>
+      <div class="flash-ok">✓ Guardado correctamente</div>
+    <% } %>
+
+    <!-- ===== Proveedor + Nº + Fechas ===== -->
+    <div class="grid-2">
+      <!-- Columna izquierda -->
+      <div>
+        <!-- Proveedor existente -->
+        <div class="mb-3">
+          <label class="form-label">Proveedor</label>
+          <select name="proveedor_id" id="proveedor_id" class="form-select">
+            <option value="">— Selecciona —</option>
+            <% (proveedores||[]).forEach(p => { %>
+              <option value="<%= p.id %>" <%= factura?.proveedor_id === p.id ? 'selected' : '' %>><%= p.nombre %></option>
+            <% }) %>
+          </select>
+          <div class="help-text">
+            ¿No está en la lista?
+            <a href="#" id="toggleNewProv" class="link-soft">Añadir proveedor rápido</a>
+          </div>
+        </div>
+
+        <!-- Alta rápida de proveedor -->
+        <div id="nuevoProveedorBox" class="box-muted mb-3" style="display:none;">
+          <div class="mb-2">
+            <label class="form-label">Nombre del proveedor (nuevo)</label>
+            <input type="text" class="form-control" name="proveedor_nombre" placeholder="Ej. Luthier García">
+          </div>
+          <div class="mb-1">
+            <label class="form-label">NIF / CIF</label>
+            <input type="text" class="form-control" name="proveedor_cif" placeholder="B12345678">
+          </div>
+          <div class="help-text">Se creará al guardar si no has elegido un proveedor.</div>
+        </div>
+
+        <!-- Nº factura -->
+        <div class="mb-3">
+          <label class="form-label">Nº de factura</label>
+          <input type="text" class="form-control" name="numero" required
+                 value="<%= factura?.numero || '' %>" placeholder="Ej. 2025-034">
+        </div>
+
+        <!-- Fechas -->
+        <div class="row g-3">
+          <div class="col-12 col-sm-6">
+            <label class="form-label">Fecha emisión</label>
+            <input type="date" class="form-control" name="fecha_emision" required
+                   value="<%= factura?.fecha_emision ? String(factura.fecha_emision).slice(0,10) : '' %>">
+          </div>
+          <div class="col-12 col-sm-6">
+            <label class="form-label">Fecha vencimiento</label>
+            <input type="date" class="form-control" name="fecha_vencimiento"
+                   value="<%= factura?.fecha_vencimiento ? String(factura.fecha_vencimiento).slice(0,10) : '' %>">
+          </div>
+        </div>
+      </div>
+
+      <!-- Columna derecha -->
+      <div>
+        <!-- Categoría / Cuenta -->
+        <div class="mb-3">
+          <label class="form-label">Categoría de gasto</label>
+          <select name="categoria_id" class="form-select">
+            <option value="">— Sin categoría —</option>
+            <% (categorias||[]).forEach(c => { %>
+              <option value="<%= c.id %>" <%= factura?.categoria_id === c.id ? 'selected' : '' %>><%= c.nombre %></option>
+            <% }) %>
+          </select>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Cuenta (sugerida)</label>
+          <select name="cuenta_id" class="form-select">
+            <option value="">— Sin cuenta —</option>
+            <% (cuentas||[]).forEach(ct => { %>
+              <option value="<%= ct.id %>" <%= factura?.cuenta_id === ct.id ? 'selected' : '' %>><%= ct.nombre %></option>
+            <% }) %>
+          </select>
+        </div>
+
+        <!-- Estado -->
+        <div class="mb-3">
+          <label class="form-label">Estado</label>
+          <select name="estado" class="form-select">
+            <% const EST = (factura?.estado || 'pendiente'); %>
+            <option value="borrador"  <%= EST==='borrador'  ? 'selected' : '' %>>Borrador</option>
+            <option value="pendiente" <%= EST==='pendiente' ? 'selected' : '' %>>Pendiente</option>
+            <option value="parcial"   <%= EST==='parcial'   ? 'selected' : '' %>>Parcial</option>
+            <option value="pagada"    <%= EST==='pagada'    ? 'selected' : '' %>>Pagada</option>
+            <option value="anulada"   <%= EST==='anulada'   ? 'selected' : '' %>>Anulada</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== Concepto ===== -->
+    <div class="mb-3">
+      <label class="form-label">Concepto</label>
+      <textarea name="concepto" class="form-control" rows="2" placeholder="Descripción breve del concepto…"><%= factura?.concepto || '' %></textarea>
+    </div>
+
+    <!-- ===== Importes ===== -->
+    <div class="box-muted mb-3">
+      <div class="money-row">
+        <div>
+          <label class="form-label">Base imponible (€)</label>
+          <input type="number" inputmode="decimal" step="0.01" min="0" class="form-control"
+                 name="base_imponible" id="base_imponible"
+                 value="<%= typeof factura?.base_imponible !== 'undefined' ? Number(factura.base_imponible).toFixed(2) : '' %>" placeholder="0,00">
+        </div>
+        <div>
+          <label class="form-label">IVA (%)</label>
+          <input type="number" inputmode="decimal" step="0.01" min="0" class="form-control"
+                 name="iva_pct" id="iva_pct"
+                 value="<%= typeof factura?.iva_pct !== 'undefined' ? Number(factura.iva_pct) : 21 %>">
+        </div>
+        <div>
+          <label class="form-label">Total (€)</label>
+          <input type="number" inputmode="decimal" step="0.01" min="0" class="form-control"
+                 name="total" id="total"
+                 value="<%= typeof factura?.total !== 'undefined' ? Number(factura.total).toFixed(2) : '' %>" readonly>
+        </div>
+      </div>
+      <div class="help-text">El total se calcula automáticamente = Base × (1 + IVA/100).</div>
+    </div>
+
+    <!-- ===== Notas / Observaciones ===== -->
+    <div class="grid-2">
+      <div class="mb-3">
+        <label class="form-label">Notas internas</label>
+        <textarea name="notas" class="form-control" rows="3" placeholder="Notas para uso interno…"><%= factura?.notas || '' %></textarea>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Observaciones (documento)</label>
+        <textarea name="observaciones" class="form-control" rows="3" placeholder="Observaciones que constarán en el documento…"><%= factura?.observaciones || '' %></textarea>
+      </div>
+    </div>
+
+    <!-- ===== ACCIONES ===== -->
+    <div class="actions">
+      <% if (EDIT && factura?.id) { %>
+        <form method="POST" action="/contabilidad/facturas/<%= factura.id %>/eliminar" onsubmit="return confirm('¿Eliminar factura?');">
+          <button type="submit" class="btn btn-outline-danger">Eliminar</button>
+        </form>
+      <% } %>
+      <button type="submit" class="btn-primary-negro">Guardar</button>
+    </div>
+  </form>
+</div>
+
+<!-- ====== SCRIPT ====== -->
+<script>
+(function(){
+  // Toggle alta rápida proveedor
+  const linkToggle = document.getElementById('toggleNewProv');
+  const box        = document.getElementById('nuevoProveedorBox');
+  const selProv    = document.getElementById('proveedor_id');
+
+  function showNewProv(show){
+    if (!box || !selProv) return;
+    box.style.display = show ? 'block' : 'none';
+    if (show){
+      selProv.value = '';
+      selProv.setAttribute('disabled','disabled');
+    } else {
+      selProv.removeAttribute('disabled');
+    }
+  }
+  linkToggle?.addEventListener('click', (e) => {
+    e.preventDefault();
+    const visible = box.style.display !== 'none';
+    showNewProv(!visible);
+  });
+
+  // Cálculo automático del total
+  const baseEl = document.getElementById('base_imponible');
+  const ivaEl  = document.getElementById('iva_pct');
+  const totEl  = document.getElementById('total');
+
+  function toNum(v){ const n = parseFloat(String(v).replace(',','.')); return isNaN(n)?0:n; }
+  function fix2(n){ return (Math.round(n * 100) / 100).toFixed(2); }
+
+  function recalc(){
+    const base = toNum(baseEl?.value || 0);
+    const pct  = toNum(ivaEl?.value  || 0);
+    const total = base * (1 + (pct/100));
+    if (totEl) totEl.value = fix2(total);
+  }
+  baseEl?.addEventListener('input', recalc);
+  ivaEl?.addEventListener('input', recalc);
+  baseEl?.addEventListener('blur', () => { if (baseEl.value) baseEl.value = fix2(toNum(baseEl.value)); });
+  totEl?.addEventListener('blur',  () => { if (totEl.value)  totEl.value  = fix2(toNum(totEl.value));  });
+
+  // Recalcula al cargar si hay valores
+  recalc();
+
+  // Validación mínima antes de enviar (proveedor o alta rápida + número + fecha)
+  const form = document.getElementById('form-factura');
+  form?.addEventListener('submit', (e) => {
+    const provId = selProv?.value || '';
+    const nuevoNombre = form.querySelector('input[name="proveedor_nombre"]')?.value.trim() || '';
+    const num    = form.querySelector('input[name="numero"]')?.value.trim() || '';
+    const femi   = form.querySelector('input[name="fecha_emision"]')?.value || '';
+
+    if (!provId && !nuevoNombre){
+      e.preventDefault();
+      alert('Selecciona un proveedor o rellena los datos del nuevo proveedor.');
+      return false;
+    }
+    if (!num || !femi){
+      e.preventDefault();
+      alert('Faltan Nº de factura o Fecha de emisión.');
+      return false;
+    }
+    // Normaliza base/total a 2 decimales
+    if (baseEl && baseEl.value) baseEl.value = fix2(toNum(baseEl.value));
+    if (totEl  && totEl.value)  totEl.value  = fix2(toNum(totEl.value));
+  });
+})();
+</script>
