@@ -1,0 +1,35 @@
+<% title='Cuentas contables'; hero=false; %>
+<div class="container my-4">
+  <div class="panel-card" style="background:#fff;border:1px solid rgba(0,0,0,.08);border-radius:18px;padding:16px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+      <h1 class="h1-titulo" style="margin:0;">Cuentas contables</h1>
+      <a href="/cuentas/nuevo" class="btn-main">+ Nueva</a>
+    </div>
+
+    <form class="d-flex gap-2 mb-3">
+      <input type="text" name="q" class="form-control" placeholder="Buscar…" value="<%= q||'' %>">
+      <button class="btn-main">Buscar</button>
+      <a class="btn btn-outline" href="/cuentas">Limpiar</a>
+    </form>
+
+    <table class="table">
+      <thead><tr><th>Nombre</th><th>Activo</th><th></th></tr></thead>
+      <tbody>
+        <% (cuentas||[]).forEach(c => { %>
+          <tr>
+            <td><a href="/cuentas/<%= c.id %>"><%= c.nombre %></a></td>
+            <td><%= (c.activo!==false)?'Sí':'No' %></td>
+            <td class="text-end">
+              <form method="POST" action="/cuentas/<%= c.id %>/eliminar" onsubmit="return confirm('¿Eliminar?');">
+                <button class="btn btn-sm btn-outline-danger">Eliminar</button>
+              </form>
+            </td>
+          </tr>
+        <% }) %>
+        <% if (!(cuentas&&cuentas.length)) { %>
+          <tr><td colspan="3" class="text-muted">Sin resultados</td></tr>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+</div>

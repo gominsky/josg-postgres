@@ -258,9 +258,8 @@ async function init() {
         FOREIGN KEY (campo_id) REFERENCES informe_campos(id) ON DELETE CASCADE
       );
     `);
-        // ============================
+
     // CONTABILIDAD: ESQUEMA BÁSICO
-    // ============================
 
     // Función + trigger genérico para updated_at
     await db.query(`
@@ -282,6 +281,10 @@ async function init() {
         email       TEXT,
         telefono    TEXT,
         direccion   TEXT,
+        municipio   TEXT,
+        provincia   TEXT,
+        codigo_postal TEXT,
+        iban        TEXT,
         notas       TEXT,
         activo      BOOLEAN NOT NULL DEFAULT TRUE,
         created_at  TIMESTAMP NOT NULL DEFAULT NOW(),
@@ -408,9 +411,38 @@ async function init() {
         END IF;
       END $$;
     `);
-
-    console.log('Esquema de contabilidad creado/actualizado (proveedores, categorías, cuentas, facturas_prov, pagos_prov, vista de saldos).');
-
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS pagos_prov_aplicaciones (
+        id              SERIAL PRIMARY KEY,
+        pago_id         INTEGER NOT NULL REFERENCES pagos_prov(id) ON DELETE CASCADE,
+        factura_id      INTEGER NOT NULL REFERENCES facturas_prov(id) ON DELETE CASCADE,
+        importe_aplicado NUMERIC(12,2) NOT NULL CHECK (importe_aplicado >= 0)
+      );
+      CREATE INDEX IF NOT EXISTS idx_pagos_apl_factura ON pagos_prov_aplicaciones(factura_id);
+      CREATE INDEX IF NOT EXISTS idx_pagos_apl_pago    ON pagos_prov_aplicaciones(pago_id);
+      `);    
+     await db.query(`
+      CREATE TABLE IF NOT EXISTS factura_adjuntos (
+        id            SERIAL PRIMARY KEY,
+        factura_id    INTEGER NOT NULL REFERENCES facturas_prov(id) ON DELETE CASCADE,
+        filename      TEXT NOT NULL,
+        original_name TEXT,
+        mime          TEXT,
+        size_bytes    INTEGER,
+        uploaded_at   TIMESTAMPTZ NOT NULL DEFAULT now()
+      );
+      CREATE INDEX IF NOT EXISTS idx_adjuntos_factura ON factura_adjuntos(factura_id);
+    `); 
+    await db.query(`
+      CREATE OR REPLACE VIEW v_factura_sumas_pagos AS
+      SELECT
+        f.id AS factura_id,
+        COALESCE(SUM(a.importe_aplicado),0)::NUMERIC(12,2) AS pagado,
+        GREATEST(f.total - COALESCE(SUM(a.importe_aplicado),0), 0)::NUMERIC(12,2) AS saldo
+      FROM facturas_prov f
+      LEFT JOIN pagos_prov_aplicaciones a ON a.factura_id = f.id
+      GROUP BY f.id; 
+    `);   
     // ============ AÑADIDOS PARA EL PLANO DE ORQUESTA ============
 
     // 🎯 Tabla para posiciones en el plano

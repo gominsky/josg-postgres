@@ -72,20 +72,19 @@
 <div class="encabezado-izq">
   <div class="d-flex flex-column flex-md-row align-items-start justify-content-between gap-2">
     <div class="titulo-bloque flex-grow-1">
-      <!-- textarea del título -->
       <textarea
-        name="nombre_informe"
-        id="titulo-informe"
-        class="h1-titulo"
-        style="border:none;background:transparent;width:100%;font-weight:700;outline:none;padding:0;line-height:1.15;resize:none;overflow:hidden;white-space:pre-wrap;word-break:break-word;"
-        rows="1"
-        title="Editar título del informe"
-        oninput="autoResizeTitulo()"
-        onblur="guardarTitulo()"
-      ><%= informe.informe %></textarea>
+  name="nombre_informe"
+  id="titulo-informe"
+  class="h1-titulo"
+  style="border:none;background:transparent;width:100%;font-weight:700;outline:none;padding:0;line-height:1.15;resize:none;overflow:hidden;white-space:pre-wrap;word-break:break-word;"
+  rows="1"
+  data-max-rows="3"
+  title="Editar título del informe"
+  oninput="autoResizeTitulo()"
+  onblur="guardarTitulo()"
+><%= informe.informe %></textarea>
 
       <small id="estado-titulo" class="estado-titulo" style="margin-left:.5rem;"></small>
-
       <!-- metadatos -->
       <ul class="meta-informe list-unstyled mb-0" style="margin-top:.25rem;">
         <li><strong>Fecha:</strong> <%= new Date(informe.fecha).toLocaleDateString('es-ES') %></li>
@@ -559,4 +558,60 @@
       });
     });
     </script>    
+    <script>
+(() => {
+  const INFORME_ID = <%= Number(informe.id) %>;
+
+  // Autoaltura con límite de líneas (data-max-rows)
+  function autoResizeTitulo() {
+    const ta = document.getElementById('titulo-informe');
+    if (!ta) return;
+    ta.style.height = 'auto';
+    const lh = parseFloat(getComputedStyle(ta).lineHeight || '24'); // px
+    const maxRows = parseInt(ta.dataset.maxRows || '3', 10);
+    const maxH = lh * maxRows;
+    const target = Math.min(ta.scrollHeight, maxH);
+    ta.style.height = target + 'px';
+  }
+
+  // Guarda por fetch (POST) y muestra estado
+  let saving = null;
+  async function guardarTitulo() {
+    const el = document.getElementById('titulo-informe');
+    const st = document.getElementById('estado-titulo');
+    if (!el) return;
+
+    const titulo = (el.value || '').trim();
+    if (!titulo) { st.textContent = 'Título vacío'; return; }
+
+    // evita múltiples envíos seguidos
+    if (saving) clearTimeout(saving);
+    st.textContent = 'Guardando…';
+
+    try {
+      const res = await fetch(`/informes/${INFORME_ID}/titulo`, {
+        method: 'POST',
+        headers: { 'Content-Type':'application/json' },
+        body: JSON.stringify({ titulo })
+      });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      st.textContent = '✓ guardado';
+    } catch (e) {
+      console.error('Error guardando título:', e);
+      st.textContent = '⚠️ error al guardar';
+    }
+
+    // limpia el mensaje tras un rato
+    saving = setTimeout(() => { st.textContent = ''; }, 2500);
+  }
+
+  // Exponer globalmente para los atributos oninput/onblur
+  window.autoResizeTitulo = autoResizeTitulo;
+  window.guardarTitulo    = guardarTitulo;
+
+  // Inicializa tamaño al cargar
+  document.addEventListener('DOMContentLoaded', autoResizeTitulo);
+})();
+</script>
+
   

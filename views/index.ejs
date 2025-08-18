@@ -5,29 +5,33 @@
 <header class="hero-header">
   <% if (!usuario) { %>
     <div class="container">
-    <div class="login-form-overlay">
-      <img src="/../imagenes/logoJOSG.png" alt="Logo JOSG" class="logo logo-grande">
-      <p>Asociación Joven Orquesta Sinfónica de Granada</p>
-      <p>Acceso</p>
+      <div class="login-form-overlay login-compact">
+        <img src="/imagenes/logoJOSG.png" alt="Logo JOSG" class="logo logo-compact">
 
-      <% if (error) { %>
-        <div class="alert-login-error"><%= error %></div>
-      <% } %>
-      <form method="POST" action="/login">
-        <div class="mb-3">
-          <label class="form-label fw-bold">Correo electrónico</label>
-          <input type="email" name="email" class="form-control" required>
-        </div>
-        <div class="mb-3">
-          <label class="form-label fw-bold">Contraseña</label>
-          <input type="password" name="password" class="form-control" required>
-        </div>
-        <div class="d-grid">
-          <button type="submit" class="btn-main-naranja btn">Entrar</button>
-        </div>
-      </form>
-    </div>
+        <!-- Línea institucional (opcional). Si quieres aún más compacto, elimina este <p>. -->
+        <p class="org-name">Asociación Joven Orquesta Sinfónica de Granada</p>
 
+        <% if (error) { %>
+          <div class="alert-login-error"><%= error %></div>
+        <% } %>
+          <form method="POST" action="/login" class="login-form">
+            <div class="mb-2">
+              <label class="form-label form-label-compact" for="email">Usuario</label>
+              <input id="email" type="email" name="email"
+                    class="form-control form-control-sm"
+                    placeholder="usuario@dominio.com"
+                    autocomplete="username" required>
+            </div>
+            <div class="mb-2">
+              <label class="form-label form-label-compact" for="password">Contraseña</label>
+              <input id="password" type="password" name="password"
+                    class="form-control form-control-sm"
+                    placeholder="••••••••"
+                    autocomplete="current-password" required>
+            </div>
+            <button type="submit" class="btn-main-naranja btn btn-sm w-100">Entrar</button>
+          </form>
+      </div>
   <% } else { %>
     <div class="panel-usuario-overlay">
       <img src="/imagenes/logoJOSG.png" alt="Logo JOSG" class="logo-grande" />

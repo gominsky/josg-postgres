@@ -1,0 +1,75 @@
+<% title = 'Pagos a proveedor'; hero = false; %>
+<div class="container my-4">
+  <style>
+    .panel-card{background:#fff;border:1px solid rgba(0,0,0,.08);border-radius:18px;padding:16px}
+    .badge{display:inline-block;padding:.2rem .5rem;border-radius:999px;font-size:.75rem}
+    .badge-ok{background:#e5f7e9;color:#2f7a3e}
+    .badge-warn{background:#fff2cc;color:#8a6d3b}
+  </style>
+
+  <div class="panel-card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+      <h1 class="h1-titulo" style="margin:0;">Pagos a proveedor</h1>
+      <a href="/contabilidad/pagos/nuevo" class="btn-main">+ Registrar pago</a>
+      <a href="/contabilidad/pagos/export.csv?<%= new URLSearchParams({ desde: (filtros.desde||''), hasta:(filtros.hasta||''), proveedor:(filtros.proveedor||'') }).toString() %>" class="btn btn-outline">⬇️ Exportar CSV</a>
+
+    </div>
+
+    <form class="grid" style="grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:10px;">
+      <div>
+        <label>Desde</label>
+        <input type="date" name="desde" value="<%= filtros.desde || '' %>" class="form-control">
+      </div>
+      <div>
+        <label>Hasta</label>
+        <input type="date" name="hasta" value="<%= filtros.hasta || '' %>" class="form-control">
+      </div>
+      <div>
+        <label>Proveedor</label>
+        <select name="proveedor" class="form-select">
+          <option value="">Todos</option>
+          <% (proveedores||[]).forEach(p => { %>
+            <option value="<%= p.id %>" <%= (filtros.proveedor == p.id ? 'selected' : '') %>><%= p.nombre %></option>
+          <% }) %>
+        </select>
+      </div>
+      <div class="d-flex align-end">
+        <button class="btn-main">Filtrar</button>
+        <a href="/contabilidad/pagos" class="btn btn-outline ms-2">Limpiar</a>
+      </div>
+    </form>
+
+    <div class="table-responsive">
+      <table class="table">
+        <thead><tr><th>Fecha</th><th>Proveedor</th><th>Importe</th><th>Aplicado</th><th>Estado</th><th>Ref.</th><th></th></tr></thead>
+        <tbody>
+          <% (pagos||[]).forEach(p => { const pend = Number(p.importe_total) - Number(p.aplicado||0); %>
+            <tr>
+              <td><%= p.fecha %></td>
+              <td><%= p.proveedor_nombre || '—' %></td>
+              <td><%= Number(p.importe_total).toFixed(2) %> €</td>
+              <td><%= Number(p.aplicado||0).toFixed(2) %> €</td>
+              <td>
+                <% if (pend > 0.009) { %>
+                  <span class="badge badge-warn">Parcial</span>
+                <% } else { %>
+                  <span class="badge badge-ok">Aplicado</span>
+                <% } %>
+              </td>
+              <td><%= p.referencia || '' %></td>
+              <td class="text-end">
+                <form method="POST" action="/contabilidad/pagos/<%= p.id %>/eliminar" onsubmit="return confirm('¿Eliminar pago?');">
+                  <button class="btn btn-sm btn-outline-danger">Eliminar</button>
+                </form>
+              </td>
+            </tr>
+          <% }) %>
+          <% if (!(pagos&&pagos.length)) { %>
+            <tr><td colspan="7" class="muted">Sin pagos</td></tr>
+          <% } %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+

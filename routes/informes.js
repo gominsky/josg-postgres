@@ -616,19 +616,25 @@ router.post('/eliminar/:id', async (req, res) => {
   }
 });
 
-// Guardar solo el título del informe (AJAX blur)
-router.post('/titulo/:id', async (req, res) => {
-  const id = req.params.id;
-  const nombre = (req.body?.nombre_informe || '').trim();
-  if (!nombre) {
-    return res.status(400).json({ ok: false, error: 'Título vacío' });
-  }
+// Actualizar solo el título del informe (AJAX)
+router.post('/:id/titulo', express.json(), async (req, res) => {
+  const id = Number(req.params.id);
+  let   titulo = (req.body?.titulo || '').toString().trim();
+
+  // Permite títulos largos (ajusta a tus límites reales)
+  const MAX_LEN = 255;               // sube a 500 o usa TEXT si quieres “sin límite”
+  titulo = titulo.slice(0, MAX_LEN);
+
   try {
-    await db.query('UPDATE informes SET informe = $1 WHERE id = $2', [nombre, id]);
-    return res.json({ ok: true });
-  } catch (err) {
-    console.error('❌ Error actualizando título:', err);
-    return res.status(500).json({ ok: false, error: 'Error de servidor' });
+    const { rowCount } = await db.query(
+      'UPDATE informes SET informe = $1 WHERE id = $2',
+      [titulo, id]
+    );
+    if (rowCount === 0) return res.status(404).json({ ok:false, msg:'Informe no encontrado' });
+    return res.json({ ok:true, titulo });
+  } catch (e) {
+    console.error('❌ Error actualizando título:', e.message);
+    return res.status(500).json({ ok:false });
   }
 });
 

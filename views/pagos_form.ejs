@@ -1,0 +1,141 @@
+<% title = 'Registrar pago'; hero = false; %>
+<div class="container my-4">
+  <style>
+    .panel-card{background:#fff;border:1px solid rgba(0,0,0,.08);border-radius:18px;padding:16px}
+    .small-muted{color:#6c757d;font-size:.9rem}
+    .num{white-space:nowrap}
+    .table td, .table th{vertical-align:middle}
+  </style>
+
+  <div class="panel-card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+      <h1 class="h1-titulo" style="margin:0;">Registrar pago</h1>
+      <a href="/contabilidad/pagos" class="volver-link">← Volver</a>
+    </div>
+
+    <!-- Paso 1: elegir proveedor -->
+    <form method="GET" action="/contabilidad/pagos/nuevo" class="grid" style="grid-template-columns:1fr auto;gap:10px;margin-bottom:14px;">
+      <div>
+        <label>Proveedor</label>
+        <select name="proveedor" class="form-select" required>
+          <option value="">— Selecciona —</option>
+          <% (proveedores||[]).forEach(p => { %>
+            <option value="<%= p.id %>" <%= (proveedorSel==p.id)?'selected':'' %>><%= p.nombre %></option>
+          <% }) %>
+        </select>
+      </div>
+      <div class="d-flex align-end"><button class="btn-main">Cargar facturas</button></div>
+    </form>
+
+    <% if (proveedorSel) { %>
+      <!-- Paso 2: datos del pago -->
+      <form method="POST" action="/contabilidad/pagos/guardar" id="form-pago">
+        <input type="hidden" name="proveedor_id" value="<%= proveedorSel %>">
+        <div class="grid" style="grid-template-columns:repeat(4,1fr);gap:10px;">
+          <div>
+            <label>Fecha</label>
+            <input type="date" name="fecha" required class="form-control" value="<%= hoy %>">
+          </div>
+          <div>
+            <label>Importe total (€)</label>
+            <input type="number" name="importe_total" step="0.01" min="0.01" class="form-control" required>
+          </div>
+          <div>
+            <label>Método</label>
+            <input type="text" name="metodo" class="form-control" placeholder="Transferencia / Tarjeta / Efectivo">
+          </div>
+          <div>
+            <label>Referencia</label>
+            <input type="text" name="referencia" class="form-control" placeholder="Nº operación / banco">
+          </div>
+          <div style="grid-column:1/-1;">
+            <label>Notas</label>
+            <textarea name="notas" rows="2" class="form-control"></textarea>
+          </div>
+        </div>
+
+        <hr class="my-3">
+
+        <!-- Paso 3: distribución entre facturas -->
+        <div class="small-muted mb-2">Facturas con saldo del proveedor seleccionado. Introduce importes a aplicar (puedes usar el botón “saldo”).</div>
+        <div class="table-responsive">
+          <table class="table">
+            <thead><tr><th>#</th><th>Emisión</th><th>Vencimiento</th><th class="text-end">Total</th><th class="text-end">Pagado</th><th class="text-end">Saldo</th><th style="width:160px;" class="text-end">Aplicar</th></tr></thead>
+            <tbody>
+              <% (facturasPend||[]).forEach(f => { %>
+                <tr>
+                  <td><a href="/contabilidad/facturas/<%= f.id %>" target="_blank"><%= f.numero || f.id %></a></td>
+                  <td><%= (f.fecha_emision||'').slice(0,10) %></td>
+                  <td><%= (f.fecha_vencimiento||'').slice(0,10) %></td>
+                  <td class="text-end num"><%= Number(f.total||0).toFixed(2) %> €</td>
+                  <td class="text-end num"><%= Number(f.pagado||0).toFixed(2) %> €</td>
+                  <td class="text-end num"><strong><%= Number(f.saldo||0).toFixed(2) %> €</strong></td>
+                  <td class="text-end">
+                    <div style="display:flex; gap:6px; justify-content:flex-end;">
+                      <input type="number" step="0.01" min="0" class="form-control" style="max-width:110px;text-align:right;"
+                             name="aplicaciones[<%= f.id %>]" data-saldo="<%= Number(f.saldo||0).toFixed(2) %>" placeholder="0,00">
+                      <button class="btn btn-outline btn-sm" data-fill-saldo type="button">Saldo</button>
+                    </div>
+                  </td>
+                </tr>
+              <% }) %>
+              <% if (!(facturasPend && facturasPend.length)) { %>
+                <tr><td colspan="7" class="small-muted">No hay facturas con saldo para este proveedor.</td></tr>
+              <% } %>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="d-flex justify-content-between align-items-center mt-2">
+          <div class="small-muted">Suma aplicada: <span id="sum-aplicada">0,00</span> €</div>
+          <div>
+            <button class="btn-main">Guardar pago</button>
+          </div>
+        </div>
+      </form>
+    <% } %>
+  </div>
+</div>
+
+<script>
+(function(){
+  const form = document.getElementById('form-pago');
+  if (!form) return;
+
+  const totEl = form.elements['importe_total'];
+  const sumSpan = document.getElementById('sum-aplicada');
+
+  function toNum(v){ const n = parseFloat(String(v).replace(',','.')); return isNaN(n)?0:n; }
+  function fix2(n){ return (Math.round(n*100)/100).toFixed(2); }
+
+  function recalc(){
+    let sum = 0;
+    form.querySelectorAll('input[name^="aplicaciones["]').forEach(inp => { sum += toNum(inp.value || 0); });
+    sumSpan.textContent = fix2(sum);
+  }
+
+  form.addEventListener('input', (e) => {
+    if (e.target.name && e.target.name.startsWith('aplicaciones[')) recalc();
+  });
+
+  // Botón "Saldo"
+  form.querySelectorAll('[data-fill-saldo]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const input = btn.parentElement.querySelector('input[name^="aplicaciones["]');
+      const saldo = toNum(input.getAttribute('data-saldo') || '0');
+      input.value = fix2(saldo);
+      recalc();
+    });
+  });
+
+  form.addEventListener('submit', (e) => {
+    const total = toNum(totEl.value || 0);
+    let sum = 0;
+    form.querySelectorAll('input[name^="aplicaciones["]').forEach(inp => { sum += toNum(inp.value || 0); });
+    if (sum - total > 0.009) {
+      e.preventDefault();
+      alert('La suma aplicada excede el importe del pago.');
+    }
+  });
+})();
+</script>

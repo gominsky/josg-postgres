@@ -164,7 +164,6 @@ select {
   cursor: pointer;
 }
 
-
 /* HEADER ********************************************************************/
 /* Header de la aplicación */
 .header-simple {
@@ -1171,9 +1170,6 @@ form {
     padding-top: 15vh;
     padding-bottom: 15vh;
   }
-  
-/*PDF***************************************************/
-
 /*Error***********************************/
 .custom-error {
   background-color: #fff3cd;
@@ -1182,3 +1178,11 @@ form {
   border-radius: 6px;
   padding: 0.75rem 1rem;
 }
+/*Contabilidad************************************/
+.badge{display:inline-block;padding:.2rem .5rem;border-radius:999px;font-size:.75rem;line-height:1}
+.badge-muted{background:#eef1f4;color:#5b6573}
+.badge-warn{background:#fff2cc;color:#8a6d3b}
+.badge-info{background:#e6f3ff;color:#1c5d99}
+.badge-ok{background:#e5f7e9;color:#2f7a3e}
+.badge-danger{background:#fde2e1;color:#9b1c1c}
+.badge-danger-outline{border:1px solid #e74c3c;color:#e74c3c;background:transparent}

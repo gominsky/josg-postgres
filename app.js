@@ -66,6 +66,8 @@ const configuracionRoutes = require('./routes/configuracion');
 const planoRoutes = require('./routes/plano');
 const contabilidadRoutes = require('./routes/contabilidad');
 const proveedoresRoutes = require('./routes/proveedores');
+const categoriasRoutes = require('./routes/categorias');
+const cuentasRoutes = require('./routes/cuentas');
 app.use('/configuracion', isAdmin, configuracionRoutes);
 app.use('/usuarios', usuariosRoutes);        // Solo admin
 app.use('/profesores', isAuthenticated, profesoresRoutes); // Admin, docentes y usuarios
@@ -83,6 +85,8 @@ app.use('/control_firmas', control_firmasRoutes);
 app.use('/plano', isAuthenticated, planoRoutes);
 app.use('/contabilidad', isAdmin, contabilidadRoutes);
 app.use('/proveedores', isAdmin, proveedoresRoutes);
+app.use('/categorias', isAdmin, categoriasRoutes);
+app.use('/cuentas', isAdmin, cuentasRoutes);
 app.use(express.static('public'));
 
 // Ruta de inicio

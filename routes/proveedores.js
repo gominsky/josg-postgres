@@ -14,7 +14,7 @@ router.get('/', async (req, res) => {
     if (q) {
       params.push(`%${q}%`);
       where.push(`(unaccent(nombre) ILIKE unaccent($${params.length})
-                  OR nif_cif ILIKE $${params.length}
+                  OR cif ILIKE $${params.length}
                   OR email ILIKE $${params.length}
                   OR telefono ILIKE $${params.length})`);
     }
@@ -48,15 +48,15 @@ router.get('/nuevo', (req, res) => {
 // CREAR
 router.post('/nuevo', async (req, res) => {
   const {
-    nombre, nif_cif, email, telefono, direccion,
+    nombre, cif, email, telefono, direccion,
     municipio, provincia, codigo_postal, iban, contacto, notas
   } = req.body;
   try {
     await db.query(
       `INSERT INTO proveedores
-       (nombre, nif_cif, email, telefono, direccion, municipio, provincia, codigo_postal, iban, contacto, notas, activo)
+       (nombre, cif, email, telefono, direccion, municipio, provincia, codigo_postal, iban, contacto, notas, activo)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,true)`,
-      [nombre, nif_cif, email, telefono, direccion, municipio, provincia, codigo_postal, iban, contacto, notas]
+      [nombre, cif, email, telefono, direccion, municipio, provincia, codigo_postal, iban, contacto, notas]
     );
     res.redirect('/proveedores');
   } catch (e) {
@@ -89,17 +89,17 @@ router.get('/:id', async (req, res) => {
 // ACTUALIZAR
 router.post('/:id', async (req, res) => {
   const {
-    nombre, nif_cif, email, telefono, direccion,
+    nombre, cif, email, telefono, direccion,
     municipio, provincia, codigo_postal, iban, contacto, notas, activo
   } = req.body;
   try {
     await db.query(
       `UPDATE proveedores SET
-         nombre=$1, nif_cif=$2, email=$3, telefono=$4, direccion=$5,
+         nombre=$1, cif=$2, email=$3, telefono=$4, direccion=$5,
          municipio=$6, provincia=$7, codigo_postal=$8, iban=$9,
          contacto=$10, notas=$11, activo=$12
        WHERE id=$13`,
-      [nombre, nif_cif, email, telefono, direccion, municipio, provincia, codigo_postal, iban, contacto, notas, activo === 'on', req.params.id]
+      [nombre, cif, email, telefono, direccion, municipio, provincia, codigo_postal, iban, contacto, notas, activo === 'on', req.params.id]
     );
     res.redirect('/proveedores');
   } catch (e) {
