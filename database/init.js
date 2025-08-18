@@ -285,6 +285,7 @@ async function init() {
         provincia   TEXT,
         codigo_postal TEXT,
         iban        TEXT,
+        contacto    TEXT,
         notas       TEXT,
         activo      BOOLEAN NOT NULL DEFAULT TRUE,
         created_at  TIMESTAMP NOT NULL DEFAULT NOW(),

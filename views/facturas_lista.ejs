@@ -2,39 +2,19 @@
 <% hero  = false %>
 
 <div id="fac-list-wrap" class="container my-4">
-  <style>
-    :root{ --accent-100:#ffeed7; --accent-400:#ffb554; --accent-700:#c26c00; --muted:#6c757d; --border:rgba(0,0,0,.08); }
-    @media (min-width: 992px){ #fac-list-wrap.container{ max-width: 1320px; } }
-    .panel-card{ background:#fff; border:1px solid var(--border); border-radius:18px; padding:16px 18px 18px; }
-    .chips { display:flex; gap:.5rem; flex-wrap:wrap; }
-    .chip{ background: var(--accent-100); color: var(--accent-700); border:1px solid #ffe0b3; border-radius:999px; padding:.35rem .7rem; font-size:.85rem; cursor:pointer; }
-    .table-lite{ width:100%; border-collapse:collapse; margin-top:12px; }
-    .table-lite th, .table-lite td{ border:1px solid #e9ecef; padding:8px 10px; vertical-align: middle; }
-    .badge{display:inline-block;padding:.18rem .5rem;border-radius:999px;font-size:.78rem;font-weight:700}
-    .badge-muted{background:#eef1f4;color:#5b6573}
-    .badge-warn{background:#fff2cc;color:#8a6d3b}
-    .badge-info{background:#e6f3ff;color:#1c5d99}
-    .badge-ok{background:#e5f7e9;color:#2f7a3e}
-    .badge-danger{background:#fde2e1;color:#9b1c1c}
-    .badge-danger-outline{border:1px solid #e74c3c;color:#e74c3c;background:transparent}
-    .num{white-space:nowrap}
-    .pager{ display:flex; gap:6px; align-items:center; justify-content:flex-end; margin-top:12px; }
-    .pager a, .pager span{ padding:.35rem .6rem; border:1px solid #e0e0e0; border-radius:8px; text-decoration:none; color:#333; }
-    .pager .current{ background:#f3f4f6; font-weight:700; }
-  </style>
-
   <div class="panel-card">
-    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:8px;">
+    <div class="list-header">
       <h1 class="h1-titulo" style="margin:0;">Facturas</h1>
       <% const enc = encodeURIComponent; %>
       <% const baseQS = `proveedor=${enc(filtros.proveedor||'')}&desde=${enc(filtros.desde||'')}&hasta=${enc(filtros.hasta||'')}&q=${enc(filtros.q||'')}&ordenar=${enc(filtros.ordenar||'')}&estado=${enc(filtros.estado||'')}&venc=${enc(filtros.venc||'')}`; %>
-      <div class="d-flex gap-2">
+      <div class="header-actions">
         <a class="btn btn-outline" href="/contabilidad/facturas/export.csv?<%= baseQS %>">⬇️ Exportar CSV</a>
-        <a class="btn-main" href="/contabilidad/facturas/nueva">+ Nueva</a>
+        <a class="btn btn-outline" href="/contabilidad/facturas/nueva">＋ Nueva factura</a>
       </div>
     </div>
 
     <!-- FILTROS (idénticos a los anteriores; omitidos por brevedad) -->
+
     <!-- CHIPS -->
     <div class="chips" style="margin-top:8px;">
       <span class="chip" data-range="30d">Últ. 30 días</span>
@@ -61,12 +41,21 @@
             </tr>
           </thead>
           <tbody>
-            <% const HOY = new Date().toISOString().slice(0,10); %>
-            <% facturas.forEach(f => { const fechaV=(f.fecha_vencimiento||'').slice(0,10); const est=(f.estado||'').toLowerCase(); const esVencida = fechaV && (!['pagada','anulada'].includes(est)) && (fechaV < HOY); %>
+            <% 
+              const fmtDate = (v) => (v && typeof v.toISOString === 'function')
+                ? v.toISOString().slice(0,10)
+                : String(v||'').slice(0,10);
+              const HOY = fmtDate(new Date());
+            %>
+            <% facturas.forEach(f => { 
+                 const fechaV = fmtDate(f.fecha_vencimiento);
+                 const est = (f.estado||'').toLowerCase();
+                 const esVencida = fechaV && (!['pagada','anulada'].includes(est)) && (fechaV < HOY);
+            %>
               <tr class="clickable-row" onclick="location.href='/contabilidad/facturas/<%= f.id %>'">
                 <td><%= f.numero || f.id %></td>
                 <td><%= f.proveedor || '—' %></td>
-                <td><%= (f.fecha_emision||'').slice(0,10) %></td>
+                <td><%= fmtDate(f.fecha_emision) %></td>
                 <td><%= fechaV %></td>
                 <td class="num"><%= Number(f.base||0).toFixed(2) %> €</td>
                 <td class="num"><%= Number(f.iva||0).toFixed(2) %> €</td>
@@ -104,6 +93,10 @@
       <% } %>
     </div>
   </div>
+</div>
+
+<div class="volver-bloque-izquierda">
+  <a href="/contabilidad" class="enlace-final">← Volver a contabilidad</a>
 </div>
 
 <script>

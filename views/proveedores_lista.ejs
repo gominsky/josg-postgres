@@ -29,17 +29,18 @@
   <div class="dashboard-grid" id="grid-proveedores">
     <% proveedores.forEach(p => { %>
       <a href="/proveedores/<%= p.id %>" class="card <%= p.activo ? 'activo' : 'pasivo' %>"
-         data-activo="<%= p.activo ? '1':'0' %>" data-texto="<%= (p.nombre + ' ' + (p.nif_cif||'') + ' ' + (p.email||'') + ' ' + (p.telefono||'')).toLowerCase() %>">
-        <div style="display:flex; align-items:center; justify-content:space-between; gap:.5rem;">
-          <div style="font-weight:600;"><%= p.nombre %></div>
-          <span class="badge-dot <%= p.activo ? 'dot-ok' : 'dot-off' %>" title="<%= p.activo ? 'Activo' : 'Inactivo' %>"></span>
-        </div>
-        <div style="font-size:.9rem; color:#666; margin-top:.2rem;">
-          <%= p.nif_cif || '—' %>
-          <% if (p.email) { %> · <%= p.email %><% } %>
-          <% if (p.telefono) { %> · <%= p.telefono %><% } %>
-        </div>
-      </a>
+        data-activo="<%= p.activo ? '1':'0' %>" data-texto="<%= (p.nombre + ' ' + (p.cif||'') + ' ' + (p.email||'') + ' ' + (p.telefono||'')).toLowerCase() %>">
+       <span class="badge-dot <%= p.activo ? 'dot-ok' : 'dot-off' %> status-dot"
+             title="<%= p.activo ? 'Activo' : 'Inactivo' %>"></span>
+     
+       <div class="prov-name"><%= p.nombre %></div>
+     
+       <div class="prov-meta">
+         <%= p.cif || '—' %>
+         <% if (p.email) { %> · <%= p.email %><% } %>
+         <% if (p.telefono) { %> · <%= p.telefono %><% } %>
+       </div>
+     </a>     
     <% }) %>
   </div>
 <% } else { %>

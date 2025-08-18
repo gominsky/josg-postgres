@@ -322,7 +322,6 @@ router.post('/facturas/guardar', async (req, res) => {
                                            : +(base_imponible * (1 + iva_pct/100)).toFixed(2);
     const estado          = (req.body.estado || 'pendiente').trim();
     const notas           = (req.body.notas || '').trim();
-    const observaciones   = (req.body.observaciones || '').trim();
 
     if (!proveedor_id || !numero || !fecha_emision) {
       return res.status(400).send('Faltan datos obligatorios');
@@ -333,10 +332,10 @@ router.post('/facturas/guardar', async (req, res) => {
         UPDATE facturas_prov
            SET proveedor_id=$1, categoria_id=$2, cuenta_id=$3, numero=$4,
                fecha_emision=$5, fecha_vencimiento=$6, concepto=$7,
-               base_imponible=$8, iva_pct=$9, total=$10, estado=$11, notas=$12, observaciones=$13
+               base_imponible=$8, iva_pct=$9, total=$10, estado=$11, notas=$12
          WHERE id=$14
       `, [proveedor_id, categoria_id, cuenta_id, numero, fecha_emision, fecha_venc, concepto,
-          base_imponible, iva_pct, total, estado, notas, observaciones, id]);
+          base_imponible, iva_pct, total, estado, notas, id]);
 
       await recalcularEstadoFactura(id);
       return res.redirect(`/contabilidad/facturas/${id}?ok=1`);
@@ -344,11 +343,11 @@ router.post('/facturas/guardar', async (req, res) => {
       const ins = await db.query(`
         INSERT INTO facturas_prov
           (proveedor_id, categoria_id, cuenta_id, numero, fecha_emision, fecha_vencimiento,
-           concepto, base_imponible, iva_pct, total, estado, notas, observaciones)
-        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+           concepto, base_imponible, iva_pct, total, estado, notas)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
         RETURNING id
       `, [proveedor_id, categoria_id, cuenta_id, numero, fecha_emision, fecha_venc, concepto,
-          base_imponible, iva_pct, total, estado, notas, observaciones]);
+          base_imponible, iva_pct, total, estado, notas]);
 
       await recalcularEstadoFactura(ins.rows[0].id);
       return res.redirect(`/contabilidad/facturas/${ins.rows[0].id}?ok=1`);
