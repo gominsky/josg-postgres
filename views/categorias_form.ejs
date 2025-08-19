@@ -5,7 +5,6 @@
     <div class="form-head">
       <h1 class="h1-titulo"><%= title %></h1>
     </div>
-
     <form method="POST" action="<%= EDIT ? ('/categorias/' + cat.id) : '/categorias/nuevo' %>" style="background-color: transparent;">
       <!-- Nombre -->
       <div class="mb-3">
@@ -16,10 +15,10 @@
       </div>
       <div class="mb-3">
         <label class="form-label">Categoría padre (opcional)</label>
-        <select name="parent_id" class="form-select">
+        <select name="padre_id" class="form-select">
           <option value="">— Sin padre —</option>
           <% (padres||[]).forEach(p => { %>
-            <option value="<%= p.id %>" <%= (cat?.parent_id === p.id) ? 'selected' : '' %>><%= p.nombre %></option>
+            <option value="<%= p.id %>" <%= (cat?.padre_id === p.id) ? 'selected' : '' %>><%= p.nombre %></option>
           <% }) %>
         </select>
       </div>
@@ -42,12 +41,10 @@
       <% } %>
 
       <div class="actions">
-        <a class="btn-primary-negro" href="/categorias">Cancelar</a>
         <button class="btn-primary-negro" type="submit">Guardar</button>
       </div>
     </form>
   </div>
-
   <div class="volver-bloque-izquierda" style="margin-top:12px;">
     <a href="/contabilidad" class="enlace-final">← Volver a contabilidad</a>
   </div>

@@ -431,6 +431,95 @@ async function init() {
       LEFT JOIN pagos_prov_aplicaciones a ON a.factura_id = f.id
       GROUP BY f.id; 
     `);   
+    // ================================
+// HARDENING CONTABILIDAD (índices + constraints + trigger)
+// ================================
+
+// 1) Índices adicionales útiles para tus consultas y listados
+await db.query(`
+  CREATE INDEX IF NOT EXISTS idx_facturas_prov_fecha_emision
+    ON facturas_prov (fecha_emision);
+
+  CREATE INDEX IF NOT EXISTS idx_facturas_prov_proveedor_estado
+    ON facturas_prov (proveedor_id, estado);
+`);
+
+// 2) Constraints idempotentes en facturas_prov
+await db.query(`
+  DO $$
+  BEGIN
+    -- Evitar totales negativos
+    IF NOT EXISTS (
+      SELECT 1 FROM pg_constraint WHERE conname = 'chk_fact_total_nonneg'
+    ) THEN
+      ALTER TABLE facturas_prov
+        ADD CONSTRAINT chk_fact_total_nonneg CHECK (total >= 0);
+    END IF;
+
+    -- Evitar duplicados (mismo proveedor + número de factura)
+    IF NOT EXISTS (
+      SELECT 1 FROM pg_constraint WHERE conname = 'uniq_factura_prov_num'
+    ) THEN
+      ALTER TABLE facturas_prov
+        ADD CONSTRAINT uniq_factura_prov_num UNIQUE(proveedor_id, numero);
+    END IF;
+  END $$;
+`);
+
+// 3) Trigger anti-sobrepago en pagos_prov_aplicaciones (con tolerancia 0,01 €)
+await db.query(`
+  DO $$
+  BEGIN
+    -- Crear función del trigger si no existe
+    IF NOT EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'trg_chk_aplicaciones_factura') THEN
+      CREATE OR REPLACE FUNCTION trg_chk_aplicaciones_factura()
+      RETURNS TRIGGER AS $fn$
+      DECLARE
+        v_total    NUMERIC(12,2);
+        v_aplicado NUMERIC(12,2);
+        v_eps      NUMERIC := 0.01; -- tolerancia
+      BEGIN
+        -- Bloquea la factura para evitar condiciones de carrera
+        SELECT total INTO v_total
+          FROM facturas_prov
+         WHERE id = NEW.factura_id
+         FOR UPDATE;
+
+        IF v_total IS NULL THEN
+          RAISE EXCEPTION 'Factura % no encontrada', NEW.factura_id
+            USING ERRCODE = '23503';
+        END IF;
+
+        -- Suma actual de aplicaciones (excluye la propia si UPDATE)
+        SELECT COALESCE(SUM(importe_aplicado),0)
+          INTO v_aplicado
+          FROM pagos_prov_aplicaciones
+         WHERE factura_id = NEW.factura_id
+           AND (TG_OP <> 'UPDATE' OR id <> COALESCE(OLD.id, -1));
+
+        v_aplicado := v_aplicado + NEW.importe_aplicado;
+
+        IF v_aplicado - v_total > v_eps THEN
+          RAISE EXCEPTION 'Aplicaciones (%.2f) superan total (%.2f) para factura %',
+            v_aplicado, v_total, NEW.factura_id
+            USING ERRCODE = '23514';
+        END IF;
+
+        RETURN NEW;
+      END;
+      $fn$ LANGUAGE plpgsql;
+    END IF;
+
+    -- Crear el trigger si no existe
+    IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'pagos_apl_chk_total') THEN
+      CREATE TRIGGER pagos_apl_chk_total
+      BEFORE INSERT OR UPDATE ON pagos_prov_aplicaciones
+      FOR EACH ROW
+      EXECUTE FUNCTION trg_chk_aplicaciones_factura();
+    END IF;
+  END $$;
+`);
+
     // ============ AÑADIDOS PARA EL PLANO DE ORQUESTA ============
 
     // 🎯 Tabla para posiciones en el plano

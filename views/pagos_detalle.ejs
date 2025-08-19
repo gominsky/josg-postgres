@@ -4,9 +4,6 @@
   <div class="panel-card">
     <div class="list-header">
       <h1 class="h1-titulo" style="margin:0;">Detalle del pago</h1>
-      <div class="header-actions">
-        <a class="btn btn-outline" href="/contabilidad/pagos">← Volver al listado</a>
-      </div>
     </div>
 
     <%
@@ -69,8 +66,7 @@
     <% } %>
 
     <div class="actions">
-      <form method="POST" action="/contabilidad/pagos/<%= pago.id %>/eliminar" onsubmit="return confirm('¿Eliminar este pago?');" style="margin-left:auto;">
-        <a href="/contabilidad/pagos" class="btn btn-outline">Cancelar</a>
+      <form method="POST" action="/contabilidad/pagos/<%= pago.id %>/eliminar" onsubmit="return confirm('¿Eliminar este pago?');" style="margin-left:auto; background-color: transparent;">
         <button class="btn-primary-negro">Eliminar pago</button>
       </form>
     </div>

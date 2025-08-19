@@ -2,7 +2,7 @@
 <% hero  = false %>
 
 <div id="cat-list-wrap" class="container my-4">
-  <div class="panel-card">
+  <div class="panel-card panel-narrow">
     <div class="list-header">
       <h1 class="h1-titulo" style="margin:0;">Categorías de gasto</h1>
       <div class="header-actions">
@@ -14,38 +14,41 @@
     <!-- RESUMEN -->
     <%
       const _cats = Array.isArray(categorias) ? categorias : [];
-      const totalListado   = _cats.length;
-      const activasListado = _cats.filter(c => c && c.activo !== false).length;
+      const totalListado = _cats.length;
+      const conSuperior  = _cats.filter(c => (c && (c.padre_nombre || c.parent_nombre || c.superior_nombre))).length;
+      const sinSuperior  = totalListado - conSuperior;
     %>
     <div class="small" style="margin-top:8px; color:var(--muted);">
-      <strong><%= totalListado %></strong> categorías en la página · Activas: <strong><%= activasListado %></strong>
+      <strong><%= totalListado %></strong> categorías ·
+      Con superior: <strong><%= conSuperior %></strong> ·
+      Sin superior: <strong><%= sinSuperior %></strong>
     </div>
 
-    <!-- LISTA (sin wrapper con scroll) -->
+    <!-- LISTA (compacta y balanceada) -->
     <% if (_cats.length === 0) { %>
       <p class="text-muted" style="margin-top:12px;">No hay resultados.</p>
     <% } else { %>
-      <table class="table-lite table-no-scroll">
+      <table class="table-lite table-no-scroll table-compact">
+        <!-- Reparte 50/50 entre Nombre y Superior y deja 60px para el aspa -->
+        <colgroup>
+          <col style="width: calc((100% - 60px)/2)">
+          <col style="width: calc((100% - 60px)/2)">
+          <col style="width: 60px">
+        </colgroup>
         <thead>
           <tr>
             <th>Nombre</th>
-            <th style="width:140px;">Estado</th>
-            <th style="width:60px;"></th>
+            <th>Superior</th>
+            <th></th>
           </tr>
         </thead>
         <tbody>
           <% _cats.forEach(row => { %>
             <tr class="clickable-row" onclick="location.href='/categorias/<%= row.id %>'">
               <td><%= row.nombre %></td>
-              <td>
-                <% if (row.activo !== false) { %>
-                  <span class="badge badge-ok">Activa</span>
-                <% } else { %>
-                  <span class="badge badge-muted">Inactiva</span>
-                <% } %>
-              </td>
+              <td><%= row.padre_nombre || row.parent_nombre || row.superior_nombre || '—' %></td>
               <td class="text-end" onclick="event.stopPropagation()">
-                <form method="POST" action="/categorias/<%= row.id %>/eliminar" style="display:inline;">
+                <form method="POST" action="/categorias/<%= row.id %>/eliminar" style="display:inline; background-color: transparent;">
                   <a href="#"
                     class="aspa-roja"
                     title="Eliminar"
@@ -90,15 +93,35 @@
   <a href="/contabilidad" class="enlace-final">← Volver a contabilidad</a>
 </div>
 
-<!-- Estilos mínimos para ajustar sin scroll y aspa roja -->
 <style>
-  .table-no-scroll{ width:100%; border-collapse:collapse; table-layout:auto; }
-  .table-no-scroll th, .table-no-scroll td{
-    border:1px solid #e9ecef; padding:8px 10px; vertical-align:middle;
-    white-space:normal; word-break:break-word;
+  /* Panel más estrecho */
+  #cat-list-wrap .panel-narrow{
+    max-width: 960px;
+    margin: 0 auto;
   }
+  /* Tabla compacta */
+  #cat-list-wrap .table-compact th,
+  #cat-list-wrap .table-compact td{
+    padding: 6px 8px;
+    font-size: .95rem;
+  }
+  #cat-list-wrap .table-compact thead th{
+    font-weight: 700;
+  }
+  /* Sin scroll y buen comportamiento del texto */
+  .table-no-scroll{ width:100%; border-collapse:collapse; table-layout: fixed; }
+  .table-no-scroll th, .table-no-scroll td{
+    border:1px solid #e9ecef; vertical-align:middle;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  /* Aspa de eliminar */
   .aspa-roja{ color:#dc2626; font-weight:700; font-size:18px; line-height:1; text-decoration:none; padding:0 .25rem; cursor:pointer; }
   .aspa-roja:hover{ color:#b91c1c; }
+  /* En móviles, relaja el recorte */
+  @media (max-width: 576px){
+    .table-no-scroll th, .table-no-scroll td{
+      white-space:normal; text-overflow:clip;
+    }
+  }
 </style>
-
 

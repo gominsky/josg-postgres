@@ -77,7 +77,7 @@ router.post('/nuevo', async (req, res) => {
     res.redirect('/categorias?ok=1');
   } catch (e) {
     console.error(e);
-    res.redirect('/categororias/nuevo'); // no pasa nada si redirige mal; ajusta si quieres
+    res.redirect('/categorias/'); 
   }
 });
 

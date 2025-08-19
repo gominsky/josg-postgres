@@ -1,41 +1,67 @@
 <% hero = false %>
 
-<div class="container my-4">
-  <div class="panel-card">
+<div id="cta-form-wrap" class="container my-4">
+  <div class="panel-card panel-form-narrow">
     <div class="form-head">
-      <h1 class="h1-titulo"><%= title %></h1>
+      <h1 class="h1-titulo" style="margin:0;"><%= title %></h1>
     </div>
-    <form method="POST" action="<%= EDIT ? ('/cuentas/' + cuenta.id) : '/cuentas/nuevo' %>" style="background-color: transparent";>
+
+    <form method="POST" action="<%= EDIT ? ('/cuentas/' + cuenta.id) : '/cuentas/nuevo' %>" style="background-color: transparent;"
       <!-- Nombre -->
       <div class="mb-3">
         <label class="form-label">Nombre de la cuenta</label>
         <input class="form-control" name="nombre" required autofocus
-               placeholder="Ej. 400 Proveedores / 572 Bancos"
+               placeholder="Ej. Banco Sabadell / Caja efectivo"
                value="<%= cuenta?.nombre || '' %>">
-        <div class="help-text">Usa el nombre tal y como quieres verlo en listados y sugerencias.</div>
       </div>
 
-      <!-- Estado (solo en edición) -->
+      <!-- Tipo -->
+      <div class="mb-3">
+        <label class="form-label">Tipo</label>
+        <% const TIPO = (cuenta?.tipo || 'banco'); %>
+        <select class="form-select" name="tipo" required>
+          <option value="banco" <%= TIPO==='banco' ? 'selected' : '' %>>Banco</option>
+          <option value="caja"  <%= TIPO==='caja'  ? 'selected' : '' %>>Caja</option>
+        </select>
+        <div class="help-text">Usa <strong>Banco</strong> para cuentas con IBAN y <strong>Caja</strong> para efectivo.</div>
+      </div>
+
+      <!-- IBAN -->
+      <div class="mb-3">
+        <label class="form-label">IBAN (opcional)</label>
+        <input class="form-control" name="iban" inputmode="text"
+               placeholder="ES12 3456 7890 1234 5678 9012"
+               value="<%= cuenta?.iban || '' %>">
+      </div>
+
+      <!-- Saldo inicial + Fecha -->
+      <div class="row g-3">
+        <div class="col-12 col-sm-6">
+          <label class="form-label">Saldo inicial (€)</label>
+          <input type="number" step="0.01" min="0" name="saldo_inicial" class="form-control"
+                 value="<%= (typeof cuenta?.saldo_inicial !== 'undefined' && cuenta?.saldo_inicial !== null)
+                            ? Number(cuenta.saldo_inicial).toFixed(2) : '' %>">
+        </div>
+        <div class="col-12 col-sm-6">
+          <label class="form-label">Fecha del saldo</label>
+          <input type="date" name="fecha_saldo" class="form-control"
+                 value="<%= cuenta?.fecha_saldo ? String(cuenta.fecha_saldo).slice(0,10) : '' %>">
+        </div>
+      </div>
+
+      <!-- Estado (solo en edición; alta nueva = activa) -->
       <% if (EDIT) { %>
         <div class="mb-3">
-  <label class="form-label">Estado</label>
-  <div class="checkline">
-    <input
-      type="checkbox"
-      id="activo"
-      name="activo"
-      class="chk-orange"
-      <%= (cuenta?.activo !== false) ? 'checked' : '' %> >
-    <label for="activo" class="chk-orange-label" style="margin:0;cursor:pointer;">
-  Activa (desmarca para dejarla inactiva)
-</label>
-  </div>
-</div>
-
+          <label class="form-label">Estado</label>
+          <div class="checkline">
+            <input type="checkbox" id="activo" name="activo" class="chk-orange"
+                   <%= (cuenta?.activo !== false) ? 'checked' : '' %> >
+            <label for="activo" class="chk-orange-label">Activa (desmarca para dejarla inactiva)</label>
+          </div>
+        </div>
       <% } %>
 
       <div class="actions">
-        <a class="btn-primary-negro" href="/cuentas">Cancelar</a>
         <button class="btn-primary-negro" type="submit">Guardar</button>
       </div>
     </form>
@@ -45,3 +71,13 @@
     <a href="/contabilidad" class="enlace-final">← Volver a contabilidad</a>
   </div>
 </div>
+
+<style>
+  /* ancho similar a categorías_form */
+  #cta-form-wrap .panel-form-narrow{ max-width: 720px; margin: 0 auto; }
+  .checkline{ display:flex; align-items:center; gap:.5rem; background:#fff; padding:.35rem .6rem; border:1px solid rgba(0,0,0,.08); border-radius:10px; }
+  /* Checkbox naranja y etiqueta legible */
+  .chk-orange{ accent-color: var(--accent-500, #ff9500); width:18px; height:18px; }
+  .chk-orange-label{ margin:0; cursor:pointer; color:var(--text-main,#212529); }
+</style>
+

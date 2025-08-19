@@ -2,71 +2,109 @@
 <% hero  = false %>
 
 <div id="cts-list-wrap" class="container my-4">
-  <div class="panel-card">
+  <div class="panel-card panel-narrow">
     <div class="list-header">
       <h1 class="h1-titulo" style="margin:0;">Cuentas contables</h1>
-      <% 
-        const _q       = (typeof q       !== 'undefined' && q      ) ? q       : '';
-        const _estado  = (typeof estado  !== 'undefined' && estado ) ? String(estado) : '';
-        const _ordenar = (typeof ordenar !== 'undefined' && ordenar) ? ordenar : '';
-        const enc = encodeURIComponent;
-        const baseQS = `q=${enc(_q)}&estado=${enc(_estado)}&ordenar=${enc(_ordenar)}`;
-      %>
       <div class="header-actions">
-        <a class="btn btn-outline" href="/cuentas/export.csv?<%= baseQS %>">⬇️ Exportar CSV</a>
+        <a class="btn btn-outline" href="/cuentas/export.csv">⬇️ Exportar CSV</a>
         <a class="btn btn-outline" href="/cuentas/nuevo">＋ Nueva cuenta</a>
       </div>
     </div>
 
-   
-
-   <!-- RESUMEN -->
+    <!-- RESUMEN -->
     <%
       const _cuentas = Array.isArray(cuentas) ? cuentas : [];
       const totalListado   = _cuentas.length;
       const activasListado = _cuentas.filter(c => c && c.activo !== false).length;
     %>
     <div class="small" style="margin-top:8px; color:var(--muted);">
-      <strong><%= totalListado %></strong> cuentas en la página · Activas: <strong><%= activasListado %></strong>
+      <strong><%= totalListado %></strong> cuentas · Activas: <strong><%= activasListado %></strong>
     </div>
-    <!-- LISTA -->
-<% if (_cuentas.length === 0) { %>
-  <p class="text-muted" style="margin-top:12px;">No hay resultados para esos filtros.</p>
-<% } else { %>
-  <table class="table-lite table-no-scroll">
-    <thead>
-      <tr>
-        <th>Nombre</th>
-        <th style="width:140px;">Estado</th>
-        <th style="width:60px;"></th>
-      </tr>
-    </thead>
-    <tbody>
-      <% _cuentas.forEach(row => { %>
-        <tr class="clickable-row" onclick="location.href='/cuentas/<%= row.id %>'">
-          <td><%= row.nombre %></td>
-          <td>
-            <% if (row.activo !== false) { %>
-              <span class="badge badge-ok">Activa</span>
-            <% } else { %>
-              <span class="badge badge-muted">Inactiva</span>
-            <% } %>
-          </td>
-          <td class="text-end" onclick="event.stopPropagation()">
-            <form method="POST" action="/cuentas/<%= row.id %>/eliminar" style="display:inline; background-color: transparent;>
-              <a href="#"
-                 class="aspa-roja"
-                 title="Eliminar"
-                 aria-label="Eliminar"
-                 onclick="event.stopPropagation(); if (confirm('¿Eliminar la cuenta &quot;<%= row.nombre %>&quot;?')) this.closest('form').submit(); return false;">×</a>
-            </form>
-          </td>
-        </tr>
-      <% }) %>
-    </tbody>
-  </table>
-<% } %>
+
+    <!-- LISTA (compacta, sin scroll interno) -->
+    <% if (_cuentas.length === 0) { %>
+      <p class="text-muted" style="margin-top:12px;">No hay resultados.</p>
+    <% } else { %>
+      <table class="table-lite table-no-scroll table-compact">
+        <colgroup>
+          <col style="width: 28%">   <!-- Nombre -->
+          <col style="width: 12%">   <!-- Tipo -->
+          <col style="width: 28%">   <!-- IBAN -->
+          <col style="width: 12%">   <!-- Saldo -->
+          <col style="width: 12%">   <!-- Fecha -->
+          <col style="width: 8%">    <!-- Estado -->
+          <col style="width: 60px">  <!-- Aspa -->
+        </colgroup>
+        <thead>
+          <tr>
+            <th>Nombre</th>
+            <th>Tipo</th>
+            <th>IBAN</th>
+            <th class="text-end">Saldo</th>
+            <th>Fecha</th>
+            <th>Estado</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          <%
+            const fmtDate = (v) => (v && typeof v.toISOString === 'function')
+              ? v.toISOString().slice(0,10)
+              : String(v||'').slice(0,10);
+          %>
+          <% _cuentas.forEach(row => { %>
+            <tr class="clickable-row" onclick="location.href='/cuentas/<%= row.id %>'">
+              <td title="<%= row.nombre %>"><%= row.nombre %></td>
+              <td class="text-capitalize"><%= row.tipo %></td>
+              <td title="<%= row.iban || '' %>"><%= row.iban || '—' %></td>
+              <td class="text-end num"><%= (row.saldo_inicial!=null) ? Number(row.saldo_inicial).toFixed(2) + ' €' : '—' %></td>
+              <td><%= row.fecha_saldo ? fmtDate(row.fecha_saldo) : '—' %></td>
+              <td>
+                <% if (row.activo !== false) { %>
+                  <span class="badge badge-ok">Activa</span>
+                <% } else { %>
+                  <span class="badge badge-muted">Inactiva</span>
+                <% } %>
+              </td>
+              <td class="text-end" onclick="event.stopPropagation()">
+                <form method="POST" action="/cuentas/<%= row.id %>/eliminar" style="display:inline; background-color: transparent;">
+                  <a href="#"
+                     class="aspa-roja"
+                     title="Eliminar"
+                     aria-label="Eliminar"
+                     onclick="event.stopPropagation(); if (confirm('¿Eliminar la cuenta &quot;<%= row.nombre %>&quot;?')) this.closest('form').submit(); return false;">×</a>
+                </form>
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    <% } %>
+  </div>
+</div>
 
 <div class="volver-bloque-izquierda">
   <a href="/contabilidad" class="enlace-final">← Volver a contabilidad</a>
 </div>
+
+<style>
+  /* Ancho similar a categorias_lista pero un poco más amplio por más columnas */
+  #cts-list-wrap .panel-narrow{ max-width: 1100px; margin: 0 auto; }
+
+  /* Tabla compacta y sin scroll interno */
+  .table-no-scroll{ width:100%; border-collapse:collapse; table-layout: fixed; }
+  .table-no-scroll th, .table-no-scroll td{
+    border:1px solid #e9ecef; vertical-align:middle;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  .table-compact th, .table-compact td{ padding:6px 8px; font-size:.95rem; }
+  .table-compact thead th{ font-weight:700; }
+
+  /* Aspa de eliminar */
+  .aspa-roja{ color:#dc2626; font-weight:700; font-size:18px; line-height:1; text-decoration:none; padding:0 .25rem; cursor:pointer; }
+  .aspa-roja:hover{ color:#b91c1c; }
+
+  /* Utilidades */
+  .num{ white-space:nowrap; }
+  .text-capitalize{ text-transform: capitalize; }
+</style>

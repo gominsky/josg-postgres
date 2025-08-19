@@ -75,36 +75,34 @@ async function getPagosFactura(id) {
   );
   return rows;
 }
-
-// Recalcular estado por pagos/importe
+// Recalcula estado de una factura en base a lo pagado
 async function recalcularEstadoFactura(facturaId) {
-  const { rows } = await db.query(
-    `SELECT f.total, f.estado,
-            COALESCE(v.pagado,0) AS pagado
-       FROM facturas_prov f
-       LEFT JOIN v_factura_sumas_pagos v ON v.factura_id = f.id
-      WHERE f.id=$1`, [facturaId]);
+  const { rows } = await db.query(`
+    SELECT f.estado, f.total, COALESCE(v.pagado,0) AS pagado
+    FROM facturas_prov f
+    LEFT JOIN v_factura_sumas_pagos v ON v.factura_id = f.id
+    WHERE f.id = $1
+  `, [facturaId]);
+
   if (!rows.length) return;
 
-  const { total, estado: actual, pagado } = rows[0];
-  let nuevo = actual;
+  const cur    = (rows[0].estado || 'pendiente').toLowerCase();
+  const total  = Number(rows[0].total  || 0);
+  const pagado = Number(rows[0].pagado || 0);
+  const eps    = 0.009;
 
-  if (actual === 'anulada') {
-    nuevo = 'anulada';
-  } else if (total == null || isNaN(total)) {
-    nuevo = 'borrador';
-  } else if (pagado <= 0) {
-    nuevo = 'pendiente';
-  } else if (pagado < total) {
-    nuevo = 'parcial';
-  } else {
-    nuevo = 'pagada';
-  }
+  // Mantener "anulada"
+  if (cur === 'anulada') return;
 
-  if (nuevo !== actual) {
+  let nuevo = 'pendiente';
+  if (pagado > eps && pagado + eps < total) nuevo = 'parcial';
+  if (Math.abs(pagado - total) <= eps)      nuevo = 'pagada';
+
+  if (nuevo !== cur) {
     await db.query(`UPDATE facturas_prov SET estado=$1 WHERE id=$2`, [nuevo, facturaId]);
   }
 }
+
 
 /* ===================== Listado base (últimas) ===================== */
 const LISTADO_SQL = `
@@ -151,33 +149,7 @@ async function getFacturasPendientesProveedor(proveedorId) {
   `, [proveedorId]);
   return rows.filter(r => Number(r.saldo) > 0); // robustez
 }
-// Recalcula estado de una factura en base a lo pagado
-async function recalcularEstadoFactura(facturaId) {
-  const { rows } = await db.query(`
-    SELECT f.estado, f.total, COALESCE(v.pagado,0) AS pagado
-    FROM facturas_prov f
-    LEFT JOIN v_factura_sumas_pagos v ON v.factura_id = f.id
-    WHERE f.id = $1
-  `, [facturaId]);
 
-  if (!rows.length) return;
-
-  const cur = (rows[0].estado || 'pendiente').toLowerCase();
-  const total  = Number(rows[0].total || 0);
-  const pagado = Number(rows[0].pagado || 0);
-  const eps = 0.009;
-
-  // Mantener "anulada" si ya lo está
-  if (cur === 'anulada') return;
-
-  let nuevo = 'pendiente';
-  if (pagado > eps && pagado + eps < total) nuevo = 'parcial';
-  if (Math.abs(pagado - total) <= eps)      nuevo = 'pagada';
-
-  if (nuevo !== cur) {
-    await db.query(`UPDATE facturas_prov SET estado=$1 WHERE id=$2`, [nuevo, facturaId]);
-  }
-}
 /* ===================== Rutas ===================== */
 
 // Menú principal (muestra últimas)
@@ -643,17 +615,17 @@ router.post('/pagos/guardar', async (req, res) => {
   const referencia    = (req.body.referencia || '').trim();
   const notas         = (req.body.notas || '').trim();
 
-  // aplicaciones vendrán como aplicaciones[<facturaId>] = importe
   const aplicaciones  = Object.entries(req.body.aplicaciones || {})
     .map(([facturaId, imp]) => ({ factura_id: Number(facturaId), importe: Number(imp || 0) }))
     .filter(x => x.factura_id && x.importe > 0);
 
   const sumaAplicada = aplicaciones.reduce((acc, x) => acc + x.importe, 0);
+  const eps = 0.009;
 
-  if (!proveedor_id || !fecha || importe_total <= 0) {
+  if (!proveedor_id || !fecha || !(importe_total > 0)) {
     return res.status(400).send('Faltan datos del pago');
   }
-  if (sumaAplicada - importe_total > 0.009) {
+  if (sumaAplicada - importe_total > eps) {
     return res.status(400).send('La suma aplicada excede el importe del pago');
   }
 
@@ -662,24 +634,44 @@ router.post('/pagos/guardar', async (req, res) => {
   try {
     await db.query('BEGIN');
 
+    // Crear cabecera del pago
     const { rows: pago } = await db.query(
       `INSERT INTO pagos_prov (proveedor_id, fecha, importe_total, metodo, referencia, notas)
        VALUES ($1,$2,$3,$4,$5,$6)
        RETURNING id`,
       [proveedor_id, fecha, +(importe_total.toFixed(2)), metodo, referencia, notas]
     );
+    const pagoId = pago[0].id;
 
+    // Validar y aplicar, factura a factura (con bloqueo)
     for (const a of aplicaciones) {
+      const { rows } = await db.query(`
+        SELECT f.total, COALESCE(v.pagado,0) AS pagado
+        FROM facturas_prov f
+        LEFT JOIN v_factura_sumas_pagos v ON v.factura_id = f.id
+        WHERE f.id = $1
+        FOR UPDATE
+      `, [a.factura_id]);
+
+      if (!rows.length) throw new Error('Factura no encontrada');
+      const total   = Number(rows[0].total  || 0);
+      const pagado  = Number(rows[0].pagado || 0);
+      const saldo   = Math.max(total - pagado, 0);
+
+      if (a.importe - saldo > eps) {
+        throw new Error(`La aplicación a la factura ${a.factura_id} supera su saldo`);
+      }
+
       await db.query(
         `INSERT INTO pagos_prov_aplicaciones (pago_id, factura_id, importe_aplicado)
          VALUES ($1,$2,$3)`,
-        [pago[0].id, a.factura_id, +(a.importe.toFixed(2))]
+        [pagoId, a.factura_id, +(a.importe.toFixed(2))]
       );
     }
 
     await db.query('COMMIT');
 
-    // Recalcular estados (fuera de la transacción)
+    // Recalcular estados (fuera de transacción)
     await Promise.all(afectadas.map(id => recalcularEstadoFactura(id)));
 
     res.redirect('/contabilidad/pagos?ok=1');
