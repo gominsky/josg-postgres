@@ -1,80 +1,139 @@
 <% title = 'Registrar pago'; hero = false; %>
 <div class="container my-4">
-  <style>
-    .panel-card{background:#fff;border:1px solid rgba(0,0,0,.08);border-radius:18px;padding:16px}
-    .small-muted{color:#6c757d;font-size:.9rem}
-    .num{white-space:nowrap}
-    .table td, .table th{vertical-align:middle}
-  </style>
+<style>
+  /* === Estética sobria, sin naranja === */
+  .panel-card{
+    background:#fff; border:1px solid #e5e7eb; border-radius:14px;
+    padding:16px; max-width:860px; margin:0 auto; overflow:visible; /* <- no recorta el desplegable */
+  }
+  .h1-center{ text-align:center; margin:0 0 1rem; }
+  .grupo-campos{ margin-bottom:1rem; }
+  .grupo-campos > h2{ font-size:1.05rem; margin:0 0 .6rem; font-weight:700; }
+  .form-grid-2{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:.75rem; }
+  .form-grid-4{ display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:.75rem; }
 
-  <div class="panel-card">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-      <h1 class="h1-titulo" style="margin:0;">Registrar pago</h1>
-      <a href="/contabilidad/pagos" class="volver-link">← Volver</a>
+  /* Top grid específico del selector de proveedor */
+  .topgrid{ display:grid; grid-template-columns:minmax(280px,1fr) auto; gap:.75rem; }
+  @media (max-width: 640px){ .topgrid{ grid-template-columns:1fr; } }
+
+  .form-input, .form-select, .form-control, textarea{
+    width:100%; padding:.55rem .6rem; border:1px solid #d0d5dd; border-radius:.5rem; background:#fff;
+  }
+  /* Asegura que el <select> se muestre completo y con flecha correcta en todos los navegadores */
+  .form-select{
+    appearance:auto; -webkit-appearance:menulist; -moz-appearance:auto;
+    min-height:40px; padding-right:2rem; /* deja espacio a la flecha */
+    background:#fff;
+  }
+
+  .form-label{ display:block; font-size:.92rem; margin-bottom:.25rem; }
+  .acciones-finales{ display:flex; justify-content:space-between; align-items:center; margin-top:1rem; }
+  .btn-main{ border:1px solid #111; background:#111; color:#fff; border-radius:.6rem; padding:.5rem .9rem; }
+  .btn-outline{ border:1px solid #d0d5dd; background:#fff; color:#111; border-radius:.6rem; padding:.45rem .8rem; }
+  .btn-outline:hover{ background:#f7f7f7; }
+  .btn-sm{ padding:.35rem .6rem; font-size:.9rem; }
+  .small-muted{ color:#6b7280; font-size:.92rem; }
+  .num{ white-space:nowrap; }
+  .table{ width:100%; border-collapse:collapse; }
+  .table th, .table td{ border:1px solid #e5e7eb; padding:.5rem .6rem; vertical-align:middle; }
+  .table thead th{ background:#fafafa; }
+  .table-responsive{ overflow:auto; }
+  .inline-note{ margin:.3rem 0 0; color:#6b7280; font-size:.9rem; }
+</style>
+<!-- === Paso 1: elegir proveedor (sobrio) === -->
+<div class="panel-card" style="margin-bottom:1rem;">
+  <h1 class="h1-center">Registrar pago</h1>
+  <form method="GET" action="/contabilidad/pagos/nuevo" class="topgrid" style="background-color: transparent";>
+    <div>
+      <label class="form-label">Proveedor</label>
+      <select name="proveedor" class="form-select" required>
+        <option value="">— Selecciona —</option>
+        <% (proveedores||[]).forEach(p => { %>
+          <option value="<%= p.id %>" <%= (proveedorSel==p.id)?'selected':'' %>><%= p.nombre %></option>
+        <% }) %>
+      </select>
     </div>
+    <div style="display:flex; align-items:end; justify-content:flex-end;">
+      <button class="btn-main">Cargar facturas</button>
+    </div>
+  </form>
+</div>
 
-    <!-- Paso 1: elegir proveedor -->
-    <form method="GET" action="/contabilidad/pagos/nuevo" class="grid" style="grid-template-columns:1fr auto;gap:10px;margin-bottom:14px;">
-      <div>
-        <label>Proveedor</label>
-        <select name="proveedor" class="form-select" required>
-          <option value="">— Selecciona —</option>
-          <% (proveedores||[]).forEach(p => { %>
-            <option value="<%= p.id %>" <%= (proveedorSel==p.id)?'selected':'' %>><%= p.nombre %></option>
-          <% }) %>
-        </select>
-      </div>
-      <div class="d-flex align-end"><button class="btn-main">Cargar facturas</button></div>
-    </form>
+  <% if (proveedorSel) { %>
+    <!-- === Paso 2: datos del pago + distribución === -->
+    <form method="POST" action="/contabilidad/pagos/guardar" id="form-pago" class="panel-card">
+      <input type="hidden" name="proveedor_id" value="<%= proveedorSel %>">
 
-    <% if (proveedorSel) { %>
-      <!-- Paso 2: datos del pago -->
-      <form method="POST" action="/contabilidad/pagos/guardar" id="form-pago">
-        <input type="hidden" name="proveedor_id" value="<%= proveedorSel %>">
-        <div class="grid" style="grid-template-columns:repeat(4,1fr);gap:10px;">
-          <div>
-            <label>Fecha</label>
+      <!-- Datos del pago -->
+      <div class="grupo-campos">
+        <h2>Datos del pago</h2>
+        <div class="form-grid-4">
+          <label>
+            <span class="form-label">Fecha</span>
             <input type="date" name="fecha" required class="form-control" value="<%= hoy %>">
-          </div>
-          <div>
-            <label>Importe total (€)</label>
+          </label>
+          <label>
+            <span class="form-label">Importe total (€)</span>
             <input type="number" name="importe_total" step="0.01" min="0.01" class="form-control" required>
-          </div>
-          <div>
-            <label>Método</label>
-            <input type="text" name="metodo" class="form-control" placeholder="Transferencia / Tarjeta / Efectivo">
-          </div>
-          <div>
-            <label>Referencia</label>
+          </label>
+          <label>
+            <span class="form-label">Método</span>
+            <select name="metodo" class="form-select" required>
+              <option value="transferencia">Transferencia</option>
+              <option value="tarjeta">Tarjeta</option>
+              <option value="efectivo">Efectivo</option>
+              <option value="domiciliacion">Domiciliación</option>
+              <option value="otro" selected>Otro</option>
+            </select>
+          </label>
+          <label>
+            <span class="form-label">Referencia</span>
             <input type="text" name="referencia" class="form-control" placeholder="Nº operación / banco">
-          </div>
-          <div style="grid-column:1/-1;">
-            <label>Notas</label>
+          </label>
+          <label style="grid-column:1/-1;">
+            <span class="form-label">Notas</span>
             <textarea name="notas" rows="2" class="form-control"></textarea>
-          </div>
+          </label>
+        </div>
+      </div>
+
+      <!-- Distribución -->
+      <div class="grupo-campos">
+        <h2>Distribución entre facturas</h2>
+        <div class="small-muted inline-note">
+          Facturas con saldo para el proveedor. Introduce importes a aplicar (puedes usar “Saldo”).
         </div>
 
-        <hr class="my-3">
+        <% const d2 = v => (v && typeof v.toISOString==='function') ? v.toISOString().slice(0,10) : String(v||'').slice(0,10); %>
 
-        <!-- Paso 3: distribución entre facturas -->
-        <div class="small-muted mb-2">Facturas con saldo del proveedor seleccionado. Introduce importes a aplicar (puedes usar el botón “saldo”).</div>
-        <div class="table-responsive">
+        <div class="table-responsive" style="margin-top:.5rem;">
           <table class="table">
-            <thead><tr><th>#</th><th>Emisión</th><th>Vencimiento</th><th class="text-end">Total</th><th class="text-end">Pagado</th><th class="text-end">Saldo</th><th style="width:160px;" class="text-end">Aplicar</th></tr></thead>
+            <thead>
+              <tr>
+                <th>#</th><th>Emisión</th><th>Vencimiento</th>
+                <th class="text-end">Total</th>
+                <th class="text-end">Pagado</th>
+                <th class="text-end">Saldo</th>
+                <th class="text-end" style="width:160px;">Aplicar</th>
+              </tr>
+            </thead>
             <tbody>
               <% (facturasPend||[]).forEach(f => { %>
                 <tr>
-                  <td><a href="/contabilidad/facturas/<%= f.id %>" target="_blank"><%= f.numero || f.id %></a></td>
-                  <td><%= (f.fecha_emision||'').slice(0,10) %></td>
-                  <td><%= (f.fecha_vencimiento||'').slice(0,10) %></td>
+                  <td><a href="/contabilidad/facturas/<%= f.id %>" target="_blank" rel="noopener"><%= f.numero || f.id %></a></td>
+                  <td><%= d2(f.fecha_emision) %></td>
+                  <td><%= d2(f.fecha_vencimiento) %></td>
                   <td class="text-end num"><%= Number(f.total||0).toFixed(2) %> €</td>
                   <td class="text-end num"><%= Number(f.pagado||0).toFixed(2) %> €</td>
                   <td class="text-end num"><strong><%= Number(f.saldo||0).toFixed(2) %> €</strong></td>
                   <td class="text-end">
                     <div style="display:flex; gap:6px; justify-content:flex-end;">
-                      <input type="number" step="0.01" min="0" class="form-control" style="max-width:110px;text-align:right;"
-                             name="aplicaciones[<%= f.id %>]" data-saldo="<%= Number(f.saldo||0).toFixed(2) %>" placeholder="0,00">
-                      <button class="btn btn-outline btn-sm" data-fill-saldo type="button">Saldo</button>
+                      <input type="number" step="0.01" min="0" class="form-control"
+                             style="max-width:110px;text-align:right;"
+                             name="aplicaciones[<%= f.id %>]"
+                             data-saldo="<%= Number(f.saldo||0).toFixed(2) %>"
+                             placeholder="0,00">
+                      <button class="btn-outline btn-sm" data-fill-saldo type="button">Saldo</button>
                     </div>
                   </td>
                 </tr>
@@ -85,16 +144,18 @@
             </tbody>
           </table>
         </div>
+      </div>
 
-        <div class="d-flex justify-content-between align-items-center mt-2">
-          <div class="small-muted">Suma aplicada: <span id="sum-aplicada">0,00</span> €</div>
-          <div>
-            <button class="btn-main">Guardar pago</button>
-          </div>
+      <!-- Acciones -->
+      <div class="acciones-finales">
+        <a href="/contabilidad/pagos" class="btn-outline">← Volver</a>
+        <div class="small-muted" style="margin-right:auto; margin-left:1rem;">
+          Suma aplicada: <span id="sum-aplicada">0,00</span> €
         </div>
-      </form>
-    <% } %>
-  </div>
+        <button class="btn-main">Guardar pago</button>
+      </div>
+    </form>
+  <% } %>
 </div>
 
 <script>
@@ -102,7 +163,7 @@
   const form = document.getElementById('form-pago');
   if (!form) return;
 
-  const totEl = form.elements['importe_total'];
+  const totEl   = form.elements['importe_total'];
   const sumSpan = document.getElementById('sum-aplicada');
 
   function toNum(v){ const n = parseFloat(String(v).replace(',','.')); return isNaN(n)?0:n; }
@@ -114,11 +175,6 @@
     sumSpan.textContent = fix2(sum);
   }
 
-  form.addEventListener('input', (e) => {
-    if (e.target.name && e.target.name.startsWith('aplicaciones[')) recalc();
-  });
-
-  // Botón "Saldo"
   form.querySelectorAll('[data-fill-saldo]').forEach(btn => {
     btn.addEventListener('click', () => {
       const input = btn.parentElement.querySelector('input[name^="aplicaciones["]');
@@ -128,14 +184,31 @@
     });
   });
 
+  form.addEventListener('input', (e) => {
+    const t = e.target;
+    if (t.name && t.name.startsWith('aplicaciones[')) {
+      const saldo = toNum(t.getAttribute('data-saldo') || '0');
+      let v = toNum(t.value || 0);
+      if (v > saldo) v = saldo;
+      if (v < 0) v = 0;
+      t.value = fix2(v);
+      recalc();
+    }
+  });
+
   form.addEventListener('submit', (e) => {
     const total = toNum(totEl.value || 0);
     let sum = 0;
     form.querySelectorAll('input[name^="aplicaciones["]').forEach(inp => { sum += toNum(inp.value || 0); });
+
     if (sum - total > 0.009) {
       e.preventDefault();
       alert('La suma aplicada excede el importe del pago.');
+      return false;
     }
+    form.querySelectorAll('input[name^="aplicaciones["]').forEach(inp => { inp.value = fix2(toNum(inp.value || 0)); });
+    totEl.value = fix2(total);
   });
 })();
 </script>
+

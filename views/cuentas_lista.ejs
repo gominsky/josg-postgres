@@ -1,35 +1,72 @@
-<% title='Cuentas contables'; hero=false; %>
-<div class="container my-4">
-  <div class="panel-card" style="background:#fff;border:1px solid rgba(0,0,0,.08);border-radius:18px;padding:16px">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+<% title = 'Cuentas contables' %>
+<% hero  = false %>
+
+<div id="cts-list-wrap" class="container my-4">
+  <div class="panel-card">
+    <div class="list-header">
       <h1 class="h1-titulo" style="margin:0;">Cuentas contables</h1>
-      <a href="/cuentas/nuevo" class="btn-main">+ Nueva</a>
+      <% 
+        const _q       = (typeof q       !== 'undefined' && q      ) ? q       : '';
+        const _estado  = (typeof estado  !== 'undefined' && estado ) ? String(estado) : '';
+        const _ordenar = (typeof ordenar !== 'undefined' && ordenar) ? ordenar : '';
+        const enc = encodeURIComponent;
+        const baseQS = `q=${enc(_q)}&estado=${enc(_estado)}&ordenar=${enc(_ordenar)}`;
+      %>
+      <div class="header-actions">
+        <a class="btn btn-outline" href="/cuentas/export.csv?<%= baseQS %>">⬇️ Exportar CSV</a>
+        <a class="btn btn-outline" href="/cuentas/nuevo">＋ Nueva cuenta</a>
+      </div>
     </div>
 
-    <form class="d-flex gap-2 mb-3">
-      <input type="text" name="q" class="form-control" placeholder="Buscar…" value="<%= q||'' %>">
-      <button class="btn-main">Buscar</button>
-      <a class="btn btn-outline" href="/cuentas">Limpiar</a>
-    </form>
+   
 
-    <table class="table">
-      <thead><tr><th>Nombre</th><th>Activo</th><th></th></tr></thead>
-      <tbody>
-        <% (cuentas||[]).forEach(c => { %>
-          <tr>
-            <td><a href="/cuentas/<%= c.id %>"><%= c.nombre %></a></td>
-            <td><%= (c.activo!==false)?'Sí':'No' %></td>
-            <td class="text-end">
-              <form method="POST" action="/cuentas/<%= c.id %>/eliminar" onsubmit="return confirm('¿Eliminar?');">
-                <button class="btn btn-sm btn-outline-danger">Eliminar</button>
-              </form>
-            </td>
-          </tr>
-        <% }) %>
-        <% if (!(cuentas&&cuentas.length)) { %>
-          <tr><td colspan="3" class="text-muted">Sin resultados</td></tr>
-        <% } %>
-      </tbody>
-    </table>
-  </div>
+   <!-- RESUMEN -->
+    <%
+      const _cuentas = Array.isArray(cuentas) ? cuentas : [];
+      const totalListado   = _cuentas.length;
+      const activasListado = _cuentas.filter(c => c && c.activo !== false).length;
+    %>
+    <div class="small" style="margin-top:8px; color:var(--muted);">
+      <strong><%= totalListado %></strong> cuentas en la página · Activas: <strong><%= activasListado %></strong>
+    </div>
+    <!-- LISTA -->
+<% if (_cuentas.length === 0) { %>
+  <p class="text-muted" style="margin-top:12px;">No hay resultados para esos filtros.</p>
+<% } else { %>
+  <table class="table-lite table-no-scroll">
+    <thead>
+      <tr>
+        <th>Nombre</th>
+        <th style="width:140px;">Estado</th>
+        <th style="width:60px;"></th>
+      </tr>
+    </thead>
+    <tbody>
+      <% _cuentas.forEach(row => { %>
+        <tr class="clickable-row" onclick="location.href='/cuentas/<%= row.id %>'">
+          <td><%= row.nombre %></td>
+          <td>
+            <% if (row.activo !== false) { %>
+              <span class="badge badge-ok">Activa</span>
+            <% } else { %>
+              <span class="badge badge-muted">Inactiva</span>
+            <% } %>
+          </td>
+          <td class="text-end" onclick="event.stopPropagation()">
+            <form method="POST" action="/cuentas/<%= row.id %>/eliminar" style="display:inline; background-color: transparent;>
+              <a href="#"
+                 class="aspa-roja"
+                 title="Eliminar"
+                 aria-label="Eliminar"
+                 onclick="event.stopPropagation(); if (confirm('¿Eliminar la cuenta &quot;<%= row.nombre %>&quot;?')) this.closest('form').submit(); return false;">×</a>
+            </form>
+          </td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+<% } %>
+
+<div class="volver-bloque-izquierda">
+  <a href="/contabilidad" class="enlace-final">← Volver a contabilidad</a>
 </div>

@@ -1,75 +1,160 @@
-<% title = 'Pagos a proveedor'; hero = false; %>
-<div class="container my-4">
+<% title = 'Pagos a proveedor' %>
+<% hero  = false %>
+
+<div id="pag-list-wrap" class="container my-4">
   <style>
-    .panel-card{background:#fff;border:1px solid rgba(0,0,0,.08);border-radius:18px;padding:16px}
-    .badge{display:inline-block;padding:.2rem .5rem;border-radius:999px;font-size:.75rem}
-    .badge-ok{background:#e5f7e9;color:#2f7a3e}
-    .badge-warn{background:#fff2cc;color:#8a6d3b}
-  </style>
+  /* ensancha el contenedor en desktop */
+  @media (min-width: 992px){
+    #pag-list-wrap.container{ max-width: 1320px; }
+  }
+  @media (min-width: 1400px){
+    #pag-list-wrap.container{ max-width: 1440px; }
+  }
+
+  /* la tabla aprovecha el ancho extra */
+  #pag-list-wrap .table-lite{ table-layout: auto; width:100%; }
+
+  /* da más aire a columnas largas */
+  #pag-list-wrap .table-lite th:nth-child(2),
+  #pag-list-wrap .table-lite td:nth-child(2){ min-width: 260px; }  /* Proveedor */
+  #pag-list-wrap .table-lite th:nth-child(7),
+  #pag-list-wrap .table-lite td:nth-child(7){ min-width: 220px; }  /* Referencia */
+
+  /* números bien alineados a la derecha */
+  #pag-list-wrap .table-lite th:nth-child(3),
+  #pag-list-wrap .table-lite td:nth-child(3),
+  #pag-list-wrap .table-lite th:nth-child(4),
+  #pag-list-wrap .table-lite td:nth-child(4),
+  #pag-list-wrap .table-lite th:nth-child(5),
+  #pag-list-wrap .table-lite td:nth-child(5){ text-align:right; }
+</style>
 
   <div class="panel-card">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+    <div class="list-header">
       <h1 class="h1-titulo" style="margin:0;">Pagos a proveedor</h1>
-      <a href="/contabilidad/pagos/nuevo" class="btn-main">+ Registrar pago</a>
-      <a href="/contabilidad/pagos/export.csv?<%= new URLSearchParams({ desde: (filtros.desde||''), hasta:(filtros.hasta||''), proveedor:(filtros.proveedor||'') }).toString() %>" class="btn btn-outline">⬇️ Exportar CSV</a>
-
+      <% const enc = encodeURIComponent; %>
+      <% const baseQS = `proveedor=${enc(filtros.proveedor||'')}&desde=${enc(filtros.desde||'')}&hasta=${enc(filtros.hasta||'')}&q=${enc(filtros.q||'')}&ordenar=${enc(filtros.ordenar||'')}`; %>
+      <div class="header-actions">
+        <a class="btn btn-outline" href="/contabilidad/pagos/export.csv?<%= baseQS %>">⬇️ Exportar CSV</a>
+        <a class="btn btn-outline" href="/contabilidad/pagos/nuevo">＋ Registrar pago</a>
+      </div>
     </div>
 
-    <form class="grid" style="grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:10px;">
-      <div>
-        <label>Desde</label>
-        <input type="date" name="desde" value="<%= filtros.desde || '' %>" class="form-control">
-      </div>
-      <div>
-        <label>Hasta</label>
-        <input type="date" name="hasta" value="<%= filtros.hasta || '' %>" class="form-control">
-      </div>
-      <div>
-        <label>Proveedor</label>
-        <select name="proveedor" class="form-select">
-          <option value="">Todos</option>
-          <% (proveedores||[]).forEach(p => { %>
-            <option value="<%= p.id %>" <%= (filtros.proveedor == p.id ? 'selected' : '') %>><%= p.nombre %></option>
-          <% }) %>
-        </select>
-      </div>
-      <div class="d-flex align-end">
-        <button class="btn-main">Filtrar</button>
-        <a href="/contabilidad/pagos" class="btn btn-outline ms-2">Limpiar</a>
-      </div>
-    </form>
+    <!-- FILTROS (idénticos a los de facturas; si los tienes en un partial, inclúyelos aquí) -->
 
-    <div class="table-responsive">
-      <table class="table">
-        <thead><tr><th>Fecha</th><th>Proveedor</th><th>Importe</th><th>Aplicado</th><th>Estado</th><th>Ref.</th><th></th></tr></thead>
-        <tbody>
-          <% (pagos||[]).forEach(p => { const pend = Number(p.importe_total) - Number(p.aplicado||0); %>
+    <!-- CHIPS -->
+    <div class="chips" style="margin-top:8px;">
+      <span class="chip" data-range="30d">Últ. 30 días</span>
+      <span class="chip" data-range="mes">Mes actual</span>
+      <span class="chip" data-range="trim">Trimestre actual</span>
+      <span class="chip" data-range="ytd">Año en curso</span>
+      <a class="chip" href="/contabilidad/pagos">Quitar filtros</a>
+    </div>
+
+    <!-- RESUMEN -->
+    <%
+      let nPag = (pagos||[]).length, sumaImporte=0, sumaAplicado=0;
+      (pagos||[]).forEach(p => { sumaImporte += Number(p.importe_total||0); sumaAplicado += Number(p.aplicado||0); });
+    %>
+    <div class="small" style="margin-top:8px; color:var(--muted);">
+      <strong><%= nPag %></strong> pagos ·
+      Importe: <strong class="num"><%= sumaImporte.toFixed(2) %> €</strong> ·
+      Aplicado: <strong class="num"><%= sumaAplicado.toFixed(2) %> €</strong>
+    </div>
+
+    <!-- LISTA -->
+    <% if ((pagos||[]).length === 0) { %>
+      <p class="text-muted" style="margin-top:12px;">No hay resultados para esos filtros.</p>
+    <% } else { %>
+      <div class="table-responsive">
+        <table class="table-lite">
+          <thead>
             <tr>
-              <td><%= p.fecha %></td>
-              <td><%= p.proveedor_nombre || '—' %></td>
-              <td><%= Number(p.importe_total).toFixed(2) %> €</td>
-              <td><%= Number(p.aplicado||0).toFixed(2) %> €</td>
-              <td>
-                <% if (pend > 0.009) { %>
-                  <span class="badge badge-warn">Parcial</span>
-                <% } else { %>
-                  <span class="badge badge-ok">Aplicado</span>
-                <% } %>
-              </td>
-              <td><%= p.referencia || '' %></td>
-              <td class="text-end">
-                <form method="POST" action="/contabilidad/pagos/<%= p.id %>/eliminar" onsubmit="return confirm('¿Eliminar pago?');">
-                  <button class="btn btn-sm btn-outline-danger">Eliminar</button>
-                </form>
-              </td>
+              <th>Fecha</th><th>Proveedor</th><th class="text-end">Importe</th><th class="text-end">Aplicado</th><th class="text-end">Pendiente</th><th>Estado</th><th>Referencia</th>
             </tr>
-          <% }) %>
-          <% if (!(pagos&&pagos.length)) { %>
-            <tr><td colspan="7" class="muted">Sin pagos</td></tr>
-          <% } %>
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            <%
+              const fmtDate = (v) => (v && typeof v.toISOString === 'function')
+                ? v.toISOString().slice(0,10)
+                : String(v||'').slice(0,10);
+            %>
+            <% (pagos||[]).forEach(p => {
+                 const aplicado = Number(p.aplicado||0);
+                 const importe  = Number(p.importe_total||0);
+                 const pend     = Math.max(importe - aplicado, 0);
+            %>
+              <tr class="clickable-row" onclick="location.href='/contabilidad/pagos/<%= p.id %>'">
+                <td><%= fmtDate(p.fecha) %></td>
+                <td><%= p.proveedor_nombre || '—' %></td>
+                <td class="text-end num"><%= importe.toFixed(2) %> €</td>
+                <td class="text-end num"><%= aplicado.toFixed(2) %> €</td>
+                <td class="text-end num"><strong><%= pend.toFixed(2) %> €</strong></td>
+                <td>
+                  <% if (pend > 0.009) { %>
+                    <span class="badge badge-warn">Parcial</span>
+                  <% } else { %>
+                    <span class="badge badge-ok">Aplicado</span>
+                  <% } %>
+                </td>
+                <td><%= p.referencia || '' %></td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+    <% } %>
+    <!-- PAGINACIÓN -->
+<% 
+  const p = (typeof paginacion !== 'undefined' && paginacion)
+    ? paginacion 
+    : { page: 1, per_page: 50, total_pages: 1 };
+%>
+
+<% if (p.total_pages > 1) { %>
+  <div class="pager">
+    <% if (p.page > 1) { %>
+      <a href="/contabilidad/pagos?<%= baseQS %>&per_page=<%= p.per_page %>&page=1">« Primero</a>
+      <a href="/contabilidad/pagos?<%= baseQS %>&per_page=<%= p.per_page %>&page=<%= p.page - 1 %>">‹ Anterior</a>
+    <% } else { %>
+      <span>« Primero</span><span>‹ Anterior</span>
+    <% } %>
+
+    <span class="current">Página <%= p.page %> / <%= p.total_pages %></span>
+
+    <% if (p.page < p.total_pages) { %>
+      <a href="/contabilidad/pagos?<%= baseQS %>&per_page=<%= p.per_page %>&page=<%= p.page + 1 %>">Siguiente ›</a>
+      <a href="/contabilidad/pagos?<%= baseQS %>&per_page=<%= p.per_page %>&page=<%= p.total_pages %>">Última »</a>
+    <% } else { %>
+      <span>Siguiente ›</span><span>Última »</span>
+    <% } %>
+  </div>
+<% } %>
+
     </div>
   </div>
 </div>
 
+<div class="volver-bloque-izquierda">
+  <a href="/contabilidad" class="enlace-final">← Volver a contabilidad</a>
+</div>
+
+<script>
+  (function(){
+    // Busca un formulario de filtros (si existe) con id específico o genérico
+    const f = document.querySelector('form#filtrosPagos') || document.getElementById('filtros');
+    const elDesde = f?.elements?.['desde'];
+    const elHasta = f?.elements?.['hasta'];
+    function fmt(d){ return d.toISOString().slice(0,10); }
+    function setRange(a,b){ if (elDesde) elDesde.value=fmt(a); if (elHasta) elHasta.value=fmt(b); f?.submit?.(); }
+    document.querySelectorAll('.chip[data-range]').forEach(chip=>{
+      chip.addEventListener('click', ()=>{
+        const now=new Date(); const today=new Date(now.getFullYear(),now.getMonth(),now.getDate());
+        if (chip.dataset.range==='30d'){ const s=new Date(today); s.setDate(s.getDate()-29); setRange(s,today); }
+        if (chip.dataset.range==='mes'){ const s=new Date(today.getFullYear(),today.getMonth(),1); const e=new Date(today.getFullYear(),today.getMonth()+1,0); setRange(s,e); }
+        if (chip.dataset.range==='trim'){ const m=today.getMonth(); const q=Math.floor(m/3); const s=new Date(today.getFullYear(),q*3,1); const e=new Date(today.getFullYear(),q*3+3,0); setRange(s,e); }
+        if (chip.dataset.range==='ytd'){ const s=new Date(today.getFullYear(),0,1); setRange(s,today); }
+      });
+    });
+  })();
+</script>

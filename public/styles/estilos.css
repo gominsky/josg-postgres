@@ -1285,15 +1285,6 @@ form {
 .adjunto-item{ display:flex; flex-direction:column; gap:8px; align-items:flex-start; }
 .adjunto-item img{ max-width:160px; max-height:120px; object-fit:cover; border:1px solid #eee; border-radius:8px; }
 
-/* Badges pagos/estados */
-.badge{display:inline-block;padding:.2rem .5rem;border-radius:999px;font-size:.75rem;line-height:1}
-.badge-muted{background:#eef1f4;color:#5b6573}
-.badge-warn{background:#fff2cc;color:#8a6d3b}
-.badge-info{background:#e6f3ff;color:#1c5d99}
-.badge-ok{background:#e5f7e9;color:#2f7a3e}
-.badge-danger{background:#fde2e1;color:#9b1c1c}
-.badge-danger-outline{border:1px solid #e74c3c;color:#e74c3c;background:transparent}
-
 :root{ --accent-100:#ffeed7; --accent-400:#ffb554; --accent-700:#c26c00; --muted:#6c757d; --border:rgba(0,0,0,.08); }
     @media (min-width: 992px){ #fac-list-wrap.container{ max-width: 1320px; } }
     .panel-card{ background:#fff; border:1px solid var(--border); border-radius:18px; padding:16px 18px 18px; }
@@ -1369,3 +1360,100 @@ form {
   }
   .btn-subtle:hover{ background:#f7f7f7; border-color:#c9cdd3; }
   .soft-hr{ border:0; border-top:1px solid #eee; margin:12px 0; }
+
+  .aspa-roja{
+    color:#dc2626;             /* rojo */
+    font-weight:700;
+    font-size:18px;
+    line-height:1;
+    text-decoration:none;
+    padding:0 .25rem;          /* un poco de aire sin parecer botón */
+    cursor:pointer;
+  }
+  .aspa-roja:hover{ color:#b91c1c; }
+
+   /* === mismo look & feel que proveedores_form === */
+    :root{ --ink:#0f172a; --muted:#6b7280; --line:#e5e7eb; --line-strong:#d0d5dd; --bg:#fff; }
+    .panel-card{
+      background:var(--bg); border:1px solid rgba(0,0,0,.08);
+      border-radius:18px; padding:16px 18px; max-width:740px; margin:0 auto;
+    }
+    .form-head{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:8px; }
+    .form-head .h1-titulo{ margin:0; font-weight:700; }
+    .volver-link{ color:#0f172a; text-decoration:none; font-weight:600; opacity:.85 }
+    .volver-link:hover{ text-decoration:underline; opacity:1 }
+
+    .form-label{ font-weight:600; margin-bottom:.38rem; color:#111; }
+    .form-control, .form-select{
+      width:100%; min-height:44px; padding:.55rem .7rem; border:1px solid var(--line-strong);
+      border-radius:10px; background:#fff; transition:border-color .15s, box-shadow .15s;
+    }
+    .form-control:focus, .form-select:focus{
+      outline:none; border-color:#b9c0c9; box-shadow:0 0 0 3px rgba(17,24,39,.06);
+    }
+    .help-text{ color:var(--muted); font-size:.92rem; }
+
+    /* Contenedor como en proveedores_form */
+    .checkline{
+      display:flex; align-items:center; gap:10px;
+      padding:.6rem .75rem; border:1px solid #e5e7eb; border-radius:10px; background:#fafafa;
+    }
+
+    /* Checkbox naranja (custom, no depende de accent-color) */
+    .chk-orange{
+      -webkit-appearance: none;
+      appearance: none;
+      width: 20px; height: 20px;
+      border: 2px solid #ff9500; border-radius: 6px;
+      background: #fff; position: relative; cursor: pointer; margin-right: 8px;
+    }
+    .chk-orange:focus{ outline: 2px solid rgba(255,149,0,.35); outline-offset: 2px; }
+    .chk-orange:checked{ background: #ff9500; border-color: #ff9500; }
+    .chk-orange:checked::after{
+      content:""; position:absolute; left:5px; top:2px; width:6px; height:11px;
+      border-right:2px solid #fff; border-bottom:2px solid #fff; transform: rotate(45deg);
+    }
+
+    .actions{ display:flex; gap:8px; justify-content:flex-end; margin-top:12px; }
+    .btn-main{
+      border:1px solid var(--line-strong); border-radius:10px; padding:.55rem .9rem;
+      background:#111; color:#fff; text-decoration:none;
+    }
+    .btn-main:hover{ filter:brightness(1.05); }
+    .btn.btn-outline{
+      border:1px solid var(--line-strong); border-radius:10px; padding:.55rem .9rem;
+      background:#fff; color:#111; text-decoration:none;
+    }
+    .btn.btn-outline:hover{ background:#f7f7f9; }
+    /* Texto del label en oscuro */
+    .checkline .chk-orange-label{
+      color:#0f172a;   /* oscuro */
+      font-weight:600; /* opcional, para que quede como en proveedores */
+    }
+
+    /* Si algo global lo “apaga”, sube la prioridad */
+    .checkline .chk-orange-label{ color:#0f172a !important; }
+
+  /* sin scroll interno: la tabla se adapta y el texto envuelve */
+  .table-no-scroll{
+    width:100%;
+    border-collapse:collapse;
+    table-layout:auto;              /* permite que ajuste columnas */
+  }
+  .table-no-scroll th,
+  .table-no-scroll td{
+    border:1px solid #e9ecef;
+    padding:8px 10px;
+    vertical-align:middle;
+    white-space:normal;             /* permite salto de línea */
+    word-break:break-word;          /* corta palabras largas si hace falta */
+  }
+  /* columna de estado y de acción con ancho fijo para evitar desbordes */
+  .table-no-scroll th:nth-child(2),
+  .table-no-scroll td:nth-child(2){ width:140px; }
+  .table-no-scroll th:nth-child(3),
+  .table-no-scroll td:nth-child(3){ width:60px; text-align:right; }
+
+  /* aspa roja (si no la tenías de antes) */
+  .aspa-roja{ color:#dc2626; font-weight:700; font-size:18px; line-height:1; text-decoration:none; padding:0 .25rem; cursor:pointer; }
+  .aspa-roja:hover{ color:#b91c1c; }

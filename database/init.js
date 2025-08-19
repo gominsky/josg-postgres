@@ -367,37 +367,23 @@ async function init() {
     // Nota: se llama pagos_prov para no colisionar con tu tabla "pagos" de alumnos
     await db.query(`
       CREATE TABLE IF NOT EXISTS pagos_prov (
-        id          SERIAL PRIMARY KEY,
-        factura_id  INT NOT NULL REFERENCES facturas_prov(id) ON DELETE CASCADE,
-        cuenta_id   INT NOT NULL REFERENCES cuentas(id),
-        fecha       DATE NOT NULL,
-        importe     NUMERIC(12,2) NOT NULL CHECK (importe >= 0),
-        metodo      TEXT NOT NULL CHECK (metodo IN ('transferencia','tarjeta','efectivo','domiciliacion','otro')),
-        referencia  TEXT,
-        notas       TEXT,
-        created_at  TIMESTAMP NOT NULL DEFAULT NOW()
+        id             SERIAL PRIMARY KEY,
+        proveedor_id   INTEGER REFERENCES proveedores(id) ON DELETE SET NULL,
+        cuenta_id      INTEGER REFERENCES cuentas(id),           -- NULL permitido (UI actual)
+        fecha          DATE NOT NULL DEFAULT CURRENT_DATE,
+        importe_total  NUMERIC(12,2) NOT NULL CHECK (importe_total >= 0),
+        metodo         TEXT NOT NULL CHECK (metodo IN ('transferencia','tarjeta','efectivo','domiciliacion','otro')),
+        referencia     TEXT,
+        notas          TEXT,
+        created_at     TIMESTAMP NOT NULL DEFAULT NOW()
       );
-      CREATE INDEX IF NOT EXISTS idx_pagos_prov_factura ON pagos_prov(factura_id);
-      CREATE INDEX IF NOT EXISTS idx_pagos_prov_fecha   ON pagos_prov(fecha);
-    `);
 
-    // ---------- VISTA: saldos y estado calculado ----------
-    await db.query(`
-      CREATE OR REPLACE VIEW v_facturas_prov_saldos AS
-      SELECT
-        f.*,
-        COALESCE(SUM(p.importe), 0) AS total_pagado,
-        GREATEST(f.total - COALESCE(SUM(p.importe), 0), 0) AS pendiente,
-        CASE
-          WHEN f.estado = 'anulada'                     THEN 'anulada'
-          WHEN COALESCE(SUM(p.importe), 0) = 0          THEN 'pendiente'
-          WHEN COALESCE(SUM(p.importe), 0) < f.total    THEN 'parcial'
-          WHEN COALESCE(SUM(p.importe), 0) >= f.total   THEN 'pagada'
-          ELSE f.estado
-        END AS estado_calc
-      FROM facturas_prov f
-      LEFT JOIN pagos_prov p ON p.factura_id = f.id
-      GROUP BY f.id;
+      -- Si creaste 'importe' por error, renómbralo:
+      -- ALTER TABLE pagos_prov RENAME COLUMN importe TO importe_total;
+
+      -- Índices útiles
+      CREATE INDEX IF NOT EXISTS idx_pagos_prov_proveedor ON pagos_prov(proveedor_id);
+      CREATE INDEX IF NOT EXISTS idx_pagos_prov_fecha     ON pagos_prov(fecha);
     `);
 
     // ---------- Semillas mínimas de cuentas (si no existen) ----------
@@ -422,6 +408,7 @@ async function init() {
       CREATE INDEX IF NOT EXISTS idx_pagos_apl_factura ON pagos_prov_aplicaciones(factura_id);
       CREATE INDEX IF NOT EXISTS idx_pagos_apl_pago    ON pagos_prov_aplicaciones(pago_id);
       `);    
+    
      await db.query(`
       CREATE TABLE IF NOT EXISTS factura_adjuntos (
         id            SERIAL PRIMARY KEY,

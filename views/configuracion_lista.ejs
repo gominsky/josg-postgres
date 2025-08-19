@@ -87,31 +87,8 @@
   <div class="panel-card">
     <div class="panel-header">
       <h1 class="h1-titulo"><%= title %></h1>
-      <a href="/" class="volver-link">← Volver al inicio</a>
     </div>
-
     <div class="action-grid">
-      <!-- Cuotas -->
-      <a href="/cuotas" class="action-card" aria-label="Configurar cuotas">
-        <div class="icon-badge" aria-hidden="true" title="Cuotas">
-          <!-- Recibo + € -->
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
-               width="22" height="22" fill="none" stroke="currentColor"
-               stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" role="img">
-            <!-- recibo -->
-            <path d="M7 3h10a2 2 0 0 1 2 2v12l-2-1-2 1-2-1-2 1-2-1-2 1V5a2 2 0 0 1 2-2z"/>
-            <!-- líneas -->
-            <path d="M9 8h6M9 11h3"/>
-            <!-- símbolo € -->
-            <path d="M17 10.5h-4M17 13.5h-4m0-3a3 3 0 0 1 3-3m-3 6a3 3 0 0 0 3 3"/>
-          </svg>
-        </div>
-        <div>
-          <p class="action-title">Cuotas</p>
-          <p class="action-desc">Definir importes, periodos y recibos.</p>
-        </div>
-      </a>
-
       <!-- Instrumentos -->
       <a href="/instrumentos" class="action-card" aria-label="Gestionar instrumentos">
         <div class="icon-badge" aria-hidden="true" title="Instrumentos">
@@ -174,5 +151,8 @@
       </a>
     </div>
   </div>
+   <div class="panel-header">
+      <a href="/" class="enlace-final">← Volver al inicio</a>
+    </div>
 </div>
 

@@ -1,0 +1,82 @@
+<% hero = false %>
+
+<div class="container my-4">
+  <div class="panel-card">
+    <div class="list-header">
+      <h1 class="h1-titulo" style="margin:0;">Detalle del pago</h1>
+      <div class="header-actions">
+        <a class="btn btn-outline" href="/contabilidad/pagos">← Volver al listado</a>
+      </div>
+    </div>
+
+    <%
+      const fmtDate = (v) => (v && typeof v.toISOString === 'function')
+        ? v.toISOString().slice(0,10)
+        : String(v||'').slice(0,10);
+      const importe  = Number(pago.importe_total||0);
+      const aplicado = Number(pago.aplicado||0);
+      const pendiente = Math.max(importe - aplicado, 0);
+    %>
+
+    <div class="grid-2">
+      <div class="box-muted">
+        <div class="mb-2"><strong>Proveedor:</strong> <%= pago.proveedor_nombre || '—' %></div>
+        <div class="mb-2"><strong>Fecha:</strong> <%= fmtDate(pago.fecha) %></div>
+        <div class="mb-2"><strong>Método:</strong> <%= pago.metodo || '—' %></div>
+        <div class="mb-2"><strong>Referencia:</strong> <%= pago.referencia || '—' %></div>
+        <% if (pago.notas) { %>
+          <div class="mb-2"><strong>Notas:</strong> <%= pago.notas %></div>
+        <% } %>
+      </div>
+      <div class="box-muted">
+        <div class="mb-1"><strong>Importe:</strong> <span class="num"><%= importe.toFixed(2) %> €</span></div>
+        <div class="mb-1"><strong>Aplicado:</strong> <span class="num"><%= aplicado.toFixed(2) %> €</span></div>
+        <div class="mb-1"><strong>Pendiente:</strong> <span class="num"><%= pendiente.toFixed(2) %> €</span></div>
+        <div class="mt-1">
+          <% if (pendiente > 0.009) { %>
+            <span class="badge badge-warn">Parcial</span>
+          <% } else { %>
+            <span class="badge badge-ok">Aplicado</span>
+          <% } %>
+        </div>
+      </div>
+    </div>
+
+    <h2 class="mt-3" style="font-size:1.1rem;">Aplicaciones a facturas</h2>
+    <% if (!(aplicaciones && aplicaciones.length)) { %>
+      <p class="text-muted">Este pago aún no está aplicado a ninguna factura.</p>
+    <% } else { %>
+      <table class="table-lite table-no-scroll">
+        <thead>
+          <tr>
+            <th># Factura</th>
+            <th>Emisión</th>
+            <th class="text-end">Total</th>
+            <th class="text-end">Importe aplicado</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% aplicaciones.forEach(a => { %>
+            <tr>
+              <td><a href="/contabilidad/facturas/<%= a.factura_id %>"><%= a.numero || a.factura_id %></a></td>
+              <td><%= fmtDate(a.fecha_emision) %></td>
+              <td class="text-end num"><%= Number(a.total||0).toFixed(2) %> €</td>
+              <td class="text-end num"><strong><%= Number(a.importe_aplicado||0).toFixed(2) %> €</strong></td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    <% } %>
+
+    <div class="actions">
+      <form method="POST" action="/contabilidad/pagos/<%= pago.id %>/eliminar" onsubmit="return confirm('¿Eliminar este pago?');" style="margin-left:auto;">
+        <a href="/contabilidad/pagos" class="btn btn-outline">Cancelar</a>
+        <button class="btn-primary-negro">Eliminar pago</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div class="volver-bloque-izquierda">
+  <a href="/contabilidad" class="enlace-final">← Volver a contabilidad</a>
+</div>

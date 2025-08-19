@@ -152,6 +152,7 @@
         <!-- Evita formularios anidados usando formaction -->
         <button class="btn-primary-negro"
                 formnovalidate
+                data-skip-validate="1"
                 formaction="/contabilidad/facturas/<%= factura.id %>/eliminar"
                 formmethod="POST"
                 onclick="return confirm('¿Eliminar factura?');">
@@ -245,8 +246,14 @@
           <input type="date" name="fecha" required value="<%= new Date().toISOString().slice(0,10) %>" class="form-control">
         </div>
         <div>
-          <label class="form-label">Método</label>
-          <input type="text" name="metodo" placeholder="Transferencia / Tarjeta / Efectivo" class="form-control">
+         <label class="form-label">Método</label>
+          <select name="metodo" class="form-select">
+            <option value="transferencia">Transferencia</option>
+            <option value="tarjeta">Tarjeta</option>
+            <option value="efectivo">Efectivo</option>
+            <option value="domiciliacion">Domiciliación</option>
+            <option value="otro" selected>Otro</option>
+          </select>
         </div>
         <div>
           <label class="form-label">Referencia</label>
@@ -315,25 +322,34 @@
   // Validación mínima antes de enviar (proveedor o alta rápida + número + fecha)
   const form = document.getElementById('form-factura');
   form?.addEventListener('submit', (e) => {
-    const provId = selProv?.value || '';
-    const nuevoNombre = form.querySelector('input[name="proveedor_nombre"]')?.value.trim() || '';
-    const num    = form.querySelector('input[name="numero"]')?.value.trim() || '';
-    const femi   = form.querySelector('input[name="fecha_emision"]')?.value || '';
+  // ⬇️ SI ES EL BOTÓN DE ELIMINAR, NO VALIDAR
+  const submitter = e.submitter; // soportado en navegadores modernos
+  const fa = submitter?.formAction || submitter?.getAttribute?.('formaction') || '';
+  const skip = submitter?.dataset?.skipValidate === '1' || /\/contabilidad\/facturas\/\d+\/eliminar$/.test(fa);
+  if (skip) return;
 
-    if (!provId && !nuevoNombre){
-      e.preventDefault();
-      alert('Selecciona un proveedor o rellena los datos del nuevo proveedor.');
-      return false;
-    }
-    if (!num || !femi){
-      e.preventDefault();
-      alert('Faltan Nº de factura o Fecha de emisión.');
-      return false;
-    }
-    // Normaliza base/total a 2 decimales
-    if (baseEl && baseEl.value) baseEl.value = fix2(toNum(baseEl.value));
-    if (totEl  && totEl.value)  totEl.value  = fix2(toNum(totEl.value));
-  });
+  // --- tu validación habitual ---
+  const provId = selProv?.value || '';
+  const nuevoNombre = form.querySelector('input[name="proveedor_nombre"]')?.value.trim() || '';
+  const num  = form.querySelector('input[name="numero"]')?.value.trim() || '';
+  const femi = form.querySelector('input[name="fecha_emision"]')?.value || '';
+
+  if (!provId && !nuevoNombre){
+    e.preventDefault();
+    alert('Selecciona un proveedor o rellena los datos del nuevo proveedor.');
+    return false;
+  }
+  if (!num || !femi){
+    e.preventDefault();
+    alert('Faltan Nº de factura o Fecha de emisión.');
+    return false;
+  }
+
+  // Normaliza importes:
+  if (baseEl && baseEl.value) baseEl.value = fix2(toNum(baseEl.value));
+  if (totEl  && totEl.value)  totEl.value  = fix2(toNum(totEl.value));
+});
+
 })();
 </script>
 

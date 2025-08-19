@@ -1,36 +1,104 @@
-<% title='Categorías de gasto'; hero=false; %>
-<div class="container my-4">
-  <div class="panel-card" style="background:#fff;border:1px solid rgba(0,0,0,.08);border-radius:18px;padding:16px">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+<% title = 'Categorías de gasto' %>
+<% hero  = false %>
+
+<div id="cat-list-wrap" class="container my-4">
+  <div class="panel-card">
+    <div class="list-header">
       <h1 class="h1-titulo" style="margin:0;">Categorías de gasto</h1>
-      <a href="/categorias/nuevo" class="btn-main">+ Nueva</a>
+      <div class="header-actions">
+        <a class="btn btn-outline" href="/categorias/export.csv">⬇️ Exportar CSV</a>
+        <a class="btn btn-outline" href="/categorias/nuevo">＋ Nueva categoría</a>
+      </div>
     </div>
 
-    <form class="d-flex gap-2 mb-3">
-      <input type="text" name="q" class="form-control" placeholder="Buscar…" value="<%= q||'' %>">
-      <button class="btn-main">Buscar</button>
-      <a class="btn btn-outline" href="/categorias">Limpiar</a>
-    </form>
+    <!-- RESUMEN -->
+    <%
+      const _cats = Array.isArray(categorias) ? categorias : [];
+      const totalListado   = _cats.length;
+      const activasListado = _cats.filter(c => c && c.activo !== false).length;
+    %>
+    <div class="small" style="margin-top:8px; color:var(--muted);">
+      <strong><%= totalListado %></strong> categorías en la página · Activas: <strong><%= activasListado %></strong>
+    </div>
 
-    <table class="table">
-      <thead><tr><th>Nombre</th><th>Descripción</th><th>Activo</th><th></th></tr></thead>
-      <tbody>
-        <% (categorias||[]).forEach(c => { %>
+    <!-- LISTA (sin wrapper con scroll) -->
+    <% if (_cats.length === 0) { %>
+      <p class="text-muted" style="margin-top:12px;">No hay resultados.</p>
+    <% } else { %>
+      <table class="table-lite table-no-scroll">
+        <thead>
           <tr>
-            <td><a href="/categorias/<%= c.id %>"><%= c.nombre %></a></td>
-            <td><%= c.descripcion || '' %></td>
-            <td><%= (c.activo!==false) ? 'Sí' : 'No' %></td>
-            <td class="text-end">
-              <form method="POST" action="/categorias/<%= c.id %>/eliminar" onsubmit="return confirm('¿Eliminar?');">
-                <button class="btn btn-sm btn-outline-danger">Eliminar</button>
-              </form>
-            </td>
+            <th>Nombre</th>
+            <th style="width:140px;">Estado</th>
+            <th style="width:60px;"></th>
           </tr>
-        <% }) %>
-        <% if (!(categorias&&categorias.length)) { %>
-          <tr><td colspan="4" class="text-muted">Sin resultados</td></tr>
+        </thead>
+        <tbody>
+          <% _cats.forEach(row => { %>
+            <tr class="clickable-row" onclick="location.href='/categorias/<%= row.id %>'">
+              <td><%= row.nombre %></td>
+              <td>
+                <% if (row.activo !== false) { %>
+                  <span class="badge badge-ok">Activa</span>
+                <% } else { %>
+                  <span class="badge badge-muted">Inactiva</span>
+                <% } %>
+              </td>
+              <td class="text-end" onclick="event.stopPropagation()">
+                <form method="POST" action="/categorias/<%= row.id %>/eliminar" style="display:inline;">
+                  <a href="#"
+                    class="aspa-roja"
+                    title="Eliminar"
+                    aria-label="Eliminar"
+                    onclick="event.stopPropagation(); if (confirm('¿Eliminar la categoría &quot;<%= row.nombre %>&quot;?')) this.closest('form').submit(); return false;">×</a>
+                </form>
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    <% } %>
+
+    <!-- PAGINACIÓN -->
+    <%
+      var __pg = (typeof paginacion !== 'undefined' && paginacion) ? paginacion : { page:1, per_page:50, total_pages:1 };
+      __pg.page        = Number(__pg.page||1);
+      __pg.per_page    = Number(__pg.per_page||50);
+      __pg.total_pages = Number(__pg.total_pages||1);
+    %>
+    <% if (__pg.total_pages > 1) { %>
+      <div class="pager">
+        <% if (__pg.page > 1) { %>
+          <a href="/categorias?per_page=<%= __pg.per_page %>&page=1">« Primero</a>
+          <a href="/categorias?per_page=<%= __pg.per_page %>&page=<%= __pg.page - 1 %>">‹ Anterior</a>
+        <% } else { %>
+          <span>« Primero</span><span>‹ Anterior</span>
         <% } %>
-      </tbody>
-    </table>
+        <span class="current">Página <%= __pg.page %> / <%= __pg.total_pages %></span>
+        <% if (__pg.page < __pg.total_pages) { %>
+          <a href="/categorias?per_page=<%= __pg.per_page %>&page=<%= __pg.page + 1 %>">Siguiente ›</a>
+          <a href="/categorias?per_page=<%= __pg.per_page %>&page=<%= __pg.total_pages %>">Última »</a>
+        <% } else { %>
+          <span>Siguiente ›</span><span>Última »</span>
+        <% } %>
+      </div>
+    <% } %>
   </div>
 </div>
+
+<div class="volver-bloque-izquierda">
+  <a href="/contabilidad" class="enlace-final">← Volver a contabilidad</a>
+</div>
+
+<!-- Estilos mínimos para ajustar sin scroll y aspa roja -->
+<style>
+  .table-no-scroll{ width:100%; border-collapse:collapse; table-layout:auto; }
+  .table-no-scroll th, .table-no-scroll td{
+    border:1px solid #e9ecef; padding:8px 10px; vertical-align:middle;
+    white-space:normal; word-break:break-word;
+  }
+  .aspa-roja{ color:#dc2626; font-weight:700; font-size:18px; line-height:1; text-decoration:none; padding:0 .25rem; cursor:pointer; }
+  .aspa-roja:hover{ color:#b91c1c; }
+</style>
+
+
