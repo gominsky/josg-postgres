@@ -1,12 +1,9 @@
 <% title = 'Listado de Instrumentos' %>
 <% hero = false %>
-
-<div>
+<div class="header-compact">
   <h1 class="h1-titulo">Listado de Instrumentos</h1>
-  <div style="text-align: center; margin-top: 1rem;">
-    <a href="/instrumentos/nuevo" class="btn-main" style="max-width: 220px;">+ Añadir instrumento</a>
-  </div>
-
+  <a href="/instrumentos/nuevo" class="btn-main-blanco">+ Añadir instrumento</a>
+</div>
   <% if (instrumentos.length === 0) { %>
     <p class="enlace-final" style="text-align: center; margin-top: 2rem;">No hay instrumentos registrados.</p>
   <% } else { %>
@@ -19,7 +16,6 @@
       <% }) %>
     </div>
   <% } %>
-
   <div class="volver-bloque-izquierda">
   <a href="/configuracion" class="enlace-final">← Volver a configuración</a>
 </div>

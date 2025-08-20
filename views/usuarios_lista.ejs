@@ -2,13 +2,10 @@
 <% hero = false %>
 <% title = 'Usuarios' %>
 <% hero = false %>
-
-<div class="container mt-4">
-  <div class="d-flex justify-content-between align-items-center mb-3">
-    <h1 class="h1-titulo mb-0"><%= title %></h1>
-    <a href="/usuarios/nuevo" class="btn-main fw-bold">+ Añadir Usuario</a>
-  </div>
-
+<div class="header-compact">
+  <h1 class="h1-titulo mb-0"><%= title %></h1>
+  <a href="/usuarios/nuevo" class="btn-main-blanco">+ Añadir Usuario</a>
+</div>
   <% if (usuarios && usuarios.length > 0) { %>
     <div class="dashboard-grid" id="grid-usuarios">
       <% usuarios.forEach(u => { %>
@@ -22,7 +19,6 @@
   <% } else { %>
     <p class="text-center mt-4">No hay usuarios registrados.</p>
   <% } %>
-
  <div class="volver-bloque-izquierda">
   <a href="/configuracion" class="enlace-final">← Volver a configuración</a>
 </div>

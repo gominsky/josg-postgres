@@ -4,16 +4,18 @@ const router  = express.Router();
 const db      = require('../database/db');
 
 // routes/cuentas.js
-router.get('/', async (_req, res) => {
+router.get('/', async (req, res) => {
   try {
-    const ver = (req.query.ver || '').toLowerCase();        
+    const ver = (req.query.ver || '').toLowerCase();
     const onlyActivas = ver !== 'todas';
-    const { rows } = await db.query(`
+
+    const sql = `
       SELECT id, nombre, tipo, iban, saldo_inicial, fecha_saldo, activo
       FROM cuentas
       ${onlyActivas ? 'WHERE activo <> false' : ''}
       ORDER BY lower(nombre) ASC
-    `);
+    `;
+    const { rows } = await db.query(sql);
 
     res.render('cuentas_lista', {
       title: 'Cuentas contables',
@@ -23,7 +25,12 @@ router.get('/', async (_req, res) => {
     });
   } catch (e) {
     console.error(e);
-    res.render('cuentas_lista', { title: 'Cuentas contables', hero:false, cuentas: [], ver:'' });
+    res.status(500).render('cuentas_lista', {
+      title: 'Cuentas contables',
+      hero: false,
+      cuentas: [],
+      ver: (req.query && req.query.ver) || ''
+    });
   }
 });
 
