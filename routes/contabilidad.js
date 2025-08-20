@@ -363,7 +363,7 @@ router.post('/facturas/guardar', async (req, res) => {
            SET proveedor_id=$1, categoria_id=$2, cuenta_id=$3, numero=$4,
                fecha_emision=$5, fecha_vencimiento=$6, concepto=$7,
                base_imponible=$8, iva_pct=$9, total=$10, estado=$11, notas=$12
-         WHERE id=$14
+         WHERE id=$13
       `, [proveedor_id, categoria_id, cuenta_id, numero, fecha_emision, fecha_venc, concepto,
           base_imponible, iva_pct, total, estado, notas, id]);
 

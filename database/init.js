@@ -571,8 +571,6 @@ await db.query(`
     }
 
     // 👁️ Vista normalizada para pruebas de atril (trimestre 25/26T1)
-    
-    console.log("Vista 'pruebas_atril_norm' creada/actualizada.");
     await db.query(`
   CREATE OR REPLACE VIEW pruebas_atril_norm AS
   WITH parsed AS (
