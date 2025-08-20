@@ -15,6 +15,9 @@ function splitISODateTime(input) {
 }
 // Util para componer el PDF
 const { pdfControlAsistencia } = require('../utils/pdfControlAsistencia');
+router.get('/ayuda', (_req, res) => {
+  res.render('ayuda_eventos', { title: 'Ayuda · Eventos', hero: false });
+});
 // Listado JSON para FullCalendar (start/end normalizados)
 router.get('/listado', async (req, res) => {
   const sql = `
@@ -482,4 +485,5 @@ router.get('/:id/firmas.pdf', async (req, res, next) => {
     next(err);
   }
 });
+
 module.exports = router;

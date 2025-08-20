@@ -13,6 +13,9 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage });
 const { toISODate } = require('../utils/fechas');
+router.get('/ayuda', (_req, res) => {
+  res.render('ayuda_alumnos', { title: 'Ayuda · Alumnos', hero: false });
+});
 router.get('/nuevo', async (req, res) => {
   try {
     const instrumentos = (await db.query('SELECT * FROM instrumentos')).rows;

@@ -1,0 +1,183 @@
+<% title = 'Ayuda · Eventos' %>
+<% hero  = false %>
+
+<div class="contenedor-ayuda">
+  <style>
+    :root{
+      --ink:#111827; --muted:#6b7280; --accent-100:#fff6e9; --accent-200:#ffe0b3;
+      --accent-300:#ffd188; --accent-400:#ffb554; --accent-500:#ff9500; --accent-700:#8a4b00;
+      --card:#ffffff; --border:#e5e7eb; --shadow:0 1px 2px rgba(0,0,0,.05);
+    }
+    .panel{background:var(--card); border:1px solid var(--border); border-radius:16px; box-shadow:var(--shadow); padding:16px;}
+    .h1{margin:0 0 .5rem; font-size:clamp(1.35rem,1.1rem + 1.2vw,2rem); font-weight:800; color:var(--ink);}
+    .toc{display:flex; flex-wrap:wrap; gap:.5rem; margin:.5rem 0 1rem;}
+    .toc a{display:inline-block; padding:.32rem .6rem; border:1px solid var(--accent-300); background:var(--accent-100); color:var(--accent-700); border-radius:999px; text-decoration:none; font-weight:700; font-size:.86rem;}
+    .section{margin:12px 0; padding:12px 0; border-top:1px dashed var(--border);}
+    h2{margin:.25rem 0 .5rem; font-size:1.15rem;}
+    p{margin:.25rem 0; color:#1f2937;}
+    .hint{background:#f3f4f6; border:1px dashed #d1d5db; border-radius:10px; padding:.5rem .7rem; color:#374151; font-size:.95rem;}
+    .grid-2{display:grid; gap:12px; grid-template-columns:1fr;}
+    @media(min-width:900px){ .grid-2{grid-template-columns:1fr 1fr;} }
+    .card{border:1px solid var(--border); border-radius:12px; padding:12px; background:#fff;}
+    .list{margin:.35rem 0 .2rem 1.1rem;}
+    .list li{margin:.18rem 0;}
+    .kbd{font-family:ui-monospace,Menlo,monospace;background:#1118270f;border:1px solid #0001;border-radius:6px;padding:0 .35rem;}
+    .pill{display:inline-block;border:1px solid var(--border);border-radius:999px;padding:.14rem .5rem;background:#f9fafb;font-size:.85rem;}
+    .cta{display:flex; gap:10px; flex-wrap:wrap; margin:.4rem 0;}
+    .cta a{border:1px solid var(--border);border-radius:10px;padding:.5rem .8rem;text-decoration:none;color:var(--ink);background:#fff;}
+    .badge{display:inline-block;background:var(--accent-100);border:1px solid var(--accent-300);color:var(--accent-700);border-radius:999px;padding:.1rem .45rem;font-weight:700;font-size:.78rem;}
+  </style>
+
+  <div class="panel">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+      <h1 class="h1">Ayuda · Eventos</h1>
+      <div class="cta">
+        <a href="/eventos">Ir a Calendario →</a>
+        <a href="/guardias">Ir a Guardias →</a>
+      </div>
+    </div>
+
+    <!-- Índice -->
+    <nav class="toc" aria-label="Índice">
+      <a href="#flujo">Flujo rápido</a>
+      <a href="#calendario">Calendario & listado</a>
+      <a href="#crear">Crear / Editar</a>
+      <a href="#qr">QR del evento</a>
+      <a href="#firmas">Firmas y asistencias</a>
+      <a href="#tips">Consejos y formatos</a>
+      <a href="#faq">FAQ</a>
+    </nav>
+
+    <!-- Flujo rápido -->
+    <section id="flujo" class="section">
+      <h2>Flujo rápido</h2>
+      <ol class="list">
+        <li>Abre <span class="kbd">Agenda de Eventos</span> (vista calendario).</li>
+        <li>Haz clic en un día para crear un evento; ajusta título, grupo, horas y guarda.</li>
+        <li>Si ya existe, haz clic sobre el evento para editarlo, ver <em>Listado</em> de firmas o abrir su <em>QR</em>.</li>
+        <li>Para ver en tabla un rango, pulsa <span class="pill">Lista</span> o usa los campos <em>Desde/Hasta</em>.</li>
+      </ol>
+      <p class="hint">El calendario está en español y muestra los eventos con título y grupo; el botón “Lista” usa el rango visible del calendario.</p>
+    </section>
+
+    <!-- Calendario & listado -->
+    <section id="calendario" class="section">
+      <h2>Calendario y listado</h2>
+      <div class="grid-2">
+        <div class="card">
+          <h3 style="margin:.1rem 0 .35rem;">Calendario</h3>
+          <ul class="list">
+            <li>Vistas: <em>Mes</em>, <em>Semana</em> y <em>Lista</em> (botón personalizado “Lista”).</li>
+            <li>Al pulsar un día se abre el formulario con una hora por defecto (09:00–10:00).</li>
+            <li>Al pulsar un evento se abre para editar (título, grupo, fechas, QR, eliminar).</li>
+          </ul>
+          <p class="hint">Usa las flechas o “Hoy” para navegar; el botón “Lista” lleva al rango actual como tabla.</p>
+        </div>
+        <div class="card">
+          <h3 style="margin:.1rem 0 .35rem;">Listado</h3>
+          <ul class="list">
+            <li>Pasa parámetros <span class="kbd">?desde=YYYY-MM-DD&hasta=YYYY-MM-DD</span> para ver una tabla ordenada.</li>
+            <li>Cada fila es clicable y abre el evento en el formulario.</li>
+            <li>Incluye un pequeño formulario para consultar otro rango “Lista personalizada”.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- Crear / Editar -->
+    <section id="crear" class="section">
+      <h2>Crear / Editar evento</h2>
+      <div class="grid-2">
+        <div class="card">
+          <h3 style="margin:.1rem 0 .35rem;">Campos</h3>
+          <ul class="list">
+            <li><strong>Título</strong> (obligatorio) y <strong>Descripción</strong> (opcional).</li>
+            <li><strong>Grupo</strong> (obligatorio): selecciona el grupo al que pertenece el evento.</li>
+            <li><strong>Inicio/Fin</strong>: formato <span class="kbd">YYYY-MM-DDTHH:MM</span> (el sistema admite también fecha y hora por separado).</li>
+            <li><strong>Activar QR</strong>: interruptor para habilitar el QR del evento.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3 style="margin:.1rem 0 .35rem;">Acciones</h3>
+          <ul class="list">
+            <li><strong>Guardar</strong>: crea o actualiza (se recarga la vista).</li>
+            <li><strong>Listado</strong>: abre la hoja de firmas manuales del evento.</li>
+            <li><strong>Ver QR</strong>: abre una página imprimible con el código QR.</li>
+            <li><strong>Eliminar</strong>: borra el evento, sus firmas y guardias asociadas.</li>
+          </ul>
+          <p class="hint">En edición se muestran los botones extra; en creación solo aparece “Guardar”.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- QR -->
+    <section id="qr" class="section">
+      <h2>QR del evento</h2>
+      <p>La página del QR muestra el título, la fecha formateada y el código en grande, con un botón para imprimir. El QR contiene un JSON con <span class="kbd">{ evento_id, token }</span> para verificar firmas desde la app.</p>
+      <ul class="list">
+        <li>Ruta: <span class="kbd">/eventos/:id/qr</span></li>
+        <li>Botón <strong>Imprimir QR</strong> oculta el resto al imprimir.</li>
+      </ul>
+    </section>
+
+    <!-- Firmas -->
+    <section id="firmas" class="section">
+      <h2>Firmas y asistencias</h2>
+      <div class="grid-2">
+        <div class="card">
+          <h3 style="margin:.1rem 0 .35rem;">Firma manual</h3>
+          <ul class="list">
+            <li>Lista de alumnos del grupo del evento, ordenada por apellidos y nombre.</li>
+            <li>Marca/desmarca para registrar asistencia; puedes guardar todo de golpe o usar AJAX (según la vista).</li>
+          </ul>
+          <p class="hint">La vista muestra la fecha del evento formateada y las horas de inicio/fin.</p>
+        </div>
+        <div class="card">
+          <h3 style="margin:.1rem 0 .35rem;">PDF de control</h3>
+          <ul class="list">
+            <li>Ruta: <span class="kbd">/eventos/:id/firmas.pdf</span> — genera un PDF de control de asistencia listo para imprimir.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- Consejos -->
+    <section id="tips" class="section">
+      <h2>Consejos y formatos</h2>
+      <ul class="list">
+        <li>Fechas: admite <span class="kbd">YYYY-MM-DDTHH:MM</span> o fecha y hora separadas; internamente se normaliza para el calendario.</li>
+        <li>Si cambias horas habituales, al crear desde el calendario ajusta la franja por defecto antes de guardar.</li>
+        <li>Si no ves grupos en el selector, crea primero el grupo desde su sección.</li>
+      </ul>
+      <p class="hint">Los textos del evento se limpian de caracteres invisibles antes de pintar en el calendario.</p>
+    </section>
+
+    <!-- FAQ -->
+    <section id="faq" class="section">
+      <h2>FAQ</h2>
+      <div class="grid-2">
+        <div class="card">
+          <h3 style="margin:.1rem 0 .35rem;">¿Puedo ver un listado por fechas?</h3>
+          <p>Sí. Usa el botón “Lista” del calendario o entra con parámetros <span class="kbd">?desde=YYYY-MM-DD&hasta=YYYY-MM-DD</span>.</p>
+        </div>
+        <div class="card">
+          <h3 style="margin:.1rem 0 .35rem;">¿Qué elimina exactamente “Eliminar”?</h3>
+          <p>El evento, sus guardias relacionadas y todas las asistencias registradas para ese evento.</p>
+        </div>
+        <div class="card">
+          <h3 style="margin:.1rem 0 .35rem;">¿Cómo imprimo el QR?</h3>
+          <p>Desde la edición del evento pulsa <em>Ver QR</em> y luego <em>Imprimir</em> en la página del QR.</p>
+        </div>
+        <div class="card">
+          <h3 style="margin:.1rem 0 .35rem;">¿Se pueden firmar desde móvil?</h3>
+          <p>Sí, escaneando el QR con la app prevista; también puedes registrar manualmente en la página de firmas.</p>
+        </div>
+      </div>
+    </section>
+
+    <div class="section" style="display:flex;gap:10px;flex-wrap:wrap;">
+      <a class="cta" href="/eventos"><span class="pill">← Volver a Eventos</span></a>
+      <a class="cta" href="/"><span class="pill">← Volver al inicio</span></a>
+    </div>
+  </div>
+</div>

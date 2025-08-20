@@ -1,216 +1,184 @@
-<% title = 'Ayuda · Contabilidad' %>
+<% title = 'Ayuda · Contabilidad (Gastos)' %>
 <% hero  = false %>
 
-<div id="help-wrap" class="container my-4">
+<div class="contenedor-ayuda">
   <style>
     :root{
-      --accent-50:#fff6e8; --accent-100:#ffeed7; --accent-200:#ffe0b3; --accent-300:#ffd08a;
-      --accent-400:#ffb554; --accent-500:#ff9500; --accent-600:#e07f00; --accent-700:#c26c00;
-      --text-main:#212529; --muted:#6c757d; --border:rgba(0,0,0,.08);
-      --shadow:0 1px 2px rgba(0,0,0,.04); --shadow-lg:0 6px 18px rgba(0,0,0,.08);
+      --ink:#111827; --muted:#6b7280; --accent-100:#fff6e9; --accent-200:#ffe0b3;
+      --accent-300:#ffd188; --accent-400:#ffb554; --accent-500:#ff9500; --accent-700:#8a4b00;
+      --card:#ffffff; --border:#e5e7eb; --shadow:0 1px 2px rgba(0,0,0,.05);
     }
-    @media (min-width: 992px){ #help-wrap.container{ max-width: 1320px; } }
-
-    .panel-card{ background:#fff; color:var(--text-main); border:1px solid var(--border);
-      border-radius:18px; box-shadow:var(--shadow); padding:16px 18px 20px; }
-    .panel-header{ display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:10px; }
-    .panel-header .h1-titulo{ margin:0; font-size:clamp(1.4rem, 1.1rem + 1.2vw, 2rem); font-weight:700; }
-
-    .toc{ display:flex; gap:10px; flex-wrap:wrap; margin:8px 0 0; }
-    .toc a{ display:inline-flex; align-items:center; gap:6px; padding:.4rem .7rem; border-radius:999px;
-      background:var(--accent-100); color:var(--accent-700); border:1px solid var(--accent-200);
-      text-decoration:none; font-weight:600; font-size:.9rem; }
-    .toc a:hover{ background:var(--accent-200); }
-
-    .section{ margin-top:18px; }
-    .section h2{ font-size:1.25rem; margin:0 0 .4rem 0; font-weight:800; }
-    .section p{ margin:.25rem 0 .5rem; color:#2b2b2b; }
-    .hint{ background:var(--accent-50); border:1px dashed var(--accent-300); border-radius:12px; padding:.65rem .75rem; color:#503200; }
-
-    .two-col{ display:grid; gap:14px; grid-template-columns:1fr; }
-    @media (min-width: 992px){ .two-col{ grid-template-columns:1fr 1fr; } }
-
-    .call-grid{ display:grid; gap:14px; grid-template-columns:repeat(auto-fit, minmax(260px,1fr)); margin-top:10px; }
-    .call{ display:flex; gap:12px; align-items:flex-start; background:linear-gradient(180deg,#fff,#fdfcfa);
-      border:1px solid var(--border); border-radius:14px; padding:12px 14px; box-shadow:var(--shadow); text-decoration:none; color:inherit; }
-    .call:hover{ transform:translateY(-1px); box-shadow:var(--shadow-lg); border-color:var(--accent-200); }
-    .icon{ width:40px; height:40px; border-radius:999px; display:flex; align-items:center; justify-content:center;
-      background:var(--accent-100); border:1px solid var(--accent-200); color:var(--accent-700); flex-shrink:0; }
-    .call h3{ margin:0; font-size:1rem; font-weight:800; }
-    .call p{ margin:.15rem 0 0; color:var(--muted); font-size:.92rem; }
-
-    .list{ margin:.35rem 0 .2rem 1.1rem; }
-    .list li{ margin:.18rem 0; }
-
-    .badge-soft{ display:inline-block; background:var(--accent-100); color:var(--accent-700);
-      border:1px solid var(--accent-300); padding:.12rem .5rem; border-radius:999px; font-size:.78rem; font-weight:700; }
-
-    .footer-links{ margin-top:16px; display:flex; gap:12px; flex-wrap:wrap; }
-    .volver-link{ color:var(--accent-700); font-weight:600; text-decoration:none; }
-    .volver-link:hover{ text-decoration:underline; }
+    .panel{background:var(--card); border:1px solid var(--border); border-radius:16px; box-shadow:var(--shadow); padding:16px; }
+    .h1{margin:0 0 .5rem; font-size:clamp(1.35rem,1.1rem + 1.2vw,2rem); font-weight:800; color:var(--ink);}
+    .toc{display:flex; flex-wrap:wrap; gap:.5rem; margin:.5rem 0 1rem;}
+    .toc a{display:inline-block; padding:.32rem .6rem; border:1px solid var(--accent-300); background:var(--accent-100); color:var(--accent-700); border-radius:999px; text-decoration:none; font-weight:700; font-size:.86rem;}
+    .section{margin:12px 0; padding:12px 0; border-top:1px dashed var(--border);}
+    h2{margin:.25rem 0 .5rem; font-size:1.15rem;}
+    p{margin:.25rem 0; color:#1f2937;}
+    .hint{background:#f3f4f6; border:1px dashed #d1d5db; border-radius:10px; padding:.5rem .7rem; color:#374151; font-size:.95rem;}
+    .grid-2{display:grid; gap:12px; grid-template-columns:1fr; }
+    @media(min-width:900px){ .grid-2{grid-template-columns:1fr 1fr;} }
+    .card{border:1px solid var(--border); border-radius:12px; padding:12px; background:#fff;}
+    .list{margin:.35rem 0 .2rem 1.1rem;}
+    .list li{margin:.18rem 0;}
+    .kbd{font-family:ui-monospace,Menlo,monospace;background:#1118270f;border:1px solid #0001;border-radius:6px;padding:0 .35rem;}
+    .pill{display:inline-block;border:1px solid var(--border);border-radius:999px;padding:.14rem .5rem;background:#f9fafb;font-size:.85rem;}
+    .cta{display:flex; gap:10px; flex-wrap:wrap; margin:.4rem 0;}
+    .cta a{border:1px solid var(--border);border-radius:10px;padding:.5rem .8rem;text-decoration:none;color:var(--ink);background:#fff;}
+    .badge{display:inline-block;background:var(--accent-100);border:1px solid var(--accent-300);color:var(--accent-700);border-radius:999px;padding:.1rem .45rem;font-weight:700;font-size:.78rem;}
   </style>
 
-  <div class="panel-card">
-    <div class="panel-header">
-      <h1 class="h1-titulo">Ayuda · Contabilidad (Gastos)</h1>
-      <a href="/contabilidad/facturas" class="volver-link">Ir a Facturas →</a>
+  <div class="panel">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+      <h1 class="h1">Ayuda · Contabilidad (Gastos)</h1>
+      <div class="cta">
+        <a href="/contabilidad/facturas">Ir a Facturas →</a>
+        <a href="/proveedores">Ir a Proveedores →</a>
+        <a href="/cuentas">Ir a Cuentas →</a>
+      </div>
     </div>
 
     <!-- Índice -->
     <nav class="toc" aria-label="Índice">
-      <a href="#que-es">¿Qué es?</a>
-      <a href="#flujo-factura">Crear factura</a>
-      <a href="#flujo-pago">Registrar pagos</a>
-      <a href="#estados">Estados</a>
-      <a href="#filtros">Filtros y fechas</a>
-      <a href="#informes">Informes rápidos</a>
-      <a href="#buenas">Buenas prácticas</a>
+      <a href="#flujo">Flujo rápido</a>
+      <a href="#listado">Listado y filtros</a>
+      <a href="#factura">Nueva/Editar factura</a>
+      <a href="#adjuntos">Adjuntos</a>
+      <a href="#pagos">Pagos a proveedor</a>
+      <a href="#proveedores">Proveedores & tarjetas</a>
+      <a href="#cuentas">Cuentas contables</a>
       <a href="#faq">FAQ</a>
     </nav>
 
-    <!-- Intro -->
-    <section id="que-es" class="section">
-      <h2>¿Qué es el módulo de Contabilidad?</h2>
-      <p>Permite llevar el control de <strong>gastos</strong> de la asociación: facturas de proveedores, sus <em>pagos</em> y el estado (emitida, parcial, pagada, vencida). Es complementario a los <strong>cobros</strong> de cuotas ya existentes.</p>
-      <div class="hint">Pista: cada pago puede aplicarse a una o varias facturas (total o parcialmente).</div>
+    <!-- Flujo rápido -->
+    <section id="flujo" class="section">
+      <h2>Flujo rápido</h2>
+      <ol class="list">
+        <li>Ve a <span class="kbd">Contabilidad → Facturas</span> y pulsa <strong>Nueva factura</strong>.</li>
+        <li>Elige proveedor (o escribe uno nuevo: se crea automáticamente si no seleccionas de la lista).</li>
+        <li>Rellena <strong>nº</strong>, <strong>emisión</strong> y <strong>vencimiento</strong>, base/IVA/total y guarda.</li>
+        <li>Adjunta el PDF o imagen de la factura.</li>
+        <li>Desde la ficha, registra un <strong>pago</strong> y aplícalo a la factura (total o parcial).</li>
+      </ol>
+      <p class="hint">El estado de la factura se recalcula automáticamente: <em>Pendiente</em>, <em>Parcial</em> o <em>Pagada</em> (se respeta <em>Anulada</em> si la marcas así).</p>
     </section>
 
-    <!-- Llamadas a acción -->
-    <div class="call-grid">
-      <a class="call" href="/contabilidad/facturas">
-        <div class="icon" aria-hidden="true">
-          <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6">
-            <path d="M4 2h8a1 1 0 0 1 1 1v10l-2-1-2 1-2-1-2 1V3a1 1 0 0 1 1-1z"/>
-            <path d="M6 5h4M6 8h3"/>
-          </svg>
-        </div>
-        <div>
-          <h3>Ir a Facturas</h3>
-          <p>Listado, filtros y creación de nuevas facturas.</p>
-        </div>
-      </a>
-      <a class="call" href="/contabilidad/pagos">
-        <div class="icon" aria-hidden="true">
-          <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6">
-            <circle cx="8" cy="8" r="6"/>
-            <path d="M5 8h6M8 5v6"/>
-          </svg>
-        </div>
-        <div>
-          <h3>Ver Pagos</h3>
-          <p>Pagos salientes y su aplicación a facturas.</p>
-        </div>
-      </a>
-      <a class="call" href="/proveedores">
-        <div class="icon" aria-hidden="true">
-          <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6">
-            <path d="M3 13c0-2.5 3-3.5 5-3.5S13 10.5 13 13"/>
-            <circle cx="8" cy="6" r="2.5"/>
-          </svg>
-        </div>
-        <div>
-          <h3>Proveedores</h3>
-          <p>Altas y edición de datos.</p>
-        </div>
-      </a>
-    </div>
-
-    <!-- Dos columnas: crear factura / registrar pago -->
-    <div class="two-col">
-      <section id="flujo-factura" class="section">
-        <h2>Crear una factura (gasto)</h2>
-        <ol class="list">
-          <li><strong>Proveedor</strong>: selecciona uno o crea nuevo (nombre, CIF/NIF, contacto).</li>
-          <li><strong>Cabecera</strong>: nº factura (del proveedor), fecha emisión y <em>vencimiento</em>, observaciones.</li>
-          <li><strong>Líneas</strong>: concepto, cantidad, precio, IVA (y retención si procede).</li>
-          <li>El sistema calcula <em>base</em>, <em>IVA</em>, <em>retención</em> y <strong>total</strong>.</li>
-        </ol>
-        <p class="hint">Una factura queda <strong>Emitida</strong> si tiene total &gt; 0 y sin pagos; pasará a <strong>Parcial</strong> o <strong>Pagada</strong> al aplicar pagos.</p>
-      </section>
-
-      <section id="flujo-pago" class="section">
-        <h2>Registrar y aplicar un pago</h2>
-        <ol class="list">
-          <li>En la factura → <strong>Añadir pago</strong>.</li>
-          <li>Crear pago (fecha, importe, medio) o reutilizar uno existente.</li>
-          <li><strong>Aplicar</strong> total o parcialmente a una o varias facturas.</li>
-        </ol>
-        <p class="hint">Puedes <em>desaplicar</em> un pago desde la factura. Si queda sin uso, podrás eliminarlo.</p>
-      </section>
-    </div>
-
-    <!-- Estados -->
-    <section id="estados" class="section">
-      <h2>Estados de las facturas</h2>
+    <!-- Listado -->
+    <section id="listado" class="section">
+      <h2>Listado y filtros</h2>
+      <p>El listado de facturas permite filtrar por fechas, proveedor, texto libre, <strong>estado</strong> y <strong>vencimiento en 7/15/30 días o vencidas</strong>. Incluye paginación y un resumen (nº, suma base y suma total).</p>
       <ul class="list">
-        <li><span class="badge-soft">Emitida</span> — total &gt; 0 y pendiente &gt; 0, sin pagos.</li>
-        <li><span class="badge-soft">Parcial</span> — con pagos aplicados pero pendiente &gt; 0.</li>
-        <li><span class="badge-soft">Pagada</span> — pendiente = 0.</li>
-        <li><span class="badge-soft">Vencida</span> — emitida/parcial y <em>fecha de vencimiento</em> anterior a hoy.</li>
+        <li><strong>Orden</strong>: por fecha de emisión (asc/desc), proveedor o total.</li>
+        <li><strong>Vencimiento</strong>: muestra próximas a vencer o ya vencidas (excluye <em>pagadas</em>).</li>
+        <li><span class="pill">Export</span> Desde “Pagos” puedes sacar CSV con rangos de fechas.</li>
       </ul>
     </section>
 
-    <!-- Filtros -->
-    <section id="filtros" class="section">
-      <h2>Filtros y “chips” de fechas</h2>
-      <p>En el listado de Facturas filtra por proveedor, estado, texto y rango de fechas. Los chips calculan:</p>
-      <ul class="list">
-        <li><strong>Mes</strong> — del <em>día 1</em> al <em>último día del mes actual</em>.</li>
-        <li><strong>Trimestre</strong> — trimestre natural del mes actual (E–M–A, M–J–J, A–S–O, N–D–E).</li>
-        <li><strong>Año</strong> — del 1 de enero al 31 de diciembre del año en curso.</li>
-      </ul>
-      <p>Arriba verás sumarios del rango: <strong>Total</strong>, <strong>Pagado</strong> y <strong>Pendiente</strong>.</p>
+    <!-- Nueva/Editar -->
+    <section id="factura" class="section">
+      <h2>Nueva / Editar factura</h2>
+      <div class="grid-2">
+        <div class="card">
+          <h3 style="margin:.1rem 0 .35rem;">Campos clave</h3>
+          <ul class="list">
+            <li><strong>Proveedor</strong>: si escribes un nombre y no eliges de la lista, se crea al guardar.</li>
+            <li><strong>Fechas</strong>: Emisión y Vencimiento (acepta <span class="kbd">YYYY-MM-DD</span> o <span class="kbd">DD/MM/YYYY</span>).</li>
+            <li><strong>Totales</strong>: base, %IVA y total (el total se calcula si no lo indicas).</li>
+            <li><strong>Estado</strong>: por defecto <em>Pendiente</em>; cambia solo según pagos o si lo ajustas manualmente.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3 style="margin:.1rem 0 .35rem;">Estados automáticos</h3>
+          <p>Tras guardar o aplicar/eliminar un pago, el sistema recalcula el estado:</p>
+          <ul class="list">
+            <li><em>Pendiente</em>: sin pagos.</li>
+            <li><em>Parcial</em>: pagada parcialmente.</li>
+            <li><em>Pagada</em>: pagado = total (tolerancia de céntimos).</li>
+            <li><em>Anulada</em>: se respeta, no se reescribe automáticamente.</li>
+          </ul>
+        </div>
+      </div>
     </section>
 
-    <!-- Informes -->
-    <section id="informes" class="section">
-      <h2>Informes rápidos</h2>
-      <ul class="list">
-        <li><strong>Acreedores/Pendientes</strong>: filtra por <em>Vencidas</em> o por proveedor.</li>
-        <li><strong>Gasto por proveedor</strong>: proveedor + rango → totales.</li>
-        <li><strong>Cashflow</strong>: combina Cobros (cuotas) + Gastos (facturas) por mes (si tenéis el widget/report).</li>
-      </ul>
+    <!-- Adjuntos -->
+    <section id="adjuntos" class="section">
+      <h2>Adjuntos de factura</h2>
+      <p>Desde la ficha puedes subir hasta 5 archivos por operación (tamaño máx. 10 MB por archivo). Se admiten PDF y formatos de imagen (JPG/PNG/WebP). También puedes eliminar adjuntos individuales.</p>
+      <p class="hint">Los adjuntos se guardan con nombre seguro en <span class="kbd">/uploads/facturas</span>.</p>
     </section>
 
-    <!-- Buenas prácticas -->
-    <section id="buenas" class="section">
-      <h2>Buenas prácticas</h2>
+    <!-- Pagos -->
+    <section id="pagos" class="section">
+      <h2>Pagos a proveedor</h2>
+      <div class="grid-2">
+        <div class="card">
+          <h3 style="margin:.1rem 0 .35rem;">Desde la ficha de factura</h3>
+          <p>Registra un pago indicando fecha, importe, método y referencia. El sistema impide pagar por encima del saldo de la factura.</p>
+          <p class="hint">Cada pago genera una cabecera y una aplicación a la factura. Borrar un pago deshace sus aplicaciones y se recalculan estados.</p>
+        </div>
+        <div class="card">
+          <h3 style="margin:.1rem 0 .35rem;">Listado y exportación</h3>
+          <ul class="list">
+            <li>Filtros por fecha y proveedor.</li>
+            <li><strong>Exportación CSV</strong> con importe total y suma aplicada.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- Proveedores -->
+    <section id="proveedores" class="section">
+      <h2>Proveedores & tarjetas</h2>
       <ul class="list">
-        <li>Unicidad del <strong>nº de factura</strong> por proveedor.</li>
-        <li>Rellenar siempre <strong>vencimiento</strong> para controlar <em>Vencidas</em>.</li>
-        <li>Usa <strong>pagos parciales</strong> si fraccionan.</li>
-        <li>Adjunta el PDF de la factura.</li>
-        <li>Permisos: restringir a <em>admin</em> (o rol decidido).</li>
+        <li>Listado con búsqueda, filtro activo/inactivo y <em>tarjetas de visita</em> con 3 estilos (Color/Contorno/Glass).</li>
+        <li>Selección múltiple rápida: “Seleccionar visibles / Quitar selección”.</li>
+        <li><strong>Exportar</strong>:
+          <ul class="list">
+            <li><span class="badge">PDF</span> (varias por A4).</li>
+            <li><span class="badge">PNG</span> (una imagen por tarjeta en un ZIP).</li>
+            <li><span class="badge">vCard</span> (.vcf) combinando contactos.</li>
+          </ul>
+        </li>
+      </ul>
+      <p class="hint">Si no seleccionas nada, las exportaciones usan las tarjetas visibles con los filtros actuales.</p>
+    </section>
+
+    <!-- Cuentas -->
+    <section id="cuentas" class="section">
+      <h2>Cuentas contables</h2>
+      <ul class="list">
+        <li>Listado ordenado alfabéticamente (<span class="kbd">/cuentas?ver=todas</span> para incluir inactivas).</li>
+        <li>Alta y edición con nombre, tipo (banco/caja), IBAN, saldo inicial y fecha.</li>
+        <li>Campo <em>Activo</em> para activar/desactivar sin borrar.</li>
       </ul>
     </section>
 
     <!-- FAQ -->
     <section id="faq" class="section">
-      <h2>Preguntas frecuentes</h2>
-      <div class="two-col">
-        <div class="panel-card" style="padding:12px 14px;">
-          <h3 style="margin:0 0 .25rem; font-size:1rem;">¿Cómo hago un abono/rectificación?</h3>
-          <p style="margin:0;">O bien añades una línea con <strong>importe negativo</strong> (si vuestra política lo permite) o creas una <em>factura de abono</em> y la aplicas como pago a la original.</p>
+      <h2>FAQ</h2>
+      <div class="grid-2">
+        <div class="card">
+          <h3 style="margin:.1rem 0 .35rem;">¿Puedo pagar varias facturas con un solo pago?</h3>
+          <p>Sí. Desde “Pagos” puedes distribuir un pago entre varias facturas del mismo proveedor, con validación de saldos.</p>
         </div>
-        <div class="panel-card" style="padding:12px 14px;">
-          <h3 style="margin:0 0 .25rem; font-size:1rem;">¿Retenciones (IRPF)?</h3>
-          <p style="margin:0;">Indícalas por línea (o por cabecera si lo gestionáis así). El total de retención se descuenta del total a pagar.</p>
+        <div class="card">
+          <h3 style="margin:.1rem 0 .35rem;">¿Qué pasa si borro un pago?</h3>
+          <p>Se eliminan sus aplicaciones y se recalcula el estado de las facturas afectadas.</p>
         </div>
-        <div class="panel-card" style="padding:12px 14px;">
-          <h3 style="margin:0 0 .25rem; font-size:1rem;">¿Varios tipos de IVA?</h3>
-          <p style="margin:0;">Separa en líneas con el tipo de IVA correspondiente. El total suma cada base+IVA.</p>
+        <div class="card">
+          <h3 style="margin:.1rem 0 .35rem;">¿Qué formatos de adjunto se aceptan?</h3>
+          <p>PDF, JPG/JPEG, PNG y WebP. Tamaño máximo 10 MB por archivo.</p>
         </div>
-        <div class="panel-card" style="padding:12px 14px;">
-          <h3 style="margin:0 0 .25rem; font-size:1rem;">¿Puedo eliminar facturas?</h3>
-          <p style="margin:0;">Sí, si <strong>no tienen pagos aplicados</strong>. Desaplícales primero los pagos y luego elimina.</p>
+        <div class="card">
+          <h3 style="margin:.1rem 0 .35rem;">¿Cómo exporto proveedores?</h3>
+          <p>En la vista de proveedores, usa los chips <em>Exportar</em> para PDF, PNG o vCard. Si no hay selección, exporta los visibles.</p>
         </div>
       </div>
     </section>
 
-    <div class="footer-links">
-      <a class="volver-link" href="/contabilidad/facturas">← Volver a Facturas</a>
-      <a class="volver-link" href="/configuracion">← Volver a Configuración</a>
-      <a class="volver-link" href="/">← Volver al inicio</a>
+    <div class="section" style="display:flex;gap:10px;flex-wrap:wrap;">
+      <a class="enlace-final" href="/contabilidad/facturas"><span class="pill">← Volver a Facturas</span></a>
+      <a class="enlace-final" href="/"><span class="pill">← Volver al inicio</span></a>
     </div>
   </div>
 </div>

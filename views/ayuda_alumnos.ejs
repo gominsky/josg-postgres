@@ -1,0 +1,171 @@
+<% title = 'Ayuda · Músicos' %>
+<% hero  = false %>
+
+<div class="contenedor-ayuda">
+  <style>
+    :root{
+      --ink:#111827; --muted:#6b7280; --accent-100:#fff6e9; --accent-200:#ffe0b3;
+      --accent-300:#ffd188; --accent-400:#ffb554; --accent-500:#ff9500; --accent-700:#8a4b00;
+      --card:#ffffff; --border:#e5e7eb; --shadow:0 1px 2px rgba(0,0,0,.05);
+    }
+    .panel{background:var(--card); border:1px solid var(--border); border-radius:16px; box-shadow:var(--shadow); padding:16px;}
+    .h1{margin:0 0 .5rem; font-size:clamp(1.35rem,1.1rem + 1.2vw,2rem); font-weight:800; color:var(--ink);}
+    .toc{display:flex; flex-wrap:wrap; gap:.5rem; margin:.5rem 0 1rem;}
+    .toc a{display:inline-block; padding:.32rem .6rem; border:1px solid var(--accent-300); background:var(--accent-100); color:var(--accent-700); border-radius:999px; text-decoration:none; font-weight:700; font-size:.86rem;}
+    .section{margin:12px 0; padding:12px 0; border-top:1px dashed var(--border);}
+    h2{margin:.25rem 0 .5rem; font-size:1.15rem;}
+    p{margin:.25rem 0; color:#1f2937;}
+    .hint{background:#f3f4f6; border:1px dashed #d1d5db; border-radius:10px; padding:.5rem .7rem; color:#374151; font-size:.95rem;}
+    .grid-2{display:grid; gap:12px; grid-template-columns:1fr;}
+    @media(min-width:900px){ .grid-2{grid-template-columns:1fr 1fr;} }
+    .card{border:1px solid var(--border); border-radius:12px; padding:12px; background:#fff;}
+    .list{margin:.35rem 0 .2rem 1.1rem;}
+    .list li{margin:.18rem 0;}
+    .kbd{font-family:ui-monospace,Menlo,monospace;background:#1118270f;border:1px solid #0001;border-radius:6px;padding:0 .35rem;}
+    .pill{display:inline-block;border:1px solid var(--border);border-radius:999px;padding:.14rem .5rem;background:#f9fafb;font-size:.85rem;}
+    .cta{display:flex; gap:10px; flex-wrap:wrap; margin:.4rem 0;}
+    .cta a{border:1px solid var(--border);border-radius:10px;padding:.5rem .8rem;text-decoration:none;color:var(--ink);background:#fff;}
+  </style>
+
+  <div class="panel">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+      <h1 class="h1">Ayuda · Músicos</h1>
+      <div class="cta">
+        <a href="/alumnos">Ir al listado →</a>
+        <a href="/alumnos/nuevo">Nuevo músico →</a>
+      </div>
+    </div>
+
+    <!-- Índice -->
+    <nav class="toc" aria-label="Índice">
+      <a href="#flujo">Flujo rápido</a>
+      <a href="#listado">Listado y filtros</a>
+      <a href="#nuevo">Nuevo / Editar</a>
+      <a href="#ficha">Ficha del músico</a>
+      <a href="#finanzas">Cuotas y pagos</a>
+      <a href="#foto">Foto y ficheros</a>
+      <a href="#bajas">Bajas y eliminación</a>
+      <a href="#faq">FAQ</a>
+    </nav>
+
+    <!-- Flujo rápido -->
+    <section id="flujo" class="section">
+      <h2>Flujo rápido</h2>
+      <ol class="list">
+        <li>Abre <span class="kbd">Listado de músicos</span> y filtra por <em>Estado</em>, <em>Grupo</em> o usa <em>Buscar</em>.</li>
+        <li>Pulsa <strong>+ Añadir músico</strong> para crear uno nuevo y asignarle <em>grupos</em> e <em>instrumentos</em>.</li>
+        <li>Desde la <strong>ficha</strong> del músico puedes ver datos, instrumentos/grupos y su <em>resumen financiero</em>.</li>
+        <li>Genera <em>cuotas</em> mensuales por rango y registra <em>pagos</em> con recibo PDF.</li>
+      </ol>
+    </section>
+
+    <!-- Listado y filtros -->
+    <section id="listado" class="section">
+      <h2>Listado y filtros</h2>
+      <ul class="list">
+        <li>Filtros por <strong>Estado</strong> (todos/activos/pasivos), <strong>Grupo</strong> y <strong>Búsqueda</strong> (nombre, apellidos, instrumentos). :contentReference[oaicite:5]{index=5}</li>
+        <li>Botón <strong>+ Añadir músico</strong> en la cabecera; cada tarjeta enlaza a la ficha. :contentReference[oaicite:6]{index=6}</li>
+        <li>El backend soporta los filtros y devuelve instrumentos agregados por alumno. :contentReference[oaicite:7]{index=7}</li>
+      </ul>
+      <p class="hint">La búsqueda del listado filtra en vivo sobre las tarjetas visibles. :contentReference[oaicite:8]{index=8}</p>
+    </section>
+
+    <!-- Nuevo / Editar -->
+    <section id="nuevo" class="section">
+      <h2>Nuevo / Editar músico</h2>
+      <div class="grid-2">
+        <div class="card">
+          <h3 style="margin:.1rem 0 .35rem;">Campos principales</h3>
+          <ul class="list">
+            <li>Datos personales y de contacto (nombre, apellidos, fecha de nacimiento, dirección, etc.). :contentReference[oaicite:9]{index=9}</li>
+            <li><strong>Asignación</strong>: selección múltiple de <em>Grupos</em> e <em>Instrumentos</em>. :contentReference[oaicite:10]{index=10}</li>
+            <li><strong>Estado</strong>: Activo / No activo. Al desactivar se guardará fecha de baja. :contentReference[oaicite:11]{index=11}</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3 style="margin:.1rem 0 .35rem;">Foto e importes</h3>
+          <ul class="list">
+            <li>Sube una <strong>Foto</strong> (campo de archivo). Si ya hay, se muestra y se conserva si no subes otra. :contentReference[oaicite:12]{index=12}</li>
+            <li>La imagen se guarda en <span class="kbd">/uploads</span> con nombre único mediante <em>multer</em>. :contentReference[oaicite:13]{index=13}</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- Ficha -->
+    <section id="ficha" class="section">
+      <h2>Ficha del músico</h2>
+      <ul class="list">
+        <li>Datos de contacto y situación (alta/baja, activo). Muestra foto si está disponible. :contentReference[oaicite:14]{index=14}</li>
+        <li><strong>Instrumentos</strong> y <strong>Grupos</strong> como etiquetas. :contentReference[oaicite:15]{index=15}</li>
+        <li>Botones rápidos: <em>Volver</em> y <em>Editar</em>. :contentReference[oaicite:16]{index=16}</li>
+      </ul>
+    </section>
+
+    <!-- Finanzas -->
+    <section id="finanzas" class="section">
+      <h2>Cuotas y pagos</h2>
+      <div class="grid-2">
+        <div class="card">
+          <h3 style="margin:.1rem 0 .35rem;">Resumen financiero</h3>
+          <ul class="list">
+            <li>Totales: generadas, pagado y pendiente; botón para mostrar/ocultar el bloque. :contentReference[oaicite:17]{index=17}</li>
+            <li>Tablas con las <em>últimas 5 cuotas</em> y <em>últimos 5 pagos</em> con botones “Ver más”. :contentReference[oaicite:18]{index=18}</li>
+            <li>Cada pago tiene enlace a <strong>PDF</strong> del recibo. :contentReference[oaicite:19]{index=19}</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3 style="margin:.1rem 0 .35rem;">Acciones</h3>
+          <ul class="list">
+            <li><strong>Generar cuotas</strong> por rango (desde/hasta) y tipo de cuota. :contentReference[oaicite:20]{index=20}</li>
+            <li><strong>Registrar nuevo pago</strong> desde la ficha del alumno. :contentReference[oaicite:21]{index=21}</li>
+            <li>Eliminar cuota (si no está pagada) desde la tabla de cuotas. :contentReference[oaicite:22]{index=22}</li>
+          </ul>
+        </div>
+      </div>
+      <p class="hint">Las tablas soportan carga paginada por AJAX con botones “Ver más”. :contentReference[oaicite:23]{index=23}</p>
+    </section>
+
+    <!-- Foto y ficheros -->
+    <section id="foto" class="section">
+      <h2>Foto y ficheros</h2>
+      <ul class="list">
+        <li>Las fotos se suben al directorio <span class="kbd">/uploads</span> y se eliminan del disco si borras el músico. :contentReference[oaicite:24]{index=24}</li>
+        <li>Formatos típicos de imagen; se conserva la foto anterior si no subes otra. :contentReference[oaicite:25]{index=25}</li>
+      </ul>
+    </section>
+
+    <!-- Bajas y eliminación -->
+    <section id="bajas" class="section">
+      <h2>Bajas y eliminación</h2>
+      <ul class="list">
+        <li>Al marcar <em>No activo</em>, se guarda <strong>fecha de baja</strong> automáticamente. :contentReference[oaicite:26]{index=26}</li>
+        <li>Eliminar un músico borra sus relaciones (grupos/instrumentos) y su foto del disco si existía. :contentReference[oaicite:27]{index=27}</li>
+      </ul>
+    </section>
+
+    <!-- FAQ -->
+    <section id="faq" class="section">
+      <h2>FAQ</h2>
+      <div class="grid-2">
+        <div class="card">
+          <h3 style="margin:.1rem 0 .35rem;">¿Cómo asigno varios instrumentos?</h3>
+          <p>Usa el selector múltiple de la sección <em>Asignación</em> del formulario (Ctrl/Cmd + clic). :contentReference[oaicite:28]{index=28}</p>
+        </div>
+        <div class="card">
+          <h3 style="margin:.1rem 0 .35rem;">¿Dónde veo los pagos y cuotas?</h3>
+          <p>En la <em>Ficha del músico</em>, dentro del bloque de <strong>Resumen financiero</strong>. :contentReference[oaicite:29]{index=29}</p>
+        </div>
+        <div class="card">
+          <h3 style="margin:.1rem 0 .35rem;">¿Puedo filtrar por grupo y estado a la vez?</h3>
+          <p>Sí. El listado soporta ambos filtros simultáneamente además de búsqueda por texto. :contentReference[oaicite:30]{index=30}</p>
+        </div>
+      </div>
+    </section>
+
+    <div class="section" style="display:flex;gap:10px;flex-wrap:wrap;">
+      <a class="cta" href="/alumnos"><span class="pill">← Volver al listado</span></a>
+      <a class="cta" href="/"><span class="pill">← Volver al inicio</span></a>
+    </div>
+  </div>
+</div>
