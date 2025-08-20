@@ -1,6 +1,8 @@
 <% /* views/facturas_form.ejs */ %>
 <% hero = false %>
-
+<% const d2 = v => (v && typeof v.toISOString==='function')
+      ? v.toISOString().slice(0,10)
+      : String(v||'').slice(0,10); %>
 <div id="factura-wrap" class="container my-4">
   <!-- ====== FORMULARIO PRINCIPAL ====== -->
   <form method="POST" action="/contabilidad/facturas/guardar" class="panel-card" id="form-factura" novalidate>
@@ -60,12 +62,12 @@
           <div class="col-12 col-sm-6">
             <label class="form-label">Fecha emisión</label>
             <input type="date" class="form-control" name="fecha_emision" required
-                   value="<%= factura?.fecha_emision ? String(factura.fecha_emision).slice(0,10) : '' %>">
+       value="<%= factura ? d2(factura.fecha_emision) : '' %>">
           </div>
           <div class="col-12 col-sm-6">
             <label class="form-label">Fecha vencimiento</label>
             <input type="date" class="form-control" name="fecha_vencimiento"
-                   value="<%= factura?.fecha_vencimiento ? String(factura.fecha_vencimiento).slice(0,10) : '' %>">
+       value="<%= factura ? d2(factura.fecha_vencimiento) : '' %>">
           </div>
         </div>
       </div>

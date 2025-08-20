@@ -4,7 +4,7 @@
 <% grupos.sort((a, b) => a.nombre.localeCompare(b.nombre)); %>
 <% instrumentos.sort((a, b) => a.nombre.localeCompare(b.nombre)); %>
 <h1 class="h1-titulo"><%= title %></h1>
-<form action="<%= alumno ? '/alumnos/' + alumno.id + '?_method=PUT' : '/alumnos' %>" method="POST" enctype="multipart/form-data" class="formulario-alumno">
+<form action="<%= alumno ? '/alumnos/' + alumno.id + '?_method=PUT' : '/alumnos' %>" method="POST" enctype="multipart/form-data" class="formulario-alumno contenedor-borde">
 
   <div class="grupo-campos">
     <h2>Datos personales</h2>

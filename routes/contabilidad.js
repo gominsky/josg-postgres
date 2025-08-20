@@ -26,6 +26,15 @@ const upload = multer({
   limits: { fileSize: 10 * 1024 * 1024 } // 10MB
 });
 
+function toISOorNull(s) {
+  if (!s) return null;
+  const v = String(s).trim();
+  // admite 'YYYY-MM-DD' y 'DD/MM/YYYY'
+  if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
+  const m = v.match(/^(\d{2})[\/\-](\d{2})[\/\-](\d{4})$/);
+  return m ? `${m[3]}-${m[2]}-${m[1]}` : v; // si viene otra cosa, lo dejamos y que lo castée PG
+}
+
 /* ===================== Helpers ===================== */
 
 // Proveedores para selects
@@ -288,7 +297,6 @@ router.get('/facturas/nueva', async (_req, res) => {
     EDIT: false
   });
 });
-
 // EDITAR (con adjuntos + pagos + pagado/saldo)
 router.get('/facturas/:id', async (req, res) => {
   const id = Number(req.params.id);
@@ -322,7 +330,6 @@ router.get('/facturas/:id', async (req, res) => {
     return res.status(500).send('Error al cargar la factura');
   }
 });
-
 // CREAR/ACTUALIZAR (unificado) + recálculo de estado
 router.post('/facturas/guardar', async (req, res) => {
   try {
@@ -343,8 +350,8 @@ router.post('/facturas/guardar', async (req, res) => {
     const categoria_id    = req.body.categoria_id ? Number(req.body.categoria_id) : null;
     const cuenta_id       = req.body.cuenta_id ? Number(req.body.cuenta_id) : null;
     const numero          = (req.body.numero || '').trim();
-    const fecha_emision   = req.body.fecha_emision || null;
-    const fecha_venc      = req.body.fecha_vencimiento || null;
+    const fecha_emision = toISOorNull(req.body.fecha_emision);
+    const fecha_venc    = toISOorNull(req.body.fecha_vencimiento);
     const concepto        = (req.body.concepto || '').trim();
     const base_imponible  = Number(req.body.base_imponible || 0);
     const iva_pct         = Number(req.body.iva_pct || 21);
@@ -387,7 +394,6 @@ router.post('/facturas/guardar', async (req, res) => {
     return res.redirect('/contabilidad/facturas/nueva');
   }
 });
-
 // SUBIR adjuntos
 router.post('/facturas/:id/adjuntos', upload.array('adjuntos', 5), async (req, res) => {
   const id = req.params.id;
@@ -405,7 +411,6 @@ router.post('/facturas/:id/adjuntos', upload.array('adjuntos', 5), async (req, r
     res.redirect(`/contabilidad/facturas/${id}?error=upload`);
   }
 });
-
 // ELIMINAR adjunto
 router.post('/facturas/:id/adjuntos/:adjuntoId/eliminar', async (req, res) => {
   const { id, adjuntoId } = req.params;
@@ -483,7 +488,6 @@ router.post('/facturas/:id/pagos', async (req, res) => {
     res.status(500).send('No se pudo registrar el pago');
   }
 });
-
 // ELIMINAR (sólo facturas_prov)
 router.post('/facturas/:id/eliminar', async (req, res) => {
   try {
@@ -549,6 +553,7 @@ router.get('/facturas/export.csv', async (req, res) => {
     res.status(500).send('No se pudo exportar');
   }
 });
+
 router.get('/pagos', async (req, res) => {
   const { desde = '', hasta = '', proveedor = '' } = req.query;
 

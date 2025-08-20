@@ -9,7 +9,7 @@
 <% if (typeof error !== 'undefined') { %>
   <div class="mensaje-error"><%= error %></div>
 <% } %>
-<form action="<%= isEdicion ? '/profesores/' + profesor.id + '?_method=PUT' : '/profesores' %>" method="POST" enctype="multipart/form-data" class="formulario-alumno">
+<form action="<%= isEdicion ? '/profesores/' + profesor.id + '?_method=PUT' : '/profesores' %>" method="POST" enctype="multipart/form-data" class="formulario-alumno contenedor-borde">
   <div class="grupo-campos">
     <h2>Datos personales</h2>
     <div class="form-grid-2">
