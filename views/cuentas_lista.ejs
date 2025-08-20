@@ -6,6 +6,9 @@
     <div class="list-header">
       <h1 class="h1-titulo" style="margin:0;">Cuentas contables</h1>
       <div class="header-actions">
+        <a class="btn btn-outline" href="<%= (ver==='todas') ? '/cuentas' : '/cuentas?ver=todas' %>">
+        <%= (ver==='todas') ? 'Ocultar inactivas' : 'Ver inactivas' %>
+      </a>
         <a class="btn btn-outline" href="/cuentas/export.csv">⬇️ Exportar CSV</a>
         <a class="btn btn-outline" href="/cuentas/nuevo">＋ Nueva cuenta</a>
       </div>

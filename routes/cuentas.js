@@ -6,20 +6,24 @@ const db      = require('../database/db');
 // routes/cuentas.js
 router.get('/', async (_req, res) => {
   try {
+    const ver = (req.query.ver || '').toLowerCase();        
+    const onlyActivas = ver !== 'todas';
     const { rows } = await db.query(`
       SELECT id, nombre, tipo, iban, saldo_inicial, fecha_saldo, activo
       FROM cuentas
+      ${onlyActivas ? 'WHERE activo <> false' : ''}
       ORDER BY lower(nombre) ASC
     `);
 
     res.render('cuentas_lista', {
       title: 'Cuentas contables',
       hero: false,
-      cuentas: rows
+      cuentas: rows,
+      ver
     });
   } catch (e) {
     console.error(e);
-    res.render('cuentas_lista', { title: 'Cuentas contables', hero:false, cuentas: [] });
+    res.render('cuentas_lista', { title: 'Cuentas contables', hero:false, cuentas: [], ver:'' });
   }
 });
 

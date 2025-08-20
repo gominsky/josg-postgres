@@ -1,84 +1,412 @@
 <% title = 'Proveedores' %>
 <% hero  = false %>
 
-<!-- Cabecera compacta con CTA -->
-<div class="header-compact">
-  <h1 class="h1-titulo">Proveedores</h1>
-</div>
-<!-- Filtros -->
-<form method="GET" id="filtro-form" class="formulario-centrado">
-  <div class="campo-filtro">
-    <label for="estado" class="form-centrado-etiqueta">Estado</label>
-    <select id="estado" name="estado" class="form-centrado-select" onchange="document.getElementById('filtro-form').submit()">
-      <option value="">Todos</option>
-      <option value="1" <%= estado === '1' ? 'selected' : '' %>>Activos</option>
-      <option value="0" <%= estado === '0' ? 'selected' : '' %>>Inactivos</option>
-    </select>
+<div id="prov-wrap" class="container my-4">
+  <style>
+    :root{
+      --ink:#111827; --muted:#6b7280; --border:#e5e7eb; --card:#ffffff;
+      --chip:#f9fafb; --shadow:0 1px 2px rgba(0,0,0,.05);
+      --acc1:#0ea5e9; --acc2:#22c55e;
+    }
+
+    /* Contenedor cómodo y estable */
+    #prov-wrap.container{ padding:12px; }
+    @media (min-width: 1200px){ #prov-wrap.container{ max-width: 1320px; } }
+    @media (min-width: 1536px){ #prov-wrap.container{ max-width: 1440px; } }
+
+    /* ===== FORMULARIO (todo dentro) ===== */
+    .f-card{
+      background:var(--card); border:1px solid var(--border); border-radius:16px;
+      box-shadow:var(--shadow); padding:16px;
+    }
+
+    /* Fila 1: título + Nuevo (derecha). Wrap si no cabe */
+    .row-head{
+      display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:12px;
+    }
+    .row-head h1{ margin:0; font-weight:800; color:var(--ink);
+      font-size:clamp(1.25rem, 1rem + 1.2vw, 1.9rem);
+    }
+    .btn-new{
+      margin-left:auto; white-space:nowrap;
+      border:1px solid var(--border); background:#0ea5e9; color:#fff;
+      border-radius:10px; padding:.5rem .85rem; text-decoration:none; box-shadow:var(--shadow);
+    }
+    .btn-new:hover{ filter:brightness(.95); }
+
+    /* Filas 2–3: barras (Diseño / Exportar) – flex-wrap seguro */
+    .toolbar{ width:100%; display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:10px; }
+    .toolbar .label{ color:var(--muted); font-weight:600; }
+    .btn-chip{
+      border:1px solid var(--border); background:var(--chip); color:var(--ink);
+      border-radius:999px; padding:.32rem .65rem; white-space:nowrap; cursor:pointer;
+    }
+    .btn-chip:hover{ background:#f3f4f6; }
+    .btn-chip.active{ border-color:#111; }
+
+    /* Fila 4: filtros – simple y robusta */
+    .filters{
+      display:grid; gap:14px; padding-top:12px; border-top:1px dashed var(--border);
+      grid-template-columns: 1fr; /* móvil */
+    }
+    .filters .form-label{ color:var(--ink); font-weight:600; margin-bottom:.35rem; }
+    .filters .control{
+      display:block; width:100%; padding:.52rem .7rem; border:1px solid var(--border);
+      border-radius:10px; background:#fff; box-shadow:var(--shadow); font-size:1rem;
+    }
+    @media (min-width: 992px){
+      .filters{
+        grid-template-columns: 2fr 5fr; /* Estado largo, Buscar aún más */
+        align-items:end; gap:18px;
+      }
+    }
+
+    /* ===== GRID TARJETAS ===== */
+    .grid{
+      display:grid; gap:18px; padding:8px 8px 0;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    }
+    @media (min-width: 1024px){ .grid{ grid-template-columns: repeat(3, minmax(0, 1fr)) !important; } }
+
+    /* Tarjeta */
+    .card{
+      display:grid; grid-template-columns:110px 1fr; min-height:190px;
+      background:#fff; border:1px solid var(--border); border-radius:16px;
+      box-shadow:var(--shadow); text-decoration:none; color:var(--ink); position:relative; overflow:hidden;
+      transition: transform .12s ease, box-shadow .12s ease;
+    }
+    .card:hover{ transform:translateY(-2px); box-shadow:0 10px 20px rgba(0,0,0,.08); }
+
+    .media{
+      display:flex; align-items:center; justify-content:center; padding:14px;
+      background:
+        radial-gradient(110px 110px at 25% 25%, rgba(255,255,255,.45), transparent),
+        linear-gradient(160deg, var(--acc1), var(--acc2));
+    }
+    /* look b/c */
+    .grid[data-look="b"] .card{ border-color:#d1d5db; }
+    .grid[data-look="b"] .media{ background:repeating-linear-gradient(45deg, rgba(0,0,0,.05) 0 10px, rgba(0,0,0,.025) 10px 20px); }
+    .grid[data-look="c"] .card{ background:rgba(255,255,255,.85); backdrop-filter:blur(6px); }
+    .grid[data-look="c"] .media{ background:linear-gradient(135deg, rgba(255,255,255,.7), rgba(255,255,255,.2)); }
+
+    .avatar{
+      width:72px; height:72px; border-radius:16px; display:flex; align-items:center; justify-content:center;
+      background:#ffffffc9; border:1px solid #e5e7eb; font-weight:800; font-size:26px; color:#0b1220;
+    }
+    .body{ padding:14px 16px 12px 6px; display:flex; flex-direction:column; gap:8px; min-width:0; }
+    .top{ display:flex; align-items:center; gap:8px; }
+    .title{ font-weight:800; font-size:1.12rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .chip{ font-size:.8rem; padding:.18rem .5rem; border-radius:999px; border:1px solid currentColor; }
+    .ok{ color:#15803d; background:#ecfdf5; border-color:#bbf7d0; }
+    .off{ color:#6b7280; background:#f3f4f6; border-color:#e5e7eb; }
+    .sub{ color:#6b7280; }
+    .meta{ display:flex; gap:12px; flex-wrap:wrap; color:#475569; font-size:.95rem; }
+    .meta .i{ width:16px; height:16px; fill:currentColor; opacity:.8; }
+
+    .actions{ display:flex; align-items:center; gap:10px; margin-top:auto; }
+    .btn-ghost{ border:1px solid var(--border); background:#fff; border-radius:999px; padding:.32rem .65rem; font-size:.9rem; }
+    .btn-ghost:hover{ background:#f9fafb; }
+    .spacer{ flex:1; }
+    .cif{ font-family:ui-monospace, Menlo, monospace; background:#f9fafb; border:1px dashed #d1d5db; padding:.18rem .45rem; border-radius:8px; color:#334155; }
+
+    /* Selección */
+    .check{ position:absolute; top:10px; right:10px; width:18px; height:18px; accent-color:#0ea5e9; }
+    .card.selected{ outline:2px solid #0ea5e9; outline-offset:2px; }
+
+    /* Paletas alternas suaves */
+    .grid .card:nth-child(6n+1){ --acc1:#0ea5e9; --acc2:#22c55e; }
+    .grid .card:nth-child(6n+2){ --acc1:#a855f7; --acc2:#06b6d4; }
+    .grid .card:nth-child(6n+3){ --acc1:#f59e0b; --acc2:#ef4444; }
+    .grid .card:nth-child(6n+4){ --acc1:#14b8a6; --acc2:#3b82f6; }
+    .grid .card:nth-child(6n+5){ --acc1:#ef4444; --acc2:#f97316; }
+    .grid .card:nth-child(6n+6){ --acc1:#6366f1; --acc2:#22c55e; }
+
+    /* Barra selección */
+    .sel{ display:flex; align-items:center; gap:8px; margin:8px 8px 12px; }
+    .count{ color:var(--muted); font-size:.94rem; }
+
+    /* Responsivo tarjeta */
+    @media (max-width:640px){
+      .card{ grid-template-columns:90px 1fr; }
+      .avatar{ width:60px; height:60px; font-size:22px; }
+    }
+    /* Panel base */
+.prov-panel{
+  background:#fff; border:1px solid rgba(0,0,0,.08);
+  border-radius:16px; box-shadow:0 1px 2px rgba(0,0,0,.05);
+  padding:14px 16px; margin-bottom:14px;
+}
+
+/* Fila 1: botón izq., título der. */
+.prov-panel .row-1{
+  display:flex; align-items:center; justify-content:space-between;
+  gap:12px; margin-bottom:10px; flex-wrap:wrap;
+}
+.prov-panel .row-1 .title{
+  margin:0; font-weight:800; color:#111827;
+  font-size:clamp(1.25rem,1rem + 1.2vw,1.9rem);
+  text-align:right;
+}
+.btn.btn-outline{
+  border:1px solid rgba(0,0,0,.12); background:#fff; color:#111;
+  border-radius:10px; padding:.48rem .9rem; text-decoration:none;
+  white-space:nowrap; box-shadow:0 1px 2px rgba(0,0,0,.04);
+}
+.btn.btn-outline:hover{ background:#f3f4f6; }
+
+/* Fila 2: filtros (tamaño normal + anchos) */
+.prov-panel .filters{
+  display:grid; gap:14px; padding-top:8px; border-top:1px dashed rgba(0,0,0,.08);
+  grid-template-columns: 1fr;              /* móvil: uno debajo del otro */
+  margin-bottom:10px;
+}
+.prov-panel .form-label{ font-weight:600; color:#111827; margin-bottom:.35rem; }
+.prov-panel .control{
+  display:block; width:100%;
+  padding:.52rem .7rem;                     /* altura normal */
+  border:1px solid rgba(0,0,0,.12); border-radius:10px; background:#fff;
+  box-shadow:0 1px 2px rgba(0,0,0,.04); font-size:1rem;
+}
+@media (min-width: 992px){
+  .prov-panel .filters{
+    grid-template-columns: 2fr 5fr;         /* Estado ancho, Buscar más ancho */
+    align-items:end; gap:18px;
+  }
+}
+
+/* Fila 3 y 4: barras horizontales, con wrap seguro */
+.prov-panel .toolbar{
+  width:100%; display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+  margin-bottom:8px;
+}
+.prov-panel .toolbar .label{ color:#6b7280; font-weight:600; }
+.prov-panel .btn-chip{
+  border:1px solid rgba(0,0,0,.12); background:#f9fafb; color:#111;
+  border-radius:999px; padding:.32rem .65rem; white-space:nowrap; cursor:pointer;
+}
+.prov-panel .btn-chip:hover{ background:#f3f4f6; }
+.prov-panel .btn-chip.active{ border-color:#111; }
+/* Tarjeta de filtros tipo Informes y Certificados */
+.filtros-card{
+  background:#fff; color:#212529; border:1px solid rgba(0,0,0,.08);
+  border-radius:18px; box-shadow:0 1px 2px rgba(0,0,0,.04);
+  padding:14px 16px 18px; margin-bottom:14px;
+}
+.filtros-header{ margin-bottom:10px; }
+
+/* Título igual que Informes */
+.h1-titulo{
+  font-size: clamp(1.4rem, 1.1rem + 1.2vw, 2rem);
+  font-weight:700; color:#212529;
+}
+
+/* Botón outline neutro (como el de Cuentas) */
+.btn.btn-outline{
+  border:1px solid rgba(0,0,0,.12); background:#fff; color:#111;
+  border-radius:10px; padding:.48rem .9rem; text-decoration:none;
+  white-space:nowrap; box-shadow:0 1px 2px rgba(0,0,0,.04);
+}
+.btn.btn-outline:hover{ background:#f3f4f6; }
+
+/* Chips (diseño/export) como Informes: horizontales, con wrap seguro */
+.chips{ display:flex; gap:.5rem; flex-wrap:wrap; }
+.chip{
+  background:#ffeed7;              /* igual a --accent-100 */
+  color:#c26c00;                    /* igual a --accent-700 */
+  border:1px solid #ffe0b3;         /* igual a --accent-200 */
+  border-radius:999px;
+  padding:.35rem .7rem;
+  font-size:.85rem;
+  cursor:pointer; user-select:none;
+  transition: background .15s, border-color .15s, color .15s, transform .05s;
+}
+.chip:hover{ background:#ffe0b3; }  /* --accent-200 */
+.chip.active{
+  background:#ffb554;               /* --accent-400 */
+  color:#5b2b00;
+  border-color:#ff9500;             /* --accent-500 */
+}
+
+  </style>
+
+ <form id="filtro-form" method="GET" class="filtros-card">
+  <!-- Fila 1: botón a la izquierda, título a la derecha -->
+  <div class="row g-2 align-items-center filtros-header">
+    <div class="col-12 col-sm-6">
+      <a href="/proveedores/nuevo" class="btn btn-outline">＋ Nuevo proveedor</a>
+    </div>
+    <div class="col-12 col-sm-6" style="text-align:right;">
+      <h1 class="h1-titulo" style="margin:0;">Proveedores</h1>
+    </div>
   </div>
 
-  <div class="campo-filtro">
-    <label for="busqueda-proveedores" class="form-centrado-etiqueta">Buscar</label>
-    <input id="busqueda-proveedores" type="text" name="q" value="<%= q || '' %>" class="form-centrado-select" placeholder="Nombre, CIF/NIF, email, teléfono…">
+  <!-- Fila 2: filtros (tamaño normal) -->
+  <div class="row g-3 align-items-end">
+    <div class="col-12 col-md-4 col-lg-3">
+      <label for="estado" class="form-label">Estado</label>
+      <select id="estado" name="estado" class="form-select"
+              onchange="document.getElementById('filtro-form').submit()">
+        <option value="">Todos</option>
+        <option value="1" <%= estado === '1' ? 'selected' : '' %>>Activos</option>
+        <option value="0" <%= estado === '0' ? 'selected' : '' %>>Inactivos</option>
+      </select>
+    </div>
+    <div class="col-12 col-md-8 col-lg-9">
+      <label for="busqueda-proveedores" class="form-label">Buscar</label>
+      <input id="busqueda-proveedores" type="text" name="q"
+             value="<%= q || '' %>" class="form-control"
+             placeholder="Nombre, CIF/NIF, email, teléfono…">
+    </div>
+  </div>
+
+  <!-- Fila 3: Diseño (horizontal, envuelve si no cabe) -->
+  <div class="row g-2 align-items-center mt-2">
+    <div class="col-12">
+      <div class="chips">
+        <span class="chip btn-chip" data-look="a">Color</span>
+        <span class="chip btn-chip" data-look="b">Contorno</span>
+        <span class="chip btn-chip" data-look="c">Glass</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Fila 4: Exportación (horizontal, envuelve si no cabe) -->
+  <div class="row g-2 align-items-center mt-2">
+    <div class="col-12">
+      <div class="chips">
+        <button type="button" class="chip" onclick="exportar('pdf')">Exportar PDF</button>
+        <button type="button" class="chip" onclick="exportar('png')">Exportar PNG</button>
+        <button type="button" class="chip" onclick="exportar('vcf')">Exportar vCard</button>
+      </div>
+    </div>
   </div>
 </form>
 
-<!-- Grid tarjetas -->
-<% if ((proveedores || []).length > 0) { %>
-  <div class="dashboard-grid" id="grid-proveedores">
-    <% proveedores.forEach(p => { %>
-      <a href="/proveedores/<%= p.id %>" class="card <%= p.activo ? 'activo' : 'pasivo' %>"
-        data-activo="<%= p.activo ? '1':'0' %>" data-texto="<%= (p.nombre + ' ' + (p.cif||'') + ' ' + (p.email||'') + ' ' + (p.telefono||'')).toLowerCase() %>">
-       <span class="badge-dot <%= p.activo ? 'dot-ok' : 'dot-off' %> status-dot"
-             title="<%= p.activo ? 'Activo' : 'Inactivo' %>"></span>
-     
-       <div class="prov-name"><%= p.nombre %></div>
-     
-       <div class="prov-meta">
-         <%= p.cif || '—' %>
-         <% if (p.email) { %> · <%= p.email %><% } %>
-         <% if (p.telefono) { %> · <%= p.telefono %><% } %>
-       </div>
-     </a>     
-    <% }) %>
+  <!-- Selección -->
+  <div class="sel">
+    <button type="button" class="btn-chip" id="selVis">Seleccionar visibles</button>
+    <button type="button" class="btn-chip" id="selNone">Quitar selección</button>
+    <span class="count" id="selCount">0 seleccionados</span>
   </div>
-<% } else { %>
-  <p class="mt-4" style="text-align:center;">No hay proveedores con esos filtros.</p>
-<% } %>
 
-<div class="volver-bloque-izquierda">
-  <a href="/contabilidad" class="enlace-final">← Volver a contabilidad</a>
+  <!-- Grid tarjetas -->
+  <% if ((proveedores || []).length > 0) { %>
+    <div class="grid" id="grid" data-look="a">
+      <% const initials = (s='') => s.trim().split(/\s+/).slice(0,2).map(x => (x[0]||'').toUpperCase()).join(''); %>
+      <% proveedores.forEach(p => { %>
+        <a href="/proveedores/<%= p.id %>" class="card"
+           data-id="<%= p.id %>"
+           data-activo="<%= p.activo ? '1':'0' %>"
+           data-texto="<%= (p.nombre + ' ' + (p.cif||'') + ' ' + (p.email||'') + ' ' + (p.telefono||'') + ' ' + (p.contacto||'')).toLowerCase() %>">
+
+          <input type="checkbox" class="check" aria-label="Seleccionar <%= p.nombre %>">
+
+          <div class="media" aria-hidden="true">
+            <div class="avatar"><%= initials(p.nombre) %></div>
+          </div>
+
+          <div class="body">
+            <div class="top">
+              <span class="title"><%= p.nombre %></span>
+              <span class="chip <%= p.activo ? 'ok' : 'off' %>"><%= p.activo ? 'Activo' : 'Inactivo' %></span>
+            </div>
+
+            <% if (p.contacto) { %>
+              <div class="sub">Contacto: <strong><%= p.contacto %></strong></div>
+            <% } %>
+
+            <div class="meta">
+              <% if (p.email) { %>
+                <span><svg class="i"><use href="#i-mail"/></svg> <%= p.email %></span>
+              <% } %>
+              <% if (p.telefono) { %>
+                <span><svg class="i"><use href="#i-phone"/></svg> <%= p.telefono %></span>
+              <% } %>
+            </div>
+
+            <div class="actions">
+              <% if (p.email) { %>
+                <button type="button" class="btn-ghost" onclick="event.stopPropagation(); window.location='mailto:<%= p.email %>'">Email</button>
+              <% } %>
+              <% if (p.telefono) { %>
+                <button type="button" class="btn-ghost" onclick="event.stopPropagation(); window.location='tel:<%= p.telefono %>'">Llamar</button>
+              <% } %>
+              <span class="spacer"></span>
+              <span class="cif"><%= p.cif || '—' %></span>
+            </div>
+          </div>
+        </a>
+      <% }) %>
+    </div>
+  <% } else { %>
+    <p class="mt-4" style="text-align:center;">No hay proveedores con esos filtros.</p>
+  <% } %>
 </div>
 
+<!-- SVG icons -->
+<svg width="0" height="0" style="position:absolute;visibility:hidden">
+  <symbol id="i-mail" viewBox="0 0 24 24"><path d="M4 6h16v12H4z"/><path d="M22 6l-10 7L2 6"/></symbol>
+  <symbol id="i-phone" viewBox="0 0 24 24"><path d="M6 2h4l2 5-3 2a14 14 0 0 0 6 6l2-3 5 2v4a2 2 0 0 1-2 2 18 18 0 0 1-18-18 2 2 0 0 1 2-2z"/></symbol>
+</svg>
+
 <script>
-  (() => {
-    const input = document.getElementById('busqueda-proveedores');
-    const estado = document.getElementById('estado');
-    const cards = () => document.querySelectorAll('#grid-proveedores .card');
+(() => {
+  const grid   = document.getElementById('grid');
+  const input  = document.getElementById('busqueda-proveedores');
+  const estado = document.getElementById('estado');
+  const lookBtns = document.querySelectorAll('.btn-chip[data-look]');
+  const selCount = document.getElementById('selCount');
+  const cards  = () => Array.from(document.querySelectorAll('#grid .card'));
 
-    function filtrar() {
-      const q = (input?.value || '').toLowerCase().trim();
-      const est = estado?.value || '';
-      cards().forEach(card => {
-        const txt = card.getAttribute('data-texto') || '';
-        const act = card.getAttribute('data-activo');
-        const pasaTexto = !q || txt.includes(q);
-        const pasaEstado = !est || act === est;
-        card.style.display = (pasaTexto && pasaEstado) ? '' : 'none';
-      });
-    }
+  // Filtro
+  function filtrar(){
+    const q = (input?.value || '').toLowerCase().trim();
+    const est = estado?.value || '';
+    cards().forEach(card => {
+      const txt = card.getAttribute('data-texto') || '';
+      const act = card.getAttribute('data-activo') || '';
+      const ok = (!q || txt.includes(q)) && (!est || act === est);
+      card.style.display = ok ? '' : 'none';
+    });
+    contarSel();
+  }
+  input?.addEventListener('input', filtrar);
 
-    input?.addEventListener('input', filtrar);
-    // (el <select> dispara submit en servidor; si quieres filtrar también en vivo, descomenta:)
-    // estado?.addEventListener('change', (e)=>{ e.preventDefault(); filtrar(); });
+  // Selección
+  function contarSel(){ selCount.textContent = cards().filter(c=>c.classList.contains('selected')).length + ' seleccionados'; }
+  grid?.addEventListener('change', e => {
+    const cb = e.target.closest('.check'); if(!cb) return;
+    const card = e.target.closest('.card'); card?.classList.toggle('selected', cb.checked);
+    contarSel();
+  });
+  grid?.addEventListener('click', e => { if (e.target.closest('.check')) e.stopPropagation(); });
 
-    // Primera pasada (por si llega con ?q=…)
-    filtrar();
-  })();
+  document.getElementById('selVis')?.addEventListener('click', () => {
+    cards().forEach(c => { const v = c.offsetParent !== null; const cb = c.querySelector('.check'); if(cb) cb.checked=v; c.classList.toggle('selected', v); });
+    contarSel();
+  });
+  document.getElementById('selNone')?.addEventListener('click', () => {
+    cards().forEach(c => { const cb=c.querySelector('.check'); if(cb) cb.checked=false; c.classList.remove('selected'); });
+    contarSel();
+  });
+
+  // Look (3 diseños)
+  function applyLook(v){ if(!grid) return; grid.setAttribute('data-look', v); lookBtns.forEach(b=>b.classList.toggle('active', b.dataset.look===v)); localStorage.setItem('prov-look', v); }
+  lookBtns.forEach(b => b.addEventListener('click', ()=>applyLook(b.dataset.look)));
+  applyLook(localStorage.getItem('prov-look') || 'a');
+
+  // Exportar
+  window.exportar = function(tipo){
+    const sel = cards().filter(c=>c.classList.contains('selected') && c.offsetParent!==null).map(c=>c.getAttribute('data-id'));
+    const vis = cards().filter(c=>c.offsetParent!==null).map(c=>c.getAttribute('data-id'));
+    const ids = (sel.length ? sel : vis).filter(Boolean);
+    const look = grid?.getAttribute('data-look') || 'a';
+    const qs = new URLSearchParams(); if(ids.length) qs.set('ids', ids.join(',')); qs.set('look', look);
+    const url = tipo==='vcf' ? `/proveedores/export/vcf?${qs}` : tipo==='png' ? `/proveedores/export/png?${qs}` : `/proveedores/export/pdf?${qs}`;
+    window.location = url;
+  };
+
+  filtrar();
+})();
 </script>
 
-<style>
-  /* opcional: puntitos de estado si tu CSS global no los define */
-  .badge-dot{ width:8px; height:8px; border-radius:50%; display:inline-block; }
-  .dot-ok{ background:#2ecc71; }
-  .dot-off{ background:#bdc3c7; }
-</style>

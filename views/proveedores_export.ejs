@@ -1,0 +1,91 @@
+<% /* views/proveedores_export.ejs */ %>
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <title><%= title %></title>
+  <style>
+    :root{
+      --ink:#0b1220; --muted:#475569; --border:rgba(0,0,0,.12);
+      --acc1:#0ea5e9; --acc2:#22c55e;
+    }
+    *{ box-sizing:border-box; }
+    body{ font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Arial, "Apple Color Emoji", "Segoe UI Emoji"; margin:0; color:var(--ink); }
+    .page{
+      padding:10mm;
+      display:grid;
+      grid-template-columns: repeat(auto-fill, minmax(92mm, 1fr)); /* tarjetas grandes */
+      gap: 8mm;
+      background: #f7f8fb;
+    }
+    .bizcard{
+      display:grid; grid-template-columns: 36mm 1fr;
+      width: 100%; min-height: 60mm; /* grande */
+      background:#fff; border:1.2px solid var(--border); border-radius: 12px;
+      overflow:hidden; text-decoration:none; color:inherit; position:relative;
+      box-shadow: 0 4px 14px rgba(0,0,0,.06);
+    }
+    .biz-media{ display:flex; align-items:center; justify-content:center; padding:6mm; }
+    .biz-avatar{
+      width:22mm; height:22mm; border-radius:6mm; display:flex; align-items:center; justify-content:center;
+      font-weight:800; font-size:8mm; color:#0b1220; background:#f3f4f6; border:1px solid rgba(0,0,0,.06);
+    }
+
+    /* looks */
+    <% if (look==='a') { %>
+    .biz-media{ background:
+      radial-gradient(30mm 30mm at 20% 20%, rgba(255,255,255,.35), transparent),
+      linear-gradient(160deg, #0ea5e9, #22c55e); }
+    .biz-avatar{ background: rgba(255,255,255,.9); }
+    <% } else if (look==='b') { %>
+    .bizcard{ border:1.5px solid rgba(0,0,0,.14); }
+    .biz-media{ background: repeating-linear-gradient(45deg, rgba(0,0,0,.04) 0 3mm, rgba(0,0,0,.02) 3mm 6mm); }
+    <% } else { %>
+    .bizcard{ background: rgba(255,255,255,.75); backdrop-filter: blur(3px); }
+    .biz-media{ background: linear-gradient(135deg, rgba(255,255,255,.6), rgba(255,255,255,.2)); }
+    <% } %>
+
+    .biz-body{ padding:6mm 6mm 5mm 5mm; display:flex; flex-direction:column; gap:2mm; min-width:0; }
+    .biz-title{ font-size:5mm; font-weight:800; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+    .biz-sub{ color:#64748b; font-size:4mm; }
+    .meta-line{ display:flex; gap:6mm; flex-wrap:wrap; color:#334155; font-size:3.6mm; }
+    .meta-item{ display:inline-flex; align-items:center; gap:2.5mm; }
+    .i{ width:4mm; height:4mm; fill:currentColor; opacity:.85; }
+    .status{ font-size:3.4mm; padding:1mm 2.8mm; border-radius:999px; border:1px solid currentColor; margin-left:3mm; }
+    .ok{ color:#15803d; background:#ecfdf5; border-color:#bbf7d0; }
+    .off{ color:#6b7280; background:#f3f4f6; border-color:#e5e7eb; }
+
+    @page{ size: A4; margin: 0; }
+    @media print{
+      body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .page{ padding:10mm; background:none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <%
+      const initials = s => (s||'').trim().split(/\s+/).slice(0,2).map(x => (x[0]||'').toUpperCase()).join('');
+    %>
+    <% (proveedores||[]).forEach(p => { %>
+      <div class="bizcard" data-id="<%= p.id %>" data-name="<%= p.nombre %>">
+        <div class="biz-media"><div class="biz-avatar"><%= initials(p.nombre) %></div></div>
+        <div class="biz-body">
+          <div>
+            <span class="biz-title"><%= p.nombre %></span>
+            <span class="status <%= p.activo ? 'ok':'off' %>"><%= p.activo ? 'Activo' : 'Inactivo' %></span>
+          </div>
+          <% if (p.contacto) { %>
+            <div class="biz-sub">Contacto: <strong><%= p.contacto %></strong></div>
+          <% } %>
+          <div class="meta-line">
+            <span class="meta-item"><svg class="i" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="12" r="3"/><path d="M14 10h5M14 14h5"/></svg><%= p.cif || '—' %></span>
+            <% if (p.email) { %><span class="meta-item"><svg class="i" viewBox="0 0 24 24"><path d="M4 6h16v12H4z"/><path d="M22 6l-10 7L2 6"/></svg><%= p.email %></span><% } %>
+            <% if (p.telefono) { %><span class="meta-item"><svg class="i" viewBox="0 0 24 24"><path d="M6 2h4l2 5-3 2a14 14 0 0 0 6 6l2-3 5 2v4a2 2 0 0 1-2 2 18 18 0 0 1-18-18 2 2 0 0 1 2-2z"/></svg><%= p.telefono %></span><% } %>
+          </div>
+        </div>
+      </div>
+    <% }) %>
+  </div>
+</body>
+</html>
