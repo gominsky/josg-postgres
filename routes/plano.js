@@ -44,6 +44,95 @@ function noCache(res) {
   res.set('Pragma', 'no-cache');
   res.set('Expires', '0');
 }
+function mapSeccionToSpec(seccionRaw) {
+  const seccion = (seccionRaw || '').trim();
+  // Normaliza tildes y mayúsculas de forma laxa
+  const low = seccion.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+
+  if (low.startsWith('violin i')) {
+    return { baseInstrumento: 'Violín', grupoSeccion: 'Violín I', rankingInstrumento: 'Violín' };
+  }
+  if (low.startsWith('violin ii')) {
+    return { baseInstrumento: 'Violín', grupoSeccion: 'Violín II', rankingInstrumento: 'Violín' };
+  }
+  // Otras cuerdas u otros instrumentos tal cual
+  return { baseInstrumento: seccion, grupoSeccion: null, rankingInstrumento: seccion };
+}
+async function fetchCandidatosOrdenados(client, grupoOrquesta, seccionLayout) {
+  const spec = mapSeccionToSpec(seccionLayout);
+
+  // Para filtro de instrumento del alumno permitimos coincidencia exacta por nombre (con tildes)
+  // pero usando ILIKE por robustez.
+  // Para ranking, usamos el instrumento base (p.ej. 'Violín') aunque la sección sea 'Violín I/II'.
+  const sql = `
+    WITH base AS (
+      SELECT DISTINCT
+        a.id,
+        a.apellidos, a.nombre
+      FROM alumnos a
+      JOIN alumno_instrumento ai   ON ai.alumno_id = a.id
+      JOIN instrumentos      inst  ON inst.id      = ai.instrumento_id
+      JOIN alumno_grupo      ag_or ON ag_or.alumno_id = a.id
+      JOIN grupos            g_or  ON g_or.id         = ag_or.grupo_id
+      /* Grupo de sección: opcional (Violín I / Violín II) */
+      LEFT JOIN alumno_grupo ag_sec ON ag_sec.alumno_id = a.id
+      LEFT JOIN grupos       g_sec  ON g_sec.id         = ag_sec.grupo_id
+      WHERE a.activo = TRUE
+        AND g_or.nombre = $1
+        AND inst.nombre ILIKE $2
+        AND ( $3::text IS NULL OR g_sec.nombre = $3 )
+    ),
+    ult AS (
+      /* Último registro por alumno en pruebas_atril_norm para ese grupo + instrumento ranking */
+      SELECT DISTINCT ON (b.id)
+        b.id,
+        pr.puntuacion::numeric   AS puntuacion,
+        pr.asistencia::boolean   AS asistencia,
+        pr.trimestre
+      FROM base b
+      LEFT JOIN pruebas_atril_norm pr
+        ON pr.alumno_id::int = b.id
+       AND pr.grupo = $1
+       AND pr.instrumento ILIKE $4
+      ORDER BY b.id, pr.trimestre DESC NULLS LAST
+    )
+    SELECT
+      b.id,
+      b.apellidos, b.nombre,
+      u.puntuacion, u.asistencia
+    FROM base b
+    LEFT JOIN ult u ON u.id = b.id
+    ORDER BY
+      (u.puntuacion IS NOT NULL) DESC,
+      u.puntuacion DESC NULLS LAST,
+      b.apellidos ASC, b.nombre ASC
+  `;
+  const params = [
+    grupoOrquesta,                  // $1
+    spec.baseInstrumento,          // $2 (ILIKE exacto al nombre del instrumento base)
+    spec.grupoSeccion,             // $3 (si la sección lo requiere)
+    spec.rankingInstrumento        // $4 (para mirar resultados de pruebas)
+  ];
+
+  const { rows } = await client.query(sql, params);
+  return rows; // {id, apellidos, nombre, puntuacion, asistencia}
+}
+
+/**
+ * Carga todas las posiciones del layout dado (ordenadas por instrumento, atril, puesto)
+ * Devuelve, además de las posiciones, la lista de “secciones” detectadas.
+ */
+async function fetchLayout(client, layoutId) {
+  const { rows } = await client.query(
+    `SELECT id, instrumento, atril, puesto, x, y, angulo
+       FROM layout_posiciones
+      WHERE layout_id = $1
+      ORDER BY instrumento, atril, puesto`,
+    [layoutId]
+  );
+  const secciones = [...new Set(rows.map(r => r.instrumento))];
+  return { posiciones: rows, secciones };
+}
 
 /* ===================== /plano/latest/:grupo.:ext ===================== */
 router.get('/latest/:grupo.:ext', async (req, res) => {
@@ -82,17 +171,34 @@ router.get('/latest/:grupo.:ext', async (req, res) => {
         FROM parsed
         ORDER BY instrumento, year_end DESC, t DESC
       )
-      SELECT p.instrumento,
-             p.alumno_id::text AS alumno_id,
-             p.puntuacion,
-             l.trimestre AS trimestre,
-             trim(coalesce(a.nombre,'') || ' ' || coalesce(a.apellidos,'')) AS nombre
-      FROM parsed p
-      JOIN latest l
-        ON p.instrumento = l.instrumento AND p.trimestre = l.trimestre
-      LEFT JOIN alumnos a
-        ON a.id::text = trim(p.alumno_id)
-      ORDER BY p.instrumento, p.puntuacion DESC, p.alumno_id ASC
+      SELECT
+  CASE
+    /* Si el instrumento base es "Violín" (admite "Violín I/II" en informes), mapeamos por grupo del alumno */
+    WHEN regexp_replace(p.instrumento, '\s+I{1,2}$', '', 'i') ILIKE 'Violín' THEN
+      COALESCE(
+        (
+          SELECT g.nombre
+          FROM alumno_grupo ag
+          JOIN grupos g ON g.id = ag.grupo_id
+          WHERE ag.alumno_id = a.id
+            AND g.nombre IN ('Violín I','Violín II')
+          ORDER BY CASE g.nombre WHEN 'Violín I' THEN 1 WHEN 'Violín II' THEN 2 ELSE 3 END
+          LIMIT 1
+        ),
+        'Violín II'   -- fallback si el violinista no tiene sección asignada
+      )
+    ELSE p.instrumento
+  END AS instrumento,
+  p.alumno_id::text AS alumno_id,
+  p.puntuacion,
+  l.trimestre AS trimestre,
+  trim(coalesce(a.nombre,'') || ' ' || coalesce(a.apellidos,'')) AS nombre
+FROM parsed p
+JOIN latest l
+  ON p.instrumento = l.instrumento AND p.trimestre = l.trimestre
+LEFT JOIN alumnos a
+  ON a.id::text = trim(p.alumno_id)
+ORDER BY instrumento, p.puntuacion DESC, p.alumno_id ASC
     `, [grupoNombre]);
 
     if (!ranking.length) {
@@ -235,17 +341,34 @@ router.get('/:grupo/:trimestreFriendly.:ext', async (req, res) => {
 
     // Consulta principal (con nombres)
     const { rows: ranking } = await pool.query(
-      `SELECT p.instrumento,
-              p.alumno_id::text AS alumno_id,
-              p.puntuacion,
-              trim(coalesce(a.nombre,'') || ' ' || coalesce(a.apellidos,'')) AS nombre
-       FROM pruebas_atril_norm p
-       LEFT JOIN alumnos a
-         ON a.id::text = trim(p.alumno_id)
-       WHERE p.grupo = $1
-         AND p.trimestre = $2
-         AND p.asistencia = TRUE
-       ORDER BY p.instrumento, p.puntuacion DESC, p.alumno_id ASC`,
+      `SELECT
+          CASE
+            WHEN regexp_replace(p.instrumento, '\s+I{1,2}$', '', 'i') ILIKE 'Violín' THEN
+              COALESCE(
+                (
+                  SELECT g.nombre
+                  FROM alumno_grupo ag
+                  JOIN grupos g ON g.id = ag.grupo_id
+                  WHERE ag.alumno_id = a.id
+                    AND g.nombre IN ('Violín I','Violín II')
+                  ORDER BY CASE g.nombre WHEN 'Violín I' THEN 1 WHEN 'Violín II' THEN 2 ELSE 3 END
+                  LIMIT 1
+                ),
+                'Violín II'
+              )
+            ELSE p.instrumento
+          END AS instrumento,
+          p.alumno_id::text AS alumno_id,
+          p.puntuacion,
+          trim(coalesce(a.nombre,'') || ' ' || coalesce(a.apellidos,'')) AS nombre
+        FROM pruebas_atril_norm p
+        LEFT JOIN alumnos a
+          ON a.id::text = trim(p.alumno_id)
+        WHERE p.grupo = $1
+          AND p.trimestre = $2
+          AND p.asistencia = TRUE
+        ORDER BY instrumento, p.puntuacion DESC, p.alumno_id ASC
+`,
       [grupo, trimestreFinal]
     );
 

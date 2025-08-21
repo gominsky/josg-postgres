@@ -520,69 +520,86 @@ await db.query(`
   END $$;
 `);
 
-    // ============ AÑADIDOS PARA EL PLANO DE ORQUESTA ============
+// ============ PLANO DE ORQUESTA: tabla + índices ============
 
-    // 🎯 Tabla para posiciones en el plano
-    await db.query(`
-      CREATE TABLE IF NOT EXISTS layout_posiciones (
-        id SERIAL PRIMARY KEY,
-        layout_id TEXT NOT NULL,
-        instrumento TEXT NOT NULL,
-        atril INT NOT NULL,
-        puesto INT NOT NULL,
-        x NUMERIC NOT NULL,
-        y NUMERIC NOT NULL,
-        angulo NUMERIC DEFAULT 0,
-        UNIQUE(layout_id, instrumento, atril, puesto)
-      );
-    `);
+await db.query(`
+  CREATE TABLE IF NOT EXISTS layout_posiciones (
+    id         SERIAL PRIMARY KEY,
+    layout_id  TEXT    NOT NULL,
+    instrumento TEXT   NOT NULL,
+    atril      INT     NOT NULL,
+    puesto     INT     NOT NULL,
+    x          NUMERIC NOT NULL,   -- 0..1 respecto al ancho
+    y          NUMERIC NOT NULL,   -- 0..1 respecto al alto
+    angulo     NUMERIC DEFAULT 0,
+    CONSTRAINT uq_layout_pos UNIQUE (layout_id, instrumento, atril, puesto),
+    CONSTRAINT ck_xy_range CHECK (x >= 0 AND x <= 1 AND y >= 0 AND y <= 1)
+  );
+`);
 
-    // Índices útiles para consultas de informes/resultado
-    await db.query(`CREATE INDEX IF NOT EXISTS idx_informes_informe ON informes (informe);`);
-    await db.query(`CREATE INDEX IF NOT EXISTS idx_inf_campos_informe_nombre ON informe_campos(informe_id, nombre);`);
-    await db.query(`CREATE INDEX IF NOT EXISTS idx_inf_resultados_fk ON informe_resultados(informe_id, campo_id, fila);`);
+await db.query(`
+  CREATE INDEX IF NOT EXISTS idx_layout_pos_layout
+    ON layout_posiciones (layout_id);
+  CREATE INDEX IF NOT EXISTS idx_layout_pos_lookup
+    ON layout_posiciones (layout_id, instrumento, atril, puesto);
+`);
 
-    // Insertar coordenadas iniciales si la tabla está vacía
-    const countLayout = await db.query(`SELECT COUNT(*) FROM layout_posiciones`);
-    if (parseInt(countLayout.rows[0].count) === 0) {
-      await db.query(`
-        INSERT INTO layout_posiciones(layout_id,instrumento,atril,puesto,x,y,angulo) VALUES
-        ('escenario_cuerdas_v1','Violín I',1,1,0.22,0.22,-15),
-        ('escenario_cuerdas_v1','Violín I',1,2,0.27,0.22,-15),
-        ('escenario_cuerdas_v1','Violín I',2,1,0.20,0.30,-10),
-        ('escenario_cuerdas_v1','Violín I',2,2,0.28,0.30,-10),
-        ('escenario_cuerdas_v1','Violín II',1,1,0.38,0.24,0),
-        ('escenario_cuerdas_v1','Violín II',1,2,0.43,0.24,0),
-        ('escenario_cuerdas_v1','Viola',1,1,0.55,0.30,5),
-        ('escenario_cuerdas_v1','Viola',1,2,0.60,0.30,5),
-        ('escenario_cuerdas_v1','Violonchelo',1,1,0.68,0.40,10),
-        ('escenario_cuerdas_v1','Violonchelo',1,2,0.73,0.40,10),
-        ('escenario_cuerdas_v1','Contrabajo',1,1,0.82,0.45,15),
-        ('escenario_cuerzas_v1','Contrabajo',1,2,0.87,0.45,15) -- ⚠️ si copias, corrige 'cuerzas'->'cuerdas'
-      ON CONFLICT DO NOTHING;
-      `);
-      // Corrige el posible typo del insert anterior (por si se pega tal cual)
-      await db.query(`
-        UPDATE layout_posiciones
-        SET layout_id = 'escenario_cuerdas_v1'
-        WHERE layout_id = 'escenario_cuerzas_v1';
-      `);
-      console.log("Layout de cuerdas insertado.");
-    }
 
-    // 👁️ Vista normalizada para pruebas de atril (trimestre 25/26T1)
-    await db.query(`
+// ============ ÍNDICES para informes (aceleran la vista normalizada) ============
+
+await db.query(`
+  CREATE INDEX IF NOT EXISTS idx_informes_informe
+    ON informes (informe);
+  CREATE INDEX IF NOT EXISTS idx_inf_campos_informe_nombre
+    ON informe_campos (informe_id, nombre);
+  CREATE INDEX IF NOT EXISTS idx_inf_resultados_fk
+    ON informe_resultados (informe_id, campo_id, fila);
+`);
+
+
+// ============ Seed del layout (solo si está vacío) + fix de typo ============
+
+await db.query(`
+  DO $$
+  BEGIN
+    IF (SELECT COUNT(*) FROM layout_posiciones) = 0 THEN
+      INSERT INTO layout_posiciones(layout_id,instrumento,atril,puesto,x,y,angulo) VALUES
+        ('escenario_cuerdas_v1','Violín I',    1,1,0.22,0.22,-15),
+        ('escenario_cuerdas_v1','Violín I',    1,2,0.27,0.22,-15),
+        ('escenario_cuerdas_v1','Violín I',    2,1,0.20,0.30,-10),
+        ('escenario_cuerdas_v1','Violín I',    2,2,0.28,0.30,-10),
+
+        ('escenario_cuerdas_v1','Violín II',   1,1,0.38,0.24,0),
+        ('escenario_cuerdas_v1','Violín II',   1,2,0.43,0.24,0),
+
+        ('escenario_cuerdas_v1','Viola',       1,1,0.55,0.30,5),
+        ('escenario_cuerdas_v1','Viola',       1,2,0.60,0.30,5),
+
+        ('escenario_cuerdas_v1','Violonchelo', 1,1,0.68,0.40,10),
+        ('escenario_cuerdas_v1','Violonchelo', 1,2,0.73,0.40,10),
+
+        ('escenario_cuerdas_v1','Contrabajo',  1,1,0.82,0.45,15),
+        ('escenario_cuerdas_v1','Contrabajo',  1,2,0.87,0.45,15)
+      ON CONFLICT (layout_id, instrumento, atril, puesto) DO NOTHING;
+    END IF;
+
+    -- Corrige posibles filas con el layout mal escrito
+    UPDATE layout_posiciones
+       SET layout_id = 'escenario_cuerdas_v1'
+     WHERE layout_id = 'escenario_cuerzas_v1';
+  END $$;
+`);
+await db.query(`
   CREATE OR REPLACE VIEW pruebas_atril_norm AS
   WITH parsed AS (
     SELECT
       i.id AS informe_id,
-      /* trimestre: token tipo 25/26T1 en el título */
-      trim( (regexp_match(i.informe, '([0-9]{2}/[0-9]{2}T[1-4])', 'i'))[1] ) AS trimestre,
+      trim((regexp_match(i.informe, '([0-9]{2}/[0-9]{2}T[1-4])', 'i'))[1]) AS trimestre,
       NULLIF(trim(g.nombre), '')   AS grupo,
       NULLIF(trim(ins.nombre), '') AS instrumento
     FROM informes i
-    LEFT JOIN grupos g        ON g.id  = i.grupo_id
-    LEFT JOIN instrumentos ins ON ins.id = i.instrumento_id
+    LEFT JOIN grupos        g   ON g.id   = i.grupo_id
+    LEFT JOIN instrumentos  ins ON ins.id = i.instrumento_id
     WHERE i.informe ~* 'Prueba[[:space:]]+de[[:space:]]+atril'
   ),
   campos AS (
@@ -595,22 +612,13 @@ await db.query(`
   ),
   pivot AS (
     SELECT
-      p.informe_id,
-      p.trimestre,
-      p.grupo,
-      p.instrumento,
-      r.fila,
-      /* alumno_id: por campo 'alumno_id' o por columna */
+      p.informe_id, p.trimestre, p.grupo, p.instrumento, r.fila,
       COALESCE(
         MAX(CASE WHEN c.campo_nombre ILIKE '%alumno_id%' THEN NULLIF(r.valor,'') END),
         MAX(r.alumno_id)::text
       ) AS alumno_id,
-      /* Puntuación */
-      MAX(CASE WHEN c.campo_nombre ILIKE '%puntuaci%' OR c.campo_nombre ILIKE '%score%' OR c.campo_nombre ILIKE '%punto%'
-               THEN NULLIF(r.valor,'') END) AS puntuacion_raw,
-      /* Asistencia */
-      MAX(CASE WHEN c.campo_nombre ILIKE '%asist%' OR c.campo_nombre ILIKE '%presenc%' OR c.campo_nombre ILIKE '%present%'
-               THEN NULLIF(r.valor,'') END) AS asistencia_raw
+      MAX(CASE WHEN c.campo_nombre ILIKE '%puntuaci%' OR c.campo_nombre ILIKE '%score%' OR c.campo_nombre ILIKE '%punto%' THEN NULLIF(r.valor,'') END) AS puntuacion_raw,
+      MAX(CASE WHEN c.campo_nombre ILIKE '%asist%'   OR c.campo_nombre ILIKE '%presenc%' OR c.campo_nombre ILIKE '%present%' THEN NULLIF(r.valor,'') END) AS asistencia_raw
     FROM parsed p
     LEFT JOIN res    r ON r.informe_id = p.informe_id
     LEFT JOIN campos c ON c.informe_id = r.informe_id AND c.campo_id = r.campo_id
@@ -656,8 +664,8 @@ await db.query(`
     const grupos = [
       'OEG',
       'JOSG',
-      'Aspirantes OEG',
-      'Aspirantes JOSG',
+      'Violín I',
+      'Violín II',
       'Música de Cámara'
     ];
 
@@ -704,8 +712,6 @@ await db.query(`
     // 🎻 INSTRUMENTOS BASE
     const instrumentos = [
       { nombre: 'Violín', familia: 'Cuerda' },
-      { nombre: 'Violín I', familia: 'Cuerda' },
-      { nombre: 'Violín II', familia: 'Cuerda' },
       { nombre: 'Viola', familia: 'Cuerda' },
       { nombre: 'Violonchelo', familia: 'Cuerda' },
       { nombre: 'Contrabajo', familia: 'Cuerda' },

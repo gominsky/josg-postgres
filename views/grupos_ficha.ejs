@@ -19,13 +19,13 @@
   </div>
 
   <div class="acciones-finales d-flex justify-content-between align-items-center mt-4">
-    <a href="/grupos" class="enlace-final-naranja">← Volver</a>
+    <a href="/grupos" class="enlace-final">← Volver</a>
     <div class="d-flex align-items-center gap-2">
-      <button type="submit" class="btn-main"><%= isEdicion ? 'Actualizar' : 'Registrar' %></button>
+      <button type="submit" class="btn-main-blanco"><%= isEdicion ? 'Actualizar' : 'Registrar' %></button>
       <% if (isEdicion) { %>
         <button
           type="submit"
-          class="btn-rojo"
+          class="btn-main-blanco"
           form="form-grupo"
           formaction="/grupos/eliminar/<%= grupo.id %>"
           formmethod="POST"

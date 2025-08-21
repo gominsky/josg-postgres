@@ -112,7 +112,6 @@ async function recalcularEstadoFactura(facturaId) {
   }
 }
 
-
 /* ===================== Listado base (últimas) ===================== */
 const LISTADO_SQL = `
   SELECT
@@ -279,6 +278,60 @@ router.get('/facturas', async (req, res) => {
   }
 });
 
+router.get('/facturas/export.csv', async (req, res) => {
+  // Reutilizamos los mismos filtros que en /facturas (sin paginación)
+  const { desde='', hasta='', proveedor='', q='', ordenar='fecha_emision_desc', estado='', venc='' } = req.query;
+
+  const where = [];
+  const params = [];
+  const push = v => { params.push(v); return `$${params.length}`; };
+
+  if (desde)     where.push(`(f.fecha_emision IS NOT NULL AND f.fecha_emision::date >= ${push(desde)})`);
+  if (hasta)     where.push(`(f.fecha_emision IS NOT NULL AND f.fecha_emision::date <= ${push(hasta)})`);
+  if (proveedor) where.push(`f.proveedor_id = ${push(proveedor)}`);
+  if (estado)    where.push(`f.estado = ${push(estado)}`);
+  if (q) {
+    const p = `%${q}%`;
+    where.push(`(f.numero ILIKE ${push(p)} OR p.nombre ILIKE ${push(p)} OR f.concepto ILIKE ${push(p)})`);
+  }
+  if (venc) {
+    if (['7','15','30'].includes(venc)) {
+      where.push(`(f.fecha_vencimiento IS NOT NULL AND f.fecha_vencimiento::date BETWEEN CURRENT_DATE AND (CURRENT_DATE + INTERVAL '${venc} days'))`);
+    } else if (venc === 'vencida') {
+      where.push(`(f.fecha_vencimiento IS NOT NULL AND f.fecha_vencimiento::date < CURRENT_DATE AND f.estado <> 'pagada')`);
+    }
+  }
+
+  let orderBy = `f.fecha_emision DESC, f.id DESC`;
+  if (ordenar === 'fecha_emision_asc') orderBy = `f.fecha_emision ASC, f.id ASC`;
+  if (ordenar === 'proveedor_asc')     orderBy = `p.nombre ASC, f.fecha_emision DESC`;
+  if (ordenar === 'proveedor_desc')    orderBy = `p.nombre DESC, f.fecha_emision DESC`;
+  if (ordenar === 'total_desc')        orderBy = `f.total DESC NULLS LAST`;
+  if (ordenar === 'total_asc')         orderBy = `f.total ASC NULLS FIRST`;
+
+  try {
+    const { rows } = await db.query(`
+      SELECT f.id, f.numero, f.fecha_emision, f.fecha_vencimiento, p.nombre AS proveedor,
+             f.base_imponible AS base, ROUND(f.base_imponible * (f.iva_pct/100.0), 2) AS iva, f.total, f.estado
+        FROM facturas_prov f
+        LEFT JOIN proveedores p ON p.id = f.proveedor_id
+       ${where.length ? 'WHERE ' + where.join(' AND ') : ''}
+       ORDER BY ${orderBy}
+    `, params);
+
+    const header = ['id','numero','fecha_emision','fecha_vencimiento','proveedor','base','iva','total','estado'];
+    const data = rows.map(r => [
+      r.id, r.numero, (r.fecha_emision||'').toISOString?.().slice(0,10) || String(r.fecha_emision||'').slice(0,10),
+      (r.fecha_vencimiento||'').toISOString?.().slice(0,10) || String(r.fecha_vencimiento||'').slice(0,10),
+      r.proveedor || '', Number(r.base||0).toFixed(2), Number(r.iva||0).toFixed(2), Number(r.total||0).toFixed(2),
+      r.estado || ''
+    ]);
+    sendCSV(res, `facturas_${new Date().toISOString().slice(0,10)}.csv`, header, data);
+  } catch (e) {
+    console.error(e);
+    res.status(500).send('No se pudo exportar');
+  }
+});
 // NUEVA
 router.get('/facturas/nueva', async (_req, res) => {
   const [proveedores, categorias, cuentas] = await Promise.all([
@@ -499,61 +552,6 @@ router.post('/facturas/:id/eliminar', async (req, res) => {
   }
 });
 
-router.get('/facturas/export.csv', async (req, res) => {
-  // Reutilizamos los mismos filtros que en /facturas (sin paginación)
-  const { desde='', hasta='', proveedor='', q='', ordenar='fecha_emision_desc', estado='', venc='' } = req.query;
-
-  const where = [];
-  const params = [];
-  const push = v => { params.push(v); return `$${params.length}`; };
-
-  if (desde)     where.push(`(f.fecha_emision IS NOT NULL AND f.fecha_emision::date >= ${push(desde)})`);
-  if (hasta)     where.push(`(f.fecha_emision IS NOT NULL AND f.fecha_emision::date <= ${push(hasta)})`);
-  if (proveedor) where.push(`f.proveedor_id = ${push(proveedor)}`);
-  if (estado)    where.push(`f.estado = ${push(estado)}`);
-  if (q) {
-    const p = `%${q}%`;
-    where.push(`(f.numero ILIKE ${push(p)} OR p.nombre ILIKE ${push(p)} OR f.concepto ILIKE ${push(p)})`);
-  }
-  if (venc) {
-    if (['7','15','30'].includes(venc)) {
-      where.push(`(f.fecha_vencimiento IS NOT NULL AND f.fecha_vencimiento::date BETWEEN CURRENT_DATE AND (CURRENT_DATE + INTERVAL '${venc} days'))`);
-    } else if (venc === 'vencida') {
-      where.push(`(f.fecha_vencimiento IS NOT NULL AND f.fecha_vencimiento::date < CURRENT_DATE AND f.estado <> 'pagada')`);
-    }
-  }
-
-  let orderBy = `f.fecha_emision DESC, f.id DESC`;
-  if (ordenar === 'fecha_emision_asc') orderBy = `f.fecha_emision ASC, f.id ASC`;
-  if (ordenar === 'proveedor_asc')     orderBy = `p.nombre ASC, f.fecha_emision DESC`;
-  if (ordenar === 'proveedor_desc')    orderBy = `p.nombre DESC, f.fecha_emision DESC`;
-  if (ordenar === 'total_desc')        orderBy = `f.total DESC NULLS LAST`;
-  if (ordenar === 'total_asc')         orderBy = `f.total ASC NULLS FIRST`;
-
-  try {
-    const { rows } = await db.query(`
-      SELECT f.id, f.numero, f.fecha_emision, f.fecha_vencimiento, p.nombre AS proveedor,
-             f.base_imponible AS base, ROUND(f.base_imponible * (f.iva_pct/100.0), 2) AS iva, f.total, f.estado
-        FROM facturas_prov f
-        LEFT JOIN proveedores p ON p.id = f.proveedor_id
-       ${where.length ? 'WHERE ' + where.join(' AND ') : ''}
-       ORDER BY ${orderBy}
-    `, params);
-
-    const header = ['id','numero','fecha_emision','fecha_vencimiento','proveedor','base','iva','total','estado'];
-    const data = rows.map(r => [
-      r.id, r.numero, (r.fecha_emision||'').toISOString?.().slice(0,10) || String(r.fecha_emision||'').slice(0,10),
-      (r.fecha_vencimiento||'').toISOString?.().slice(0,10) || String(r.fecha_vencimiento||'').slice(0,10),
-      r.proveedor || '', Number(r.base||0).toFixed(2), Number(r.iva||0).toFixed(2), Number(r.total||0).toFixed(2),
-      r.estado || ''
-    ]);
-    sendCSV(res, `facturas_${new Date().toISOString().slice(0,10)}.csv`, header, data);
-  } catch (e) {
-    console.error(e);
-    res.status(500).send('No se pudo exportar');
-  }
-});
-
 router.get('/pagos', async (req, res) => {
   const { desde = '', hasta = '', proveedor = '' } = req.query;
 
@@ -593,6 +591,42 @@ router.get('/pagos', async (req, res) => {
   }
 });
 
+router.get('/pagos/export.csv', async (req, res) => {
+  const { desde='', hasta='', proveedor='' } = req.query;
+
+  const where = [];
+  const params = [];
+  const push = v => { params.push(v); return `$${params.length}`; };
+
+  if (desde)     where.push(`p.fecha >= ${push(desde)}`);
+  if (hasta)     where.push(`p.fecha <= ${push(hasta)}`);
+  if (proveedor) where.push(`p.proveedor_id = ${push(proveedor)}`);
+
+  try {
+    const { rows } = await db.query(`
+      SELECT p.id, p.fecha, pr.nombre AS proveedor, p.importe_total,
+             COALESCE(SUM(a.importe_aplicado),0) AS aplicado,
+             p.metodo, p.referencia, p.notas
+        FROM pagos_prov p
+        LEFT JOIN proveedores pr ON pr.id = p.proveedor_id
+        LEFT JOIN pagos_prov_aplicaciones a ON a.pago_id = p.id
+       ${where.length ? 'WHERE ' + where.join(' AND ') : ''}
+       GROUP BY p.id, pr.nombre
+       ORDER BY p.fecha DESC, p.id DESC
+    `, params);
+
+    const header = ['id','fecha','proveedor','importe_total','aplicado','metodo','referencia','notas'];
+    const data = rows.map(r => [
+      r.id, (r.fecha||'').toISOString?.().slice(0,10) || String(r.fecha||'').slice(0,10),
+      r.proveedor||'', Number(r.importe_total||0).toFixed(2), Number(r.aplicado||0).toFixed(2),
+      r.metodo||'', r.referencia||'', r.notas||''
+    ]);
+    sendCSV(res, `pagos_${new Date().toISOString().slice(0,10)}.csv`, header, data);
+  } catch (e) {
+    console.error(e);
+    res.status(500).send('No se pudo exportar pagos');
+  }
+});
 router.get('/pagos/nuevo', async (req, res) => {
   try {
     const proveedores = await getProveedores();
@@ -709,42 +743,6 @@ router.post('/pagos/:id/eliminar', async (req, res) => {
   }
 });
 
-router.get('/pagos/export.csv', async (req, res) => {
-  const { desde='', hasta='', proveedor='' } = req.query;
-
-  const where = [];
-  const params = [];
-  const push = v => { params.push(v); return `$${params.length}`; };
-
-  if (desde)     where.push(`p.fecha >= ${push(desde)}`);
-  if (hasta)     where.push(`p.fecha <= ${push(hasta)}`);
-  if (proveedor) where.push(`p.proveedor_id = ${push(proveedor)}`);
-
-  try {
-    const { rows } = await db.query(`
-      SELECT p.id, p.fecha, pr.nombre AS proveedor, p.importe_total,
-             COALESCE(SUM(a.importe_aplicado),0) AS aplicado,
-             p.metodo, p.referencia, p.notas
-        FROM pagos_prov p
-        LEFT JOIN proveedores pr ON pr.id = p.proveedor_id
-        LEFT JOIN pagos_prov_aplicaciones a ON a.pago_id = p.id
-       ${where.length ? 'WHERE ' + where.join(' AND ') : ''}
-       GROUP BY p.id, pr.nombre
-       ORDER BY p.fecha DESC, p.id DESC
-    `, params);
-
-    const header = ['id','fecha','proveedor','importe_total','aplicado','metodo','referencia','notas'];
-    const data = rows.map(r => [
-      r.id, (r.fecha||'').toISOString?.().slice(0,10) || String(r.fecha||'').slice(0,10),
-      r.proveedor||'', Number(r.importe_total||0).toFixed(2), Number(r.aplicado||0).toFixed(2),
-      r.metodo||'', r.referencia||'', r.notas||''
-    ]);
-    sendCSV(res, `pagos_${new Date().toISOString().slice(0,10)}.csv`, header, data);
-  } catch (e) {
-    console.error(e);
-    res.status(500).send('No se pudo exportar pagos');
-  }
-});
 // DETALLE de un pago (solo columnas que existen en tu esquema actual)
 router.get('/pagos/:id', async (req, res) => {
   const id = Number(req.params.id);

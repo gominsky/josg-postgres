@@ -1,0 +1,69 @@
+<% title = 'Ayuda · Informes' %>
+<% hero  = false %>
+
+<div class="container my-4 ayuda-informes">
+  <h1 class="h1-titulo mb-3">Ayuda · Informes</h1>
+
+  <p class="lead">Esta guía resume cómo crear informes y listados, cómo usar la pantalla
+  <strong>Informes y certificados</strong>, y cómo editar/guardar resultados y exportarlos.</p>
+
+  <hr class="my-4"/>
+
+  <h2 class="h5 mt-3">1) Pantalla “Informes y certificados”</h2>
+  <p>Desde <em>Informes y certificados</em> eliges <strong>Grupo</strong>, <strong>Instrumento</strong> y <strong>Fechas</strong>.
+  Puedes usar las <em>chips</em> de rango rápido (30 días, trimestre, YTD). Para generar <strong>listados sin alumnos</strong>,
+  selecciona literalmente <strong>“Ninguno”</strong> en Grupo.</p>
+
+  <ul>
+    <li><strong>Informes guardados</strong>: abre el histórico.</li>
+    <li><strong>Listado / Tabla dinámica</strong>: te lleva al constructor (campos + alumnos) con los filtros que hayas elegido.</li>
+    <li><strong>Porcentaje de asistencia</strong>: calcula horas/porcentaje en el rango y permite guardarlo.</li>
+  </ul>
+
+  <h2 class="h5 mt-4">2) Listado / Tabla dinámica (constructor)</h2>
+  <ol>
+    <li>Se precargan los <em>Filtros recibidos</em> (grupo/instrumento/fecha). El nombre del informe se sugiere automáticamente.</li>
+    <li>Añade los <strong>Campos</strong> (Texto, Número, Sí/No) y marca si son obligatorios.</li>
+    <li>Con alumnos filtrados se muestra la tabla editable. Si pusiste Grupo = “Ninguno”, crearás un informe sin alumnos.</li>
+    <li>Pulsa <strong>Guardar informe</strong> para almacenar estructura (campos) y valores.</li>
+  </ol>
+
+  <div class="alert alert-info small">
+    Consejo: si el nombre comienza por <strong>“Prueba de atril”</strong> se añaden automáticamente los campos
+    <em>Puntuación</em> y <em>Asistencia</em>.
+  </div>
+
+  <h2 class="h5 mt-4">3) Informe “Porcentaje de horas de asistencia”</h2>
+  <p>El informe de horas calcula por alumno el total y el porcentaje sobre el periodo seleccionado. Puedes
+  <strong>Guardar informe</strong> para archivarlo y consultarlo más tarde.</p>
+
+  <h2 class="h5 mt-4">4) Detalle del informe</h2>
+  <ul>
+    <li>El <strong>título</strong> del informe es editable en línea.</li>
+    <li>Botones para <strong>Ocultar/Mostrar</strong> columnas de Grupo e Instrumento.</li>
+    <li>Tabla editable; al guardar se serializan los valores por alumno/campo.</li>
+    <li><strong>Exportar PDF</strong>: genera un PDF sencillo con el contenido visible.</li>
+    <li><strong>Eliminar informe</strong>: borra el informe completo.</li>
+  </ul>
+
+  <h2 class="h5 mt-4">5) Listado de informes guardados</h2>
+  <p>Desde el histórico puedes buscar y ordenar por nombre, fecha, grupo e instrumento, y entrar al detalle para editar.</p>
+
+  <hr class="my-4"/>
+  <h2 class="h5">Preguntas frecuentes</h2>
+  <ul>
+    <li><strong>Quiero un informe sin alumnos</strong>: elige Grupo = “Ninguno” en la portada.</li>
+    <li><strong>No veo la tabla de alumnos</strong>: asegúrate de haber seleccionado filtros con grupo/instrumento (o “Ninguno”).</li>
+    <li><strong>Quiero campos de Puntuación/Asistencia</strong>: usa nombre que empiece por “Prueba de atril …”.</li>
+  </ul>
+
+  <div class="volver-bloque-izquierda mt-4">
+    <a href="/informes" class="enlace-final">← Volver a Informes</a>
+  </div>
+</div>
+
+<style>
+  .ayuda-informes .lead{ color:#444; }
+  .ayuda-informes h2{ color:#222; }
+  .ayuda-informes ul, .ayuda-informes ol{ margin-left:1rem; }
+</style>

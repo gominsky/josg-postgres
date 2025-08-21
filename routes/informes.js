@@ -7,6 +7,9 @@ const { isAuthenticated } = require('../middleware/auth');
 const { toISODate } = require('../utils/fechas');
 router.use(express.json());
 // ⛔️ Anti-caché para todo lo de /ficha (GET y POST)
+router.get('/ayuda', (_req, res) => {
+  res.render('ayuda_informes', { title: 'Ayuda · Informes y certificados', hero: false });
+});
 router.use('/ficha', (req, res, next) => {
   res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
   res.set('Pragma', 'no-cache');
