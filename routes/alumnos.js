@@ -13,9 +13,7 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage });
 const { toISODate } = require('../utils/fechas');
-router.get('/ayuda', (_req, res) => {
-  res.render('ayuda_alumnos', { title: 'Ayuda · Alumnos', hero: false });
-});
+
 router.get('/nuevo', async (req, res) => {
   try {
     const instrumentos = (await db.query('SELECT * FROM instrumentos')).rows;
@@ -79,6 +77,14 @@ router.post('/', upload.single('foto'), async (req, res) => {
     console.error('Error al crear alumno:', err);
     res.status(500).send('Error al guardar alumno');
   }
+});
+// Centro de ayuda (en Configuración)
+router.get('/ayuda', (_req, res) => {
+  res.render('ayuda_alumnos', { title: 'Ayuda · Alumnos', hero: false });
+});
+// routes/alumnos.js (o donde tengas las rutas de alumnos)
+router.get(['/alumnos/ayuda', '/musicos/ayuda'], (_req, res) => {
+  res.render('ayuda_musicos', { title: 'Ayuda · Músicos', hero: false });
 });
 router.put('/:id', upload.single('foto'), async (req, res) => {
   const id = req.params.id;

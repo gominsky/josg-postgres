@@ -25,6 +25,7 @@
           <input type="hidden" name="instrumento_id"  value="<%= instrumentoSeleccionado %>">
           <input type="hidden" name="fecha"           value="<%= fechaHoy %>">
           <input type="hidden" name="fecha_fin"       value="<%= typeof fecha_fin !== 'undefined' ? fecha_fin : fechaHoy %>">
+          <input type="hidden" name="sec_violin" value="<%= (typeof sec_violin !== 'undefined' ? sec_violin : '') %>">
 
           <!-- Resumen visual con NOMBRES (no IDs) y sin fecha_fin -->
           <%
@@ -79,7 +80,7 @@
           <input type="hidden" name="resultados" id="resultados-json">
           <input type="hidden" name="mostrar_grupo" value="<%= showGroup? '1':'0' %>">
           <input type="hidden" name="mostrar_instrumento" value="<%= showInstrument? '1':'0' %>">
-
+          <input type="hidden" name="sec_violin" value="<%= (typeof sec_violin !== 'undefined' ? sec_violin : '') %>">
           <h2 class="h5 mb-3 text-dark text-center">Elegir campos para el informe</h2>
           <div class="text-center mb-3">
             <button type="button" class="btn btn-dark btn-sm" onclick="event.preventDefault(); addCampo()">+ Añadir campo</button>

@@ -44,9 +44,9 @@ function noCache(res) {
   res.set('Pragma', 'no-cache');
   res.set('Expires', '0');
 }
+
 function mapSeccionToSpec(seccionRaw) {
   const seccion = (seccionRaw || '').trim();
-  // Normaliza tildes y mayúsculas de forma laxa
   const low = seccion.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 
   if (low.startsWith('violin i')) {
@@ -55,15 +55,11 @@ function mapSeccionToSpec(seccionRaw) {
   if (low.startsWith('violin ii')) {
     return { baseInstrumento: 'Violín', grupoSeccion: 'Violín II', rankingInstrumento: 'Violín' };
   }
-  // Otras cuerdas u otros instrumentos tal cual
   return { baseInstrumento: seccion, grupoSeccion: null, rankingInstrumento: seccion };
 }
+
 async function fetchCandidatosOrdenados(client, grupoOrquesta, seccionLayout) {
   const spec = mapSeccionToSpec(seccionLayout);
-
-  // Para filtro de instrumento del alumno permitimos coincidencia exacta por nombre (con tildes)
-  // pero usando ILIKE por robustez.
-  // Para ranking, usamos el instrumento base (p.ej. 'Violín') aunque la sección sea 'Violín I/II'.
   const sql = `
     WITH base AS (
       SELECT DISTINCT
@@ -74,7 +70,6 @@ async function fetchCandidatosOrdenados(client, grupoOrquesta, seccionLayout) {
       JOIN instrumentos      inst  ON inst.id      = ai.instrumento_id
       JOIN alumno_grupo      ag_or ON ag_or.alumno_id = a.id
       JOIN grupos            g_or  ON g_or.id         = ag_or.grupo_id
-      /* Grupo de sección: opcional (Violín I / Violín II) */
       LEFT JOIN alumno_grupo ag_sec ON ag_sec.alumno_id = a.id
       LEFT JOIN grupos       g_sec  ON g_sec.id         = ag_sec.grupo_id
       WHERE a.activo = TRUE
@@ -83,7 +78,6 @@ async function fetchCandidatosOrdenados(client, grupoOrquesta, seccionLayout) {
         AND ( $3::text IS NULL OR g_sec.nombre = $3 )
     ),
     ult AS (
-      /* Último registro por alumno en pruebas_atril_norm para ese grupo + instrumento ranking */
       SELECT DISTINCT ON (b.id)
         b.id,
         pr.puntuacion::numeric   AS puntuacion,
@@ -109,19 +103,15 @@ async function fetchCandidatosOrdenados(client, grupoOrquesta, seccionLayout) {
   `;
   const params = [
     grupoOrquesta,                  // $1
-    spec.baseInstrumento,          // $2 (ILIKE exacto al nombre del instrumento base)
-    spec.grupoSeccion,             // $3 (si la sección lo requiere)
-    spec.rankingInstrumento        // $4 (para mirar resultados de pruebas)
+    spec.baseInstrumento,           // $2
+    spec.grupoSeccion,              // $3
+    spec.rankingInstrumento         // $4
   ];
 
   const { rows } = await client.query(sql, params);
-  return rows; // {id, apellidos, nombre, puntuacion, asistencia}
+  return rows;
 }
 
-/**
- * Carga todas las posiciones del layout dado (ordenadas por instrumento, atril, puesto)
- * Devuelve, además de las posiciones, la lista de “secciones” detectadas.
- */
 async function fetchLayout(client, layoutId) {
   const { rows } = await client.query(
     `SELECT id, instrumento, atril, puesto, x, y, angulo
@@ -151,7 +141,7 @@ router.get('/latest/:grupo.:ext', async (req, res) => {
       grupoNombre = g[0].nombre;
     }
 
-    // Query de “último por instrumento”
+    // Último por instrumento (mapeando violín → Violín I/II según grupo del alumno)
     const { rows: ranking } = await pool.query(`
       WITH base AS (
         SELECT instrumento, alumno_id, puntuacion, asistencia, trimestre
@@ -172,33 +162,40 @@ router.get('/latest/:grupo.:ext', async (req, res) => {
         ORDER BY instrumento, year_end DESC, t DESC
       )
       SELECT
-  CASE
-    /* Si el instrumento base es "Violín" (admite "Violín I/II" en informes), mapeamos por grupo del alumno */
-    WHEN regexp_replace(p.instrumento, '\s+I{1,2}$', '', 'i') ILIKE 'Violín' THEN
-      COALESCE(
-        (
-          SELECT g.nombre
-          FROM alumno_grupo ag
-          JOIN grupos g ON g.id = ag.grupo_id
-          WHERE ag.alumno_id = a.id
-            AND g.nombre IN ('Violín I','Violín II')
-          ORDER BY CASE g.nombre WHEN 'Violín I' THEN 1 WHEN 'Violín II' THEN 2 ELSE 3 END
-          LIMIT 1
-        ),
-        'Violín II'   -- fallback si el violinista no tiene sección asignada
-      )
-    ELSE p.instrumento
-  END AS instrumento,
-  p.alumno_id::text AS alumno_id,
-  p.puntuacion,
-  l.trimestre AS trimestre,
-  trim(coalesce(a.nombre,'') || ' ' || coalesce(a.apellidos,'')) AS nombre
-FROM parsed p
-JOIN latest l
-  ON p.instrumento = l.instrumento AND p.trimestre = l.trimestre
-LEFT JOIN alumnos a
-  ON a.id::text = trim(p.alumno_id)
-ORDER BY instrumento, p.puntuacion DESC, p.alumno_id ASC
+        CASE
+          WHEN regexp_replace(p.instrumento, '\\s+I{1,2}$', '', 'i') ~* '^viol[ií]n$' THEN
+            COALESCE(
+              (
+                SELECT g.nombre
+                FROM alumno_grupo ag
+                JOIN grupos g ON g.id = ag.grupo_id
+                WHERE ag.alumno_id = a.id
+                  AND (
+                  g.nombre ~* '^viol[ií]n\\s*i$'
+                  OR g.nombre ~* '^viol[ií]n\\s*ii$'
+                )
+                ORDER BY
+                  CASE
+                    WHEN g.nombre ~* '^viol[ií]n\\s*i$'  THEN 1
+                    WHEN g.nombre ~* '^viol[ií]n\\s*ii$' THEN 2
+                    ELSE 3
+                  END
+                LIMIT 1
+              ),
+              'Violín II'
+            )
+          ELSE p.instrumento
+        END AS instrumento,
+        p.alumno_id::text AS alumno_id,
+        p.puntuacion,
+        l.trimestre AS trimestre,
+        trim(coalesce(a.nombre,'') || ' ' || coalesce(a.apellidos,'')) AS nombre
+      FROM parsed p
+      JOIN latest l
+        ON p.instrumento = l.instrumento AND p.trimestre = l.trimestre
+      LEFT JOIN alumnos a
+        ON a.id::text = trim(p.alumno_id)
+      ORDER BY instrumento, p.puntuacion DESC, p.alumno_id ASC
     `, [grupoNombre]);
 
     if (!ranking.length) {
@@ -246,15 +243,10 @@ ORDER BY instrumento, p.puntuacion DESC, p.alumno_id ASC
       const color = colorPorInstrumento(p.instrumento);
       nodos += `
         <g transform="translate(${cx},${cy}) rotate(${p.angulo})">
-          <!-- círculo base -->
           <circle r="30" fill="${color}" fill-opacity="0.9"></circle>
-          <!-- halo blanco interior -->
           <circle r="31.5" fill="none" stroke="#fff" stroke-width="2"></circle>
-          <!-- aro exterior sutil -->
           <circle r="33" fill="none" stroke="#222" stroke-opacity="0.15" stroke-width="1.2"></circle>
-          <!-- número -->
           <text y="6" text-anchor="middle" font-weight="800" font-size="18" fill="#fff" font-family="${FONT}">${asig.seat}</text>
-          <!-- nombre abreviado -->
           <text y="46" text-anchor="middle" font-size="9" fill="#333" font-family="${FONT}">
             ${esc(abbreviateName((asig.nombre && asig.nombre.trim().length ? asig.nombre : asig.alumno_id) || '', { max: 16 }))}
           </text>
@@ -339,19 +331,27 @@ router.get('/:grupo/:trimestreFriendly.:ext', async (req, res) => {
       trimestreFinal = trimestreFinal.replace('-', '/'); // "25-26T1" -> "25/26T1"
     }
 
-    // Consulta principal (con nombres)
+    // Consulta principal con mapeo Violín → Violín I/II
     const { rows: ranking } = await pool.query(
       `SELECT
           CASE
-            WHEN regexp_replace(p.instrumento, '\s+I{1,2}$', '', 'i') ILIKE 'Violín' THEN
+            WHEN regexp_replace(p.instrumento, '\\s+I{1,2}$', '', 'i') ~* '^viol[ií]n$' THEN
               COALESCE(
                 (
                   SELECT g.nombre
                   FROM alumno_grupo ag
                   JOIN grupos g ON g.id = ag.grupo_id
                   WHERE ag.alumno_id = a.id
-                    AND g.nombre IN ('Violín I','Violín II')
-                  ORDER BY CASE g.nombre WHEN 'Violín I' THEN 1 WHEN 'Violín II' THEN 2 ELSE 3 END
+                    AND (
+                    g.nombre ~* '^viol[ií]n\\s*i$'
+                    OR g.nombre ~* '^viol[ií]n\\s*ii$'
+                  )
+                  ORDER BY
+                    CASE
+                      WHEN g.nombre ~* '^viol[ií]n\\s*i$'  THEN 1
+                      WHEN g.nombre ~* '^viol[ií]n\\s*ii$' THEN 2
+                      ELSE 3
+                    END
                   LIMIT 1
                 ),
                 'Violín II'
@@ -367,8 +367,7 @@ router.get('/:grupo/:trimestreFriendly.:ext', async (req, res) => {
         WHERE p.grupo = $1
           AND p.trimestre = $2
           AND p.asistencia = TRUE
-        ORDER BY instrumento, p.puntuacion DESC, p.alumno_id ASC
-`,
+        ORDER BY instrumento, p.puntuacion DESC, p.alumno_id ASC`,
       [grupo, trimestreFinal]
     );
 
@@ -415,15 +414,10 @@ router.get('/:grupo/:trimestreFriendly.:ext', async (req, res) => {
       const color = colorPorInstrumento(p.instrumento);
       nodos += `
         <g transform="translate(${cx},${cy}) rotate(${p.angulo})">
-          <!-- círculo base -->
           <circle r="30" fill="${color}" fill-opacity="0.9"></circle>
-          <!-- halo blanco interior -->
           <circle r="31.5" fill="none" stroke="#fff" stroke-width="2"></circle>
-          <!-- aro exterior sutil -->
           <circle r="33" fill="none" stroke="#222" stroke-opacity="0.15" stroke-width="1.2"></circle>
-          <!-- número -->
           <text y="6" text-anchor="middle" font-weight="800" font-size="18" fill="#fff" font-family="${FONT_STACK}">${asig.seat}</text>
-          <!-- nombre abreviado -->
           <text y="46" text-anchor="middle" font-size="8" fill="#333" font-family="${FONT_STACK}">
             ${esc(abbreviateName((asig.nombre && asig.nombre.trim().length ? asig.nombre : asig.alumno_id) || '', { max: 16 }))}
           </text>
@@ -459,7 +453,6 @@ router.get('/:grupo/:trimestreFriendly.:ext', async (req, res) => {
         const pdfBuf = await svgToPdfBuffer(svg, { W, H, title: `Pruebas de atril ${grupo} ${trimestreFinal}` });
         return res.type('application/pdf').send(pdfBuf);
       } catch (err) {
-        console.error('PDF vectorial falló, envío PNG:', err);
         const png = await sharp(Buffer.from(svg), { density: 220 }).png({ compressionLevel: 9 }).toBuffer();
         return res.type('image/png').send(png);
       }
@@ -481,4 +474,5 @@ router.get('/view', (req, res) => {
 });
 
 module.exports = router;
+
 

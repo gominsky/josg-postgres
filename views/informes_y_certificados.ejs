@@ -180,6 +180,19 @@
       </div>
     </div>
 
+    <!-- Fila 1.5: Sección Violín (solo visible si instrumento = Violín) -->
+    <div class="row g-3 align-items-center mt-0" id="violin-row" style="display:none;">
+      <input type="hidden" id="sec_violin" name="sec_violin" value="">
+      <div class="col-12">
+        <label class="form-label">Sección violín</label>
+        <div class="chips" id="violin-chips">
+          <span class="chip" data-sec="">Todos</span>
+          <span class="chip" data-sec="I">Violín I</span>
+          <span class="chip" data-sec="II">Violín II</span>
+        </div>
+      </div>
+    </div>
+
     <!-- Fila 2: Fechas (4 columnas) -->
     <div class="row g-3 align-items-end mt-0">
       <div class="col-12 col-sm-6 col-lg-3">
@@ -277,23 +290,41 @@
     const elFecha    = document.getElementById('fecha');
     const elFechaFin = document.getElementById('fecha_fin');
     const cardPlano  = document.getElementById('cardPlano');
-    cardFicha?.addEventListener('click', (e) => {
-      e.preventDefault();
-      const qs = new URLSearchParams();
-      if (elGrupo?.value)    qs.set('grupo', elGrupo.value);
-      if (elInstr?.value)    qs.set('instrumento', elInstr.value);
-      if (elFecha?.value)    qs.set('fecha', elFecha.value);
-      if (elFechaFin?.value) qs.set('fecha_fin', elFechaFin.value);
 
-      qs.set('_ts', Date.now()); // cache-buster para abrir la ficha “limpia”
-      location.href = '/informes/ficha?' + qs.toString();
+    // === Sección Violín ===
+    const violinRow  = document.getElementById('violin-row');
+    const secHidden  = document.getElementById('sec_violin');
+    const violinChips= document.getElementById('violin-chips');
+
+    const norm  = s => (s||'').toString().trim();
+    const strip = s => norm(s).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+    const isViolinText = t => strip(t).startsWith('violin'); // “violín” con/ sin tilde
+
+    function toggleViolinChips(){
+      const text = elInstr.options[elInstr.selectedIndex]?.text || '';
+      const show = isViolinText(text);
+      violinRow.style.display = show ? 'flex' : 'none';
+      if (!show) {
+        secHidden.value = '';
+        violinChips?.querySelectorAll('.chip').forEach(c=>c.classList.remove('active'));
+      }
+    }
+    elInstr.addEventListener('change', toggleViolinChips);
+    toggleViolinChips();
+
+    violinChips?.addEventListener('click', (e)=>{
+      const chip = e.target.closest('.chip'); if (!chip) return;
+      violinChips.querySelectorAll('.chip').forEach(c=>c.classList.remove('active'));
+      chip.classList.add('active');
+      secHidden.value = chip.dataset.sec || '';
+      updateURL();
     });
 
     // ==== Chips: rangos rápidos ====
     const fmt = d => d.toISOString().slice(0,10);
     const setRange = (a, b) => { elFecha.value = fmt(a); elFechaFin.value = fmt(b); };
     const setActive = chip => {
-      document.querySelectorAll('.chip').forEach(c=>c.classList.remove('active'));
+      document.querySelectorAll('.chip[data-range]').forEach(c=>c.classList.remove('active'));
       chip?.classList.add('active');
     };
 
@@ -307,12 +338,11 @@
           const start = new Date(end); start.setDate(start.getDate() - 29);
           setRange(start, end);
         } else if (kind === 'q') {
-          // Último trimestre natural completo anterior
-          const m = end.getMonth(); const q = Math.floor(m/3); // 0..3
+          const m = end.getMonth(); const q = Math.floor(m/3);
           const prevQ = (q + 3) % 4; const y = q===0 ? end.getFullYear()-1 : end.getFullYear();
           const startM = prevQ * 3; const endM = startM + 2;
           const start = new Date(y, startM, 1);
-          const finish = new Date(y, endM + 1, 0); // último día del mes
+          const finish = new Date(y, endM + 1, 0);
           setRange(start, finish);
         } else if (kind === 'ytd') {
           setRange(new Date(end.getFullYear(), 0, 1), end);
@@ -329,11 +359,23 @@
       window.open(`/plano/latest/${encodeURIComponent(grupo)}.pdf`, '_blank', 'noopener');
     });
 
-    // ==== Porcentaje: solo requiere Fecha ====
+    // ==== Enlace a Ficha: llevar también sec_violin ====
+    cardFicha?.addEventListener('click', (e) => {
+      e.preventDefault();
+      const qs = new URLSearchParams();
+      if (elGrupo?.value)    qs.set('grupo', elGrupo.value);
+      if (elInstr?.value)    qs.set('instrumento', elInstr.value);
+      if (elFecha?.value)    qs.set('fecha', elFecha.value);
+      if (elFechaFin?.value) qs.set('fecha_fin', elFechaFin.value);
+      if (secHidden?.value)  qs.set('sec_violin', secHidden.value);
+      qs.set('_ts', Date.now());
+      location.href = '/informes/ficha?' + qs.toString();
+    });
+
+    // ==== Porcentaje: sólo requiere Fecha (sec_violin via hidden ya viaja por GET) ====
     form?.addEventListener('submit', (e) => {
       const target = e.submitter;
-      if (elFecha.value && !elFechaFin.value) elFechaFin.value = elFecha.value; // comodidad
-
+      if (elFecha.value && !elFechaFin.value) elFechaFin.value = elFecha.value;
       if (target && target.getAttribute('formaction') === '/informes/horas') {
         if (!elFecha.value) {
           e.preventDefault();
@@ -341,28 +383,25 @@
           return false;
         }
       }
-      updateURL(); // persistir filtros al enviar
-    });
-
-    // ==== Listado / Tabla dinámica: llevar filtros a /informes/ficha ====
-    cardFicha?.addEventListener('click', (e) => {
-      e.preventDefault();
-      const qs = new URLSearchParams();
-      if (elGrupo?.value) qs.set('grupo', elGrupo.value);          // "" = Todos -> no se envía
-      if (elInstr?.value) qs.set('instrumento', elInstr.value);
-      if (elFecha?.value) qs.set('fecha', elFecha.value);
-      if (elFechaFin?.value) qs.set('fecha_fin', elFechaFin.value);
-      location.href = '/informes/ficha' + (qs.toString() ? ('?' + qs.toString()) : '');
+      updateURL();
     });
 
     // ==== Persistir filtros en la URL (y restaurarlos) ====
-    const campos = ['grupo','instrumento','fecha','fecha_fin'];
+    const campos = ['grupo','instrumento','fecha','fecha_fin','sec_violin'];
     function loadFromURL(){
       const p = new URLSearchParams(location.search);
       campos.forEach(id=>{
         const el = document.getElementById(id);
         if (el && p.has(id)) el.value = p.get(id);
       });
+      // activar chip de sección si viene por URL
+      const sec = document.getElementById('sec_violin')?.value || '';
+      if (sec && violinChips){
+        violinChips.querySelectorAll('.chip').forEach(c=>{
+          c.classList.toggle('active', (c.dataset.sec||'')===sec);
+        });
+      }
+      toggleViolinChips();
     }
     function updateURL(){
       const p = new URLSearchParams(location.search);
@@ -374,7 +413,7 @@
       history.replaceState(null,'', `${location.pathname}?${p.toString()}`);
     }
     loadFromURL();
-    campos.forEach(id=>{
+    ['grupo','instrumento','fecha','fecha_fin'].forEach(id=>{
       document.getElementById(id)?.addEventListener('change', updateURL);
     });
   })();

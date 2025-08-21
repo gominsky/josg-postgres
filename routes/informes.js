@@ -31,20 +31,31 @@ router.get('/ficha', async (req, res) => {
     const q = req.query || {};
     const norm = v => (v == null ? '' : String(v));
 
-    const rawGrupo = norm(q.grupo);          // 'todos' | 'ninguno' | <id> | ''
-    const rawInst  = norm(q.instrumento);    // 'todos' | <id> | ''
+    // Acepta ambos nombres de parámetros (compatibilidad)
+    const rawGrupo = norm(q.grupo || q.grupo_id);              // 'todos' | 'ninguno' | <id> | ''
+    const rawInst  = norm(q.instrumento || q.instrumento_id);  // 'todos' | <id> | ''
+    const secViolin = norm(q.sec_violin).replace(/\s+/g,'').toUpperCase(); // '', 'I', 'II'
     const f1ISO    = toISODate(q.fecha);
-    const f2ISO    = toISODate(q.fecha_fin); // no lo usamos para alumnos, sólo para nombre si quisieras
+    const f2ISO    = toISODate(q.fecha_fin); // (no se usa para alumnos)
 
     // Mapeo robusto ('' → 'todos')
     const selGrupo = rawGrupo === '' ? 'todos' : rawGrupo;
     const selInst  = rawInst  === '' ? 'todos' : rawInst;
 
+    // ¿El instrumento seleccionado es "Violín"?
+    const isViolinSelected = (() => {
+      if (selInst === 'todos' || selInst === 'ninguno' || selInst === '') return false;
+      const inst = instrumentosResult.rows.find(x => String(x.id) === String(selInst));
+      if (!inst) return false;
+      const t = (inst.nombre || '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+      return t === 'violin';
+    })();
+
     let alumnos  = [];
     let filtrado = false;
 
     // Si venimos desde “Informes y certificados” con algún filtro, filtramos YA
-    const vieneConFiltros = (rawGrupo !== '' || rawInst !== '' || !!f1ISO);
+    const vieneConFiltros = (rawGrupo !== '' || rawInst !== '' || !!f1ISO || !!secViolin);
     if (vieneConFiltros) {
       filtrado = true;
 
@@ -67,6 +78,19 @@ router.get('/ficha', async (req, res) => {
         if (selInst !== 'todos') {
           sql += ` AND ai.instrumento_id = $${i++}`;
           params.push(selInst);
+        }
+
+        // 🔹 Filtro de sección de violín (sólo si viene I/II y el instrumento es Violín)
+        if ((secViolin === 'I' || secViolin === 'II') && isViolinSelected) {
+          sql += `
+            AND EXISTS (
+              SELECT 1
+              FROM alumno_grupo ag2
+              JOIN grupos g2 ON g2.id = ag2.grupo_id
+              WHERE ag2.alumno_id = a.id
+                AND g2.nombre = $${i++}
+            )`;
+          params.push(`Violín ${secViolin}`);
         }
 
         sql += ' ORDER BY a.apellidos, a.nombre';
@@ -116,16 +140,19 @@ router.get('/ficha', async (req, res) => {
     })();
 
     // Nombre sugerido sin fecha_fin ni guiones
-    const construirNombreSugerido = ({ g, i, d1 }) => {
+    const construirNombreSugerido = ({ g, i, d1, sec }) => {
       const partes = ['Listado'];
       if (g) partes.push(g === 'Ninguno' ? 'Sin alumnos' : `Grupo ${g}`);
       if (i) partes.push(`Instr. ${i}`);
+      if (sec === 'I')  partes.push('(Violín I)');
+      if (sec === 'II') partes.push('(Violín II)');
       if (d1) partes.push(d1);
       return partes.join(' ');
     };
     const nombreInforme = construirNombreSugerido({
       g: nombreDeGrupo,
       i: nombreDeInstr,
+      sec: secViolin || '',
       d1: f1ISO || ''
     });
 
@@ -139,11 +166,13 @@ router.get('/ficha', async (req, res) => {
       instrumentoSeleccionado: selInst,
       profesorSeleccionado: null,
       fechaHoy: f1ISO || new Date().toISOString().slice(0,10),
-      fecha_fin: '',            // ya no mostramos fecha_fin en el título
+      fecha_fin: '',
       showGroup: false,
       showInstrument: false,
-      desdeIC: vieneConFiltros, // oculta selects y pinta “Filtros recibidos”
-      filtrado
+      desdeIC: vieneConFiltros,
+      filtrado,
+      // 👇 clave: el EJS espera "sec_violin"
+      sec_violin: secViolin
     });
   } catch (error) {
     console.error('Error cargando formulario de informe:', error);
@@ -466,7 +495,8 @@ router.post('/ficha/filtrar', async (req, res) => {
     fecha,
     fecha_fin,
     mostrar_grupo,
-    mostrar_instrumento
+    mostrar_instrumento,
+    sec_violin        // '' | 'I' | 'II'
   } = req.body;
 
   const showGroup = !!mostrar_grupo;
@@ -474,8 +504,8 @@ router.post('/ficha/filtrar', async (req, res) => {
 
   const fechaISO    = toISODate(fecha)     || new Date().toISOString().slice(0, 10);
   const fechaFinISO = toISODate(fecha_fin) || fechaISO;
-  
-    
+  const secViolin   = String(sec_violin || '').replace(/\s+/g,'').toUpperCase(); // '', 'I', 'II'
+
   try {
     // 👉 Modo "sin alumnos" literal
     if (grupo_id === 'ninguno') {
@@ -489,17 +519,35 @@ router.post('/ficha/filtrar', async (req, res) => {
         instrumentos: instrumentosRes.rows,
         alumnos: [],                     // sin alumnos
         campos: [],
-        nombreInforme: nombre_informe,
-        grupoSeleccionado: 'ninguno',    // activa el mensaje "sin alumnos"
+        nombreInforme: (nombre_informe || '').trim(),
+        grupoSeleccionado: 'ninguno',
         instrumentoSeleccionado: instrumento_id || 'todos',
         profesorSeleccionado: null,
-        fechaHoy: fechaISO || new Date().toISOString().slice(0, 10),
-        fecha_fin: fechaFinISO || '',
+        fechaHoy: fechaISO,
+        fecha_fin: fechaFinISO,
         showGroup,
         showInstrument,
-        filtrado: true
+        filtrado: true,
+        sec_violin: secViolin          // 👈 mantener en la vista
       });
     }
+
+    // Catálogos (para sugerido y para detectar si el instrumento es Violín)
+    const [gruposRes, instrumentosRes] = await Promise.all([
+      db.query('SELECT id, nombre FROM grupos ORDER BY nombre'),
+      db.query('SELECT id, nombre FROM instrumentos ORDER BY nombre')
+    ]);
+
+    // ¿El instrumento seleccionado es "Violín"?
+    const isViolinSelected = (() => {
+      if (!instrumento_id || instrumento_id === 'todos' || instrumento_id === 'ninguno') return false;
+      const inst = instrumentosRes.rows.find(x => String(x.id) === String(instrumento_id));
+      if (!inst) return false;
+      const t = (inst.nombre || '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+      return t === 'violin';
+    })();
+
+    // Query de alumnos con filtros
     let sql = `
       SELECT DISTINCT a.id, a.nombre, a.apellidos
       FROM alumnos a
@@ -528,23 +576,38 @@ router.post('/ficha/filtrar', async (req, res) => {
       }
     }
 
+    // 🔹 Sección de violín solo si procede (I/II y el instrumento es Violín)
+    if (isViolinSelected && (secViolin === 'I' || secViolin === 'II')) {
+      sql += `
+        AND EXISTS (
+          SELECT 1
+          FROM alumno_grupo ag2
+          JOIN grupos g2 ON g2.id = ag2.grupo_id
+          WHERE ag2.alumno_id = a.id
+            AND g2.nombre = $${i++}
+        )`;
+      params.push(`Violín ${secViolin}`);
+    }
+
     sql += ' ORDER BY a.apellidos, a.nombre';
 
     const { rows: alumnosBase } = await db.query(sql, params);
 
     const alumnos = await Promise.all(alumnosBase.map(async a => {
-      const [gruposRes, instrumentosRes] = await Promise.all([
+      const [gDet, iDet] = await Promise.all([
         db.query(`
           SELECT g.nombre
           FROM grupos g
           JOIN alumno_grupo ag ON g.id = ag.grupo_id
           WHERE ag.alumno_id = $1
+          ORDER BY g.nombre
         `, [a.id]),
         db.query(`
           SELECT i.nombre
           FROM instrumentos i
           JOIN alumno_instrumento ai ON i.id = ai.instrumento_id
           WHERE ai.alumno_id = $1
+          ORDER BY i.nombre
         `, [a.id])
       ]);
 
@@ -552,17 +615,12 @@ router.post('/ficha/filtrar', async (req, res) => {
         id: a.id,
         nombre: a.nombre,
         apellidos: a.apellidos,
-        grupos: gruposRes.rows.map(r => r.nombre).join(', '),
-        instrumentos: instrumentosRes.rows.map(r => r.nombre).join(', ')
+        grupos: gDet.rows.map(r => r.nombre).join(', '),
+        instrumentos: iDet.rows.map(r => r.nombre).join(', ')
       };
     }));
 
-    const [gruposRes, instrumentosRes] = await Promise.all([
-      db.query('SELECT id, nombre FROM grupos ORDER BY nombre'),
-      db.query('SELECT id, nombre FROM instrumentos ORDER BY nombre')
-    ]);
-
-    // Sugerir nombre si viene vacío
+    // Sugerencia de nombre si viene vacío
     const gName = (() => {
       if (grupo_id === 'todos')   return null;
       if (grupo_id === 'ninguno') return 'Ninguno';
@@ -578,15 +636,18 @@ router.post('/ficha/filtrar', async (req, res) => {
       const piezas = ['Listado'];
       if (gName) piezas.push(gName === 'Ninguno' ? 'Sin alumnos' : `${gName}`);
       if (iName) piezas.push(`${iName}`);
-      if (fechaISO) piezas.push(fechaISO);   // sin fecha_fin
+      if (isViolinSelected && secViolin === 'I')  piezas.push('(Violín I)');
+      if (isViolinSelected && secViolin === 'II') piezas.push('(Violín II)');
+      if (fechaISO) piezas.push(fechaISO);
       return piezas.join(' ');
-    })();    
+    })();
+
     res.render('informe_form', {
       grupos: gruposRes.rows,
       instrumentos: instrumentosRes.rows,
       alumnos,
       campos: [],
-      nombreInforme: nombre_informe && nombre_informe.trim() ? nombre_informe.trim() : sugerido,
+      nombreInforme: (nombre_informe && nombre_informe.trim()) ? nombre_informe.trim() : sugerido,
       grupoSeleccionado: grupo_id,
       instrumentoSeleccionado: instrumento_id,
       profesorSeleccionado: null,
@@ -594,8 +655,9 @@ router.post('/ficha/filtrar', async (req, res) => {
       fecha_fin: fechaFinISO,
       showGroup,
       showInstrument,
-      desdeIC: true,                                                     // 👈 mantenemos el modo “solo nombre” en el paso 1
-      filtrado: (grupo_id === 'ninguno') || (alumnos && alumnos.length)  // 👈 para “saltar” al paso 2
+      desdeIC: true,                                                     // modo “solo nombre” en el paso 1
+      filtrado: (grupo_id === 'ninguno') || (alumnos && alumnos.length), // “saltar” al paso 2
+      sec_violin: secViolin                                            // 👈 persistir en la vista
     });
 
   } catch (err) {
@@ -641,6 +703,7 @@ router.post('/:id/titulo', express.json(), async (req, res) => {
   }
 });
 
+// routes/informes.js
 router.get('/certificados', async (req, res) => {
   try {
     const [gruposRes, instrumentosRes] = await Promise.all([
@@ -648,11 +711,17 @@ router.get('/certificados', async (req, res) => {
       db.query('SELECT id, nombre FROM instrumentos ORDER BY nombre')
     ]);
 
+    const q = req.query || {};
     res.render('informes_y_certificados', {
       title: 'Informes y Certificados',
       hero: false,
       grupos: gruposRes.rows,
-      instrumentos: instrumentosRes.rows
+      instrumentos: instrumentosRes.rows,
+      grupo_id: q.grupo_id || '',
+      instrumento_id: q.instrumento_id || '',
+      fecha: q.fecha || '',
+      fecha_fin: q.fecha_fin || '',
+      sec_violin: q.sec_violin || ''   // ← default
     });
   } catch (err) {
     console.error('Error cargando certificados:', err);
