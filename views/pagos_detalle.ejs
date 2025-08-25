@@ -44,6 +44,12 @@
       <p class="text-muted">Este pago aún no está aplicado a ninguna factura.</p>
     <% } else { %>
       <table class="table-lite table-no-scroll">
+        <colgroup>
+          <col>                        <!-- # Factura (flexible) -->
+          <col class="col-emision">    <!-- Emisión -->
+          <col class="col-total">      <!-- Total -->
+          <col class="col-aplicado">   <!-- Importe aplicado -->
+        </colgroup>
         <thead>
           <tr>
             <th># Factura</th>

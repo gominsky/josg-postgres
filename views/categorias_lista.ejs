@@ -1,89 +1,58 @@
 <% title = 'Categorías de gasto' %>
 <% hero  = false %>
 
-<div id="cat-list-wrap" class="container my-4">
+<div id="cats-list-wrap" class="container my-4">
   <div class="panel-card panel-narrow">
     <div class="list-header">
       <h1 class="h1-titulo" style="margin:0;">Categorías de gasto</h1>
-      <div class="header-actions">
+      <div class="header-actions" style="display:flex; gap:8px; align-items:center;">
+        <form action="/categorias" method="GET" style="display:flex; gap:6px; align-items:center; background:transparent;">
+          <input type="search" name="q" value="<%= q || '' %>" placeholder="Buscar nombre…" class="form-control" style="max-width:220px;">
+          <button class="btn btn-outline" type="submit">Buscar</button>
+        </form>
         <a class="btn btn-outline" href="/categorias/nuevo">＋ Nueva categoría</a>
       </div>
     </div>
 
-    <!-- RESUMEN -->
-    <%
-      const _cats = Array.isArray(categorias) ? categorias : [];
-      const totalListado = _cats.length;
-      const conSuperior  = _cats.filter(c => (c && (c.padre_nombre || c.parent_nombre || c.superior_nombre))).length;
-      const sinSuperior  = totalListado - conSuperior;
-    %>
+    <% const _cats = Array.isArray(categorias) ? categorias : []; %>
     <div class="small" style="margin-top:8px; color:var(--muted);">
-      <strong><%= totalListado %></strong> categorías ·
-      Con superior: <strong><%= conSuperior %></strong> ·
-      Sin superior: <strong><%= sinSuperior %></strong>
+      <strong><%= _cats.length %></strong> categorías
     </div>
 
-    <!-- LISTA (compacta y balanceada) -->
     <% if (_cats.length === 0) { %>
       <p class="text-muted" style="margin-top:12px;">No hay resultados.</p>
     <% } else { %>
       <table class="table-lite table-no-scroll table-compact">
-        <!-- Reparte 50/50 entre Nombre y Superior y deja 60px para el aspa -->
         <colgroup>
-          <col style="width: calc((100% - 60px)/2)">
-          <col style="width: calc((100% - 60px)/2)">
-          <col style="width: 60px">
+          <col style="width: 72%">     <!-- Nombre -->
+          <col style="width: 22%">     <!-- Padre -->
+          <col style="width: 70px">    <!-- Aspa -->
         </colgroup>
         <thead>
           <tr>
             <th>Nombre</th>
-            <th>Superior</th>
+            <th>Padre</th>
             <th></th>
           </tr>
         </thead>
         <tbody>
           <% _cats.forEach(row => { %>
             <tr class="clickable-row" onclick="location.href='/categorias/<%= row.id %>'">
-              <td><%= row.nombre %></td>
-              <td><%= row.padre_nombre || row.parent_nombre || row.superior_nombre || '—' %></td>
-              <td class="text-end" onclick="event.stopPropagation()">
+              <td title="<%= row.nombre %>"><%= row.nombre %></td>
+              <td title="<%= row.padre_nombre || '' %>"><%= row.padre_nombre || '—' %></td>
+              <td class="text-end no-ellipsis" onclick="event.stopPropagation()">
                 <form method="POST" action="/categorias/<%= row.id %>/eliminar" style="display:inline; background-color: transparent;">
                   <a href="#"
-                    class="aspa-roja"
-                    title="Eliminar"
-                    aria-label="Eliminar"
-                    onclick="event.stopPropagation(); if (confirm('¿Eliminar la categoría &quot;<%= row.nombre %>&quot;?')) this.closest('form').submit(); return false;">×</a>
+                     class="aspa-roja"
+                     title="Eliminar"
+                     aria-label="Eliminar"
+                     onclick="event.stopPropagation(); if (confirm('¿Eliminar la categoría &quot;<%= row.nombre %>&quot;?')) this.closest('form').submit(); return false;">×</a>
                 </form>
               </td>
             </tr>
           <% }) %>
         </tbody>
       </table>
-    <% } %>
-
-    <!-- PAGINACIÓN -->
-    <%
-      var __pg = (typeof paginacion !== 'undefined' && paginacion) ? paginacion : { page:1, per_page:50, total_pages:1 };
-      __pg.page        = Number(__pg.page||1);
-      __pg.per_page    = Number(__pg.per_page||50);
-      __pg.total_pages = Number(__pg.total_pages||1);
-    %>
-    <% if (__pg.total_pages > 1) { %>
-      <div class="pager">
-        <% if (__pg.page > 1) { %>
-          <a href="/categorias?per_page=<%= __pg.per_page %>&page=1">« Primero</a>
-          <a href="/categorias?per_page=<%= __pg.per_page %>&page=<%= __pg.page - 1 %>">‹ Anterior</a>
-        <% } else { %>
-          <span>« Primero</span><span>‹ Anterior</span>
-        <% } %>
-        <span class="current">Página <%= __pg.page %> / <%= __pg.total_pages %></span>
-        <% if (__pg.page < __pg.total_pages) { %>
-          <a href="/categorias?per_page=<%= __pg.per_page %>&page=<%= __pg.page + 1 %>">Siguiente ›</a>
-          <a href="/categorias?per_page=<%= __pg.per_page %>&page=<%= __pg.total_pages %>">Última »</a>
-        <% } else { %>
-          <span>Siguiente ›</span><span>Última »</span>
-        <% } %>
-      </div>
     <% } %>
   </div>
 </div>
@@ -93,34 +62,20 @@
 </div>
 
 <style>
-  /* Panel más estrecho */
-  #cat-list-wrap .panel-narrow{
-    max-width: 960px;
-    margin: 0 auto;
-  }
-  /* Tabla compacta */
-  #cat-list-wrap .table-compact th,
-  #cat-list-wrap .table-compact td{
-    padding: 6px 8px;
-    font-size: .95rem;
-  }
-  #cat-list-wrap .table-compact thead th{
-    font-weight: 700;
-  }
-  /* Sin scroll y buen comportamiento del texto */
+  #cats-list-wrap .panel-narrow{ max-width: 1000px; margin: 0 auto; }
+
   .table-no-scroll{ width:100%; border-collapse:collapse; table-layout: fixed; }
   .table-no-scroll th, .table-no-scroll td{
     border:1px solid #e9ecef; vertical-align:middle;
     white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
   }
-  /* Aspa de eliminar */
+  .table-compact th, .table-compact td{ padding:6px 8px; font-size:.95rem; }
+  .table-compact thead th{ font-weight:700; }
+
+  /* Evitar "..." en la columna del aspa */
+  .no-ellipsis{ overflow: visible !important; text-overflow: clip !important; }
+
   .aspa-roja{ color:#dc2626; font-weight:700; font-size:18px; line-height:1; text-decoration:none; padding:0 .25rem; cursor:pointer; }
   .aspa-roja:hover{ color:#b91c1c; }
-  /* En móviles, relaja el recorte */
-  @media (max-width: 576px){
-    .table-no-scroll th, .table-no-scroll td{
-      white-space:normal; text-overflow:clip;
-    }
-  }
 </style>
 

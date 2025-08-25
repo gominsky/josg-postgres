@@ -170,7 +170,32 @@
 
   function toNum(v){ const n = parseFloat(String(v).replace(',','.')); return isNaN(n)?0:n; }
   function fix2(n){ return (Math.round(n*100)/100).toFixed(2); }
+  form.addEventListener('submit', () => {
+    // limpia antiguos (si recargas sin cerrar)
+    form.querySelectorAll('input[name="aplicaciones_ids[]"], input[name="aplicaciones_importe[]"]').forEach(e => e.remove());
 
+    const toNum = v => { const n = Number(String(v||'').replace(',', '.')); return Number.isFinite(n) ? n : 0; };
+
+    form.querySelectorAll('input[name^="aplicaciones["]').forEach(inp => {
+      const m = inp.name.match(/^aplicaciones\[(\d+)\]$/);
+      if (!m) return;
+      const facturaId = Number(m[1]);
+      const importe   = toNum(inp.value || 0);
+      if (!facturaId || importe <= 0) return;
+
+      const hidId  = document.createElement('input');
+      hidId.type   = 'hidden';
+      hidId.name   = 'aplicaciones_ids[]';
+      hidId.value  = String(facturaId);
+      form.appendChild(hidId);
+
+      const hidImp = document.createElement('input');
+      hidImp.type  = 'hidden';
+      hidImp.name  = 'aplicaciones_importe[]';
+      hidImp.value = String(importe.toFixed(2));
+      form.appendChild(hidImp);
+    });
+  });
   function recalc(){
     let sum = 0;
     form.querySelectorAll('input[name^="aplicaciones["]').forEach(inp => { sum += toNum(inp.value || 0); });

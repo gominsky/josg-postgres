@@ -5,6 +5,7 @@
     <div class="form-head">
       <h1 class="h1-titulo"><%= title %></h1>
     </div>
+
     <form method="POST" action="<%= EDIT ? ('/categorias/' + cat.id) : '/categorias/nuevo' %>" style="background-color: transparent;">
       <!-- Nombre -->
       <div class="mb-3">
@@ -13,6 +14,8 @@
                placeholder="Ej. Suministros / Alquileres / Otros servicios"
                value="<%= cat?.nombre || '' %>">
       </div>
+
+      <!-- Categoría padre -->
       <div class="mb-3">
         <label class="form-label">Categoría padre (opcional)</label>
         <select name="padre_id" class="form-select">
@@ -22,29 +25,13 @@
           <% }) %>
         </select>
       </div>
-      <!-- Estado (solo en edición), igual que en cuentas_form -->
-      <% if (EDIT) { %>
-        <div class="mb-3">
-          <label class="form-label">Estado</label>
-          <div class="checkline">
-            <input
-              type="checkbox"
-              id="activo"
-              name="activo"
-              class="chk-orange"
-              <%= (cat?.activo !== false) ? 'checked' : '' %> >
-            <label for="activo" class="chk-orange-label" style="margin:0;cursor:pointer;">
-              Activa (desmarca para dejarla inactiva)
-            </label>
-          </div>
-        </div>
-      <% } %>
 
       <div class="actions">
         <button class="btn-primary-negro" type="submit">Guardar</button>
       </div>
     </form>
   </div>
+
   <div class="volver-bloque-izquierda" style="margin-top:12px;">
     <a href="/categorias" class="enlace-final">← Volver</a>
   </div>

@@ -1505,3 +1505,9 @@ form {
   .biz-avatar{ width:64px; height:64px; font-size:24px; }
 }
 
+  .table-lite { table-layout: fixed; width: 100%; }
+  .table-lite .col-emision   { width: 110px; }
+  .table-lite .col-total     { width: 140px; }      /* ⬅️ más ancho para Total */
+  .table-lite .col-aplicado  { width: 160px; }
+  .num { white-space: nowrap; font-variant-numeric: tabular-nums; }
+

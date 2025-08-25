@@ -13,7 +13,7 @@ function parsePadreId(v){
 }
 
 /* ========= LISTA ========= */
-// Lista con búsqueda opcional por nombre. Muestra nombre del padre si existe.
+// Lista con búsqueda opcional por nombre (q). Muestra nombre del padre si existe.
 router.get('/', async (req, res) => {
   const q = (req.query.q || '').trim();
   const params = [];
@@ -159,3 +159,4 @@ router.post('/:id/eliminar', async (req, res) => {
 });
 
 module.exports = router;
+

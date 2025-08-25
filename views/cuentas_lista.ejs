@@ -7,8 +7,8 @@
       <h1 class="h1-titulo" style="margin:0;">Cuentas contables</h1>
       <div class="header-actions">
         <a class="btn btn-outline" href="<%= (ver==='todas') ? '/cuentas' : '/cuentas?ver=todas' %>">
-        <%= (ver==='todas') ? 'Ocultar inactivas' : 'Ver inactivas' %>
-      </a>
+          <%= (ver==='todas') ? 'Ocultar inactivas' : 'Ver inactivas' %>
+        </a>
         <a class="btn btn-outline" href="/cuentas/nuevo">＋ Nueva cuenta</a>
       </div>
     </div>
@@ -29,13 +29,13 @@
     <% } else { %>
       <table class="table-lite table-no-scroll table-compact">
         <colgroup>
-          <col style="width: 28%">   <!-- Nombre -->
-          <col style="width: 12%">   <!-- Tipo -->
-          <col style="width: 28%">   <!-- IBAN -->
-          <col style="width: 12%">   <!-- Saldo -->
-          <col style="width: 12%">   <!-- Fecha -->
-          <col style="width: 8%">    <!-- Estado -->
-          <col style="width: 60px">  <!-- Aspa -->
+          <col style="width: 28%">     <!-- Nombre -->
+          <col style="width: 12%">     <!-- Tipo -->
+          <col style="width: 28%">     <!-- IBAN -->
+          <col style="width: 12%">     <!-- Saldo -->
+          <col style="width: 12%">     <!-- Fecha -->
+          <col style="width: 110px">   <!-- Estado (fijo para evitar "...") -->
+          <col style="width: 70px">    <!-- Aspa (fijo para evitar "...") -->
         </colgroup>
         <thead>
           <tr>
@@ -61,14 +61,14 @@
               <td title="<%= row.iban || '' %>"><%= row.iban || '—' %></td>
               <td class="text-end num"><%= (row.saldo_inicial!=null) ? Number(row.saldo_inicial).toFixed(2) + ' €' : '—' %></td>
               <td><%= row.fecha_saldo ? fmtDate(row.fecha_saldo) : '—' %></td>
-              <td>
+              <td class="no-ellipsis">
                 <% if (row.activo !== false) { %>
                   <span class="badge badge-ok">Activa</span>
                 <% } else { %>
                   <span class="badge badge-muted">Inactiva</span>
                 <% } %>
               </td>
-              <td class="text-end" onclick="event.stopPropagation()">
+              <td class="text-end no-ellipsis" onclick="event.stopPropagation()">
                 <form method="POST" action="/cuentas/<%= row.id %>/eliminar" style="display:inline; background-color: transparent;">
                   <a href="#"
                      class="aspa-roja"
@@ -102,6 +102,12 @@
   .table-compact th, .table-compact td{ padding:6px 8px; font-size:.95rem; }
   .table-compact thead th{ font-weight:700; }
 
+  /* Evitar los "..." en columnas concretas (Estado y Aspa) */
+  .no-ellipsis{
+    overflow: visible !important;
+    text-overflow: clip !important;
+  }
+
   /* Aspa de eliminar */
   .aspa-roja{ color:#dc2626; font-weight:700; font-size:18px; line-height:1; text-decoration:none; padding:0 .25rem; cursor:pointer; }
   .aspa-roja:hover{ color:#b91c1c; }
@@ -110,3 +116,4 @@
   .num{ white-space:nowrap; }
   .text-capitalize{ text-transform: capitalize; }
 </style>
+

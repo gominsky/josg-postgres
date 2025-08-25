@@ -647,12 +647,10 @@ router.get('/pagos/nuevo', async (req, res) => {
   }
 });
 
+// GUARDAR pago (cabecera + aplicaciones) — OPCIÓN A (objeto aplicaciones[FACTURA_ID] = importe)
 router.post('/pagos/guardar', async (req, res) => {
-  // Utilidad para números (acepta coma)
-  const toNum = v => {
-    const n = Number(String(v ?? '').replace(',', '.'));
-    return Number.isFinite(n) ? n : 0;
-  };
+  const toNum = v => { const n = Number(String(v ?? '').replace(',', '.')); return Number.isFinite(n) ? n : 0; };
+  const eps = 0.009;
 
   const proveedor_id  = Number(req.body.proveedor_id || 0);
   const fecha         = req.body.fecha;
@@ -660,64 +658,75 @@ router.post('/pagos/guardar', async (req, res) => {
   const metodo        = (req.body.metodo || '').trim();
   const referencia    = (req.body.referencia || '').trim();
   const notas         = (req.body.notas || '').trim();
+  console.log('[DIAG] req.body.aplicaciones =', req.body.aplicaciones);
+  // ---- leer y normalizar 'aplicaciones' (OBJETO) ----
+  // ---- leer y normalizar 'aplicaciones' del form ----
+// A) Objeto: aplicaciones[FACTURA_ID] = importe
+// B) Arrays paralelos: aplicaciones_ids[] + aplicaciones_importe[]
+let aplicaciones = [];
 
-  // 1) Leer aplicaciones del formulario
-  let aplicaciones = Object.entries(req.body.aplicaciones || {})
-    .map(([facturaId, imp]) => ({ factura_id: Number(facturaId), importe: toNum(imp) }))
-    .filter(x => x.factura_id && x.importe > 0);
+// Opción A: objeto
+const rawApps = req.body.aplicaciones;
 
-  const eps = 0.009;
+if (rawApps && typeof rawApps === 'object' && !Array.isArray(rawApps)) {
+  for (const [k, v] of Object.entries(rawApps)) {
+    const factura_id = Number(k);
+    const importe    = toNum(v);
+    if (factura_id && importe > 0) aplicaciones.push({ factura_id, importe });
+  }
+} else {
+  // Opción B: arrays (generados por el JS del form)
+  const ids  = Array.isArray(req.body.aplicaciones_ids)     ? req.body.aplicaciones_ids     : [];
+  const imps = Array.isArray(req.body.aplicaciones_importe) ? req.body.aplicaciones_importe : [];
+  for (let i = 0; i < Math.max(ids.length, imps.length); i++) {
+    const factura_id = Number(ids[i]);
+    const importe    = toNum(imps[i]);
+    if (factura_id && importe > 0) aplicaciones.push({ factura_id, importe });
+  }
+}
 
-  // Validaciones mínimas
+aplicaciones.sort((a,b) => a.factura_id - b.factura_id);
+
+// (logs opcionales)
+console.log('[guardar] proveedor_id:', proveedor_id);
+console.log('[guardar] aplicaciones parsed:', aplicaciones);
+
+  
+
+  // validaciones mínimas
   if (!proveedor_id || !fecha || !(importe_total > 0)) {
     return res.status(400).send('Faltan datos del pago');
   }
 
-  // 2) Fallback: si no hay aplicaciones y el proveedor solo tiene 1 factura con saldo, auto-aplicar
+  // Fallback: si no se eligió factura y ese proveedor tiene EXACTAMENTE 1 factura con saldo → auto-aplicar
   if (aplicaciones.length === 0) {
     const { rows: fps } = await db.query(`
-      SELECT f.id, (f.total - COALESCE(v.pagado,0)) AS saldo
+      SELECT f.id,
+             (f.total - COALESCE((
+               SELECT SUM(a.importe_aplicado) FROM pagos_prov_aplicaciones a WHERE a.factura_id = f.id
+             ),0)) AS saldo
       FROM facturas_prov f
-      LEFT JOIN v_factura_sumas_pagos v ON v.factura_id = f.id
       WHERE f.proveedor_id = $1
-        AND (f.total - COALESCE(v.pagado,0)) > 0
+        AND (f.total - COALESCE((
+              SELECT SUM(a.importe_aplicado) FROM pagos_prov_aplicaciones a WHERE a.factura_id = f.id
+            ),0)) > 0
       ORDER BY f.fecha_vencimiento NULLS LAST, f.fecha_emision
       LIMIT 2
     `, [proveedor_id]);
 
     if (fps.length === 1) {
-      const saldo = Number(fps[0].saldo || 0);
-      const aplicar = Math.min(importe_total, saldo);
+      const aplicar = Math.min(importe_total, Number(fps[0].saldo || 0));
       if (aplicar > eps) {
-        aplicaciones = [{ factura_id: fps[0].id, importe: +aplicar.toFixed(2) }];
+        aplicaciones = [{ factura_id: Number(fps[0].id), importe: +aplicar.toFixed(2) }];
       }
     }
-    // Si hay 0 o >1 facturas con saldo, dejamos el pago sin aplicaciones (anticipo) a elección del usuario.
+    // si hay 0 o >1 con saldo, se permite anticipo (sin aplicaciones)
   }
 
-  // 3) Suma aplicada no puede exceder el total del pago
+  // suma aplicada ≤ total
   const sumaAplicada = aplicaciones.reduce((acc, x) => acc + x.importe, 0);
   if (sumaAplicada - importe_total > eps) {
     return res.status(400).send('La suma aplicada excede el importe del pago');
-  }
-
-  // 4) PRE-CHECK: todas las facturas existen y pertenecen al proveedor
-  if (aplicaciones.length) {
-    const ids = [...new Set(aplicaciones.map(a => Number(a.factura_id)))];
-    const ph = ids.map((_, i) => `$${i + 1}`).join(','); // $1,$2,...
-    const { rows: facs } = await db.query(
-      `SELECT id, proveedor_id FROM facturas_prov WHERE id IN (${ph})`,
-      ids
-    );
-    const found = new Set(facs.map(f => Number(f.id)));
-    const missing = ids.filter(id => !found.has(id));
-    if (missing.length) {
-      return res.status(400).send(`Factura(s) inexistentes: ${missing.join(', ')}`);
-    }
-    const mismatch = facs.filter(f => Number(f.proveedor_id) !== proveedor_id).map(f => f.id);
-    if (mismatch.length) {
-      return res.status(400).send(`Las facturas ${mismatch.join(', ')} no pertenecen al proveedor seleccionado.`);
-    }
   }
 
   const afectadas = [...new Set(aplicaciones.map(x => x.factura_id))];
@@ -725,50 +734,63 @@ router.post('/pagos/guardar', async (req, res) => {
   try {
     await db.query('BEGIN');
 
-    // 5) Crear cabecera del pago
-    const { rows: pago } = await db.query(
-      `INSERT INTO pagos_prov (proveedor_id, fecha, importe_total, metodo, referencia, notas)
-       VALUES ($1,$2,$3,$4,$5,$6)
-       RETURNING id`,
-      [proveedor_id, fecha, +(importe_total.toFixed(2)), metodo, referencia, notas]
-    );
+    // 1) Cabecera del pago
+    const { rows: pago } = await db.query(`
+      INSERT INTO pagos_prov (proveedor_id, fecha, importe_total, metodo, referencia, notas)
+      VALUES ($1,$2,$3,$4,$5,$6)
+      RETURNING id
+    `, [proveedor_id, fecha, +(importe_total.toFixed(2)), metodo, referencia, notas]);
+
     const pagoId = pago[0].id;
 
-    // 6) Aplicar el pago factura a factura (bloqueando SOLO la factura)
+    // 2) Aplicar a cada factura (bloquea fila; comprueba pertenencia y saldo)
     for (const a of aplicaciones) {
       const { rows } = await db.query(`
-        SELECT f.total, COALESCE(v.pagado,0) AS pagado
+        SELECT
+          f.proveedor_id,
+          f.total,
+          COALESCE((
+            SELECT SUM(ap.importe_aplicado)
+            FROM pagos_prov_aplicaciones ap
+            WHERE ap.factura_id = f.id
+          ),0) AS pagado
         FROM facturas_prov f
-        LEFT JOIN v_factura_sumas_pagos v ON v.factura_id = f.id
         WHERE f.id = $1
-        FOR UPDATE OF f
+        FOR UPDATE
       `, [a.factura_id]);
 
-      if (!rows.length) throw new Error(`Factura ${a.factura_id} no encontrada`);
-      const total  = Number(rows[0].total||0);
-      const pagado = Number(rows[0].pagado||0);
-      const saldo  = Math.max(total - pagado, 0);
-      if (a.importe - saldo > eps) {
-        throw new Error(`La aplicación a la factura ${a.factura_id} supera su saldo`);
+      if (!rows.length) {
+        await db.query('ROLLBACK');
+        return res.status(400).send(`Factura ${a.factura_id} no encontrada`);
+      }
+      if (Number(rows[0].proveedor_id) !== proveedor_id) {
+        await db.query('ROLLBACK');
+        return res.status(400).send(`La factura ${a.factura_id} no pertenece al proveedor seleccionado.`);
       }
 
-      await db.query(
-        `INSERT INTO pagos_prov_aplicaciones (pago_id, factura_id, importe_aplicado)
-         VALUES ($1,$2,$3)`,
-        [pagoId, a.factura_id, +(a.importe.toFixed(2))]
-      );
+      const total  = Number(rows[0].total || 0);
+      const pagado = Number(rows[0].pagado || 0);
+      const saldo  = Math.max(total - pagado, 0);
+      const imp    = Math.min(a.importe, saldo);
+
+      if (imp > eps) {
+        await db.query(`
+          INSERT INTO pagos_prov_aplicaciones (pago_id, factura_id, importe_aplicado)
+          VALUES ($1,$2,$3)
+        `, [pagoId, a.factura_id, +imp.toFixed(2)]);
+      }
     }
 
     await db.query('COMMIT');
 
-    // 7) Recalcular estados de facturas afectadas (fuera de la TX)
+    // 3) Recalcular estado de facturas afectadas
     await Promise.all(afectadas.map(id => recalcularEstadoFactura(id)));
 
-    // 8) OK
-    res.redirect('/contabilidad/pagos?ok=1');
+    // 4) Redirigir al detalle del pago
+    res.redirect(`/contabilidad/pagos/${pagoId}`);
   } catch (e) {
     try { await db.query('ROLLBACK'); } catch {}
-    console.error(e);
+    console.error('[POST /pagos/guardar][A] ERROR', e);
     res.status(500).send('No se pudo guardar el pago');
   }
 });
