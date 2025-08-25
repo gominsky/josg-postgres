@@ -6,7 +6,7 @@
   <h1 class="h1-titulo mb-0"><%= title %></h1>
   <a href="/usuarios/nuevo" class="btn-main-blanco">+ Añadir Usuario</a>
 </div>
-  <% if (usuarios && usuarios.length > 0) { %>
+<% if (usuarios && usuarios.length > 0) { %>
     <div class="dashboard-grid" id="grid-usuarios">
       <% usuarios.forEach(u => { %>
         <a href="/usuarios/<%= u.id %>/editar" class="card activo">
@@ -18,9 +18,9 @@
     </div>
   <% } else { %>
     <p class="text-center mt-4">No hay usuarios registrados.</p>
-  <% } %>
- <div class="volver-bloque-izquierda">
-  <a href="/configuracion" class="enlace-final">← Volver a configuración</a>
-</div>
+  <% } %>  
+  <div class="volver-bloque-izquierda">
+    <a href="/configuracion" class="enlace-final">← Volver a configuración</a>
+  </div>
 </div>
 

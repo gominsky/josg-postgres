@@ -1,0 +1,193 @@
+<% title = 'Ayuda · Firmas (Asistencia QR)' %>
+<% hero  = false %>
+
+<div class="contenedor-ayuda">
+  <style>
+    :root{
+      --ink:#111827; --muted:#6b7280; --accent-100:#e9f7ff; --accent-200:#b3e1ff;
+      --accent-300:#88d1ff; --accent-400:#54b5ff; --accent-500:#0d8bff; --accent-700:#004b8a;
+      --card:#ffffff; --border:#e5e7eb; --shadow:0 1px 2px rgba(0,0,0,.05);
+    }
+    .panel{background:var(--card); border:1px solid var(--border); border-radius:16px; box-shadow:var(--shadow); padding:16px; }
+    .h1{margin:0 0 .5rem; font-size:clamp(1.35rem,1.1rem + 1.2vw,2rem); font-weight:800; color:var(--ink);}    
+    .toc{display:flex; flex-wrap:wrap; gap:.5rem; margin:.5rem 0 1rem;}
+    .toc a{display:inline-block; padding:.32rem .6rem; border:1px solid var(--accent-300); background:var(--accent-100); color:var(--accent-700); border-radius:999px; text-decoration:none; font-weight:700; font-size:.86rem;}
+    .section{margin:12px 0; padding:12px 0; border-top:1px dashed var(--border);} 
+    h2{margin:.25rem 0 .5rem; font-size:1.15rem;}
+    p{margin:.25rem 0; color:#1f2937;}
+    .hint{background:#f3f4f6; border:1px dashed #d1d5db; border-radius:10px; padding:.5rem .7rem; color:#374151; font-size:.95rem;}
+    .grid-2{display:grid; gap:12px; grid-template-columns:1fr; }
+    @media(min-width:900px){ .grid-2{grid-template-columns:1fr 1fr;} }
+    .card{border:1px solid var(--border); border-radius:12px; padding:12px; background:#fff;}
+    .list{margin:.35rem 0 .2rem 1.1rem;}
+    .list li{margin:.18rem 0;}
+    .kbd{font-family:ui-monospace,Menlo,monospace;background:#1118270f;border:1px solid #0001;border-radius:6px;padding:0 .35rem;}
+    .pill{display:inline-block;border:1px solid var(--border);border-radius:999px;padding:.14rem .5rem;background:#f9fafb;font-size:.85rem;}
+    .cta{display:flex; gap:10px; flex-wrap:wrap; margin:.4rem 0;}
+    .cta a{border:1px solid var(--border);border-radius:10px;padding:.5rem .8rem;text-decoration:none;color:var(--ink);background:#fff;}
+    .badge{display:inline-block;background:var(--accent-100);border:1px solid var(--accent-300);color:var(--accent-700);border-radius:999px;padding:.1rem .45rem;font-weight:700;font-size:.78rem;}
+    .code{font-family:ui-monospace,Menlo,monospace;background:#0b10200d;border:1px solid #11182711;border-radius:8px;padding:.35rem .45rem;}
+  </style>
+
+  <div class="panel">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+      <h1 class="h1">Ayuda · Firmas (Asistencia QR)</h1>
+      <div class="cta">
+        <a href="/webapp/index.html">Inicio app →</a>
+        <a href="/webapp/login.html">Iniciar sesión →</a>
+        <a href="/webapp/registro.html">Registrarse →</a>
+        <a href="/webapp/firma.html">Ir a firmar →</a>
+      </div>
+    </div>
+
+    <!-- Índice -->
+    <nav class="toc" aria-label="Índice">
+      <a href="#flujo">Flujo rápido</a>
+      <a href="#acceso">Acceso (Registro / Login)</a>
+      <a href="#firma">Firmar con QR</a>
+      <a href="#ubicacion">Ubicación (opcional)</a>
+      <a href="#mensajes">Mensajes y estados</a>
+      <a href="#errores">Errores comunes</a>
+      <a href="#faq">FAQ</a>
+    </nav>
+
+    <!-- Flujo rápido -->
+    <section id="flujo" class="section">
+      <h2>Flujo rápido</h2>
+      <ol class="list">
+        <li>Abre la <span class="kbd">app web</span> y crea tu cuenta desde <strong>Registrarse</strong> o entra con tu email y contraseña.</li>
+        <li>Una vez dentro, pulsa <strong>Ir a firmar</strong> y permite acceso a la cámara del móvil.</li>
+        <li>Escanea el <strong>QR del evento</strong> que te facilite la organización.</li>
+        <li>Si todo es correcto, verás el mensaje <em>Asistencia registrada</em> y el escáner se detendrá automáticamente.</li>
+      </ol>
+      <p class="hint">La app recuerda tu sesión en el dispositivo. Puedes cerrar sesión desde el botón <em>Cerrar sesión</em> cuando quieras.</p>
+    </section>
+
+    <!-- Acceso -->
+    <section id="acceso" class="section">
+      <h2>Acceso (Registro / Login)</h2>
+      <div class="grid-2">
+        <div class="card">
+          <h3 style="margin:.1rem 0 .35rem;">Registrarse</h3>
+          <ul class="list">
+            <li>Introduce <strong>Email</strong>, <strong>DNI</strong> y una <strong>Contraseña</strong>.</li>
+            <li>Al registrarte correctamente, se inicia sesión y pasas directamente a la pantalla de firma.</li>
+          </ul>
+          <p class="hint">Si ya tenías cuenta, usa <em>Iniciar sesión</em> para evitar errores de usuario existente.</p>
+        </div>
+        <div class="card">
+          <h3 style="margin:.1rem 0 .35rem;">Iniciar sesión</h3>
+          <ul class="list">
+            <li>Escribe tu email y contraseña.</li>
+            <li>Al entrar, verás el botón <em>Ir a firmar</em> para abrir el lector QR.</li>
+          </ul>
+        </div>
+      </div>
+      <p class="hint">La sesión se guarda en el dispositivo usando <span class="kbd">localStorage</span>. Si cambias de móvil o navegador, tendrás que volver a iniciar sesión.</p>
+    </section>
+
+    <!-- Firmar con QR -->
+    <section id="firma" class="section">
+      <h2>Firmar con QR</h2>
+      <div class="grid-2">
+        <div class="card">
+          <h3 style="margin:.1rem 0 .35rem;">Cómo funciona</h3>
+          <ol class="list">
+            <li>En la pantalla de firma, concede permiso a la cámara (tras el aviso del navegador).</li>
+            <li>Apunta al código QR del evento; la app lo leerá de forma automática.</li>
+            <li>Si el QR es válido, se enviará la firma al servidor y verás la confirmación en pantalla.</li>
+          </ol>
+          <p class="hint">Si el QR no es válido o está dañado, se mostrará un aviso y podrás intentarlo de nuevo.</p>
+        </div>
+        <div class="card">
+          <h3 style="margin:.1rem 0 .35rem;">Consejos de escaneo</h3>
+          <ul class="list">
+            <li>Asegúrate de tener buena luz y mantener el QR estable.</li>
+            <li>Evita reflejos o pantallas con poco brillo.</li>
+            <li>Si la cámara se detiene tras firmar, vuelve a <em>Ir a firmar</em> para un nuevo escaneo.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- Ubicación -->
+    <section id="ubicacion" class="section">
+      <h2>Ubicación (opcional)</h2>
+      <p>Si el dispositivo lo permite, la app intentará adjuntar tu ubicación aproximada al firmar. Si el permiso está denegado o falla, la firma se envía igualmente sin ubicación.</p>
+      <p class="hint">Esta ubicación ayuda a verificar presencia física en el evento, pero <strong>no es obligatoria</strong>.</p>
+    </section>
+
+    <!-- Mensajes y estados -->
+    <section id="mensajes" class="section">
+      <h2>Mensajes y estados</h2>
+      <ul class="list">
+        <li><span class="badge">✅ Asistencia registrada correctamente</span> — La firma se guardó y el escáner se detiene.</li>
+        <li><span class="badge">✅ Ya estaba registrada la asistencia</span> — No es necesario volver a firmar.</li>
+        <li><span class="badge">❌ QR inválido</span> — El código no contiene datos válidos del evento.</li>
+        <li><span class="badge">❌ Error de red</span> — Problema de conexión o respuesta del servidor. Intenta de nuevo.</li>
+      </ul>
+    </section>
+
+    <!-- Errores comunes -->
+    <section id="errores" class="section">
+      <h2>Errores comunes y solución</h2>
+      <div class="grid-2">
+        <div class="card">
+          <h3 style="margin:.1rem 0 .35rem;">No puedo iniciar sesión</h3>
+          <ul class="list">
+            <li>Comprueba el email y la contraseña. Respeta mayúsculas/minúsculas.</li>
+            <li>Si olvidaste la contraseña, consulta con la organización para restablecerla.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3 style="margin:.1rem 0 .35rem;">La cámara no se activa</h3>
+          <ul class="list">
+            <li>Revisa permisos de cámara en el navegador (ajustes del sitio).</li>
+            <li>Cierra otras apps que estén usando la cámara.</li>
+            <li>Prueba con el navegador actualizado (Chrome/Edge/Safari).</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3 style="margin:.1rem 0 .35rem;">El QR no se reconoce</h3>
+          <ul class="list">
+            <li>Acerca o aleja el móvil para enfocar mejor.</li>
+            <li>Evita brillos o sombras sobre el QR.</li>
+            <li>Si está impreso, asegúrate de que no esté arrugado o manchado.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3 style="margin:.1rem 0 .35rem;">Ya había firmado</h3>
+          <p>Si ya se registró tu asistencia para ese evento, la app te lo indicará y no duplicará firmas.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- FAQ -->
+    <section id="faq" class="section">
+      <h2>FAQ</h2>
+      <div class="grid-2">
+        <div class="card">
+          <h3 style="margin:.1rem 0 .35rem;">¿Necesito cuenta para firmar?</h3>
+          <p>Sí. Debes registrarte una vez con tu email y DNI. Después podrás iniciar sesión y firmar.</p>
+        </div>
+        <div class="card">
+          <h3 style="margin:.1rem 0 .35rem;">¿Puedo usar cualquier móvil?</h3>
+          <p>Funciona en móviles modernos con navegador actualizado y cámara. Si el dispositivo no permite la cámara, solicita un lector alternativo al staff.</p>
+        </div>
+        <div class="card">
+          <h3 style="margin:.1rem 0 .35rem;">¿Qué datos envía el QR?</h3>
+          <p>Contiene el identificador del evento y un token de seguridad. La app envía además tu identificador de alumno y, de forma opcional, la ubicación.</p>
+        </div>
+        <div class="card">
+          <h3 style="margin:.1rem 0 .35rem;">¿Cómo cierro la sesión?</h3>
+          <p>Usa el botón <em>Cerrar sesión</em> en la app. También puedes limpiar los datos del navegador.</p>
+        </div>
+      </div>
+    </section>
+
+    <div class="section" style="display:flex;gap:10px;flex-wrap:wrap;">
+      <a class="enlace-final" href="/webapp/index.html"><span class="pill">← Volver al inicio</span></a>
+      <a class="enlace-final" href="/"><span class="pill">← Volver al panel</span></a>
+    </div>
+  </div>
+</div>

@@ -3,7 +3,10 @@ const router = express.Router();
 const db = require('../database/db');
 const bcrypt = require('bcrypt');
 
-// Registro (sin cambios)
+router.get('/ayuda', (_req, res) => {
+  res.render('ayuda_firmas', { title: 'Ayuda · Alumnos', hero: false });
+});
+
 router.post('/registro-app', async (req, res) => {
   const { email, dni, password } = req.body;
   try {

@@ -627,6 +627,7 @@ router.get('/pagos/export.csv', async (req, res) => {
     res.status(500).send('No se pudo exportar pagos');
   }
 });
+
 router.get('/pagos/nuevo', async (req, res) => {
   try {
     const proveedores = await getProveedores();
@@ -647,25 +648,76 @@ router.get('/pagos/nuevo', async (req, res) => {
 });
 
 router.post('/pagos/guardar', async (req, res) => {
+  // Utilidad para números (acepta coma)
+  const toNum = v => {
+    const n = Number(String(v ?? '').replace(',', '.'));
+    return Number.isFinite(n) ? n : 0;
+  };
+
   const proveedor_id  = Number(req.body.proveedor_id || 0);
   const fecha         = req.body.fecha;
-  const importe_total = Number(req.body.importe_total || 0);
+  const importe_total = toNum(req.body.importe_total);
   const metodo        = (req.body.metodo || '').trim();
   const referencia    = (req.body.referencia || '').trim();
   const notas         = (req.body.notas || '').trim();
 
-  const aplicaciones  = Object.entries(req.body.aplicaciones || {})
-    .map(([facturaId, imp]) => ({ factura_id: Number(facturaId), importe: Number(imp || 0) }))
+  // 1) Leer aplicaciones del formulario
+  let aplicaciones = Object.entries(req.body.aplicaciones || {})
+    .map(([facturaId, imp]) => ({ factura_id: Number(facturaId), importe: toNum(imp) }))
     .filter(x => x.factura_id && x.importe > 0);
 
-  const sumaAplicada = aplicaciones.reduce((acc, x) => acc + x.importe, 0);
   const eps = 0.009;
 
+  // Validaciones mínimas
   if (!proveedor_id || !fecha || !(importe_total > 0)) {
     return res.status(400).send('Faltan datos del pago');
   }
+
+  // 2) Fallback: si no hay aplicaciones y el proveedor solo tiene 1 factura con saldo, auto-aplicar
+  if (aplicaciones.length === 0) {
+    const { rows: fps } = await db.query(`
+      SELECT f.id, (f.total - COALESCE(v.pagado,0)) AS saldo
+      FROM facturas_prov f
+      LEFT JOIN v_factura_sumas_pagos v ON v.factura_id = f.id
+      WHERE f.proveedor_id = $1
+        AND (f.total - COALESCE(v.pagado,0)) > 0
+      ORDER BY f.fecha_vencimiento NULLS LAST, f.fecha_emision
+      LIMIT 2
+    `, [proveedor_id]);
+
+    if (fps.length === 1) {
+      const saldo = Number(fps[0].saldo || 0);
+      const aplicar = Math.min(importe_total, saldo);
+      if (aplicar > eps) {
+        aplicaciones = [{ factura_id: fps[0].id, importe: +aplicar.toFixed(2) }];
+      }
+    }
+    // Si hay 0 o >1 facturas con saldo, dejamos el pago sin aplicaciones (anticipo) a elección del usuario.
+  }
+
+  // 3) Suma aplicada no puede exceder el total del pago
+  const sumaAplicada = aplicaciones.reduce((acc, x) => acc + x.importe, 0);
   if (sumaAplicada - importe_total > eps) {
     return res.status(400).send('La suma aplicada excede el importe del pago');
+  }
+
+  // 4) PRE-CHECK: todas las facturas existen y pertenecen al proveedor
+  if (aplicaciones.length) {
+    const ids = [...new Set(aplicaciones.map(a => Number(a.factura_id)))];
+    const ph = ids.map((_, i) => `$${i + 1}`).join(','); // $1,$2,...
+    const { rows: facs } = await db.query(
+      `SELECT id, proveedor_id FROM facturas_prov WHERE id IN (${ph})`,
+      ids
+    );
+    const found = new Set(facs.map(f => Number(f.id)));
+    const missing = ids.filter(id => !found.has(id));
+    if (missing.length) {
+      return res.status(400).send(`Factura(s) inexistentes: ${missing.join(', ')}`);
+    }
+    const mismatch = facs.filter(f => Number(f.proveedor_id) !== proveedor_id).map(f => f.id);
+    if (mismatch.length) {
+      return res.status(400).send(`Las facturas ${mismatch.join(', ')} no pertenecen al proveedor seleccionado.`);
+    }
   }
 
   const afectadas = [...new Set(aplicaciones.map(x => x.factura_id))];
@@ -673,7 +725,7 @@ router.post('/pagos/guardar', async (req, res) => {
   try {
     await db.query('BEGIN');
 
-    // Crear cabecera del pago
+    // 5) Crear cabecera del pago
     const { rows: pago } = await db.query(
       `INSERT INTO pagos_prov (proveedor_id, fecha, importe_total, metodo, referencia, notas)
        VALUES ($1,$2,$3,$4,$5,$6)
@@ -682,21 +734,20 @@ router.post('/pagos/guardar', async (req, res) => {
     );
     const pagoId = pago[0].id;
 
-    // Validar y aplicar, factura a factura (con bloqueo)
+    // 6) Aplicar el pago factura a factura (bloqueando SOLO la factura)
     for (const a of aplicaciones) {
       const { rows } = await db.query(`
         SELECT f.total, COALESCE(v.pagado,0) AS pagado
         FROM facturas_prov f
         LEFT JOIN v_factura_sumas_pagos v ON v.factura_id = f.id
         WHERE f.id = $1
-        FOR UPDATE
+        FOR UPDATE OF f
       `, [a.factura_id]);
 
-      if (!rows.length) throw new Error('Factura no encontrada');
-      const total   = Number(rows[0].total  || 0);
-      const pagado  = Number(rows[0].pagado || 0);
-      const saldo   = Math.max(total - pagado, 0);
-
+      if (!rows.length) throw new Error(`Factura ${a.factura_id} no encontrada`);
+      const total  = Number(rows[0].total||0);
+      const pagado = Number(rows[0].pagado||0);
+      const saldo  = Math.max(total - pagado, 0);
       if (a.importe - saldo > eps) {
         throw new Error(`La aplicación a la factura ${a.factura_id} supera su saldo`);
       }
@@ -710,13 +761,14 @@ router.post('/pagos/guardar', async (req, res) => {
 
     await db.query('COMMIT');
 
-    // Recalcular estados (fuera de transacción)
+    // 7) Recalcular estados de facturas afectadas (fuera de la TX)
     await Promise.all(afectadas.map(id => recalcularEstadoFactura(id)));
 
+    // 8) OK
     res.redirect('/contabilidad/pagos?ok=1');
   } catch (e) {
+    try { await db.query('ROLLBACK'); } catch {}
     console.error(e);
-    await db.query('ROLLBACK');
     res.status(500).send('No se pudo guardar el pago');
   }
 });
