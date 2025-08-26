@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" width="1600" height="900">
+  <defs>
+    <style>
+      .sb-black{ fill:#111827; }
+      .sb-orange{ fill:#ff8a00; }
+      .sb-yellow{ fill:#ffb020; }
+      .sb-cream{ fill:#fff3dc; }
+      .sb-blue{ fill:#1f3a8a; }
+      .sb-rust{ fill:#c8472c; }
+      .sb-stroke{ stroke:#111827; stroke-width:6; stroke-linecap:round; stroke-linejoin:round; fill:none; }
+    </style>
+    <!-- Slight paper texture via subtle noise pattern -->
+    <filter id="paper">
+      <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="2" stitchTiles="stitch" result="n"/>
+      <feColorMatrix in="n" type="saturate" values="0"/>
+      <feComponentTransfer>
+        <feFuncA type="table" tableValues="0 0 0 0.04 0.06"/>
+      </feComponentTransfer>
+    </filter>
+
+    <!-- Simple treble clef shape (stylised) -->
+    <path id="treble-clef" d="
+      M 0,-220
+      C 60,-260, 110,-210, 95,-160
+      C 80,-110, 10,-110, 0,-160
+      C -15,-235, 120,-240, 110,-120
+      C 100,5, -50,-10, -40,-120
+      C -30,-205, 60,-210, 55,-140
+      C 50,-85, -5,-80, -10,-120
+      C -20,-195, 85,-200, 85,-120
+      C 85,-75, 55,-45, 25,-35
+      C 0,-27, -25,-40, -35,-60
+      C -50,-90, -50,-140, -30,-170
+      C -5,-210, 35,-225, 70,-205
+      " />
+    <!-- Alto/C clef blocky symbol (stylised) -->
+    <g id="alto-clef">
+      <rect x="-40" y="-60" width="80" height="120" class="sb-black"/>
+      <rect x="-12" y="-60" width="24" height="120" class="sb-cream"/>
+      <polygon points="-40,-6 -12,-18 -12,18 -40,6" class="sb-cream"/>
+      <polygon points="12,-18 40,-6 40,6 12,18" class="sb-cream"/>
+    </g>
+
+    <!-- Trumpet (stylised): bell + leadpipe + 3 valves -->
+    <g id="trumpet">
+      <!-- leadpipe -->
+      <path d="M 0,0 L 180,0" class="sb-stroke"/>
+      <!-- bell flare -->
+      <path d="M 180,0 C 220,-4 260,-20 290,-60 L 340,-120 L 340,120 L 290,60 C 260,20 220,4 180,0 Z" class="sb-yellow" />
+      <path d="M 180,0 C 220,-4 260,-20 290,-60 L 340,-120" class="sb-stroke"/>
+      <path d="M 180,0 C 220,4 260,20 290,60 L 340,120" class="sb-stroke"/>
+      <!-- valves -->
+      <rect x="70" y="-24" width="18" height="48" class="sb-black" rx="3"/>
+      <rect x="98" y="-24" width="18" height="48" class="sb-black" rx="3"/>
+      <rect x="126" y="-24" width="18" height="48" class="sb-black" rx="3"/>
+      <circle cx="79" cy="-32" r="10" class="sb-cream"/>
+      <circle cx="107" cy="-32" r="10" class="sb-cream"/>
+      <circle cx="135" cy="-32" r="10" class="sb-cream"/>
+    </g>
+
+    <!-- Viola side silhouette (C-bout + bouts) -->
+    <path id="viola-side" d="
+      M 0,0
+      C 40,-40, 40,-120, 0,-160
+      C -60,-220, -60,-300, 0,-360
+      C 40,-400, 40,-480, 0,-520
+      L 60,-520
+      C 100,-480, 100,-400, 60,-360
+      C 10,-300, 10,-220, 60,-160
+      C 100,-120, 100,-40, 60,0
+      Z" />
+
+    <!-- F-hole (very stylised) -->
+    <g id="f-hole">
+      <path d="M 0,-30 C 20,-28 24,-8 10,0 C -6,10 -10,28 10,30" class="sb-stroke"/>
+      <circle cx="0" cy="-34" r="6" class="sb-black"/>
+      <circle cx="22" cy="34" r="6" class="sb-black"/>
+    </g>
+
+  </defs>
+
+  <!-- Background -->
+  <rect width="1600" height="900" fill="#ffffff"/>
+  <rect width="1600" height="900" fill="#fff" filter="url(#paper)" opacity="0.35"/>
+
+  <!-- Lateral violas (edges), anchored to sides -->
+  <g transform="translate(10,860)">
+    <use href="#viola-side" class="sb-black" opacity="0.08"/>
+  </g>
+  <g transform="translate(1590,860) scale(-1,1)">
+    <use href="#viola-side" class="sb-black" opacity="0.08"/>
+  </g>
+
+  <!-- Bottom stripes (Saul Bass blocks) -->
+  <polygon points="0,900 0,800 380,900" class="sb-orange"/>
+  <polygon points="1600,900 1220,900 1600,800" class="sb-blue"/>
+  <polygon points="420,900 980,900 920,860 480,860" class="sb-cream"/>
+  <rect x="0" y="880" width="1600" height="20" class="sb-black" opacity="0.8"/>
+
+  <!-- Trumpets in corners -->
+  <g transform="translate(60,830) rotate(-6)">
+    <use href="#trumpet"/>
+  </g>
+  <g transform="translate(1540,830) scale(-1,1) rotate(-6)">
+    <use href="#trumpet"/>
+  </g>
+
+  <!-- F-holes near the sides -->
+  <g transform="translate(220,760) scale(1.2) rotate(-8)">
+    <use href="#f-hole"/>
+  </g>
+  <g transform="translate(1380,760) scale(-1.2,1.2) rotate(-8)">
+    <use href="#f-hole"/>
+  </g>
+
+  <!-- Big treble clef on right side -->
+  <g transform="translate(1300,540) scale(2.2)">
+    <use href="#treble-clef" fill="none" stroke="#111827" stroke-width="10"/>
+    <use href="#treble-clef" class="sb-cream" opacity="0.85"/>
+  </g>
+
+  <!-- Alto (C) clef left side -->
+  <g transform="translate(280,560) scale(2.6) rotate(-2)">
+    <use href="#alto-clef"/>
+  </g>
+
+  <!-- Decorative torn paper overlay edges -->
+  <polygon points="0,720 1600,740 1600,760 0,740" class="sb-black" opacity="0.035"/>
+  <polygon points="0,780 1600,800 1600,820 0,800" class="sb-black" opacity="0.03"/>
+</svg>
