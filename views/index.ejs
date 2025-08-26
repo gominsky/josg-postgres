@@ -230,6 +230,35 @@
   .sb-login .btn-main-naranja:active{
     transform:translateY(0) skewX(-10deg) rotate(-.6deg);
   }
+  body{
+    background: url("/imagenes/saul_bass_orquesta_bg.svg") center bottom / cover no-repeat fixed #fffff0;
+  }
+  /* ===== Elevar el fondo para que se vea más la parte inferior ===== */
+:root{
+  --bg-lift: -100px;          /* ⬅️ súbelo/bájalo a tu gusto (ej. 100–220px) */
+}
+
+/* Si tu fondo está en <body> */
+body{
+  background-attachment: fixed;               /* ancla al viewport */
+  background-repeat: no-repeat;
+  /* Para 1 sola capa: */
+  background-position: center calc(100% + var(--bg-lift)) !important;
+  /* Si usas varias capas, repite la posición para cada una: */
+  /* background-position:
+      center calc(100% + var(--bg-lift)),
+      center calc(100% + var(--bg-lift)),
+      center calc(100% + var(--bg-lift)) !important; */
+}
+
+/* Si tu fondo está en .hero-header (en vez de body), usa esto: */
+.hero-header{
+  background-attachment: fixed;
+  background-repeat: no-repeat;
+  background-position: center calc(100% + var(--bg-lift)) !important;
+  /* idem: repite líneas si tienes varias capas */
+}
+
 </style>
 
 <header class="hero-header">
