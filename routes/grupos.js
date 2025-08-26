@@ -23,12 +23,21 @@ router.post('/', async (req, res) => {
   }
 });
 
-// GET: Listado de grupos con búsqueda
+// GET: Listado de grupos con búsqueda + orden alfabético
 router.get('/', async (req, res) => {
-  const busqueda = req.query.busqueda || '';
+  const busqueda = (req.query.busqueda || '').trim();
+
+  // Orden común (A→Z, case-insensitive)
+  const ORDER = 'ORDER BY lower(nombre) ASC, id ASC';
+
+  // Si hay búsqueda, filtramos y mantenemos el orden alfabético
   const sql = busqueda
-    ? 'SELECT * FROM grupos WHERE nombre ILIKE $1 OR descripcion ILIKE $2'
-    : 'SELECT * FROM grupos';
+    ? `SELECT * FROM grupos
+       WHERE nombre ILIKE $1 OR descripcion ILIKE $2
+       ${ORDER}`
+    : `SELECT * FROM grupos
+       ${ORDER}`;
+
   const params = busqueda ? [`%${busqueda}%`, `%${busqueda}%`] : [];
 
   try {
@@ -43,6 +52,7 @@ router.get('/', async (req, res) => {
     res.status(500).send('Error al obtener grupos');
   }
 });
+
 
 // GET: Formulario de edición
 router.get('/editar/:id', async (req, res) => {

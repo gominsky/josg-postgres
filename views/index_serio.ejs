@@ -1,0 +1,52 @@
+<% title = 'Inicio - JOSG' %>
+<% hero = true %>
+<link rel="stylesheet" href="../styles/estilos.css" />
+
+<header class="hero-header">
+  <% if (!usuario) { %>
+    <div class="container">
+      <div class="login-form-overlay login-compact">
+        <img src="/imagenes/logoJOSG.png" alt="Logo JOSG" class="logo logo-compact">
+
+        <!-- Línea institucional (opcional). Si quieres aún más compacto, elimina este <p>. -->
+        <p class="org-name">Asociación Joven Orquesta Sinfónica de Granada</p>
+
+        <% if (error) { %>
+          <div class="alert-login-error"><%= error %></div>
+        <% } %>
+          <form method="POST" action="/login" class="login-form">
+            <div class="mb-2">
+              <label class="form-label form-label-compact" for="email">Usuario</label>
+              <input id="email" type="email" name="email"
+                    class="form-control form-control-sm"
+                    placeholder="usuario@dominio.com"
+                    autocomplete="username" required>
+            </div>
+            <div class="mb-2">
+              <label class="form-label form-label-compact" for="password">Contraseña</label>
+              <input id="password" type="password" name="password"
+                    class="form-control form-control-sm"
+                    autocomplete="current-password" required>
+            </div>
+            <button type="submit" class="btn-main-naranja btn btn-sm w-100">Entrar</button>
+          </form>
+      </div>
+  <% } else { %>
+    <div class="panel-usuario-overlay">
+      <img src="/imagenes/logoJOSG.png" alt="Logo JOSG" class="logo-grande" />
+      <p>Bienvenido, <%= usuario.nombre %> (<%= usuario.rol %>)</p>
+      <div id="menu-principal" class="dashboard-grid">
+        <% if (usuario.rol === 'admin' || usuario.rol === 'docente') { %>
+          <a href="/alumnos" class="card-index">Músicos</a>
+          <a href="/profesores" class="card-index">Docentes</a>
+          <a href="/eventos" class="card-index">Eventos/guardias</a>
+          <a href="/informes" class="card-index">Informes</a>
+          <a href="/contabilidad" class="card-index">Contabilidad</a>
+          <a href="/configuracion" class="card-index">Configuración</a>
+          <a href="/logout" class="cerrar-sesion-icono">
+            <img src="/imagenes/cerrar_sesion_trans.png" alt="Cerrar sesión" />
+          </a>
+        <% } %>
+  <% } %>
+  <!-- Icono de cerrar sesión en la esquina inferior izquierda -->
+  

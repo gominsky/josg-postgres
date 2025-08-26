@@ -3,8 +3,10 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
+  "dev": "nodemon index.js",
+  "start": "node index.js",
+  "test": "echo \"Error: no test specified\" && exit 1"
+},
   "keywords": [],
   "author": "",
   "license": "ISC",
@@ -26,7 +28,6 @@
     "puppeteer": "^24.15.0",
     "qrcode": "^1.5.4",
     "sharp": "^0.34.3",
-    "sqlite3": "^5.1.7",
     "svg-to-pdfkit": "^0.1.8"
   }
 }

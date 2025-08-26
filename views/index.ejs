@@ -1,53 +1,317 @@
 <% title = 'Inicio - JOSG' %>
-<% hero = true %>
-<link rel="stylesheet" href="../styles/estilos.css" />
+<% hero  = true %>
+
+<style>
+  /* ===== Reset básico y layout ===== */
+  *,*::before,*::after{ box-sizing: border-box; }
+  html, body{ height:100%; margin:0; }
+  body{
+    min-height:100vh; display:flex; flex-direction:column;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Syne", sans-serif;
+    color:#111; background:#fff;
+  }
+  footer{ margin-top:auto; }
+
+  /* ===== Vars Saul Bass + offsets ===== */
+  :root{
+    --sb-black:#111827;
+    --sb-orange:#ff8a00;
+    --sb-yellow:#ffb020;
+    --sb-cream:#fff3dc;
+    --sb-blue:#1f3a8a;
+    --sb-rust:#c8472c;
+
+    --lift:-16px;   /* eleva el bloque principal */
+    --footer-h:110px;
+    --top-offset:50px;
+  }
+
+  /* ===== Hero sin fondos ni padding extra ===== */
+  .hero-header{
+    background: transparent !important;
+    background-image: none !important;
+    padding: 0 !important;
+    height: auto !important;
+    min-height: calc(100vh - var(--footer-h)) !important;
+    display: block !important;
+    align-items: initial !important;
+    justify-content: initial !important;
+    padding-top: var(--top-offset) !important;
+    padding-bottom: 0 !important;
+  }
+
+  /* Contenedor centrado y elevado */
+  .container{
+    max-width: 1100px;
+    width: min(1100px, 100%);
+    margin-left:auto; margin-right:auto;
+    padding-left: 16px; padding-right: 16px;
+  }
+  .page-wrap{
+    margin-top: var(--lift) !important;   /* sube el conjunto */
+    padding-bottom: 48px;                 /* aire para el footer */
+  }
+
+  /* Colocar panel (solo cuando existe overlay logueado) */
+  .hero-header .panel-usuario-overlay{
+    position: absolute !important;
+    top: var(--top-offset) !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    margin-top: 0 !important;
+  }
+
+  /* ===== Franja superior (rótulo) ===== */
+  .sb-topline{
+    display:flex; align-items:center; justify-content:center;
+    font-weight:900; letter-spacing:.6px; text-transform:uppercase;
+    color:#fff; background:#000;
+    padding:6px 10px;
+    clip-path: polygon(1.5% 0, 98.5% 0, 100% 85%, 2% 100%);
+    transform: rotate(-0.4deg);
+    margin:4px 0 10px;
+  }
+
+  /* ===== Banner usuario ===== */
+  .sb-banner{
+    position:relative;
+    display:flex; align-items:center; justify-content:space-between; gap:12px;
+    padding:10px 12px;                /* compacto */
+    border:2px solid var(--sb-black);
+    background:var(--sb-orange);
+    color:var(--sb-black);
+    clip-path:polygon(2% 6%, 98% 0, 100% 85%, 4% 100%);
+    box-shadow:none;
+    transform:rotate(-0.4deg);
+    margin:0 0 6px;                  /* compacto */
+  }
+  .sb-banner::after{
+    content:""; position:absolute; inset:auto 10% -6px 4%;
+    height:6px; background:var(--sb-black); transform:rotate(-0.3deg);
+  }
+  .sb-logo{
+    height:44px;                     /* compacto */
+    object-fit:contain;
+    background:var(--sb-cream);
+    padding:6px 10px; border:2px solid var(--sb-black);
+    box-shadow:none; transform:rotate(-2deg);
+  }
+  .sb-greet{ display:flex; align-items:center; gap:10px; }
+  .sb-avatar{
+    width:40px; height:40px;         /* compacto */
+    border-radius:999px;
+    border:2px solid var(--sb-black);
+    background:var(--sb-black); color:#fff;
+    box-shadow:none; transform:rotate(1deg);
+    font-weight:900; display:flex; align-items:center; justify-content:center;
+  }
+  .sb-greet-text .hello{ margin:0; font-size:1rem; line-height:1.1; color:#000; }
+  .sb-greet-text .role { margin:.15rem 0 0; color:#1f2937; font-size:.9rem; opacity:.9; }
+  .sb-exit{
+    display:inline-flex; align-items:center; gap:8px;
+    padding:.5rem .8rem; border:2px solid var(--sb-black);
+    background:#fff; color:var(--sb-black);
+    border-radius:10px; text-decoration:none;
+    box-shadow:none; transform:rotate(.6deg);
+  }
+  .sb-exit:hover{ filter:brightness(1.02); transform:translateY(-1px) rotate(.4deg); }
+
+  @media (max-width:640px){
+    .sb-banner{ flex-direction:column; align-items:stretch; gap:10px; clip-path: polygon(2% 3%, 98% 0, 100% 93%, 4% 100%); }
+    .sb-logo{ height:42px; align-self:flex-start; }
+    .sb-exit{ align-self:flex-end; }
+  }
+
+  /* ===== Grid de tarjetas ===== */
+  .sb-grid{
+    display:grid; gap:16px;                                  /* compacto */
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    grid-auto-rows:108px;                                    /* compacto */
+    margin-top:8px; margin-bottom:40px;                      /* cabe footer */
+  }
+  .tile-sb{
+    position:relative; display:flex; align-items:center; justify-content:center; text-align:center;
+    padding:16px; text-decoration:none; font-weight:900; text-transform:uppercase; letter-spacing:.5px;
+    color:var(--sb-black); background:var(--sb-cream);
+    border:2px solid var(--sb-black); box-shadow:none;
+    clip-path:polygon(3% 2%, 97% 0, 99% 92%, 5% 100%);
+    transform:rotate(var(--rot, -0.6deg));
+    transition:transform .15s ease, filter .15s ease;
+  }
+  .sb-grid .tile-sb:nth-child(2n){ --rot:.4deg; }
+  .sb-grid .tile-sb:nth-child(3n){ --rot:-.9deg; }
+  .sb-grid .tile-sb:nth-child(5n){ --rot:.8deg; }
+  .tile-sb:hover{ transform:translateY(-2px) rotate(calc(var(--rot) * .6)); filter:brightness(1.02); }
+
+  /* Paleta sólida */
+  .tile-sb.is-orange{ background:var(--sb-orange); color:#111; }
+  .tile-sb.is-yellow{ background:var(--sb-yellow); color:#111; }
+  .tile-sb.is-cream { background:var(--sb-cream);  color:#111; }
+  .tile-sb.is-black { background:var(--sb-black);  color:#fff; }
+  .tile-sb.is-blue  { background:var(--sb-blue);   color:#fff; }
+  .tile-sb.is-rust  { background:var(--sb-rust);   color:#fff; }
+
+  /* Spans */
+  .tile-sb.h1{ grid-row:span 1; } .tile-sb.h2{ grid-row:span 2; }
+  .tile-sb.w1{ grid-column:span 1; } .tile-sb.w2{ grid-column:span 2; }
+  @media (max-width:799px){ .tile-sb.w2{ grid-column:span 1; } }
+  .tile-sb span{ display:block; line-height:1.1; font-size:clamp(1.05rem, .9rem + 1.2vw, 1.6rem); letter-spacing:.6px; }
+
+  /* ===== LOGIN “muy Saul Bass” ===== */
+  .sb-login{
+    position:relative;
+    background:var(--sb-orange) !important;
+    color:var(--sb-black);
+    border:3px solid var(--sb-black);
+    clip-path:polygon(3% 8%, 98% 0, 100% 92%, 5% 100%);
+    transform:rotate(-1deg);
+    padding:18px 18px 20px;
+    margin-top:6px;
+  }
+  .sb-login::before{
+    content:""; position:absolute; inset:0; background:var(--sb-black);
+    clip-path:polygon(3% 8%, 98% 0, 100% 92%, 5% 100%);
+    transform:translate(6px,6px) rotate(-.6deg);
+    z-index:-1;
+  }
+  .sb-login-head{ margin-bottom:10px; gap:12px; align-items:center; display:flex; justify-content:space-between; }
+  .sb-login-logo{
+    height:46px; background:var(--sb-cream);
+    border:3px solid var(--sb-black); transform:rotate(-3deg);
+  }
+  .sb-login-title{
+    position:relative; margin:0; font-weight:900; text-transform:uppercase; letter-spacing:.6px; transform:rotate(-1.2deg);
+  }
+  .sb-login-title::after{
+    content:""; position:absolute; left:-8px; right:-6px; bottom:-4px; height:12px;
+    background:var(--sb-black); transform:skewX(-14deg) rotate(-.4deg); z-index:-1;
+  }
+  .sb-login .org-name{ font-weight:800; letter-spacing:.4px; margin:.2rem 0 .9rem; color:var(--sb-black); }
+
+  .login-form{ display:flex; flex-wrap:wrap; gap:10px 12px; background:transparent; padding:0; border:none; }
+  .login-form .mb-2{ flex:1 1 48%; min-width:320px; }
+  @media (max-width:640px){ .login-form .mb-2{ flex:1 1 100%; min-width:0; } }
+
+  .sb-login .form-label-compact,
+  .sb-login label{
+    color:#fff !important;           /* etiquetas en blanco */
+    font-weight:800;
+    letter-spacing:.3px;
+    text-shadow:none !important;
+    opacity:1 !important;
+  }
+
+  .sb-login input.form-control-sm{
+    display:block; width:100%;
+    background:#fff !important; color:#111 !important;
+    border:3px solid var(--sb-black) !important; border-radius:12px !important;
+    padding:.6rem .7rem !important; margin-bottom:.5rem;
+    box-shadow:none; font-weight:700;
+  }
+  .sb-login input.form-control-sm:focus{ outline:none; box-shadow:none; border-color:var(--sb-black); }
+
+  .sb-login .btn-main-naranja{
+    position:relative;
+    border:3px solid var(--sb-black) !important;
+    background:var(--sb-black) !important; color:#fff !important;
+    font-weight:900 !important; text-transform:uppercase; letter-spacing:.6px;
+    padding:.55rem 1rem !important; border-radius:12px !important;
+    transform:skewX(-10deg) rotate(-.6deg);
+    transition:transform .12s ease, filter .12s ease;
+    width:auto;
+  }
+  .sb-login .btn-main-naranja::after{
+    content:"➔"; display:inline-block; margin-left:.55rem; transform:skewX(10deg) rotate(.6deg);
+  }
+  .sb-login .btn-main-naranja:hover{
+    filter:brightness(1.02);
+    transform:translateY(-2px) skewX(-10deg) rotate(-.6deg);
+  }
+  .sb-login .btn-main-naranja:active{
+    transform:translateY(0) skewX(-10deg) rotate(-.6deg);
+  }
+</style>
 
 <header class="hero-header">
   <% if (!usuario) { %>
-    <div class="container">
-      <div class="login-form-overlay login-compact">
-        <img src="/imagenes/logoJOSG.png" alt="Logo JOSG" class="logo logo-compact">
+    <div class="container page-wrap">
+      <div class="sb-topline">JOVEN ORQUESTA CIUDAD DE GRANADA</div>
 
-        <!-- Línea institucional (opcional). Si quieres aún más compacto, elimina este <p>. -->
-        <p class="org-name">Asociación Joven Orquesta Sinfónica de Granada</p>
+      <!-- LOGIN -->
+      <div class="sb-login">
+        <div class="sb-login-head">
+          <img src="/imagenes/logoJOSG.png" alt="JOSG" class="sb-login-logo">
+          <!-- <h2 class="sb-login-title">Acceso</h2>  // opcional -->
+        </div>
 
         <% if (error) { %>
-          <div class="alert-login-error"><%= error %></div>
+          <div class="alert-login-error" style="background:#fff;color:#c2410c;border:2px solid #000;border-radius:10px;padding:.5rem .7rem;font-weight:700;margin:.4rem 0 .6rem;">
+            <%= error %>
+          </div>
         <% } %>
-          <form method="POST" action="/login" class="login-form">
-            <div class="mb-2">
-              <label class="form-label form-label-compact" for="email">Usuario</label>
-              <input id="email" type="email" name="email"
-                    class="form-control form-control-sm"
-                    placeholder="usuario@dominio.com"
-                    autocomplete="username" required>
-            </div>
-            <div class="mb-2">
-              <label class="form-label form-label-compact" for="password">Contraseña</label>
-              <input id="password" type="password" name="password"
-                    class="form-control form-control-sm"
-                    autocomplete="current-password" required>
-            </div>
-            <button type="submit" class="btn-main-naranja btn btn-sm w-100">Entrar</button>
-          </form>
+
+        <form method="POST" action="/login" class="login-form">
+          <div class="mb-2">
+            <label class="form-label form-label-compact" for="email">Usuario</label>
+            <input id="email" type="email" name="email"
+                   class="form-control-sm"
+                   placeholder="usuario@dominio.com"
+                   autocomplete="username" required>
+          </div>
+          <div class="mb-2">
+            <label class="form-label form-label-compact" for="password">Contraseña</label>
+            <input id="password" type="password" name="password"
+                   class="form-control-sm"
+                   autocomplete="current-password" required>
+          </div>
+          <button type="submit" class="btn-main-naranja">Entrar</button>
+        </form>
       </div>
+    </div>
+
   <% } else { %>
     <div class="panel-usuario-overlay">
-      <img src="/imagenes/logoJOSG.png" alt="Logo JOSG" class="logo-grande" />
-      <p>Bienvenido, <%= usuario.nombre %> (<%= usuario.rol %>)</p>
-      <div id="menu-principal" class="dashboard-grid">
-        <% if (usuario.rol === 'admin' || usuario.rol === 'docente') { %>
-          <a href="/alumnos" class="card-index">Músicos</a>
-          <a href="/profesores" class="card-index">Docentes</a>
-          <a href="/eventos" class="card-index">Eventos/guardias</a>
-          <a href="/informes" class="card-index">Informes</a>
-          <a href="/contabilidad" class="card-index">Contabilidad</a>
-          <a href="/configuracion" class="card-index">Configuración</a>
-          <a href="/logout" class="cerrar-sesion-icono">
-            <img src="/imagenes/cerrar_sesion_trans.png" alt="Cerrar sesión" />
+      <div class="container page-wrap">
+
+        <div class="sb-topline">JOVEN ORQUESTA CIUDAD DE GRANADA</div>
+
+        <!-- Banner -->
+        <div class="sb-banner">
+          <img src="/imagenes/logoJOSG.png" alt="JOSG" class="sb-logo">
+
+          <div class="sb-greet">
+            <div class="sb-avatar">
+              <%= (usuario.nombre || '?').trim().slice(0,1).toUpperCase() %>
+            </div>
+            <div class="sb-greet-text">
+              <p class="hello">Hola, <strong style="color:#000;"><%= usuario.nombre %></strong></p>
+              <p class="role"><%= usuario.rol %></p>
+            </div>
+          </div>
+
+          <a href="/logout" class="sb-exit" title="Cerrar sesión" aria-label="Cerrar sesión">
+            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" fill="none" stroke="currentColor" stroke-width="2"/>
+              <path d="M16 17l5-5-5-5" fill="none" stroke="currentColor" stroke-width="2"/>
+              <path d="M21 12H9" fill="none" stroke="currentColor" stroke-width="2"/>
+            </svg>
+            Salir
           </a>
-        <% } %>
+        </div>
+
+        <!-- Grid -->
+        <div id="menu-principal" class="sb-grid">
+          <% if (usuario.rol === 'admin' || usuario.rol === 'docente') { %>
+            <a href="/alumnos"       class="tile-sb is-orange h2 w1"><span>Músicos</span></a>
+            <a href="/profesores"    class="tile-sb is-cream  h1 w1"><span>Docentes</span></a>
+            <a href="/eventos"       class="tile-sb is-rust   h1 w2"><span>Eventos / guardias</span></a>
+            <a href="/informes"      class="tile-sb is-black  h1 w1"><span>Informes</span></a>
+            <a href="/contabilidad"  class="tile-sb is-orange h2 w2"><span>Contabilidad</span></a>
+            <a href="/configuracion" class="tile-sb is-yellow h1 w1"><span>Configuración</span></a>
+          <% } %>
+        </div>
+
+      </div>
+    </div>
   <% } %>
-  <!-- Icono de cerrar sesión en la esquina inferior izquierda -->
-  
 </header>

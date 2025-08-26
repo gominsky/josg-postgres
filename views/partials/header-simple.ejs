@@ -18,15 +18,55 @@
     </div>
   </div>
 
-  <!-- Usuario / Logout -->
   <% if (usuario) { %>
-    <div class="user-info d-flex flex-column align-items-end">
-      <span class="fw-bold text-black"><%= usuario.nombre %> (<%= usuario.rol %>)</span>
-      <a href="/logout" class="icono-cerrar-sesion mt-1" title="Cerrar sesión">
-        <img src="/imagenes/cerrar_sesion.png" alt="Cerrar sesión" />
-      </a>
+  <div class="header-user d-flex align-items-center gap-2">
+    <div class="sb-avatar-small" title="<%= usuario.nombre %>">
+      <%= (usuario.nombre || '?').trim().slice(0,1).toUpperCase() %>
     </div>
-  <% } %>
-</header>
 
+    <div class="sb-user-label text-end me-2">
+      <div class="sb-user-name"><%= usuario.nombre %></div>
+      <div class="sb-user-role"><%= usuario.rol %></div>
+    </div>
+
+    <a href="/logout" class="sb-exit-mini" title="Cerrar sesión" aria-label="Cerrar sesión">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" fill="none" stroke="currentColor" stroke-width="2"/>
+        <path d="M16 17l5-5-5-5" fill="none" stroke="currentColor" stroke-width="2"/>
+        <path d="M21 12H9" fill="none" stroke="currentColor" stroke-width="2"/>
+      </svg>
+      <span class="d-none d-md-inline">Salir</span>
+    </a>
+  </div>
+<% } %>
+
+</header>
+<style>
+  /* ===== Usuario + Logout (Saul Bass, compacto para header) ===== */
+.sb-avatar-small{
+  width: 34px; height: 34px; border-radius: 999px;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-weight: 900;
+  background: #111827; color:#fff; border: 2px solid #111827;
+  transform: rotate(1deg);
+}
+
+.sb-user-label{ line-height: 1.05; }
+.sb-user-name{ color:#000; font-weight: 800; }
+.sb-user-role{ color:#1f2937; font-size:.85rem; opacity:.9; }
+
+/* Botón “Salir” estilo index */
+.sb-exit-mini{
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: .38rem .6rem;
+  border: 2px solid #111827; border-radius: 10px;
+  background: #fff; color:#111827; text-decoration: none;
+  transform: rotate(.6deg);
+  transition: transform .12s ease, filter .12s ease;
+}
+.sb-exit-mini:hover{ transform: translateY(-1px) rotate(.4deg); }
+
+/* Icono del botón (SVG) del mismo color del texto */
+.sb-exit-mini svg{ display:block; width: 18px; height: 18px; }
+</style>
 
