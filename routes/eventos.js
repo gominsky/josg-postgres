@@ -274,7 +274,9 @@ router.get('/:id/qr', async (req, res) => {
 
     const evento = rows[0];
 
-    // const qrData = `https://tuservidor.com/firmar/${evento.id}?token=${evento.token}`;
+    // Título con grupo entre paréntesis
+    const tituloConGrupo = `${evento.titulo}${evento.grupo_nombre ? ` (${evento.grupo_nombre})` : ''}`;
+
     const qrData = JSON.stringify({ evento_id: evento.id, token: evento.token });
     const qrDataUrl = await QRCode.toDataURL(qrData);
 
@@ -297,7 +299,7 @@ router.get('/:id/qr', async (req, res) => {
     res.send(`
       <html>
         <head>
-          <title>QR para ${evento.titulo}</title>
+          <title>QR para ${tituloConGrupo}</title>
           <style>
             body {
               font-family: sans-serif;
@@ -306,7 +308,7 @@ router.get('/:id/qr', async (req, res) => {
               padding: 2rem;
             }
             .qr-container {
-              background: white,
+              background: white;
               display: inline-block;
               padding: 2rem;
               border-radius: 1rem;
@@ -333,9 +335,9 @@ router.get('/:id/qr', async (req, res) => {
         </head>
         <body>
           <div class="qr-container">
-            <h2>${evento.titulo}</h2>
+            <h2>${tituloConGrupo}</h2>
             <p><strong>${fechaFormateada}</strong></p>
-            <img src="${qrDataUrl}" alt="QR Evento" />
+            <img src="${qrDataUrl}" alt="QR Evento ${tituloConGrupo}" />
             <p style="margin-top:1rem;color:gray;">Escanéalo con la app del alumno</p>
             <button onclick="window.print()">Imprimir QR</button>
           </div>
@@ -348,7 +350,6 @@ router.get('/:id/qr', async (req, res) => {
   }
 });
 
-// Mostrar formulario de firma manual
 // Mostrar formulario de firma manual (backend limpia fecha/hora y ordena alumnos)
 router.get('/:id/firma_manual', async (req, res) => {
   const eventoId = parseInt(req.params.id, 10);

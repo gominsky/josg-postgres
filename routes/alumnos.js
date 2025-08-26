@@ -483,7 +483,7 @@ router.post('/:id/eliminar', async (req, res) => {
     // Borrar relaciones
     await db.query('DELETE FROM alumno_grupo WHERE alumno_id = $1', [id]);
     await db.query('DELETE FROM alumno_instrumento WHERE alumno_id = $1', [id]);
-
+    await db.query('DELETE FROM cuotas_alumno WHERE alumno_id = $1', [id]);
     // Borrar alumno
     await db.query('DELETE FROM alumnos WHERE id = $1', [id]);
 

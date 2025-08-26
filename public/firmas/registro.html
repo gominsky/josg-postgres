@@ -5,6 +5,30 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Registro de Alumno</title>
   <link rel="stylesheet" href="../styles/estilos_app.css" />
+
+  <!-- Avisos mínimos (verde/rojo) -->
+  <style>
+    .notice {
+      display: none;
+      margin-top: .75rem;
+      padding: .6rem .8rem;
+      border-radius: .6rem;
+      font-weight: 700;
+    }
+    .notice.ok {
+      display: block;
+      background: #e9f7ef;
+      color: #186a3b;
+      border: 1px solid #c8e6d1;
+    }
+    .notice.err {
+      display: block;
+      background: #fdecea;
+      color: #b71c1c;
+      border: 1px solid #f5c6cb;
+    }
+    button[disabled] { opacity:.7; cursor:not-allowed; }
+  </style>
 </head>
 <body>
   <div class="container">
@@ -13,10 +37,13 @@
     
     <input type="email" id="email" placeholder="Email" required />
     <input type="text" id="dni" placeholder="DNI" required />
-    <input type="password" id="password" placeholder="Contraseña" required />
+    <input type="password" id="password" placeholder="Elegir contraseña" required />
 
-    <button onclick="registrar()">Registrarme</button>
-    <p id="mensaje"></p>
+    <button id="btn-registrar" onclick="registrar()">Registrarme</button>
+
+    <!-- Avisos -->
+    <p id="mensaje" class="notice" role="status" aria-live="polite"></p>
+
     <button onclick="location.href='index.html'">← Volver</button>
   </div>
 
@@ -25,20 +52,49 @@
       const email = document.getElementById('email').value.trim();
       const dni = document.getElementById('dni').value.trim();
       const password = document.getElementById('password').value;
+      const btn = document.getElementById('btn-registrar');
+      const msg = document.getElementById('mensaje');
 
-      const res = await fetch('/firmas/registro-app', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, dni, password })
-      });
+      // Reset aviso
+      msg.textContent = '';
+      msg.className = 'notice';
 
-      const data = await res.json();
+      if (!email || !dni || !password) {
+        msg.textContent = 'Por favor completa todos los campos.';
+        msg.classList.add('err');
+        return;
+      }
 
-      if (data.success) {
-        localStorage.setItem('alumno_id', data.alumno_id);
-        window.location.href = 'firma.html';
-      } else {
-        document.getElementById('mensaje').innerText = data.error || 'Error al registrar';
+      btn.disabled = true;
+
+      try {
+        const res = await fetch('/firmas/registro-app', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, dni, password })
+        });
+
+        const data = await res.json();
+
+        if (data.success) {
+          // Aviso en verde y redirección tras breve pausa
+          msg.textContent = '✅ Registro correcto. Redirigiendo…';
+          msg.classList.add('ok');
+
+          // Guarda el id y redirige
+          if (data.alumno_id) {
+            localStorage.setItem('alumno_id', data.alumno_id);
+          }
+          setTimeout(() => { window.location.href = 'firma.html'; }, 1300);
+        } else {
+          msg.textContent = data.error || 'Error al registrar';
+          msg.classList.add('err');
+        }
+      } catch (e) {
+        msg.textContent = 'No se pudo conectar con el servidor. Inténtalo de nuevo.';
+        msg.classList.add('err');
+      } finally {
+        btn.disabled = false;
       }
     }
   </script>
