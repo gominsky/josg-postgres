@@ -1,0 +1,77 @@
+<% title = 'Recuperar contraseña' %>
+<style>
+/* ===== Recuperar (estilos scoped) ===== */
+.page-recovery .h1-titulo{
+  font-size: clamp(1.1rem, 1rem + .6vw, 1.4rem);
+  margin: 1rem auto .5rem;
+  max-width: 700px;
+}
+
+/* Form más estrecho y compacto */
+.page-recovery form{
+  max-width: 520px;          /* ≈ 3/4 del ancho estándar */
+  padding: .75rem .9rem;     /* menos padding */
+  border-radius: 10px;
+}
+
+/* Etiquetas e inputs más pequeños */
+.page-recovery label{
+  font-size: .8rem;
+  font-weight: 600;
+  margin-bottom: .3rem;
+  color: #fff;               /* sobre fondo naranja del form */
+}
+.page-recovery .form-control{
+  min-height: 38px;
+  font-size: .88rem;
+  padding: .42rem .6rem;
+}
+
+/* Botonera con estilo del proyecto, pero compacta */
+.page-recovery .acciones-finales{
+  display: flex;
+  gap: .6rem;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: .5rem;
+}
+.page-recovery .btn-main,
+.page-recovery .btn-main-blanco{
+  padding: .38rem .7rem;
+  font-size: .82rem;
+  border-radius: 8px;
+  margin-top: 0;
+}
+
+/* Mensajes */
+.page-recovery .flash-ok{ margin-top: .5rem; }
+.page-recovery .custom-error{ margin-top: .5rem; }
+
+</style>
+
+<header class="hero-header page-recovery">
+  <div class="container page-wrap">
+
+    <div class="h1-titulo">Recuperar contraseña</div>
+
+    <form method="POST" action="/recuperar" autocomplete="on" novalidate>
+      <div class="campo-filtro" style="width:100%;">
+        <label for="email">Correo</label>
+        <input id="email" type="email" name="email" class="form-control" placeholder="usuario@dominio.com" required>
+      </div>
+
+      <% if (ok) { %>
+        <div class="flash-ok"><%= ok %></div>
+      <% } %>
+      <% if (error) { %>
+        <div class="custom-error"><%= error %></div>
+      <% } %>
+
+      <div class="acciones-finales">
+        <button type="submit" class="btn-main-blanco">Enviar enlace</button>
+        <a href="/" class="btn-main">Volver al inicio</a>
+      </div>
+    </form>
+
+  </div>
+</header>

@@ -2,405 +2,344 @@
 <% hero  = true %>
 
 <style>
-  /* ===== Reset básico y layout ===== */
-*,*::before,*::after{ box-sizing: border-box; }
-html, body{ height:100%; margin:0; }
-body{
-  min-height:100vh; display:flex; flex-direction:column;
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Syne", sans-serif;
-  color:#111; background:#fff;
-}
-footer{ margin-top:auto; }
+  /* === Core reset & layout === */
+  *,*::before,*::after{ box-sizing: border-box; }
+  html, body{ height:100%; margin:0; }
+  body{
+    min-height:100vh; display:flex; flex-direction:column;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Syne", sans-serif;
+    color:#111; background:#fff;
+  }
+  footer{ margin-top:auto; }
 
-/* ===== Vars Saul Bass + offsets ===== */
+  /* === Vars (palette & layout) === */
+  :root{
+    --sb-black:#111827; --sb-orange:#ff8a00; --sb-yellow:#ffb020; --sb-cream:#fff3dc; --sb-blue:#1f3a8a; --sb-rust:#c8472c;
+    --lift:-16px; --footer-h:110px; --top-offset:50px;
+  }
+
+  /* === Accessibility === */
+  .skip-link{ position:absolute; left:-9999px; top:auto; width:1px; height:1px; overflow:hidden; }
+  .skip-link:focus{ left:16px; top:12px; width:auto; height:auto; padding:.5rem .75rem; background:#fff; border:2px solid var(--sb-black); border-radius:10px; z-index:9999; }
+  :where(a,button,input,select,textarea,.tile-sb,.sb-exit):focus-visible{ outline:3px solid var(--sb-yellow); outline-offset:2px; }
+
+  /* === Page scaffolding === */
+  .hero-header{ padding-top: var(--top-offset); min-height: calc(100vh - var(--footer-h)); }
+  .container{ max-width:1100px; width:min(1100px,100%); margin-inline:auto; padding-inline:16px; }
+  .page-wrap{ margin-top: var(--lift); padding-bottom:48px; }
+  .hero-header .panel-usuario-overlay{ position:absolute; top:var(--top-offset); left:50%; transform:translateX(-50%); margin-top:0; }
+
+  /* === Topline === */
+  .sb-topline{ display:flex; align-items:center; justify-content:center; font-weight:900; letter-spacing:.6px; text-transform:uppercase; color:#fff; background:#000; padding:6px 10px; margin:4px 0 10px; border-radius:8px; }
+
+  /* === Logged-in banner (rectangular) === */
+  .sb-banner{ position:relative; display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 12px; border:2px solid var(--sb-black); background:var(--sb-orange); color:var(--sb-black); border-radius:16px; margin:0 0 6px; }
+  .sb-logo{ height:44px; object-fit:contain; background:var(--sb-cream); padding:6px 10px; border:2px solid var(--sb-black); border-radius:12px; }
+  .sb-greet{ display:flex; align-items:center; gap:10px; }
+  .sb-avatar{ width:40px; height:40px; border-radius:999px; border:2px solid var(--sb-black); background:var(--sb-black); color:#fff; font-weight:900; display:flex; align-items:center; justify-content:center; }
+  .sb-greet-text .hello{ margin:0; font-size:1rem; line-height:1.1; color:#000; }
+  .sb-greet-text .role{ margin:.15rem 0 0; color:#1f2937; font-size:.9rem; opacity:.9; }
+  .sb-exit{ display:inline-flex; align-items:center; gap:8px; padding:.5rem .8rem; border:2px solid var(--sb-black); background:#fff; color:var(--sb-black); border-radius:10px; text-decoration:none; }
+  .sb-exit:hover{ filter:brightness(1.02); transform:translateY(-1px); }
+  @media (max-width:640px){ .sb-banner{ flex-direction:column; align-items:stretch; gap:10px; } .sb-logo{ height:42px; align-self:flex-start; } .sb-exit{ align-self:flex-end; } }
+
+  /* === Grid (logged-in) === */
+  .sb-grid{ display:grid; gap:16px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); grid-auto-rows:108px; margin:8px 0 40px; }
+  .tile-sb{ position:relative; display:flex; align-items:center; justify-content:center; text-align:center; padding:16px; text-decoration:none; font-weight:900; text-transform:uppercase; letter-spacing:.5px; color:var(--sb-black); background:var(--sb-cream); border:2px solid var(--sb-black); border-radius:16px; transition:transform .15s ease, filter .15s ease; }
+  .tile-sb:hover{ transform:translateY(-2px); filter:brightness(1.02); }
+  .tile-sb.is-orange{ background:var(--sb-orange); color:#111; }
+  .tile-sb.is-yellow{ background:var(--sb-yellow); color:#111; }
+  .tile-sb.is-cream{ background:var(--sb-cream); color:#111; }
+  .tile-sb.is-black{ background:var(--sb-black); color:#fff; }
+  .tile-sb.is-blue{ background:var(--sb-blue); color:#fff; }
+  .tile-sb.is-rust{ background:var(--sb-rust); color:#fff; }
+  .tile-sb.h1{ grid-row:span 1; } .tile-sb.h2{ grid-row:span 2; }
+  .tile-sb.w1{ grid-column:span 1; } .tile-sb.w2{ grid-column:span 2; }
+  @media (max-width:799px){ .tile-sb.w2{ grid-column:span 1; } }
+  .tile-sb span{ display:block; line-height:1.1; font-size:clamp(1.05rem, .9rem + 1.2vw, 1.6rem); letter-spacing:.6px; }
+
+  /* === Background theme (fixed): Trompa (espiral) === */
+  body.theme-orchestra-horn{
+    background-color: var(--sb-black);
+    background-image:
+      repeating-conic-gradient(from 0deg at 14% 86%, rgba(255,176,32,.26) 0 6deg, rgba(255,138,0,.26) 6deg 12deg, transparent 12deg 18deg),
+      radial-gradient(circle at 14% 86%, transparent 0 22vh, var(--sb-black) 22vh 100%),
+      radial-gradient(60% 30% at 10% 100%, rgba(255,255,255,.06) 0 80%, transparent 80%),
+      linear-gradient(0deg, transparent 0 82%, var(--sb-rust) 82% 95%, transparent 95%);
+    background-repeat:no-repeat; background-position:center bottom; background-size:100% 100%; background-attachment:fixed;
+  }
+  @media (max-width:768px){ body.theme-orchestra-horn{ background-attachment:scroll; } }
+
+  /* === Login (rectangular, compacto) === */
+  .sb-auth{ max-width: 720px; margin: 16px auto 32px; }
+  .sb-auth-form{ display:grid; gap:14px; grid-template-columns:1fr; }
+  @media (min-width:900px){ .sb-auth-form{ grid-template-columns: 1fr 1fr auto; align-items:start; } .sb-auth-actions{ display:flex; flex-direction:column; align-items:stretch; gap:10px; } .sb-auth-actions .btn-auth{ width:100%; } }
+  .tile-sb .field-label{ display:inline-block; margin-bottom:8px; font-size:.7rem; font-weight:900; letter-spacing:.4px; border:2px solid var(--sb-black); border-radius:8px; padding:3px 8px; background:#fff8e8; color:var(--sb-black); }
+  .tile-sb .field-input{ width:100%; font-size:.78rem; padding:.38rem .54rem; border:2px solid var(--sb-black); border-radius:8px; background:#fff; color:#111; }
+  .sb-auth .tile-sb{ padding:18px; }
+  .sb-form-head{ display:flex; align-items:center; gap:10px; margin-bottom:8px; }
+  .sb-form-head img{ height:34px; width:auto; border:2px solid var(--sb-black); border-radius:10px; }
+  .sb-form-head .h{ font-weight:900; letter-spacing:.5px; }
+  .sb-auth .field-wrap{ max-width:340px; }
+  @media (max-width:520px){ .sb-auth .field-wrap{ max-width:100%; } }
+  .sb-auth .show-pass{ margin-top:12px; font-size:.7rem; gap:.5rem; }
+  .sb-auth-actions{ display:flex; align-items:center; justify-content:space-between; gap:12px; }
+  .btn-auth{ display:inline-flex; align-items:center; justify-content:center; gap:8px; padding:.55rem .95rem; border:2px solid var(--sb-black); border-radius:10px; background:var(--sb-black); color:#fff; font-weight:900; letter-spacing:.6px; text-transform:uppercase; }
+  .btn-auth:hover{ filter:brightness(1.03); transform:translateY(-2px); }
+  .link-aux{ font-size:.68rem; font-weight:600; letter-spacing:.2px; color:inherit; text-decoration:underline; opacity:.95; }
+
+/* === Login layout (restore row on desktop) === */
+@media (min-width:900px){
+  .sb-auth-form{ grid-template-columns: 1fr 1fr auto; align-items:start; }
+}
+
+/* Login en 3 filas (compacto y centrado) */
+.sb-auth-form{ grid-template-columns: 1fr !important; }
+.sb-auth .tile-sb{ align-items: flex-start; }
+
+/* Campos en un solo tile */
+.sb-fields .field-wrap{ max-width: 340px; margin-inline: auto; }
+.sb-fields .field-wrap + .field-wrap{ margin-top: 12px; }
+body.theme-curtains{
+  background-color: var(--sb-black) !important;
+  background-image:
+    linear-gradient(90deg, var(--curtain-left, var(--sb-blue)) 0 14%, transparent 14%),
+    linear-gradient(270deg, var(--sb-yellow) 0 14%, transparent 14%),
+    linear-gradient(0deg, transparent 0 74%, var(--sb-rust) 74% 88%, transparent 88%);
+  background-repeat: no-repeat, no-repeat, no-repeat;
+  background-position: left top, right top, center bottom;
+  background-size: 16% 100%, 16% 100%, 100% 28%;
+  background-attachment: fixed, fixed, fixed;
+}
+@media (max-width:768px){ body.theme-curtains{ background-attachment: scroll !important; } }
 :root{
-  --sb-black:#111827;
-  --sb-orange:#ff8a00;
-  --sb-yellow:#ffb020;
-  --sb-cream:#fff3dc;
-  --sb-blue:#1f3a8a;
-  --sb-rust:#c8472c;
-
-  --lift:-16px;          /* eleva el bloque principal */
-  --footer-h:110px;
-  --top-offset:50px;
-
-  /* Fondo */
-  --bg-lift:-100px;      /* ⬅️ súbelo/bájalo (100–220px) */
+  --bg-image: url("/imagenes/Cortinas.png");
+}
+body.theme-curtains.theme-image{
+  background-image: var(--bg-image) !important;
+  background-size: cover !important;
+  background-repeat: no-repeat !important;
+  background-position: center !important;
+  background-attachment: fixed !important;
+}
+@media (max-width:768px){
+  body.theme-curtains.theme-image{ background-attachment: scroll !important; }
+}
+/* === Alinear Fila 2 (desktop): dos columnas con label+input alineados === */
+@media (min-width:900px){
+  .sb-fields.sb-fields--row{
+    display: grid;
+    grid-template-columns: 1fr 1fr; /* Usuario | Contraseña */
+    gap: 14px;
+    align-items: start; /* evita “bailes” verticales */
+  }
+  .sb-fields.sb-fields--row .field-wrap{
+    display: grid;
+    grid-template-rows: auto auto; /* fila 1: label, fila 2: input */
+    align-content: start;
+    max-width: 420px; /* igual que antes, puedes bajar a 360–380 si quieres */
+  }
+  .sb-fields.sb-fields--row .field-label{
+    margin-bottom: 6px;
+    min-height: 24px;                 /* altura fija para alinear ambas etiquetas */
+    display: flex; align-items: center;
+  }
+  .sb-fields.sb-fields--row .field-input{ margin-top: 0; }
+  .sb-fields.sb-fields--row .show-pass{ margin-top: 8px; } /* queda debajo del input de contraseña */
 }
 
-/* ===== Hero sin fondos ni padding extra ===== */
+/* En móvil apilamos normal */
+@media (max-width:899px){
+  .sb-fields.sb-fields--row{ display: block; }
+}
+
+
+/* Fila 3: acciones en fila (override de la regla que los ponía en columna) */
+@media (min-width:900px){
+  .sb-auth .sb-auth-actions{ flex-direction:row !important; align-items:center; gap:12px; }
+  .sb-auth .sb-auth-actions .btn-auth{ width:auto !important; }
+}
+/* En móvil, que apilen para no apretar */
+@media (max-width:899px){
+  .sb-fields.sb-fields--row{ flex-direction:column; }
+}
+/* === Fila con label + input en horizontal (solo desktop) === */
+@media (min-width:900px){
+  .sb-fields--inline .field-wrap{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    max-width:none;            /* anula el max-width:340px de .sb-fields */
+  }
+  .sb-fields--inline .field-label{
+    margin:0;
+    white-space:nowrap;        /* evita saltos raros en la etiqueta */
+  }
+  .sb-fields--inline .field-input{
+    flex:1 1 auto;             /* el input crece y ocupa el resto */
+    min-width:260px;
+  }
+  .sb-fields--inline .show-pass{
+    margin:0 0 0 10px;         /* a la derecha del input (misma línea) */
+  }
+}
+/* En móvil, volvemos a columna para que quepa bien */
+@media (max-width:899px){
+  .sb-fields--inline .field-wrap{
+    display:flex;
+    flex-direction:column;
+    align-items:flex-start;
+    gap:6px;
+  }
+}
+/* === Alineación milimétrica de Fila 2 y Fila 3 (desktop) === */
+@media (min-width:900px){
+  /* Ajusta estas dos medidas a tu gusto */
+  .sb-fields--inline{ --label-w: 120px; --row-w: 720px; }
+
+  .sb-fields--inline .field-wrap{
+    /* Misma anchura en ambas filas */
+    width: var(--row-w);
+    max-width: none;                /* anula el max-width heredado */
+    margin-inline: auto;
+
+    /* Label + input (y el checkbox, si lo hay) en línea */
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .sb-fields--inline .field-label{
+    flex: 0 0 var(--label-w);       /* columna fija para las etiquetas */
+    width: var(--label-w);
+    margin: 0;
+    white-space: nowrap;
+  }
+
+  .sb-fields--inline .field-input{
+    flex: 1 1 auto;                 /* ambos inputs exactamente igual de anchos */
+    min-width: 0;
+  }
+
+  /* “Mostrar contraseña” en la misma línea, a la derecha del input */
+  .sb-fields--inline .show-pass{
+    margin: 0 0 0 10px;
+  }
+}
+
+/* En móvil, apilamos para que no se estreche */
+@media (max-width:899px){
+  .sb-fields--inline .field-wrap{
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+}
+/* Menos ancho (≈ 75%) y alineación exacta en desktop */
+@media (min-width:900px){
+  /* Todas las “fichas” del login con el mismo ancho y centradas */
+  .sb-auth .tile-sb{
+    width: min(65%, 820px);
+    margin-inline: auto;
+  }
+
+  /* Las filas 2 y 3 usan todo ese ancho; mismos tamaños de campos */
+  .sb-fields--inline{
+    --row-w: 100%;   /* ocupa el 100% del ancho de la ficha (75% del contenedor) */
+    /* ajusta si quieres un label algo más estrecho/ancho */
+    --label-w: 120px;
+  }
+}
+/* Héroe con imagen completa (o casi) */
 .hero-header{
-  background: transparent !important;
-  background-image: none !important;
-  padding: 0 !important;
-  height: auto !important;
-  min-height: calc(100vh - var(--footer-h)) !important;
-  display: block !important;
-  align-items: initial !important;
-  justify-content: initial !important;
-  padding-top: var(--top-offset) !important;
-  padding-bottom: 0 !important;
-
-  /* Si usas el background en hero-header (en vez de body), aplica esto: */
-  background-attachment: fixed;
-  background-repeat: no-repeat;
-  background-position: center calc(100% + var(--bg-lift)) !important;
-}
-
-/* Contenedor centrado y elevado */
-.container{
-  max-width: 1100px;
-  width: min(1100px, 100%);
-  margin-left:auto; margin-right:auto;
-  padding-left:16px; padding-right:16px;
-}
-.page-wrap{
-  margin-top: var(--lift) !important;   /* sube el conjunto */
-  padding-bottom: 48px;                 /* aire para el footer */
-}
-
-/* Colocar panel (solo cuando existe overlay logueado) */
-.hero-header .panel-usuario-overlay{
-  position: absolute !important;
-  top: var(--top-offset) !important;
-  left: 50% !important;
-  transform: translateX(-50%) !important;
-  margin-top: 0 !important;
-}
-
-/* ===== Franja superior (rótulo) ===== */
-.sb-topline{
-  display:flex; align-items:center; justify-content:center;
-  font-weight:900; letter-spacing:.6px; text-transform:uppercase;
-  color:#fff; background:#000;
-  padding:6px 10px;
-  clip-path: polygon(1.5% 0, 98.5% 0, 100% 85%, 2% 100%);
-  transform: rotate(-0.4deg);
-  margin:4px 0 10px;
-}
-
-/* ===== Banner usuario (vista logada) ===== */
-.sb-banner{
-  position:relative;
-  display:flex; align-items:center; justify-content:space-between; gap:12px;
-  padding:10px 12px;
-  border:2px solid var(--sb-black);
-  background:var(--sb-orange);
-  color:var(--sb-black);
-  clip-path:polygon(2% 6%, 98% 0, 100% 85%, 4% 100%);
-  box-shadow:none;
-  transform:rotate(-0.4deg);
-  margin:0 0 6px;
-}
-.sb-banner::after{
-  content:""; position:absolute; inset:auto 10% -6px 4%;
-  height:6px; background:var(--sb-black); transform:rotate(-0.3deg);
-}
-.sb-logo{
-  height:44px; object-fit:contain;
-  background:var(--sb-cream);
-  padding:6px 10px; border:2px solid var(--sb-black);
-  box-shadow:none; transform:rotate(-2deg);
-}
-.sb-greet{ display:flex; align-items:center; gap:10px; }
-.sb-avatar{
-  width:40px; height:40px; border-radius:999px;
-  border:2px solid var(--sb-black);
-  background:var(--sb-black); color:#fff;
-  box-shadow:none; transform:rotate(1deg);
-  font-weight:900; display:flex; align-items:center; justify-content:center;
-}
-.sb-greet-text .hello{ margin:0; font-size:1rem; line-height:1.1; color:#000; }
-.sb-greet-text .role { margin:.15rem 0 0; color:#1f2937; font-size:.9rem; opacity:.9; }
-.sb-exit{
-  display:inline-flex; align-items:center; gap:8px;
-  padding:.5rem .8rem; border:2px solid var(--sb-black);
-  background:#fff; color:var(--sb-black);
-  border-radius:10px; text-decoration:none;
-  box-shadow:none; transform:rotate(.6deg);
-}
-.sb-exit:hover{ filter:brightness(1.02); transform:translateY(-1px) rotate(.4deg); }
-
-@media (max-width:640px){
-  .sb-banner{ flex-direction:column; align-items:stretch; gap:10px; clip-path: polygon(2% 3%, 98% 0, 100% 93%, 4% 100%); }
-  .sb-logo{ height:42px; align-self:flex-start; }
-  .sb-exit{ align-self:flex-end; }
-}
-
-/* ===== Grid de tarjetas (vista logada) ===== */
-.sb-grid{
-  display:grid; gap:16px;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  grid-auto-rows:108px;
-  margin-top:8px; margin-bottom:40px;
-}
-.tile-sb{
-  position:relative; display:flex; align-items:center; justify-content:center; text-align:center;
-  padding:16px; text-decoration:none; font-weight:900; text-transform:uppercase; letter-spacing:.5px;
-  color:var(--sb-black); background:var(--sb-cream);
-  border:2px solid var(--sb-black); box-shadow:none;
-  clip-path:polygon(3% 2%, 97% 0, 99% 92%, 5% 100%);
-  transform:rotate(var(--rot, -0.6deg));
-  transition:transform .15s ease, filter .15s ease;
-}
-.sb-grid .tile-sb:nth-child(2n){ --rot:.4deg; }
-.sb-grid .tile-sb:nth-child(3n){ --rot:-.9deg; }
-.sb-grid .tile-sb:nth-child(5n){ --rot:.8deg; }
-.tile-sb:hover{ transform:translateY(-2px) rotate(calc(var(--rot) * .6)); filter:brightness(1.02); }
-.tile-sb.is-orange{ background:var(--sb-orange); color:#111; }
-.tile-sb.is-yellow{ background:var(--sb-yellow); color:#111; }
-.tile-sb.is-cream { background:var(--sb-cream);  color:#111; }
-.tile-sb.is-black { background:var(--sb-black);  color:#fff; }
-.tile-sb.is-blue  { background:var(--sb-blue);   color:#fff; }
-.tile-sb.is-rust  { background:var(--sb-rust);   color:#fff; }
-.tile-sb.h1{ grid-row:span 1; } .tile-sb.h2{ grid-row:span 2; }
-.tile-sb.w1{ grid-column:span 1; } .tile-sb.w2{ grid-column:span 2; }
-@media (max-width:799px){ .tile-sb.w2{ grid-column:span 1; } }
-.tile-sb span{ display:block; line-height:1.1; font-size:clamp(1.05rem, .9rem + 1.2vw, 1.6rem); letter-spacing:.6px; }
-
-/* ===== Fondo global (si lo pones en body) ===== */
-body{
-  background: url("/imagenes/fondo_negro.png") center bottom / cover no-repeat fixed #fffff0;
-  background-attachment: fixed;
-  background-repeat: no-repeat;
-  background-position: center calc(100% + var(--bg-lift)) !important;
-}
-
-/* =========================================================
-   LOGIN-ONLY (NO afecta a la página ya logada)
-   ========================================================= */
-
-/* Contenedor del login: estrecho y centrado */
-.hero-header .sb-login{
-  --login-w: 200px;     /* ⇦ ajusta 200/180/160 */
-  --label-bg: var(--sb-cream);
-  --label-fg: var(--sb-black);
-
-  display:block;
-  width: var(--login-w);
-  margin: 0 auto;       /* centrado */
-  background: transparent !important;
-  border: 0 !important;
-  clip-path: none !important;
-  padding: 0 !important;
-}
-
-/* Cabecera del login */
-.hero-header .sb-login .sb-login-head{
-  display:flex; align-items:center; gap:10px; margin-bottom:8px !important;
-  justify-content:flex-start !important;
-  flex-wrap:wrap;
-  width: var(--login-w);
-}
-.hero-header .sb-login .sb-login-title-wrap{ display:inline-block; }
-.hero-header .sb-login .sb-login-title-pill{
-  display:inline-block; font-weight:900; text-transform:uppercase; letter-spacing:.5px;
-  font-size:.8rem; line-height:1; padding:4px 8px;
-  border:2px solid var(--sb-black);
-  clip-path: polygon(4% 5%, 96% 0, 98% 94%, 6% 100%); /* píldora estrecha */
-  transform: rotate(-.5deg);
-}
-
-/* Sistema de recortes */
-.hero-header .sb-login .sb-cut{
-  position:relative; display:block;
-  border:2px solid var(--sb-black);
-  padding:10px 12px; margin:6px 0;
-  transform:rotate(-.5deg);
-  width: var(--login-w); /* todos alinean con el ancho del login */
-}
-.hero-header .sb-login .sb-cut::before{
-  content:""; position:absolute; inset:0; z-index:-1; background:var(--sb-black);
-  transform:translate(6px,6px) rotate(-.2deg);
-}
-
-/* Formas (coinciden con banner/tiles) */
-.hero-header .sb-login .shape-banner{ clip-path: polygon(2% 6%, 98% 0, 100% 85%, 4% 100%); }
-.hero-header .sb-login .shape-tile  { clip-path: polygon(3% 2%, 97% 0, 99% 92%, 5% 100%); }
-.hero-header .sb-login .shape-tight { clip-path: polygon(4% 5%, 96% 0, 98% 94%, 6% 100%); }
-
-/* Tonos (elige por bloque) */
-.hero-header .sb-login .tone-cream  { background:var(--sb-cream);  color:var(--sb-black); }
-.hero-header .sb-login .tone-yellow { background:var(--sb-yellow); color:var(--sb-black); }
-.hero-header .sb-login .tone-orange { background:var(--sb-orange); color:#111; }
-.hero-header .sb-login .tone-blue   { background:var(--sb-blue);   color:#fff; }
-.hero-header .sb-login .tone-rust   { background:var(--sb-rust);   color:#fff; }
-.hero-header .sb-login .tone-black  { background:var(--sb-black);  color:#fff; }
-.hero-header .sb-login .tone-ivory  { background:#fff8e8;          color:var(--sb-black); }
-
-/* Form en columna */
-.hero-header .sb-login .login-form{
-  display:flex !important; flex-direction:column !important; gap:8px !important;
-  align-items:flex-start !important;
-}
-
-/* Campos: etiqueta + input (compactos) */
-.hero-header .sb-login .sb-cut.is-field label{
-  display:inline-block; margin-bottom:6px;
-  font-size:.68rem; font-weight:800; line-height:1;
-  padding:2px 6px; border:2px solid var(--sb-black); border-radius:8px;
-  background:var(--label-bg); color:var(--label-fg);
-  transform:rotate(-.3deg);
-}
-.hero-header .sb-login .sb-cut.is-field input.form-control-sm{
-  width:100%; font-size:.78rem !important; padding:.32rem .48rem !important;
-  border:2px solid var(--sb-black) !important; border-radius:8px !important;
-  background:#fff !important; color:#111 !important;
-}
-
-/* Botón */
-.hero-header .sb-login .sb-cut.is-button .btn-main-naranja{
-  width:100% !important; font-size:.75rem !important; padding:.36rem .7rem !important;
-  border:2px solid var(--sb-black) !important; border-radius:8px !important;
-  background:var(--sb-black) !important; color:#fff !important;
-  transform:skewX(-10deg) rotate(-.4deg);
-}
-
-/* Aviso de error: usa el mismo tono que las etiquetas si quieres */
-.hero-header .sb-login .alert-login-error{
-  width: var(--login-w) !important;
-  border:2px solid var(--sb-black) !important; border-radius:10px !important;
-  padding:.45rem .6rem !important; transform:rotate(-.4deg);
-  background:var(--label-bg) !important; color:var(--label-fg) !important;
-}
-
-/* Logo peque en su recorte */
-.hero-header .sb-login .sb-cut.is-logo{ display:inline-flex; align-items:center; padding:6px 8px; }
-.hero-header .sb-login .sb-cut.is-logo .sb-login-logo{
-  height:30px !important; width:auto; border:2px solid var(--sb-black);
-  transform:rotate(-2deg);
-}
-/* =========================================================
-   Botón ENTRAR agresivo (solo login)
-   ========================================================= */
-
-/* base agresiva */
-.hero-header .sb-login .sb-cut.is-button .btn-main-naranja{
   position: relative;
+  min-height: 100svh;            /* viewport alto real en móviles */
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+
+/* Capa de imagen + degradado */
+.hero-bg{ position:absolute; inset:0; z-index:-1; }
+.hero-bg::after{
+  content:""; position:absolute; inset:0;
+  background: linear-gradient(to bottom, rgba(0,0,0,.18), rgba(0,0,0,.68));
+}
+
+/* La magia: imagen que cabe entera y anclada abajo */
+.hero-bg img{
+  width: 100%;
+  height: 100%;
+  object-fit: contain;           /* muestra la imagen completa */
+  object-position: center bottom;/* si recorta, que sea por arriba */
   display: block;
-  width: 100% !important;
-
-  /* colores configurables por recorte (ver variantes más abajo) */
-  background: var(--btn-bg, var(--sb-black)) !important;
-  color: var(--btn-fg, #fff) !important;
-
-  border: 3px solid var(--sb-black) !important;
-  border-radius: 10px !important;
-
-  font-weight: 900 !important;
-  text-transform: uppercase;
-  letter-spacing: .7px;
-
-  /* más grande/“agresivo” que el compacto anterior */
-  font-size: .82rem !important;
-  padding: .58rem 1rem !important;
-
-  /* gesto Bass */
-  transform: skewX(-12deg) rotate(-.8deg);
-  transition: transform .14s ease, filter .14s ease;
-  box-shadow: none;
+  background: #000;              /* bandas laterales si hacen falta */
 }
 
-/* flecha “➔” con el mismo sesgo */
-.hero-header .sb-login .sb-cut.is-button .btn-main-naranja::after{
-  content: "➔";
-  display: inline-block;
-  margin-left: .6rem;
-  font-weight: 900;
-  transform: skewX(12deg) rotate(.8deg);
+/* Si en pantallas MUY panorámicas prefieres llenar más (algo de recorte arriba) */
+@media (min-aspect-ratio: 16/9){
+  .hero-bg img{
+    object-fit: cover;           /* llena mejor escritorio ultrapanorámico */
+    object-position: center bottom;
+  }
 }
 
-/* sub-sombra recortada (capa negra desfasada) */
-.hero-header .sb-login .sb-cut.is-button .btn-main-naranja::before{
-  content: "";
-  position: absolute; inset: 0;
-  background: var(--sb-black);
-  clip-path: polygon(4% 5%, 96% 0, 98% 94%, 6% 100%);
-  transform: translate(5px,5px) rotate(-.2deg);
-  z-index: -1;
-  border-radius: 10px;
-}
-
-/* hover/active con “golpe” */
-.hero-header .sb-login .sb-cut.is-button .btn-main-naranja:hover{
-  filter: brightness(1.03);
-  transform: translateY(-2px) skewX(-12deg) rotate(-.6deg);
-}
-.hero-header .sb-login .sb-cut.is-button .btn-main-naranja:active{
-  transform: translateY(0) skewX(-12deg) rotate(-.6deg);
-}
-
-/* =========================================================
-   Variantes de color del BOTÓN (opcional, por recorte)
-   Aplica la clase tone-* al DIV .sb-cut.is-button para cambiar el botón.
-   ========================================================= */
-.hero-header .sb-login .sb-cut.is-button.tone-yellow .btn-main-naranja{
-  --btn-bg: var(--sb-yellow);  --btn-fg: var(--sb-black);
-}
-.hero-header .sb-login .sb-cut.is-button.tone-cream  .btn-main-naranja{
-  --btn-bg: var(--sb-cream);   --btn-fg: var(--sb-black);
-}
-.hero-header .sb-login .sb-cut.is-button.tone-orange .btn-main-naranja{
-  --btn-bg: var(--sb-orange);  --btn-fg: #111;
-}
-.hero-header .sb-login .sb-cut.is-button.tone-blue   .btn-main-naranja{
-  --btn-bg: var(--sb-blue);
-}
 </style>
 
 <header class="hero-header">
-  <% if (!usuario) { %>
-    <div>
-      <div class="sb-login"><% /* o sin theme para marfil por defecto */ %>
+  <a class="skip-link" href="#menu-principal">Saltar al contenido principal</a>
 
-        <div class="sb-login-head">
-          <!-- Logo en recorte pequeño -->
-          <div class="sb-cut is-logo shape-tile tone-orange size-xs">
-            <img src="/imagenes/logoJOSG.png" alt="JOSG" class="sb-login-logo tone-rust">
-            <div style="color:#ff8a00">  MANAGER</div>
+  <% if (!usuario) { %>
+  <div class="container page-wrap">
+    <section class="sb-auth" aria-labelledby="auth-title">
+      <!-- Banner de acceso, igual estilo que el logado -->
+
+      <% if (error) { %>
+        <div class="tile-sb is-yellow h1 w2" role="alert" aria-live="polite"><span><%= error %></span></div>
+      <% } %>
+        <form method="POST" action="/login" class="sb-auth-form" autocomplete="on" novalidate style="background-color: transparent;">
+          <!-- Fila 1: cabecera del formulario -->
+          <div class="tile-sb is-cream h1 w2">
+            <div class="sb-form-head">
+              <img src="/imagenes/logoJOSG.png" alt="JOSG" class="sb-login-logo" loading="lazy">
+              <div class="h">Acceso</div>
+            </div>
+          </div>
+
+         <!-- Fila 2: campos en fila (usuario + contraseña) -->
+        <div class="tile-sb is-cream h1 w2 sb-fields sb-fields--inline">
+          <div class="field-wrap">
+            <label class="field-label" for="email">Usuario</label>
+            <input id="email" type="email" name="email" class="field-input"
+                  placeholder="usuario@dominio.com" autocomplete="username" required>
+          </div>
+         </div>
+         <div class="tile-sb is-cream h1 w2 sb-fields sb-fields--inline"> 
+          <div class="field-wrap">
+            <label class="field-label" for="password">Contraseña</label>
+            <input id="password" type="password" name="password" class="field-input"
+                  autocomplete="current-password" required>
+            <label class="show-pass">
+              <input type="checkbox" id="toggle-pass" aria-controls="password" aria-label="Mostrar contraseña"> Mostrar contraseña
+            </label>
+          </div>
         </div>
-      
-        <% if (error) { %>
-          <!-- Aviso mismo ancho y tono que etiquetas -->
-          <div class="alert-login-error sb-cut shape-banner tone-yellow size-xs"><%= error %></div>
-        <% } %>
-      
-        <form method="POST" action="/login" class="login-form" style="background-color: transparent;">
-          <!-- Usuario (mitad o menos de tamaño) -->
-          <div class="sb-cut is-field shape-banner tone-rust size-xs">
-            <label class="form-label form-label-compact" for="email">Usuario</label>
-            <input id="email" type="email" name="email"
-                   class="form-control-sm"
-                   placeholder="usuario@dominio.com"
-                   autocomplete="username" required>
-          </div>
-      
-          <!-- Contraseña (mismo ancho reducido) -->
-          <div class="sb-cut is-field shape-tile tone-rust size-xs">
-            <label class="form-label form-label-compact" for="password">Contraseña</label>
-            <input id="password" type="password" name="password"
-                   class="form-control-sm"
-                   autocomplete="current-password" required>
-          </div>
-      
-          <!-- Botón (mismo ancho reducido) -->
-          <div class="sb-cut is-button shape-tight tone-rust size-xs">
-            <button type="submit" class="btn-main-naranja">Entrar</button>
+          <!-- Fila 3: acciones -->
+          <div class="tile-sb is-yellow h1 w2 sb-auth-actions">
+            <button type="submit" class="btn-auth">Entrar</button>
+            <a href="/obras" class="link-aux">¿Olvidaste la contraseña?</a>
           </div>
         </form>
-      </div>        
-    </div>
-
-  <% } else { %>
+    </section>
+  </div>
+<% } else { %>
     <div class="panel-usuario-overlay">
       <div class="container page-wrap">
-
-        <div class="sb-topline">JOSG MANAGER - JOVEN ORQUESTA CIUDAD DE GRANADA</div>
-
         <!-- Banner -->
         <div class="sb-banner">
-          <img src="/imagenes/logoJOSG.png" alt="JOSG" class="sb-logo">
+          <img src="/imagenes/logoJOSG.png" alt="JOSG" class="sb-logo" loading="lazy">
 
           <div class="sb-greet">
             <div class="sb-avatar">
@@ -408,7 +347,6 @@ body{
             </div>
             <div class="sb-greet-text">
               <p class="hello">Hola, <strong style="color:#000;"><%= usuario.nombre %></strong></p>
-              <p class="role"><%= usuario.rol %></p>
             </div>
           </div>
 
@@ -425,12 +363,15 @@ body{
         <!-- Grid -->
         <div id="menu-principal" class="sb-grid">
           <% if (usuario.rol === 'admin' || usuario.rol === 'docente') { %>
-            <a href="/alumnos"       class="tile-sb is-orange h2 w1"><span>Músicos</span></a>
+            <a href="/alumnos"       class="tile-sb is-yellow h2 w1"><span>Músicos</span></a>
             <a href="/profesores"    class="tile-sb is-cream  h1 w1"><span>Docentes</span></a>
-            <a href="/eventos"       class="tile-sb is-rust   h1 w2"><span>Eventos / guardias</span></a>
+            <a href="/guardias"       class="tile-sb is-blue   h1 w1"><span>Guardias</span></a>
+            <a href="/eventos"       class="tile-sb is-rust   h1 w2"><span>Eventos</span></a>
             <a href="/informes"      class="tile-sb is-black  h1 w1"><span>Informes</span></a>
-            <a href="/contabilidad"  class="tile-sb is-orange h2 w2"><span>Contabilidad</span></a>
+            <a href="/contabilidad"  class="tile-sb is-orange h2 w2"><span>Contabilidad / Cuotas</span></a>
             <a href="/configuracion" class="tile-sb is-yellow h1 w1"><span>Configuración</span></a>
+          <% } else { %>
+            <a href="/eventos" class="tile-sb is-blue h2 w2"><span>Eventos</span></a>
           <% } %>
         </div>
 
@@ -438,3 +379,25 @@ body{
     </div>
   <% } %>
 </header>
+
+<script>
+  // Toggle mostrar contraseña (accesible)
+  (function(){
+    var t = document.getElementById('toggle-pass');
+    var p = document.getElementById('password');
+    if(t && p){
+      t.addEventListener('change', function(){
+        var showing = t.checked;
+        p.type = showing ? 'text' : 'password';
+        t.setAttribute('aria-pressed', showing ? 'true' : 'false');
+      });
+    }
+  })();
+
+  // Fijar tema + modo visual
+  document.addEventListener('DOMContentLoaded', function(){
+  ddocument.body.classList.add('theme-curtains');
+  document.body.classList.add('shapes-rect'); // activar modo rectangular simétrico
+  document.body.classList.add('theme-image');  // ← activa la capa de imagen
+  });
+</script>

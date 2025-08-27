@@ -68,6 +68,8 @@ const contabilidadRoutes = require('./routes/contabilidad');
 const proveedoresRoutes = require('./routes/proveedores');
 const categoriasRoutes = require('./routes/categorias');
 const cuentasRoutes = require('./routes/cuentas');
+const recuperarRoutes = require('./routes/recuperar');
+
 app.use('/configuracion', isAdmin, configuracionRoutes);
 app.use('/usuarios', usuariosRoutes);        // Solo admin
 app.use('/profesores', isAuthenticated, profesoresRoutes); // Admin, docentes y usuarios
@@ -87,11 +89,20 @@ app.use('/contabilidad', isAdmin, contabilidadRoutes);
 app.use('/proveedores', isAdmin, proveedoresRoutes);
 app.use('/categorias', isAdmin, categoriasRoutes);
 app.use('/cuentas', isAdmin, cuentasRoutes);
+app.use('/recuperar',recuperarRoutes);
+
 app.use(express.static('public'));
 
 // Ruta de inicio
 app.get('/', (req, res) => {
   res.render('index', { title: 'Inicio - JOSG' });
+});
+
+// Página de mantenimiento (zona de obras)
+app.get('/obras', (req, res) => {
+  res.status(503);                 // 503 = Service Unavailable
+  res.set('Retry-After', '3600');  // sugerencia para clientes / SEO (1 hora)
+  res.render('obras', { title: 'Zona de obras' });
 });
 
 app.locals.formatDate = (isoDate) => {

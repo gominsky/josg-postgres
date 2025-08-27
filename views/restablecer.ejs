@@ -1,0 +1,43 @@
+<% title = 'Restablecer contraseña' %>
+<header class="hero-header">
+  <div class="container page-wrap">
+    <div class="sb-topline">Restablecer contraseña</div>
+
+    <section class="sb-auth" aria-labelledby="restablecer-title">
+      <form method="POST" action="/restablecer/<%= token || '' %>" class="sb-auth-form" autocomplete="off" novalidate>
+        <div class="tile-sb is-cream h1 w2">
+          <div class="sb-form-head">
+            <img src="/imagenes/logoJOSG.png" alt="JOSG" class="sb-login-logo" loading="lazy">
+            <div class="h" id="restablecer-title">Nueva contraseña</div>
+          </div>
+        </div>
+
+        <div class="tile-sb is-cream h1 w2 sb-fields sb-fields--inline">
+          <div class="field-wrap">
+            <label class="field-label" for="password">Contraseña</label>
+            <input id="password" type="password" name="password" class="field-input" required>
+          </div>
+        </div>
+
+        <div class="tile-sb is-cream h1 w2 sb-fields sb-fields--inline">
+          <div class="field-wrap">
+            <label class="field-label" for="confirm">Confirmar</label>
+            <input id="confirm" type="password" name="confirm" class="field-input" required>
+          </div>
+        </div>
+
+        <% if (ok) { %>
+          <div class="tile-sb is-yellow h1 w2" role="status" aria-live="polite"><span><%= ok %></span></div>
+        <% } %>
+        <% if (error) { %>
+          <div class="tile-sb is-yellow h1 w2" role="alert" aria-live="assertive"><span><%= error %></span></div>
+        <% } %>
+
+        <div class="tile-sb is-yellow h1 w2 sb-auth-actions">
+          <button type="submit" class="btn-auth">Guardar</button>
+          <a href="/" class="link-aux">Volver al inicio</a>
+        </div>
+      </form>
+    </section>
+  </div>
+</header>

@@ -258,6 +258,20 @@ async function init() {
         FOREIGN KEY (campo_id) REFERENCES informe_campos(id) ON DELETE CASCADE
       );
     `);
+    
+    await db.query(`
+    CREATE TABLE IF NOT EXISTS password_resets (
+      id           SERIAL PRIMARY KEY,
+      usuario_id   INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+      token_hash   TEXT    NOT NULL,
+      expires_at   TIMESTAMPTZ NOT NULL,
+      used_at      TIMESTAMPTZ,
+      created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+      UNIQUE (usuario_id, token_hash)
+    );
+    CREATE INDEX IF NOT EXISTS idx_pwresets_token ON password_resets(token_hash);
+    CREATE INDEX IF NOT EXISTS idx_pwresets_exp   ON password_resets(expires_at);
+  `);
 
     // CONTABILIDAD: ESQUEMA BÁSICO
 
