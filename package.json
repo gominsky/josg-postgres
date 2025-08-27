@@ -1,10 +1,10 @@
 {
   "name": "josg",
   "version": "1.0.0",
-  "main": "index.js",
+  "main": "app.js",
   "scripts": {
-    "dev": "nodemon index.js",
-    "start": "node index.js",
+    "dev": "nodemon app.js",
+    "start": "node app.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -12,6 +12,9 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.876.0",
+    "@aws-sdk/lib-storage": "^3.876.0",
+    "@aws-sdk/s3-request-presigner": "^3.876.0",
     "archiver": "^7.0.1",
     "bcrypt": "^6.0.0",
     "dayjs": "^1.11.13",
@@ -29,5 +32,8 @@
     "qrcode": "^1.5.4",
     "sharp": "^0.34.3",
     "svg-to-pdfkit": "^0.1.8"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.10"
   }
 }
