@@ -69,7 +69,9 @@ const proveedoresRoutes = require('./routes/proveedores');
 const categoriasRoutes = require('./routes/categorias');
 const cuentasRoutes = require('./routes/cuentas');
 const recuperarRoutes = require('./routes/recuperar');
-const pdfRoutes = require('./routes/pdf');
+const pdfRoutes = require('./routes/pdf');   // ruta relativa al proyecto
+app.use(pdfRoutes);
+
 app.use('/configuracion', isAdmin, configuracionRoutes);
 app.use('/usuarios', usuariosRoutes);        // Solo admin
 app.use('/profesores', isAuthenticated, profesoresRoutes); // Admin, docentes y usuarios
@@ -90,7 +92,6 @@ app.use('/proveedores', isAdmin, proveedoresRoutes);
 app.use('/categorias', isAdmin, categoriasRoutes);
 app.use('/cuentas', isAdmin, cuentasRoutes);
 app.use('/recuperar',recuperarRoutes);
-app.use('/pdf',pdfRoutes);
 app.use(express.static('public'));
 
 // Ruta de inicio

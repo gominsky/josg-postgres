@@ -186,7 +186,38 @@
         Eliminar informe
       </button>
       <button type="submit" id="btnGuardar" class="btn btn-dark btn-sm me-2">Guardar cambios</button>
-      <button type="button" id="btnPDF" class="btn btn-dark btn-sm">Exportar PDF</button>
+      <!-- dentro de #acciones-informe -->
+      <a
+        class="btn btn-dark btn-sm me-2"
+        href="/pdf/informe/<%= informe.id %>"
+        target="_blank" rel="noopener"
+      >Ver PDF</a>
+
+      <%
+      const slug = (typeof publicSlug !== 'undefined') ? publicSlug : (locals && locals.publicSlug);
+      const tieneSlug = !!slug;
+    %>
+
+    <span id="share-wrap" class="d-inline-flex align-items-center gap-2">
+      <% if (!tieneSlug) { %>
+        <button type="button" id="btnShare" class="btn btn-outline-secondary btn-sm">
+          Generar enlace público
+        </button>
+      <% } %>
+
+      <% if (tieneSlug) { %>
+        <input
+          id="publicUrl"
+          class="form-control form-control-sm"
+          style="width:360px;"
+          readonly
+          value="/i/<%= slug %>.pdf"   <!-- 👈 usa slug -->
+        />
+        <button type="button" id="btnCopy" class="btn btn-outline-secondary btn-sm">Copiar</button>
+        <button type="button" id="btnRevoke" class="btn btn-outline-danger btn-sm">Revocar</button>
+      <% } %>
+    </span>
+
     </div>
   <!-- Contenido base para PDF (oculto) -->
 <div id="pdf-content" style="display:none; background:white; color:black; font-size:12px;">
@@ -613,5 +644,48 @@
   document.addEventListener('DOMContentLoaded', autoResizeTitulo);
 })();
 </script>
+<script>
+(() => {
+  const id = <%= Number(informe.id) %>;
+  const csrf = document.querySelector('meta[name="csrf-token"]')?.content || '';
+
+  async function createSlug(){
+    const res = await fetch(`/api/informes/${id}/slug`, {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json', 'CSRF-Token': csrf }
+    });
+    const data = await res.json();
+    const wrap = document.getElementById('share-wrap');
+    wrap.innerHTML = `
+      <input id="publicUrl" class="form-control form-control-sm" style="width:360px;" readonly
+             value="/i/${data.slug}.pdf" />
+      <button type="button" id="btnCopy" class="btn btn-outline-secondary btn-sm">Copiar</button>
+      <button type="button" id="btnRevoke" class="btn btn-outline-danger btn-sm">Revocar</button>`;
+    hook();
+  }
+  async function revokeSlug(){
+    await fetch(`/api/informes/${id}/slug`, {
+      method:'DELETE',
+      headers:{ 'Content-Type':'application/json', 'CSRF-Token': csrf }
+    });
+    const wrap = document.getElementById('share-wrap');
+    wrap.innerHTML = `<button type="button" id="btnShare" class="btn btn-outline-secondary btn-sm">
+      Generar enlace público</button>`;
+    hook();
+  }
+  function copyUrl(){
+    const input = document.getElementById('publicUrl');
+    const u = input.value.startsWith('http') ? input.value : (location.origin + input.value);
+    navigator.clipboard.writeText(u);
+  }
+  function hook(){
+    document.getElementById('btnShare')?.addEventListener('click', createSlug);
+    document.getElementById('btnCopy') ?.addEventListener('click', copyUrl);
+    document.getElementById('btnRevoke')?.addEventListener('click', revokeSlug);
+  }
+  document.addEventListener('DOMContentLoaded', hook);
+})();
+</script>
+
 
   

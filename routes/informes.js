@@ -449,6 +449,7 @@ router.get('/detalle/:id', async (req, res) => {
 
     res.render('informes_detalle', {
       informe: { ...informe, fecha: toISODate(informe.fecha) || informe.fecha },
+      publicSlug: informe.public_slug,
       campos,
       filas,
       tieneAlumnos,

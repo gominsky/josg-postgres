@@ -3,7 +3,7 @@ const bcrypt = require('bcrypt');
 const crypto = require('crypto');
 
 const saltRounds = 12; // producción
-const RESET = process.env.DB_RESET === 'false'; // si true, hace DROP total
+const RESET = process.env.DB_RESET === 'true'; // si true, hace DROP total
 
 // Helper para diagnosticar errores de sintaxis: muestra el fragmento problemático
 async function run(sql, label = '') {
@@ -144,8 +144,7 @@ async function init() {
           DEFERRABLE INITIALLY IMMEDIATE
       );
 
-      CREATE UNIQUE INDEX IF NOT EXISTS uq_alumnos_email_ci
-        ON alumnos (email) WHERE email IS NOT NULL;
+      
 
       CREATE TABLE IF NOT EXISTS profesores (
         id                 INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -161,8 +160,7 @@ async function init() {
         created_at         TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         updated_at         TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );
-      CREATE UNIQUE INDEX IF NOT EXISTS uq_profesores_email_ci
-        ON profesores(email) WHERE email IS NOT NULL;
+      
 
       CREATE TABLE IF NOT EXISTS instrumentos (
         id        INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -181,6 +179,38 @@ async function init() {
         updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );
     `, 'tables:base');
+
+    // --- Hotfix: asegurar columnas updated_at en tablas legacy antes de cualquier UPDATE ---
+    await run(`
+      ALTER TABLE IF EXISTS usuarios     ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+      ALTER TABLE IF EXISTS alumnos      ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+      ALTER TABLE IF EXISTS profesores   ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+      ALTER TABLE IF EXISTS instrumentos ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+      ALTER TABLE IF EXISTS grupos       ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+      ALTER TABLE IF EXISTS eventos      ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+      ALTER TABLE IF EXISTS asistencias  ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+      ALTER TABLE IF EXISTS informes     ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+      ALTER TABLE IF EXISTS proveedores  ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+      ALTER TABLE IF EXISTS facturas_prov ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+    `, 'alter:add-updated_at-cols');
+
+    await run(`
+      -- Dedup grupos por nombre (case-insensitive): renombra duplicados
+      WITH d AS (
+        SELECT LOWER(nombre) e, MIN(id) keep_id, COUNT(*) c
+        FROM grupos
+        GROUP BY LOWER(nombre)
+        HAVING COUNT(*) > 1
+      ), victims AS (
+        SELECT g.id
+        FROM grupos g
+        JOIN d ON LOWER(g.nombre) = d.e
+        WHERE g.id <> d.keep_id
+      )
+      UPDATE grupos
+         SET nombre = nombre || ' (dup ' || id::text || ')'
+       WHERE id IN (SELECT id FROM victims);
+    `, 'dedupe:grupos-nombre');
 
     await run(`
       CREATE UNIQUE INDEX IF NOT EXISTS uq_grupos_nombre_ci ON grupos (LOWER(nombre));
@@ -290,6 +320,7 @@ async function init() {
         instrumento_id INTEGER REFERENCES instrumentos(id) ON DELETE SET NULL,
         profesor_id   INTEGER REFERENCES profesores(id) ON DELETE SET NULL,
         fecha         DATE DEFAULT CURRENT_DATE,
+        public_slug   TEXT UNIQUE,
         observaciones TEXT,
         created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -570,6 +601,47 @@ async function init() {
     // ============================
     // 10) VISTAS E ÍNDICES ADICIONALES
     // ============================
+    // --- Dedup de emails (alumnos y profesores) antes de crear índices únicos ---
+    await run(`
+      WITH d AS (
+        SELECT LOWER(email) e, MIN(id) keep_id, COUNT(*) c
+        FROM alumnos
+        WHERE email IS NOT NULL
+        GROUP BY LOWER(email)
+        HAVING COUNT(*) > 1
+      ), victims AS (
+        SELECT a.id
+        FROM alumnos a
+        JOIN d ON LOWER(a.email) = d.e
+        WHERE a.id <> d.keep_id
+      )
+      UPDATE alumnos SET email = NULL WHERE id IN (SELECT id FROM victims);
+    `, 'dedupe:alumnos-email');
+
+    await run(`
+      WITH d AS (
+        SELECT LOWER(email) e, MIN(id) keep_id, COUNT(*) c
+        FROM profesores
+        WHERE email IS NOT NULL
+        GROUP BY LOWER(email)
+        HAVING COUNT(*) > 1
+      ), victims AS (
+        SELECT p.id
+        FROM profesores p
+        JOIN d ON LOWER(p.email) = d.e
+        WHERE p.id <> d.keep_id
+      )
+      UPDATE profesores SET email = NULL WHERE id IN (SELECT id FROM victims);
+    `, 'dedupe:profesores-email');
+
+    await run(`
+      CREATE UNIQUE INDEX IF NOT EXISTS uq_alumnos_email_ci ON alumnos (email) WHERE email IS NOT NULL;
+    `, 'idx:alumnos-email-unique');
+
+    await run(`
+      CREATE UNIQUE INDEX IF NOT EXISTS uq_profesores_email_ci ON profesores(email) WHERE email IS NOT NULL;
+    `, 'idx:profesores-email-unique');
+
     await run(`
       -- Índices layout_posiciones e informes
       CREATE INDEX IF NOT EXISTS idx_layout_pos_layout  ON layout_posiciones (layout_id);
