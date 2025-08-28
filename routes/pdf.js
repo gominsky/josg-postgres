@@ -2,13 +2,15 @@
 const { Router } = require('express');
 const crypto = require('crypto');
 const PDFDocument = require('pdfkit');
-const pool = require('../database/db'); // ajusta si tu pool está en otra ruta
+const path = require('path');
+const fs = require('fs');
+const pool = require('../database/db');
 
 const router = Router();
 
-/* ========= Helpers ========= */
+/* ========================= Helpers ========================= */
 
-// Resuelve nombres de alumnos si existe la tabla; si no, muestra "Alumno <id>"
+// Nombres de alumnos (si existe la tabla). Si no, "Alumno <id>".
 async function getAlumnosNombres(ids) {
   if (!ids.length) return new Map();
   try {
@@ -18,27 +20,107 @@ async function getAlumnosNombres(ids) {
       WHERE id = ANY($1::int[])
     `, [ids]);
     const m = new Map();
-    rows.forEach(r => m.set(r.id, r.nombre || `Alumno ${r.id}`));
+    rows.forEach(r => m.set(String(r.id), r.nombre || `Alumno ${r.id}`));
     return m;
   } catch {
     const m = new Map();
-    ids.forEach(id => m.set(id, `Alumno ${id}`));
+    ids.forEach(id => m.set(String(id), `Alumno ${id}`));
     return m;
   }
 }
 
-// ⚙️ Función completa: genera el PDF al vuelo con datos reales
-async function streamInformePDF(res, informeId) {
-  
-  // 1) Datos base del informe
+// Grupo(s) por alumno – intenta ambos nombres de tabla: alumno_grupo / alumnos_grupos
+async function getGruposPorAlumno(ids) {
+  const m = new Map();
+  if (!ids.length) return m;
+  try {
+    const { rows } = await pool.query(`
+      SELECT ag.alumno_id, STRING_AGG(g.nombre, ', ' ORDER BY g.nombre) AS grupos
+      FROM alumno_grupo ag
+      JOIN grupos g ON g.id = ag.grupo_id
+      WHERE ag.alumno_id = ANY($1::int[])
+      GROUP BY ag.alumno_id
+    `, [ids]);
+    rows.forEach(r => m.set(String(r.alumno_id), r.grupos || ''));
+    return m;
+  } catch {
+    try {
+      const { rows } = await pool.query(`
+        SELECT ag.alumno_id, STRING_AGG(g.nombre, ', ' ORDER BY g.nombre) AS grupos
+        FROM alumnos_grupos ag
+        JOIN grupos g ON g.id = ag.grupo_id
+        WHERE ag.alumno_id = ANY($1::int[])
+        GROUP BY ag.alumno_id
+      `, [ids]);
+      rows.forEach(r => m.set(String(r.alumno_id), r.grupos || ''));
+    } catch {}
+    return m;
+  }
+}
+
+// Instrumento(s) por alumno – intenta ambos nombres: alumno_instrumento / alumnos_instrumentos
+async function getInstrumentosPorAlumno(ids) {
+  const m = new Map();
+  if (!ids.length) return m;
+  try {
+    const { rows } = await pool.query(`
+      SELECT ai.alumno_id, STRING_AGG(i.nombre, ', ' ORDER BY i.nombre) AS instrumentos
+      FROM alumno_instrumento ai
+      JOIN instrumentos i ON i.id = ai.instrumento_id
+      WHERE ai.alumno_id = ANY($1::int[])
+      GROUP BY ai.alumno_id
+    `, [ids]);
+    rows.forEach(r => m.set(String(r.alumno_id), r.instrumentos || ''));
+    return m;
+  } catch {
+    try {
+      const { rows } = await pool.query(`
+        SELECT ai.alumno_id, STRING_AGG(i.nombre, ', ' ORDER BY i.nombre) AS instrumentos
+        FROM alumnos_instrumentos ai
+        JOIN instrumentos i ON i.id = ai.instrumento_id
+        WHERE ai.alumno_id = ANY($1::int[])
+        GROUP BY ai.alumno_id
+      `, [ids]);
+      rows.forEach(r => m.set(String(r.alumno_id), r.instrumentos || ''));
+    } catch {}
+    return m;
+  }
+}
+
+// Asegura columna public_slug (por si el entorno no la tiene aún)
+let _slugChecked = false;
+async function ensurePublicSlugColumn() {
+  if (_slugChecked) return;
+  try {
+    await pool.query(`ALTER TABLE informes ADD COLUMN IF NOT EXISTS public_slug TEXT UNIQUE;`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_informes_slug ON informes(public_slug);`);
+  } finally {
+    _slugChecked = true;
+  }
+}
+
+// Parse boolean de querystring
+const parseBoolQS = (v) => {
+  if (v == null) return undefined;
+  const s = String(v).toLowerCase();
+  return s === '1' || s === 'true' || s === 't' || s === 'sí' || s === 'si';
+};
+
+/* ==================== Generación de PDF ==================== */
+
+async function streamInformePDF(res, informeId, opts = {}) {
+  // --- Datos base (con nombres de grupo/instrumento del informe) ---
   const { rows: [inf] } = await pool.query(`
-    SELECT id, informe, fecha, observaciones
-    FROM informes
-    WHERE id = $1
+    SELECT i.id, i.informe, i.fecha, i.observaciones,
+           i.grupo_id, g.nombre  AS grupo_nombre,
+           i.instrumento_id, ins.nombre AS instrumento_nombre
+    FROM informes i
+    LEFT JOIN grupos g  ON g.id  = i.grupo_id
+    LEFT JOIN instrumentos ins ON ins.id = i.instrumento_id
+    WHERE i.id = $1
   `, [informeId]);
   if (!inf) { res.status(404).send('Informe no encontrado'); return; }
 
-  // 2) Definición de campos (columnas)
   const { rows: campos } = await pool.query(`
     SELECT id, nombre, tipo, obligatorio
     FROM informe_campos
@@ -46,7 +128,6 @@ async function streamInformePDF(res, informeId) {
     ORDER BY id
   `, [informeId]);
 
-  // 3) Resultados (celdas)
   const { rows: resultados } = await pool.query(`
     SELECT alumno_id, campo_id, valor, fila
     FROM informe_resultados
@@ -54,163 +135,259 @@ async function streamInformePDF(res, informeId) {
     ORDER BY COALESCE(fila, 2147483647), alumno_id, campo_id
   `, [informeId]);
 
-  // 4) Caché del navegador (ETag sencillo sin depender de updated_at)
-  const etagBase = JSON.stringify({
-  f: isoDateSafe(inf.fecha),
-  nC: campos.length,
-  nR: resultados.length
-});
-const etag = crypto.createHash('sha1').update(etagBase).digest('hex');
+  // --- Fechas seguras ---
+  const fmtDate  = new Intl.DateTimeFormat('es-ES', { dateStyle: 'medium' });
+  const fmtMonth = new Intl.DateTimeFormat('es-ES', { month: 'long' });
+  const toDateSafe = (v) => {
+    if (!v) return null;
+    const d = v instanceof Date ? v : new Date(v);
+    return Number.isNaN(d.getTime()) ? null : d;
+  };
+  const formatDateSafe = (v) => {
+    const d = toDateSafe(v);
+    return d ? fmtDate.format(d) : '-';
+  };
+  const isoDateSafe = (v) => {
+    const d = toDateSafe(v);
+    return d ? d.toISOString().slice(0,10) : null;
+  };
 
+  // --- Cache HTTP ---
+  const etagBase = JSON.stringify({ f: isoDateSafe(inf.fecha), nC: campos.length, nR: resultados.length });
+  const etag = crypto.createHash('sha1').update(etagBase).digest('hex');
   if (res.req.headers['if-none-match'] === etag) { res.status(304).end(); return; }
   res.set('ETag', etag);
-  res.set('Cache-Control', 'public, max-age=86400'); // 1 día
+  res.set('Cache-Control', 'public, max-age=86400');
 
-  // 5) Cabeceras para ver inline
+  // --- Cabeceras HTTP ---
   res.setHeader('Content-Type', 'application/pdf');
   res.setHeader('Content-Disposition', `inline; filename="informe-${informeId}.pdf"`);
 
-  // 6) Preparación de filas (pivot por alumno_id y/o fila)
+  // --- Pivot filas (agrupa por alumno/fila) ---
   const alumnosIds = [...new Set(resultados.map(r => r.alumno_id).filter(v => v !== null))];
   const nombreAlumno = await getAlumnosNombres(alumnosIds);
+  const gruposAlumno = await getGruposPorAlumno(alumnosIds);
+  const instrAlumno  = await getInstrumentosPorAlumno(alumnosIds);
 
-  const porFila = new Map(); // clave: string "alumnoId|fila"
+  const porFila = new Map(); // clave: "alumnoId|fila"
   for (const r of resultados) {
     const key = `${r.alumno_id ?? 'null'}|${r.fila ?? 999999}`;
-    if (!porFila.has(key)) {
-      porFila.set(key, {
-        alumnoId: r.alumno_id,           // puede ser null
-        fila:     r.fila ?? 999999,
-        c:        new Map()              // campo_id -> valor
-      });
-    }
+    if (!porFila.has(key)) porFila.set(key, { alumnoId: r.alumno_id, fila: r.fila ?? 999999, c: new Map() });
     porFila.get(key).c.set(r.campo_id, r.valor);
   }
-  const filas = [...porFila.values()].sort((a, b) =>
-    a.fila - b.fila || (a.alumnoId ?? 0) - (b.alumnoId ?? 0)
-  );
+  const filas = [...porFila.values()].sort((a,b)=> a.fila - b.fila || (a.alumnoId ?? 0) - (b.alumnoId ?? 0));
+  const hayAlumnos = alumnosIds.length > 0;
 
-  // 7) Crear el PDF **ANTES** de acceder a pdf.page.*
+  // --- Flags visibilidad: SOLO lo que venga del QS/opts (para reflejar la vista) ---
+  const showGroup      = (typeof opts.showGroup === 'boolean') ? opts.showGroup : false;
+  const showInstrument = (typeof opts.showInstrument === 'boolean') ? opts.showInstrument : false;
+
+  // --- Crear PDF ---
   const orientation = campos.length > 6 ? 'landscape' : 'portrait';
   const pdf = new PDFDocument({ size: 'A4', layout: orientation, margin: 40 });
   pdf.pipe(res);
 
-  // 8) Encabezado
-  const fmtDate = new Intl.DateTimeFormat('es-ES', { dateStyle: 'medium' });
+  // --- Geometría base y límites de contenido ---
+  const MARGIN = 40;
+  const LEFT   = MARGIN;
+  const RIGHT  = pdf.page.width - MARGIN;
+  const FOOTER_H = 70;
+  const CONTENT_BOTTOM_MARGIN = 20; // espacio visual antes del pie
+  const contentBottom = () => pdf.page.height - (FOOTER_H + CONTENT_BOTTOM_MARGIN);
 
-function toDateSafe(v) {
-  if (!v) return null;
-  const d = v instanceof Date ? v : new Date(v);
-  return Number.isNaN(d.getTime()) ? null : d;
-}
+  // Header (devuelve Y de inicio de contenido). Footer no empuja el cursor.
+  function drawHeader(firstPage = false) {
+    const top = 20;
 
-function formatDateSafe(v) {
-  const d = toDateSafe(v);
-  return d ? fmtDate.format(d) : '-';
-}
+    // Logo (si existe)
+    try {
+      const pLogo = path.join(process.cwd(), 'public', 'imagenes', 'logoJOSG.png');
+      if (fs.existsSync(pLogo)) pdf.image(pLogo, LEFT, top, { height: 40 });
+    } catch {}
 
-function isoDateSafe(v) {
-  const d = toDateSafe(v);
-  return d ? d.toISOString().slice(0, 10) : null; // YYYY-MM-DD
-}
-
-  pdf.font('Helvetica-Bold').fontSize(18)
-     .text(inf.informe || `Informe ${inf.id}`, { align: 'left' });
-
-  pdf.moveDown(0.5).font('Helvetica').fontSize(10)
-   .text(`Fecha: ${formatDateSafe(inf.fecha)}`);
-
-  if (inf.observaciones) {
-    pdf.moveDown(0.5).font('Helvetica-Oblique')
-       .text(`Observaciones: ${inf.observaciones}`);
-    pdf.font('Helvetica');
-  }
-  pdf.moveDown();
-
-  // 9) Geometría de la tabla
-  const pageW = pdf.page.width;
-  const pageH = pdf.page.height;
-  const left  = 40;
-  const right = pageW - 40;
-
-  const hayAlumnos = alumnosIds.length > 0;
-  const colPrimLabel = hayAlumnos ? 'Alumno' : 'Fila';
-  const colPrimW  = hayAlumnos ? 160 : 60;
-
-  const nCols = campos.length;
-  const anchoTabla = (right - left);
-  const anchoResto = Math.max(120, anchoTabla - colPrimW);
-  const colW = Math.max(80, Math.floor(anchoResto / Math.max(1, nCols)));
-
-  // 10) Pintar cabecera de la tabla
-  let x = left;
-  let y = pdf.y;
-  const rowH = 18;
-
-  pdf.rect(left, y, colPrimW + colW * nCols, rowH).stroke();
-  pdf.font('Helvetica-Bold').fontSize(10)
-     .text(colPrimLabel, x + 4, y + 4, { width: colPrimW - 8 });
-  x += colPrimW;
-
-  for (const c of campos) {
-    pdf.text(c.nombre, x + 4, y + 4, { width: colW - 8, ellipsis: true });
-    x += colW;
-  }
-
-  y += rowH + 2;
-  pdf.font('Helvetica').fontSize(10);
-
-  function newPageWithHeader() {
-    pdf.addPage();
-    x = left; y = 40;
-
-    pdf.rect(left, y, colPrimW + colW * nCols, rowH).stroke();
+    // Web / correo (coordenadas absolutas)
     pdf.font('Helvetica-Bold').fontSize(10)
-       .text(colPrimLabel, left + 4, y + 4, { width: colPrimW - 8 });
+       .text('www.josg.org', RIGHT - 160, top, { width: 160, align: 'right' });
+    pdf.font('Helvetica').fontSize(9)
+       .text('info@josg.org', RIGHT - 160, top + 14, { width: 160, align: 'right' });
 
-    let cx = left + colPrimW;
+    // Línea bajo cabecera
+    pdf.save().moveTo(LEFT, top + 46).lineTo(RIGHT, top + 46)
+       .strokeColor('#B0B0B0').stroke().restore();
+
+    // === título + meta con altura real ===
+    let contentTopY;
+    if (firstPage) {
+      const title = inf.informe || `Informe ${inf.id}`;
+      const titleWidth = RIGHT - LEFT;
+
+      pdf.font('Helvetica-Bold').fontSize(16);
+      const titleH = pdf.heightOfString(title, { width: titleWidth });
+      pdf.text(title, LEFT, top + 52, { width: titleWidth });
+
+      // meta arranca justo debajo del título
+      let metaY = top + 52 + titleH + 8;
+
+      pdf.font('Helvetica').fontSize(10);
+      const metaWidth = titleWidth;
+      const put = (txt) => {
+        const h = pdf.heightOfString(txt, { width: metaWidth });
+        pdf.text(txt, LEFT, metaY, { width: metaWidth });
+        metaY += Math.max(14, h);
+      };
+      put(`Fecha: ${formatDateSafe(inf.fecha)}`);
+      if (showGroup && inf.grupo_nombre)            put(`Grupo: ${inf.grupo_nombre}`);
+      if (showInstrument && inf.instrumento_nombre) put(`Instrumento: ${inf.instrumento_nombre}`);
+
+      pdf.moveTo(LEFT, metaY + 16).lineTo(RIGHT, metaY + 16)
+         .strokeColor('#E0E0E0').stroke();
+
+      contentTopY = metaY + 22;
+    } else {
+      contentTopY = top + 56;
+    }
+
+    // Pie — pintamos con altura acotada y sin saltos
+    const bottomY = pdf.page.height - FOOTER_H + 10;
+
+    pdf.save().moveTo(LEFT, bottomY).lineTo(RIGHT, bottomY)
+       .strokeColor('#B0B0B0').stroke().restore();
+
+    const hoy = new Date();
+    const fechaGranada = `Granada, ${hoy.getDate()} de ${fmtMonth.format(hoy)} de ${hoy.getFullYear()}`;
+
+    pdf.font('Helvetica').fontSize(9)
+       .text(fechaGranada, LEFT, bottomY - 16, {
+         width: RIGHT - LEFT,
+         height: 14,
+         ellipsis: true,
+         lineBreak: false
+       });
+
+    const footerText = [
+      'Asociación Joven Orquesta de Granada',
+      'CIF: G-18651067 · www.josg.org · Tfno: 682445971',
+      'C/ Andrés Segovia 60, 18007 Granada',
+      'Sede de ensayos: Teatro Maestro Francisco Alonso, C/ Ribera del Beiro 34, 18012 Granada'
+    ].join('\n');
+
+    pdf.font('Helvetica').fontSize(8)
+       .text(footerText, LEFT, bottomY + 6, {
+         width: RIGHT - LEFT,
+         height: FOOTER_H - 26,
+         ellipsis: true,
+         lineBreak: false
+       });
+
+    // Cursor de contenido
+    pdf.y = contentTopY;
+    return contentTopY;
+  }
+
+  // === Primera página
+  let y = drawHeader(true);
+
+  // --- Geometría de la tabla (Alumno | [Grupo] | [Instrumento] | campos…) ---
+  const colPrimLabel = hayAlumnos ? 'Alumno' : 'Fila';
+  const colPrimW     = hayAlumnos ? 150 : 60;
+  const includeGrupo = hayAlumnos && showGroup;
+  const includeInst  = hayAlumnos && showInstrument;
+  const colGrupoW    = includeGrupo ? 90 : 0;
+  const colInstW     = includeInst  ? 90 : 0;
+
+  const nColsDatos   = campos.length;
+  const anchoTabla   = (RIGHT - LEFT);
+  const anchoRest    = anchoTabla - colPrimW - colGrupoW - colInstW;
+  const colW         = Math.max(70, Math.floor(anchoRest / Math.max(1, nColsDatos)));
+  const rowH         = 18;
+
+  const drawTableHeader = () => {
+    let x = LEFT;
+    const totalW = colPrimW + colGrupoW + colInstW + colW * nColsDatos;
+    pdf.rect(LEFT, y, totalW, rowH).stroke();
+
+    pdf.font('Helvetica-Bold').fontSize(10)
+       .text(colPrimLabel, x + 4, y + 4, { width: colPrimW - 8, height: rowH - 8, ellipsis: true, lineBreak: false });
+    x += colPrimW;
+
+    if (includeGrupo) {
+      pdf.text('Grupo', x + 4, y + 4, { width: colGrupoW - 8, height: rowH - 8, ellipsis: true, lineBreak: false });
+      x += colGrupoW;
+    }
+    if (includeInst) {
+      pdf.text('Instrumento', x + 4, y + 4, { width: colInstW - 8, height: rowH - 8, ellipsis: true, lineBreak: false });
+      x += colInstW;
+    }
+
     for (const c of campos) {
-      pdf.text(c.nombre, cx + 4, y + 4, { width: colW - 8, ellipsis: true });
-      cx += colW;
+      pdf.text(c.nombre, x + 4, y + 4, { width: colW - 8, height: rowH - 8, ellipsis: true, lineBreak: false });
+      x += colW;
     }
     y += rowH + 2;
     pdf.font('Helvetica').fontSize(10);
-  }
+  };
 
-  // 11) Filas
+  const needNewPage = () => (y + rowH) > contentBottom();
+
+  const newPageWithHeader = () => {
+    pdf.addPage();
+    y = drawHeader(false);
+    drawTableHeader();
+  };
+
+  drawTableHeader();
+
+  // --- Filas ---
   if (filas.length === 0) {
-    pdf.font('Helvetica-Oblique').text('No hay datos para mostrar.');
+    pdf.font('Helvetica-Oblique').text('No hay datos para mostrar.', LEFT, y);
   } else {
     for (const f of filas) {
-      if (y > pageH - 60) newPageWithHeader();
-      x = left;
+      if (needNewPage()) newPageWithHeader();
 
-      // marco de fila
-      pdf.rect(left, y - 2, colPrimW + colW * nCols, rowH).stroke();
+      const totalW = colPrimW + colGrupoW + colInstW + colW * nColsDatos;
+      pdf.rect(LEFT, y - 2, totalW, rowH).stroke();
 
-      // Primera columna: Alumno o Fila
+      // primera columna (Alumno / Fila)
+      let x = LEFT;
       const etiqueta = hayAlumnos
-        ? (nombreAlumno.get(f.alumnoId) || `Alumno ${f.alumnoId ?? '-'}`)
-        : String(f.fila);
-      pdf.text(etiqueta, x + 4, y + 2, { width: colPrimW - 8 });
+        ? (nombreAlumno.get(String(f.alumnoId)) || `Alumno ${f.alumnoId ?? '-'}`)
+        : (f.fila ?? '-');
+
+      pdf.text(String(etiqueta), x + 4, y + 2, {
+        width: colPrimW - 8, height: rowH - 4, ellipsis: true, lineBreak: false
+      });
       x += colPrimW;
 
-      // Columnas dinámicas
+      // Grupo / Instrumento por alumno (si procede)
+      if (includeGrupo) {
+        const gStr = (f.alumnoId != null) ? (gruposAlumno.get(String(f.alumnoId)) || '—') : '—';
+        pdf.text(gStr, x + 4, y + 2, {
+          width: colGrupoW - 8, height: rowH - 4, ellipsis: true, lineBreak: false
+        });
+        x += colGrupoW;
+      }
+      if (includeInst) {
+        const iStr = (f.alumnoId != null) ? (instrAlumno.get(String(f.alumnoId)) || '—') : '—';
+        pdf.text(iStr, x + 4, y + 2, {
+          width: colInstW - 8, height: rowH - 4, ellipsis: true, lineBreak: false
+        });
+        x += colInstW;
+      }
+
+      // Campos del informe
       for (const c of campos) {
         let v = f.c.get(c.id) ?? '';
-        const tipo = (c.tipo || '').toLowerCase();
-
-        // Formateos básicos
-        if (tipo.includes('bool') || tipo === 'booleano') {
+        const t = (c.tipo || '').toLowerCase();
+        if (t.includes('bool') || t === 'booleano') {
           const s = String(v).trim().toLowerCase();
           v = (s === '1' || s === 'true' || s === 't' || s === 'sí' || s === 'si' || s === 'x') ? 'Sí'
             : (s === '' || s === 'null' || s === 'undefined' ? '' : 'No');
-        } else if (tipo.includes('numero') || tipo.includes('num')) {
-          const n = Number(v);
-          v = Number.isFinite(n) ? n.toString().replace('.', ',') : (v ?? '');
+        } else if (t.includes('numero') || t.includes('num')) {
+          const n = Number(v); v = Number.isFinite(n) ? n.toString().replace('.', ',') : (v ?? '');
         }
-
-        pdf.text(String(v), x + 4, y + 2, { width: colW - 8, ellipsis: true });
+        pdf.text(String(v), x + 4, y + 2, {
+          width: colW - 8, height: rowH - 4, ellipsis: true, lineBreak: false
+        });
         x += colW;
       }
 
@@ -218,62 +395,68 @@ function isoDateSafe(v) {
     }
   }
 
-  // 12) Pie de página
-  if (y < pageH - 40) {
-    pdf.moveTo(left, pageH - 60).lineTo(right, pageH - 60).stroke();
-    pdf.font('Helvetica').fontSize(8)
-       .text(`Generado: ${new Date().toLocaleString('es-ES')} — Informe #${inf.id}`, left, pageH - 50);
-  }
-
   pdf.end();
 }
 
-/* ========= Rutas ========= */
-// Ver PDF al vuelo por ID
+/* ======================== Rutas ======================== */
+
+// Ver PDF interno por ID (añade tu middleware de auth si procede)
 router.get('/pdf/informe/:id', async (req, res, next) => {
-  try { await streamInformePDF(res, req.params.id); }
-  catch (e) { console.error('PDF ERROR /pdf/informe/:id', e); next(e); }
+  try {
+    await streamInformePDF(res, req.params.id, {
+      showGroup:      parseBoolQS(req.query.showGroup),
+      showInstrument: parseBoolQS(req.query.showInstrument)
+    });
+  } catch (e) { console.error('PDF ERROR /pdf/informe/:id', e); next(e); }
 });
 
-// Generar o regenerar slug público (sin updated_at para evitar errores)
+// Generar slug público
 router.post('/api/informes/:id/slug', async (req, res, next) => {
   try {
+    await ensurePublicSlugColumn();
     const { id } = req.params;
-    const slug = crypto.randomBytes(16).toString('hex'); // 32 chars
+    const slug = crypto.randomBytes(16).toString('hex');
     const { rowCount } = await pool.query(
       'UPDATE informes SET public_slug = $1 WHERE id = $2',
       [slug, id]
     );
-    if (!rowCount) return res.status(404).json({ ok: false, msg: 'Informe no encontrado' });
-    const url = `${req.protocol}://${req.get('host')}/i/${slug}.pdf`;
-    res.json({ ok: true, slug, url });
+    if (!rowCount) return res.status(404).json({ ok:false, msg:'Informe no encontrado' });
+
+    const proto = req.headers['x-forwarded-proto'] || req.protocol;
+    const url = `${proto}://${req.get('host')}/i/${slug}.pdf`;
+    res.json({ ok:true, slug, url });
   } catch (e) { console.error('PDF ERROR POST slug', e); next(e); }
 });
 
-// Revocar slug
+// Revocar slug público
 router.delete('/api/informes/:id/slug', async (req, res, next) => {
   try {
+    await ensurePublicSlugColumn();
     const { id } = req.params;
     const { rowCount } = await pool.query(
       'UPDATE informes SET public_slug = NULL WHERE id = $1',
       [id]
     );
-    if (!rowCount) return res.status(404).json({ ok: false, msg: 'Informe no encontrado' });
-    res.json({ ok: true });
+    if (!rowCount) return res.status(404).json({ ok:false, msg:'Informe no encontrado' });
+    res.json({ ok:true });
   } catch (e) { console.error('PDF ERROR DELETE slug', e); next(e); }
 });
 
-// Público: ver PDF por slug
+// Público: ver PDF por slug (sin sesión)
 router.get('/i/:slug.pdf', async (req, res, next) => {
   try {
+    await ensurePublicSlugColumn();
     const { rows: [inf] } = await pool.query(
       'SELECT id FROM informes WHERE public_slug = $1',
       [req.params.slug]
     );
     if (!inf) return res.status(404).send('Informe no encontrado o enlace revocado');
-    await streamInformePDF(res, inf.id);
+
+    await streamInformePDF(res, inf.id, {
+      showGroup:      parseBoolQS(req.query.showGroup),
+      showInstrument: parseBoolQS(req.query.showInstrument)
+    });
   } catch (e) { console.error('PDF ERROR /i/:slug.pdf', e); next(e); }
 });
 
 module.exports = router;
-

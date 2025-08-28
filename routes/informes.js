@@ -20,7 +20,6 @@ router.use('/ficha', (req, res, next) => {
 router.get('/', (req, res) => {
   res.redirect('/informes/certificados');
 });
-
 router.get('/ficha', async (req, res) => {
   try {
     const [gruposResult, instrumentosResult] = await Promise.all([
@@ -179,7 +178,6 @@ router.get('/ficha', async (req, res) => {
     res.status(500).send('Error cargando datos');
   }
 });
-
 router.get('/ficha/:id', async (req, res) => {
   const id = req.params.id;
 
@@ -219,7 +217,6 @@ router.get('/ficha/:id', async (req, res) => {
     res.status(500).send('Error al cargar informe');
   }
 });
-
 router.get('/lista', async (req, res) => {
   try {
     const { rows: informes } = await db.query(`
@@ -244,7 +241,6 @@ router.get('/lista', async (req, res) => {
     res.status(500).send('Error al cargar informes');
   }
 });
-
 router.post('/ficha/guardar-json', async (req, res) => {
   const {
     nombre_informe,

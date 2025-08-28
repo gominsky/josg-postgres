@@ -187,11 +187,7 @@
       </button>
       <button type="submit" id="btnGuardar" class="btn btn-dark btn-sm me-2">Guardar cambios</button>
       <!-- dentro de #acciones-informe -->
-      <a
-        class="btn btn-dark btn-sm me-2"
-        href="/pdf/informe/<%= informe.id %>"
-        target="_blank" rel="noopener"
-      >Ver PDF</a>
+      <a id="btnVerPDF" class="btn btn-dark btn-sm me-2" href="#">Ver PDF</a>
 
       <%
       const slug = (typeof publicSlug !== 'undefined') ? publicSlug : (locals && locals.publicSlug);
@@ -686,6 +682,15 @@
   document.addEventListener('DOMContentLoaded', hook);
 })();
 </script>
-
+<script>
+  document.getElementById('btnVerPDF').addEventListener('click', (e) => {
+    e.preventDefault();
+    const tabla = document.getElementById('tabla-principal');
+    const showGroup      = !tabla?.classList?.contains('hide-grupo');
+    const showInstrument = !tabla?.classList?.contains('hide-inst');
+    const url = `/pdf/informe/<%= informe.id %>?showGroup=${showGroup?1:0}&showInstrument=${showInstrument?1:0}`;
+    window.open(url, '_blank', 'noopener');
+  });
+</script>
 
   
