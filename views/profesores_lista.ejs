@@ -2,23 +2,30 @@
 <% hero = false %>
 
 <div class="header-compact">
-  <h1 class="h1-titulo">Listado de docentes</h1>
+  <h1 class="h1-titulo">Docentes</h1>
   <a href="/profesores/nuevo" class="btn-main-blanco btn-add">+ Añadir docente</a>
 </div>
 
-<form method="GET" id="filtro-form" class="formulario-centrado">
+<form method="GET" id="filtro-form" class="formulario-centrado filtro-card--shape">
   <div class="campo-filtro">
     <label for="estado">Estado</label>
-    <select id="estado" name="estado" class="form-centrado-select" onchange="document.getElementById('filtro-form').submit()">
-      <option value="">Todos</option>
-      <option value="1" <%= estado === '1' ? 'selected' : '' %>>Activos</option>
-      <option value="0" <%= estado === '0' ? 'selected' : '' %>>Pasivos</option>
+    <select id="estado" name="estado" class="form-centrado-select"
+            onchange="document.getElementById('filtro-form').submit()">
+      <% const _estado = (typeof estado !== 'undefined' ? String(estado) : ''); %>
+      <option value=""  <%= _estado === ''  ? 'selected' : '' %>>Todos</option>
+      <option value="1" <%= _estado === '1' ? 'selected' : '' %>>Activos</option>
+      <option value="0" <%= _estado === '0' ? 'selected' : '' %>>Pasivos</option>
     </select>
   </div>
 
   <div class="campo-filtro">
-    <label for="busqueda">Buscar</label>
-    <input id="busqueda-profesores" type="text" class="form-centrado-select" placeholder="Nombre, apellidos...">
+    <label for="busqueda-profesores">Buscar</label> <!-- antes no apuntaba al id correcto -->
+    <input id="busqueda-profesores"
+           name="busqueda"
+           type="text"
+           class="form-centrado-select"
+           placeholder="Nombre, apellidos..."
+           value="<%= typeof busqueda !== 'undefined' ? busqueda : '' %>">
   </div>
 </form>
 

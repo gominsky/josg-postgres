@@ -1,95 +1,65 @@
+// database/init.js
 const db = require('./db');
 const bcrypt = require('bcrypt');
-const crypto = require('crypto');
 
-const saltRounds = 12; // producción
-const RESET = process.env.DB_RESET === 'true'; // si true, hace DROP total
+const saltRounds = 12;
 
-// Helper para diagnosticar errores de sintaxis: muestra el fragmento problemático
+// Helper: ejecutar SQL y mostrar el snippet exacto si hay error de sintaxis
 async function run(sql, label = '') {
   try {
     return await db.query(sql);
   } catch (e) {
-    console.error(`
-❌ SQL error${label ? ' in '+label : ''}:`, e.message);
+    console.error(`\n❌ SQL error${label ? ' in '+label : ''}:`, e.message);
     if (e.position) {
       const pos = parseInt(e.position, 10);
       if (!Number.isNaN(pos)) {
         const from = Math.max(0, pos - 100);
         const to = Math.min(sql.length, pos + 100);
         const snippet = sql.slice(from, to);
-        console.error(`↳ at position ${pos}. Around here:
----
-${snippet}
----`);
+        console.error(`↳ at position ${pos}. Around here:\n---\n${snippet}\n---`);
       }
     }
     throw e;
   }
 }
 
-async function init() {
+/**
+ * Inicializa la base de datos.
+ * @param {Object} opts
+ * @param {boolean} [opts.reset=false] - Si true, hace DROP de todo antes de crear (sin usar .env).
+ */
+async function init({ reset = false } = {}) {
   try {
-    await run('BEGIN', 'tx-begin');
+    // Log de conexión (útil para no equivocarse de DB)
+    try {
+      console.log(`[db] host=${process.env.PGHOST} db=${process.env.PGDATABASE} user=${process.env.PGUSER}`);
+    } catch {}
 
     // ============================
-    // 0) EXTENSIONES
+    // 1) RESET (DROP) con COMMIT propio (sólo si reset === true)
     // ============================
-    await run(`
-      CREATE EXTENSION IF NOT EXISTS citext;
-    `, 'extensions');
-
-    // ============================
-    // 1) DROP TOTAL (opcional)
-    // ============================
-    if (RESET) {
+    if (reset) {
+      console.log('⚠️  RESET activo → DROP SCHEMA public CASCADE');
+      await run('BEGIN', 'drop-begin');
       await run(`
-        -- Contabilidad
-        DROP TABLE IF EXISTS pagos_prov_aplicaciones CASCADE;
-        DROP TABLE IF EXISTS factura_adjuntos         CASCADE;
-        DROP TABLE IF EXISTS pagos_prov               CASCADE;
-        DROP TABLE IF EXISTS facturas_prov            CASCADE;
-        DROP TABLE IF EXISTS proveedores              CASCADE;
-        DROP TABLE IF EXISTS categorias_gasto         CASCADE;
-        DROP TABLE IF EXISTS cuentas                  CASCADE;
-
-        -- App
-        DROP TABLE IF EXISTS pago_cuota_alumno        CASCADE;
-        DROP TABLE IF EXISTS pagos                    CASCADE;
-        DROP TABLE IF EXISTS cuotas_alumno            CASCADE;
-        DROP TABLE IF EXISTS cuotas                   CASCADE;
-        DROP TABLE IF EXISTS tipos_cuota              CASCADE;
-
-        DROP TABLE IF EXISTS informe_resultados       CASCADE;
-        DROP TABLE IF EXISTS informe_campos           CASCADE;
-        DROP TABLE IF EXISTS informes                 CASCADE;
-
-        DROP TABLE IF EXISTS guardias                 CASCADE;
-        DROP TABLE IF EXISTS asistencias              CASCADE;
-        DROP TABLE IF EXISTS eventos                  CASCADE;
-
-        DROP TABLE IF EXISTS profesor_grupo           CASCADE;
-        DROP TABLE IF EXISTS alumno_grupo             CASCADE;
-        DROP TABLE IF EXISTS grupos                   CASCADE;
-
-        DROP TABLE IF EXISTS profesor_instrumento     CASCADE;
-        DROP TABLE IF EXISTS alumno_instrumento       CASCADE;
-        DROP TABLE IF EXISTS instrumentos             CASCADE;
-
-        DROP TABLE IF EXISTS layout_posiciones        CASCADE;
-        DROP TABLE IF EXISTS password_resets          CASCADE;
-
-        DROP TABLE IF EXISTS profesores               CASCADE;
-        DROP TABLE IF EXISTS alumnos                  CASCADE;
-        DROP TABLE IF EXISTS usuarios                 CASCADE;
-      `, 'drop');
+        DROP SCHEMA IF EXISTS public CASCADE;
+        CREATE SCHEMA public;
+        GRANT ALL ON SCHEMA public TO PUBLIC;
+      `, 'drop-schema');
+      await run('COMMIT', 'drop-commit');
     } else {
-      console.log('DB_RESET=false: saltando DROP de tablas (modo migración).');
+      console.log('RESET desactivado: modo migración (no se borra nada).');
     }
 
+    // Extensiones (tras recrear el schema si hubo reset)
+    await run(`CREATE EXTENSION IF NOT EXISTS citext;`, 'extensions');
+
     // ============================
-    // 2) FUNCIONES COMUNES
+    // 2) Transacción principal
     // ============================
+    await run('BEGIN', 'tx-begin');
+
+    // Funciones comunes
     await run(`
       CREATE OR REPLACE FUNCTION set_updated_at()
       RETURNS TRIGGER AS $$
@@ -116,35 +86,33 @@ async function init() {
       );
 
       CREATE TABLE IF NOT EXISTS alumnos (
-        id                 INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-        nombre             TEXT,
-        apellidos          TEXT,
-        tutor              TEXT,
-        direccion          TEXT,
-        codigo_postal      INTEGER,
-        municipio          TEXT,
-        provincia          TEXT,
-        telefono           TEXT,
-        email              CITEXT,
-        fecha_nacimiento   DATE,
-        DNI                TEXT,
-        centro             TEXT,
-        profesor_centro    TEXT,
-        repertorio_id      INTEGER,
-        foto               TEXT,
-        activo             BOOLEAN     NOT NULL DEFAULT TRUE,
-        registrado         BOOLEAN     NOT NULL DEFAULT FALSE,
-        guardias_actual    INTEGER     NOT NULL DEFAULT 0,
-        guardias_hist      INTEGER     NOT NULL DEFAULT 0,
-        fecha_matriculacion DATE,
-        fecha_baja          DATE,
-        created_at         TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        updated_at         TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        id                   INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+        nombre               TEXT,
+        apellidos            TEXT,
+        tutor                TEXT,
+        direccion            TEXT,
+        codigo_postal        INTEGER,
+        municipio            TEXT,
+        provincia            TEXT,
+        telefono             TEXT,
+        email                CITEXT,
+        fecha_nacimiento     DATE,
+        DNI                  TEXT,
+        centro               TEXT,
+        profesor_centro      TEXT,
+        repertorio_id        INTEGER,
+        foto                 TEXT,
+        activo               BOOLEAN     NOT NULL DEFAULT TRUE,
+        registrado           BOOLEAN     NOT NULL DEFAULT FALSE,
+        guardias_actual      INTEGER     NOT NULL DEFAULT 0,
+        guardias_hist        INTEGER     NOT NULL DEFAULT 0,
+        fecha_matriculacion  DATE,
+        fecha_baja           DATE,
+        created_at           TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at           TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         CONSTRAINT uq_alumnos_dni UNIQUE (DNI)
           DEFERRABLE INITIALLY IMMEDIATE
       );
-
-      
 
       CREATE TABLE IF NOT EXISTS profesores (
         id                 INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -160,44 +128,43 @@ async function init() {
         created_at         TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         updated_at         TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );
-      
 
       CREATE TABLE IF NOT EXISTS instrumentos (
-        id        INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-        nombre    TEXT NOT NULL,
-        familia   TEXT NOT NULL CHECK (familia IN ('Cuerda','Percusión','Viento madera','Viento metal','Otra')),
+        id         INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+        nombre     TEXT NOT NULL,
+        familia    TEXT NOT NULL CHECK (familia IN ('Cuerda','Percusión','Viento madera','Viento metal','Otra')),
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         CONSTRAINT uq_instrumentos_nombre UNIQUE (nombre)
       );
 
       CREATE TABLE IF NOT EXISTS grupos (
-        id        INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-        nombre    TEXT NOT NULL,
+        id          INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+        nombre      TEXT NOT NULL,
         descripcion TEXT,
-        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );
     `, 'tables:base');
 
-    // --- Hotfix: asegurar columnas updated_at en tablas legacy antes de cualquier UPDATE ---
+    // Para esquemas legacy (si no venías de RESET)
     await run(`
-      ALTER TABLE IF EXISTS usuarios     ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
-      ALTER TABLE IF EXISTS alumnos      ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
-      ALTER TABLE IF EXISTS profesores   ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
-      ALTER TABLE IF EXISTS instrumentos ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
-      ALTER TABLE IF EXISTS grupos       ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
-      ALTER TABLE IF EXISTS eventos      ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
-      ALTER TABLE IF EXISTS asistencias  ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
-      ALTER TABLE IF EXISTS informes     ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
-      ALTER TABLE IF EXISTS proveedores  ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
-      ALTER TABLE IF EXISTS facturas_prov ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+      ALTER TABLE IF EXISTS usuarios       ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+      ALTER TABLE IF EXISTS alumnos        ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+      ALTER TABLE IF EXISTS profesores     ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+      ALTER TABLE IF EXISTS instrumentos   ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+      ALTER TABLE IF EXISTS grupos         ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+      ALTER TABLE IF EXISTS eventos        ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+      ALTER TABLE IF EXISTS asistencias    ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+      ALTER TABLE IF EXISTS informes       ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+      ALTER TABLE IF EXISTS proveedores    ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+      ALTER TABLE IF EXISTS facturas_prov  ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
     `, 'alter:add-updated_at-cols');
 
+    // Dedup grupos por nombre (case-insensitive) y unique index por expresión
     await run(`
-      -- Dedup grupos por nombre (case-insensitive): renombra duplicados
       WITH d AS (
-        SELECT LOWER(nombre) e, MIN(id) keep_id, COUNT(*) c
+        SELECT LOWER(nombre) e, MIN(id) keep_id
         FROM grupos
         GROUP BY LOWER(nombre)
         HAVING COUNT(*) > 1
@@ -216,15 +183,17 @@ async function init() {
       CREATE UNIQUE INDEX IF NOT EXISTS uq_grupos_nombre_ci ON grupos (LOWER(nombre));
     `, 'idx:grupos-unique-ci');
 
+    // ============================
+    // 4) RELACIONES (JOIN TABLES) + Índices
+    // ============================
     await run(`
-      -- Join tables (CASCADE)
       CREATE TABLE IF NOT EXISTS alumno_instrumento (
-        alumno_id      INTEGER NOT NULL REFERENCES alumnos(id)     ON DELETE CASCADE,
-        instrumento_id INTEGER NOT NULL REFERENCES instrumentos(id)ON DELETE CASCADE,
+        alumno_id      INTEGER NOT NULL REFERENCES alumnos(id)      ON DELETE CASCADE,
+        instrumento_id INTEGER NOT NULL REFERENCES instrumentos(id) ON DELETE CASCADE,
         PRIMARY KEY (alumno_id, instrumento_id)
       );
       CREATE TABLE IF NOT EXISTS profesor_instrumento (
-        profesor_id     INTEGER NOT NULL REFERENCES profesores(id) ON DELETE CASCADE,
+        profesor_id     INTEGER NOT NULL REFERENCES profesores(id)  ON DELETE CASCADE,
         instrumento_id  INTEGER NOT NULL REFERENCES instrumentos(id)ON DELETE CASCADE,
         PRIMARY KEY (profesor_id, instrumento_id)
       );
@@ -241,19 +210,18 @@ async function init() {
         PRIMARY KEY (profesor_id, grupo_id)
       );
 
-      -- Índices FKs
-      CREATE INDEX IF NOT EXISTS idx_alumno_instr_alumno ON alumno_instrumento(alumno_id);
-      CREATE INDEX IF NOT EXISTS idx_alumno_instr_instr  ON alumno_instrumento(instrumento_id);
-      CREATE INDEX IF NOT EXISTS idx_profesor_instr_prof ON profesor_instrumento(profesor_id);
-      CREATE INDEX IF NOT EXISTS idx_profesor_instr_instr ON profesor_instrumento(instrumento_id);
-      CREATE INDEX IF NOT EXISTS idx_alumno_grupo_alumno ON alumno_grupo(alumno_id);
-      CREATE INDEX IF NOT EXISTS idx_alumno_grupo_grupo  ON alumno_grupo(grupo_id);
-      CREATE INDEX IF NOT EXISTS idx_profesor_grupo_prof ON profesor_grupo(profesor_id);
-      CREATE INDEX IF NOT EXISTS idx_profesor_grupo_grupo ON profesor_grupo(grupo_id);
+      CREATE INDEX IF NOT EXISTS idx_alumno_instr_alumno   ON alumno_instrumento(alumno_id);
+      CREATE INDEX IF NOT EXISTS idx_alumno_instr_instr    ON alumno_instrumento(instrumento_id);
+      CREATE INDEX IF NOT EXISTS idx_profesor_instr_prof   ON profesor_instrumento(profesor_id);
+      CREATE INDEX IF NOT EXISTS idx_profesor_instr_instr  ON profesor_instrumento(instrumento_id);
+      CREATE INDEX IF NOT EXISTS idx_alumno_grupo_alumno   ON alumno_grupo(alumno_id);
+      CREATE INDEX IF NOT EXISTS idx_alumno_grupo_grupo    ON alumno_grupo(grupo_id);
+      CREATE INDEX IF NOT EXISTS idx_profesor_grupo_prof   ON profesor_grupo(profesor_id);
+      CREATE INDEX IF NOT EXISTS idx_profesor_grupo_grupo  ON profesor_grupo(grupo_id);
     `, 'tables:joins+idx');
 
     // ============================
-    // 4) EVENTOS / ASISTENCIAS / GUARDIAS
+    // 5) EVENTOS / ASISTENCIAS / GUARDIAS
     // ============================
     await run(`
       CREATE TABLE IF NOT EXISTS eventos (
@@ -276,20 +244,20 @@ async function init() {
       CREATE INDEX IF NOT EXISTS idx_eventos_activos_grupo ON eventos(grupo_id, fecha_inicio) WHERE activo IS TRUE;
 
       CREATE TABLE IF NOT EXISTS asistencias (
-        id          INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-        evento_id   INTEGER NOT NULL REFERENCES eventos(id) ON DELETE CASCADE,
-        alumno_id   INTEGER NOT NULL REFERENCES alumnos(id) ON DELETE CASCADE,
-        fecha       DATE,
-        hora        TIME,
-        ubicacion   TEXT,
+        id            INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+        evento_id     INTEGER NOT NULL REFERENCES eventos(id) ON DELETE CASCADE,
+        alumno_id     INTEGER NOT NULL REFERENCES alumnos(id) ON DELETE CASCADE,
+        fecha         DATE,
+        hora          TIME,
+        ubicacion     TEXT,
         observaciones TEXT,
-        tipo        TEXT NOT NULL DEFAULT 'qr',
-        created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        tipo          TEXT NOT NULL DEFAULT 'qr',
+        created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         CONSTRAINT asistencias_alumno_evento_uniq UNIQUE (alumno_id, evento_id)
       );
-      CREATE INDEX IF NOT EXISTS idx_asistencias_evento ON asistencias(evento_id);
-      CREATE INDEX IF NOT EXISTS idx_asistencias_alumno ON asistencias(alumno_id);
+      CREATE INDEX IF NOT EXISTS idx_asistencias_evento      ON asistencias(evento_id);
+      CREATE INDEX IF NOT EXISTS idx_asistencias_alumno      ON asistencias(alumno_id);
       CREATE INDEX IF NOT EXISTS idx_asistencias_evento_hora ON asistencias(evento_id, hora);
 
       CREATE TABLE IF NOT EXISTS guardias (
@@ -310,20 +278,20 @@ async function init() {
     `, 'tables:eventos+asistencias+guardias');
 
     // ============================
-    // 5) INFORMES
+    // 6) INFORMES
     // ============================
     await run(`
       CREATE TABLE IF NOT EXISTS informes (
-        id            INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-        informe       TEXT NOT NULL,
-        grupo_id      INTEGER REFERENCES grupos(id) ON DELETE SET NULL,
+        id             INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+        informe        TEXT NOT NULL,
+        grupo_id       INTEGER REFERENCES grupos(id)       ON DELETE SET NULL,
         instrumento_id INTEGER REFERENCES instrumentos(id) ON DELETE SET NULL,
-        profesor_id   INTEGER REFERENCES profesores(id) ON DELETE SET NULL,
-        fecha         DATE DEFAULT CURRENT_DATE,
-        public_slug   TEXT UNIQUE,
-        observaciones TEXT,
-        created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        profesor_id    INTEGER REFERENCES profesores(id)   ON DELETE SET NULL,
+        fecha          DATE DEFAULT CURRENT_DATE,
+        public_slug    TEXT UNIQUE,
+        observaciones  TEXT,
+        created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );
       CREATE INDEX IF NOT EXISTS idx_informes_grupo ON informes(grupo_id);
       CREATE INDEX IF NOT EXISTS idx_informes_instr ON informes(instrumento_id);
@@ -348,7 +316,7 @@ async function init() {
     `, 'tables:informes');
 
     // ============================
-    // 6) CUOTAS / PAGOS ALUMNOS
+    // 7) CUOTAS / PAGOS (ALUMNOS)
     // ============================
     await run(`
       CREATE TABLE IF NOT EXISTS tipos_cuota (
@@ -372,9 +340,9 @@ async function init() {
         fecha_vencimiento DATE,
         fecha_pago        DATE
       );
-      CREATE INDEX IF NOT EXISTS idx_cuotas_alumno_alumno ON cuotas_alumno(alumno_id);
-      CREATE INDEX IF NOT EXISTS idx_cuotas_alumno_cuota  ON cuotas_alumno(cuota_id);
-      CREATE INDEX IF NOT EXISTS idx_cuotas_alumno_pendientes ON cuotas_alumno(alumno_id, fecha_vencimiento) WHERE pagado IS FALSE;
+      CREATE INDEX IF NOT EXISTS idx_cuotas_alumno_alumno       ON cuotas_alumno(alumno_id);
+      CREATE INDEX IF NOT EXISTS idx_cuotas_alumno_cuota        ON cuotas_alumno(cuota_id);
+      CREATE INDEX IF NOT EXISTS idx_cuotas_alumno_pendientes   ON cuotas_alumno(alumno_id, fecha_vencimiento) WHERE pagado IS FALSE;
 
       CREATE TABLE IF NOT EXISTS pagos (
         id          INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -399,7 +367,7 @@ async function init() {
     `, 'tables:cuotas+pagos');
 
     // ============================
-    // 7) LAYOUT ESCENARIO
+    // 8) LAYOUT ESCENARIO
     // ============================
     await run(`
       CREATE TABLE IF NOT EXISTS layout_posiciones (
@@ -417,7 +385,7 @@ async function init() {
     `, 'tables:layout');
 
     // ============================
-    // 8) RESET DE CONTRASEÑAS
+    // 9) RESET DE CONTRASEÑAS
     // ============================
     await run(`
       CREATE TABLE IF NOT EXISTS password_resets (
@@ -434,7 +402,7 @@ async function init() {
     `, 'tables:password_resets');
 
     // ============================
-    // 9) CONTABILIDAD BÁSICA
+    // 10) CONTABILIDAD BÁSICA
     // ============================
     await run(`
       CREATE TABLE IF NOT EXISTS categorias_gasto (
@@ -512,7 +480,7 @@ async function init() {
 
       CREATE TABLE IF NOT EXISTS pagos_prov_aplicaciones (
         id               INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-        pago_id          INTEGER NOT NULL REFERENCES pagos_prov(id)   ON DELETE CASCADE,
+        pago_id          INTEGER NOT NULL REFERENCES pagos_prov(id)    ON DELETE CASCADE,
         factura_id       INTEGER NOT NULL REFERENCES facturas_prov(id) ON DELETE CASCADE,
         importe_aplicado NUMERIC(12,2) NOT NULL CHECK (importe_aplicado >= 0)
       );
@@ -531,44 +499,24 @@ async function init() {
       CREATE INDEX IF NOT EXISTS idx_adjuntos_factura ON factura_adjuntos(factura_id);
     `, 'tables:contabilidad');
 
-    // Triggers updated_at
+    // Triggers updated_at (sólo si no existen)
     await run(`
       DO $$
       BEGIN
-        IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'trg_usuarios_updated_at') THEN
-          CREATE TRIGGER trg_usuarios_updated_at BEFORE UPDATE ON usuarios FOR EACH ROW EXECUTE FUNCTION set_updated_at();
-        END IF;
-        IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'trg_alumnos_updated_at') THEN
-          CREATE TRIGGER trg_alumnos_updated_at BEFORE UPDATE ON alumnos FOR EACH ROW EXECUTE FUNCTION set_updated_at();
-        END IF;
-        IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'trg_profesores_updated_at') THEN
-          CREATE TRIGGER trg_profesores_updated_at BEFORE UPDATE ON profesores FOR EACH ROW EXECUTE FUNCTION set_updated_at();
-        END IF;
-        IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'trg_instrumentos_updated_at') THEN
-          CREATE TRIGGER trg_instrumentos_updated_at BEFORE UPDATE ON instrumentos FOR EACH ROW EXECUTE FUNCTION set_updated_at();
-        END IF;
-        IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'trg_grupos_updated_at') THEN
-          CREATE TRIGGER trg_grupos_updated_at BEFORE UPDATE ON grupos FOR EACH ROW EXECUTE FUNCTION set_updated_at();
-        END IF;
-        IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'trg_eventos_updated_at') THEN
-          CREATE TRIGGER trg_eventos_updated_at BEFORE UPDATE ON eventos FOR EACH ROW EXECUTE FUNCTION set_updated_at();
-        END IF;
-        IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'trg_asistencias_updated_at') THEN
-          CREATE TRIGGER trg_asistencias_updated_at BEFORE UPDATE ON asistencias FOR EACH ROW EXECUTE FUNCTION set_updated_at();
-        END IF;
-        IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'trg_informes_updated_at') THEN
-          CREATE TRIGGER trg_informes_updated_at BEFORE UPDATE ON informes FOR EACH ROW EXECUTE FUNCTION set_updated_at();
-        END IF;
-        IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'trg_proveedores_updated_at') THEN
-          CREATE TRIGGER trg_proveedores_updated_at BEFORE UPDATE ON proveedores FOR EACH ROW EXECUTE FUNCTION set_updated_at();
-        END IF;
-        IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'trg_facturas_prov_updated_at') THEN
-          CREATE TRIGGER trg_facturas_prov_updated_at BEFORE UPDATE ON facturas_prov FOR EACH ROW EXECUTE FUNCTION set_updated_at();
-        END IF;
+        IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'trg_usuarios_updated_at')      THEN CREATE TRIGGER trg_usuarios_updated_at      BEFORE UPDATE ON usuarios      FOR EACH ROW EXECUTE FUNCTION set_updated_at(); END IF;
+        IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'trg_alumnos_updated_at')       THEN CREATE TRIGGER trg_alumnos_updated_at       BEFORE UPDATE ON alumnos       FOR EACH ROW EXECUTE FUNCTION set_updated_at(); END IF;
+        IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'trg_profesores_updated_at')     THEN CREATE TRIGGER trg_profesores_updated_at     BEFORE UPDATE ON profesores    FOR EACH ROW EXECUTE FUNCTION set_updated_at(); END IF;
+        IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'trg_instrumentos_updated_at')   THEN CREATE TRIGGER trg_instrumentos_updated_at   BEFORE UPDATE ON instrumentos  FOR EACH ROW EXECUTE FUNCTION set_updated_at(); END IF;
+        IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'trg_grupos_updated_at')         THEN CREATE TRIGGER trg_grupos_updated_at         BEFORE UPDATE ON grupos        FOR EACH ROW EXECUTE FUNCTION set_updated_at(); END IF;
+        IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'trg_eventos_updated_at')        THEN CREATE TRIGGER trg_eventos_updated_at        BEFORE UPDATE ON eventos       FOR EACH ROW EXECUTE FUNCTION set_updated_at(); END IF;
+        IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'trg_asistencias_updated_at')    THEN CREATE TRIGGER trg_asistencias_updated_at    BEFORE UPDATE ON asistencias   FOR EACH ROW EXECUTE FUNCTION set_updated_at(); END IF;
+        IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'trg_informes_updated_at')       THEN CREATE TRIGGER trg_informes_updated_at       BEFORE UPDATE ON informes      FOR EACH ROW EXECUTE FUNCTION set_updated_at(); END IF;
+        IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'trg_proveedores_updated_at')    THEN CREATE TRIGGER trg_proveedores_updated_at    BEFORE UPDATE ON proveedores   FOR EACH ROW EXECUTE FUNCTION set_updated_at(); END IF;
+        IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'trg_facturas_prov_updated_at')  THEN CREATE TRIGGER trg_facturas_prov_updated_at  BEFORE UPDATE ON facturas_prov FOR EACH ROW EXECUTE FUNCTION set_updated_at(); END IF;
       END $$;
     `, 'triggers:updated_at');
 
-    // Trigger de control: pagos_prov_aplicaciones <= total factura
+    // Trigger de control: no sobre-aplicar pagos a una factura
     await run(`
       CREATE OR REPLACE FUNCTION trg_chk_aplicaciones_factura()
       RETURNS TRIGGER AS $fn$
@@ -581,11 +529,14 @@ async function init() {
         IF v_total IS NULL THEN
           RAISE EXCEPTION 'Factura % no encontrada', NEW.factura_id USING ERRCODE = '23503';
         END IF;
+
         SELECT COALESCE(SUM(importe_aplicado),0) INTO v_aplicado
           FROM pagos_prov_aplicaciones
          WHERE factura_id = NEW.factura_id
            AND (TG_OP <> 'UPDATE' OR id <> COALESCE(OLD.id, -1));
+
         v_aplicado := v_aplicado + NEW.importe_aplicado;
+
         IF v_aplicado - v_total > v_eps THEN
           RAISE EXCEPTION 'Aplicaciones (%.2f) superan total (%.2f) para factura %', v_aplicado, v_total, NEW.factura_id USING ERRCODE = '23514';
         END IF;
@@ -599,12 +550,12 @@ async function init() {
     `, 'triggers:contabilidad');
 
     // ============================
-    // 10) VISTAS E ÍNDICES ADICIONALES
+    // 11) VISTAS / ÍNDICES EXTRA
     // ============================
-    // --- Dedup de emails (alumnos y profesores) antes de crear índices únicos ---
+    // Dedup de emails (antes de índices únicos parciales)
     await run(`
       WITH d AS (
-        SELECT LOWER(email) e, MIN(id) keep_id, COUNT(*) c
+        SELECT LOWER(email) e, MIN(id) keep_id
         FROM alumnos
         WHERE email IS NOT NULL
         GROUP BY LOWER(email)
@@ -620,7 +571,7 @@ async function init() {
 
     await run(`
       WITH d AS (
-        SELECT LOWER(email) e, MIN(id) keep_id, COUNT(*) c
+        SELECT LOWER(email) e, MIN(id) keep_id
         FROM profesores
         WHERE email IS NOT NULL
         GROUP BY LOWER(email)
@@ -635,24 +586,22 @@ async function init() {
     `, 'dedupe:profesores-email');
 
     await run(`
-      CREATE UNIQUE INDEX IF NOT EXISTS uq_alumnos_email_ci ON alumnos (email) WHERE email IS NOT NULL;
-    `, 'idx:alumnos-email-unique');
+      CREATE UNIQUE INDEX IF NOT EXISTS uq_alumnos_email_ci    ON alumnos    (email) WHERE email IS NOT NULL;
+      CREATE UNIQUE INDEX IF NOT EXISTS uq_profesores_email_ci ON profesores (email) WHERE email IS NOT NULL;
 
-    await run(`
-      CREATE UNIQUE INDEX IF NOT EXISTS uq_profesores_email_ci ON profesores(email) WHERE email IS NOT NULL;
-    `, 'idx:profesores-email-unique');
-
-    await run(`
-      -- Índices layout_posiciones e informes
       CREATE INDEX IF NOT EXISTS idx_layout_pos_layout  ON layout_posiciones (layout_id);
       CREATE INDEX IF NOT EXISTS idx_layout_pos_lookup  ON layout_posiciones (layout_id, instrumento, atril, puesto);
+
       CREATE INDEX IF NOT EXISTS idx_informes_informe   ON informes (informe);
-      CREATE INDEX IF NOT EXISTS idx_inf_campos_informe_nombre ON informe_campos (informe_id, nombre);
+      CREATE INDEX IF NOT EXISTS idx_inf_campos_inf_nom ON informe_campos (informe_id, nombre);
       CREATE INDEX IF NOT EXISTS idx_inf_resultados_fk  ON informe_resultados (informe_id, campo_id, fila);
+
+      CREATE INDEX IF NOT EXISTS idx_facturas_prov_fecha_emision      ON facturas_prov (fecha_emision);
+      CREATE INDEX IF NOT EXISTS idx_facturas_prov_proveedor_estado   ON facturas_prov (proveedor_id, estado);
     `, 'idx:extras');
 
+    // Vista normalizada “Prueba de atril”
     await run(`
-      -- Vista normalizada para "Prueba de atril"
       CREATE OR REPLACE VIEW pruebas_atril_norm AS
       WITH parsed AS (
         SELECT
@@ -705,8 +654,8 @@ async function init() {
         AND (alumno_id IS NOT NULL OR puntuacion_raw IS NOT NULL OR asistencia_raw IS NOT NULL);
     `, 'view:pruebas_atril_norm');
 
+    // Vista de sumas/saldo de factura
     await run(`
-      -- Vista de sumas/saldo de factura
       CREATE OR REPLACE VIEW v_factura_sumas_pagos AS
       SELECT
         f.id AS factura_id,
@@ -717,24 +666,10 @@ async function init() {
       GROUP BY f.id;
     `, 'view:v_factura_sumas_pagos');
 
-    await run(`
-      -- Índices y constraints extra de contabilidad
-      CREATE INDEX IF NOT EXISTS idx_facturas_prov_fecha_emision      ON facturas_prov (fecha_emision);
-      CREATE INDEX IF NOT EXISTS idx_facturas_prov_proveedor_estado   ON facturas_prov (proveedor_id, estado);
-      DO $$
-      BEGIN
-        IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'chk_fact_total_nonneg') THEN
-          ALTER TABLE facturas_prov ADD CONSTRAINT chk_fact_total_nonneg CHECK (total >= 0);
-        END IF;
-        IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'uniq_factura_prov_num') THEN
-          ALTER TABLE facturas_prov ADD CONSTRAINT uniq_factura_prov_num UNIQUE(proveedor_id, numero);
-        END IF;
-      END $$;
-    `, 'idx+constraints:contabilidad');
-
     // ============================
-    // 11) SEEDS (idempotentes)
+    // 12) SEEDS (idempotentes)
     // ============================
+    // Cuentas base
     await run(`
       DO $$
       BEGIN
@@ -759,9 +694,9 @@ async function init() {
 
     // Cuotas base
     const cuotasBase = [
-      { nombre: 'Mensualidad', precio: 50, tipo: 'Mensual' },
+      { nombre: 'Mensualidad',  precio: 50,  tipo: 'Mensual' },
       { nombre: 'Extraordinaria', precio: 100, tipo: 'Puntual' },
-      { nombre: 'Matrícula', precio: 100, tipo: 'Puntual' }
+      { nombre: 'Matrícula',    precio: 100, tipo: 'Puntual' }
     ];
     const resCuotas = await run('SELECT COUNT(*) FROM cuotas', 'seed:cuotas-count');
     if (parseInt(resCuotas.rows[0].count, 10) === 0) {
@@ -776,21 +711,21 @@ async function init() {
 
     // Instrumentos base
     const instrumentos = [
-      { nombre: 'Violín', familia: 'Cuerda' },
-      { nombre: 'Viola', familia: 'Cuerda' },
+      { nombre: 'Violín',      familia: 'Cuerda' },
+      { nombre: 'Viola',       familia: 'Cuerda' },
       { nombre: 'Violonchelo', familia: 'Cuerda' },
-      { nombre: 'Contrabajo', familia: 'Cuerda' },
-      { nombre: 'Flauta', familia: 'Viento madera' },
-      { nombre: 'Oboe', familia: 'Viento madera' },
-      { nombre: 'Clarinete', familia: 'Viento madera' },
-      { nombre: 'Fagot', familia: 'Viento madera' },
-      { nombre: 'Trompeta', familia: 'Viento metal' },
-      { nombre: 'Trompa', familia: 'Viento metal' },
-      { nombre: 'Trombón', familia: 'Viento metal' },
-      { nombre: 'Tuba', familia: 'Viento metal' },
-      { nombre: 'Percusión', familia: 'Percusión' },
-      { nombre: 'Batería', familia: 'Percusión' },
-      { nombre: 'Otro', familia: 'Otra' }
+      { nombre: 'Contrabajo',  familia: 'Cuerda' },
+      { nombre: 'Flauta',      familia: 'Viento madera' },
+      { nombre: 'Oboe',        familia: 'Viento madera' },
+      { nombre: 'Clarinete',   familia: 'Viento madera' },
+      { nombre: 'Fagot',       familia: 'Viento madera' },
+      { nombre: 'Trompeta',    familia: 'Viento metal' },
+      { nombre: 'Trompa',      familia: 'Viento metal' },
+      { nombre: 'Trombón',     familia: 'Viento metal' },
+      { nombre: 'Tuba',        familia: 'Viento metal' },
+      { nombre: 'Percusión',   familia: 'Percusión' },
+      { nombre: 'Batería',     familia: 'Percusión' },
+      { nombre: 'Otro',        familia: 'Otra' }
     ];
     const resInstru = await run('SELECT COUNT(*) FROM instrumentos', 'seed:instrumentos-count');
     if (parseInt(resInstru.rows[0].count, 10) === 0) {
@@ -800,42 +735,45 @@ async function init() {
       console.log('Instrumentos base insertados.');
     }
 
-    // 🏛️ GRUPOS BASE (idempotente)
+    // Grupos base (idempotente)
     const gruposBase = ['OEG','JOSG','Violín I','Violín II','Música de Cámara'];
     for (const g of gruposBase) {
       await run(
-        `INSERT INTO grupos (nombre) SELECT '${g.replace(/'/g, "''")}' WHERE NOT EXISTS (SELECT 1 FROM grupos WHERE LOWER(nombre) = LOWER('${g.replace(/'/g, "''")}'))`
+        `INSERT INTO grupos (nombre)
+         SELECT '${g.replace(/'/g, "''")}'
+         WHERE NOT EXISTS (SELECT 1 FROM grupos WHERE LOWER(nombre) = LOWER('${g.replace(/'/g, "''")}'))`
       );
     }
     console.log('Grupos base verificados/creados.');
 
-    // Admin de arranque (si no existe ninguno)
-    const rAdmin = await run("SELECT COUNT(*)::int AS n FROM usuarios WHERE rol='admin'", 'seed:admin-count');
+    // Admin por defecto si no existe ninguno
+    const rAdmin = await run(`SELECT COUNT(*)::int AS n FROM usuarios WHERE rol='admin'`, 'seed:admin-count');
     if (rAdmin.rows[0].n === 0) {
       const defaultAdmin = {
-        nombre: 'Admin',
-        apellidos: 'Default',
-        email: process.env.ADMIN_EMAIL || 'admin@josg.org',
+        nombre:   'Admin',
+        apellidos:'Default',
+        email:    process.env.ADMIN_EMAIL    || 'admin@josg.org',
         password: process.env.ADMIN_PASSWORD || 'A.12qwerty',
       };
       const hash = await bcrypt.hash(defaultAdmin.password, saltRounds);
-      await run(
-        `INSERT INTO usuarios (nombre, apellidos, email, password_hash, rol) VALUES ('${defaultAdmin.nombre}','${defaultAdmin.apellidos}','${defaultAdmin.email}','${hash}','admin')`
-      );
+      await run(`
+        INSERT INTO usuarios (nombre, apellidos, email, password_hash, rol)
+        VALUES ('${defaultAdmin.nombre}','${defaultAdmin.apellidos}','${defaultAdmin.email}','${hash}','admin')
+      `);
       console.log('Usuario admin por defecto creado.');
       if (!process.env.ADMIN_PASSWORD) {
         console.log('⚠️ Usa ADMIN_PASSWORD en .env para cambiar la contraseña en producción.');
       }
     }
 
-    // Layout de ejemplo (idempotente)
+    // Layout ejemplo (typo arreglado)
     await run(`
       DO $$
       BEGIN
         IF NOT EXISTS (SELECT 1 FROM layout_posiciones WHERE layout_id = 'escenario_cuerdas_v1') THEN
           INSERT INTO layout_posiciones (layout_id, instrumento, atril, puesto, x, y, angulo) VALUES
             ('escenario_cuerdas_v1','Violín',      1,1,0.10,0.35, 5),
-            ('escenario_cuerzas_v1','Violín',      1,2,0.15,0.35, 5),
+            ('escenario_cuerdas_v1','Violín',      1,2,0.15,0.35, 5),
             ('escenario_cuerdas_v1','Violín',      2,1,0.20,0.35, 5),
             ('escenario_cuerdas_v1','Viola',       1,1,0.35,0.38, 8),
             ('escenario_cuerdas_v1','Violonchelo', 1,1,0.60,0.40,10),
@@ -844,20 +782,35 @@ async function init() {
       END $$;
     `, 'seed:layout');
 
-    // ---- Índices extra contabilidad ----
-    await run(`
-      CREATE INDEX IF NOT EXISTS idx_facturas_prov_fecha_emision      ON facturas_prov (fecha_emision);
-      CREATE INDEX IF NOT EXISTS idx_facturas_prov_proveedor_estado   ON facturas_prov (proveedor_id, estado);
-    `, 'idx:conta-extra');
-
     await run('COMMIT', 'tx-commit');
     console.log('✅ init (producción) completado.');
 
   } catch (err) {
-    try { await run('ROLLBACK', 'tx-rollback'); } catch (_) {}
+    try { await run('ROLLBACK', 'tx-rollback'); } catch {}
     console.error('❌ Error al inicializar la base de datos (producción):', err);
     throw err;
   }
 }
 
 module.exports = init;
+
+// --------------------------------------------
+// CLI directo:
+//  - node database/init.js                 → init sin borrar (migración)
+//  - node database/init.js --reset --yes  → DROP + init
+// --------------------------------------------
+if (require.main === module) {
+  const args = new Set(process.argv.slice(2));
+  const wantReset = args.has('--reset') || args.has('-r');
+  const confirmed = args.has('--yes') || args.has('-y');
+
+  if (wantReset && !confirmed) {
+    console.error('❌ Falta confirmación. Si quieres BORRAR TODO ejecuta:');
+    console.error('   node database/init.js --reset --yes');
+    process.exit(1);
+  }
+
+  init({ reset: wantReset })
+    .then(() => process.exit(0))
+    .catch(() => process.exit(1));
+}

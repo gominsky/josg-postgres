@@ -1,31 +1,10 @@
 <% title = 'Ayuda · Músicos' %>
 <% hero  = false %>
+<link rel="stylesheet" href="/styles/estilos_help.css">
 
-<div class="contenedor-ayuda">
-  <style>
-    :root{
-      --ink:#111827; --muted:#6b7280; --accent-100:#fff6e9; --accent-200:#ffe0b3;
-      --accent-300:#ffd188; --accent-400:#ffb554; --accent-500:#ff9500; --accent-700:#8a4b00;
-      --card:#ffffff; --border:#e5e7eb; --shadow:0 1px 2px rgba(0,0,0,.05);
-    }
-    .panel{background:var(--card); border:1px solid var(--border); border-radius:16px; box-shadow:var(--shadow); padding:16px;}
-    .h1{margin:0 0 .5rem; font-size:clamp(1.35rem,1.1rem + 1.2vw,2rem); font-weight:800; color:var(--ink);}
-    .toc{display:flex; flex-wrap:wrap; gap:.5rem; margin:.5rem 0 1rem;}
-    .toc a{display:inline-block; padding:.32rem .6rem; border:1px solid var(--accent-300); background:var(--accent-100); color:var(--accent-700); border-radius:999px; text-decoration:none; font-weight:700; font-size:.86rem;}
-    .section{margin:12px 0; padding:12px 0; border-top:1px dashed var(--border);}
-    h2{margin:.25rem 0 .5rem; font-size:1.15rem;}
-    p{margin:.25rem 0; color:#1f2937;}
-    .hint{background:#f3f4f6; border:1px dashed #d1d5db; border-radius:10px; padding:.5rem .7rem; color:#374151; font-size:.95rem;}
-    .grid-2{display:grid; gap:12px; grid-template-columns:1fr;}
-    @media(min-width:900px){ .grid-2{grid-template-columns:1fr 1fr;} }
-    .card{border:1px solid var(--border); border-radius:12px; padding:12px; background:#fff;}
-    .list{margin:.35rem 0 .2rem 1.1rem;}
-    .list li{margin:.18rem 0;}
-    .kbd{font-family:ui-monospace,Menlo,monospace;background:#1118270f;border:1px solid #0001;border-radius:6px;padding:0 .35rem;}
-    .pill{display:inline-block;border:1px solid var(--border);border-radius:999px;padding:.14rem .5rem;background:#f9fafb;font-size:.85rem;}
-    .cta{display:flex; gap:10px; flex-wrap:wrap; margin:.4rem 0;}
-    .cta a{border:1px solid var(--border);border-radius:10px;padding:.5rem .8rem;text-decoration:none;color:var(--ink);background:#fff;}
-  </style>
+
+<div class="help-wrap">
+  
 
   <div class="panel">
     <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
@@ -67,7 +46,7 @@
         <li>Botón <strong>+ Añadir músico</strong> en la cabecera; cada tarjeta enlaza a la ficha.</li>
         <li>El backend soporta los filtros y devuelve instrumentos agregados por alumno.</li>
       </ul>
-      <p class="hint">La búsqueda del listado filtra en vivo sobre las tarjetas visibles.</p>
+      <p class="notice info">La búsqueda del listado filtra en vivo sobre las tarjetas visibles.</p>
     </section>
 
     <!-- Nuevo / Editar -->
@@ -123,7 +102,7 @@
           </ul>
         </div>
       </div>
-      <p class="hint">Las tablas soportan carga paginada por AJAX con botones “Ver más”.</p>
+      <p class="notice info">Las tablas soportan carga paginada por AJAX con botones “Ver más”.</p>
     </section>
 
     <!-- Foto y ficheros -->

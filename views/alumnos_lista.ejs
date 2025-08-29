@@ -1,34 +1,44 @@
 <% title = 'Listado de músicos' %>
 <% hero = false %>
 <div class="header-compact">
-  <h1 class="h1-titulo">Listado de músicos</h1>
+  <h1 class="h1-titulo">Músicos asociados</h1>
   <a href="/alumnos/nuevo" class="btn-main-blanco">+ Añadir músico</a>
 </div>
-<form method="GET" id="filtro-form" class="formulario-centrado">
+<form method="GET" id="filtro-form" class="formulario-centrado filtro-card--shape">
   <div class="campo-filtro">
     <label for="estado">Estado</label>
-    <select id="estado" name="estado" class="form-centrado-select" onchange="document.getElementById('filtro-form').submit()">
-      <option value="todos" <%= estadoSeleccionado === 'todos' ? 'selected' : '' %>>Todos</option>
-      <option value="1" <%= estadoSeleccionado === '1' ? 'selected' : '' %>>Activos</option>
-      <option value="0" <%= estadoSeleccionado === '0' ? 'selected' : '' %>>Pasivos</option>
+    <select id="estado" name="estado" class="form-centrado-select"
+            onchange="document.getElementById('filtro-form').submit()">
+      <% const _estado = (typeof estadoSeleccionado !== 'undefined' ? String(estadoSeleccionado) : 'todos'); %>
+      <option value="todos" <%= _estado === 'todos' ? 'selected' : '' %>>Todos</option>
+      <option value="1"     <%= _estado === '1'     ? 'selected' : '' %>>Activos</option>
+      <option value="0"     <%= _estado === '0'     ? 'selected' : '' %>>Pasivos</option>
     </select>
   </div>
 
   <div class="campo-filtro">
     <label for="grupo_id">Grupo</label>
-    <select id="grupo_id" name="grupo_id" class="form-centrado-select1" onchange="document.getElementById('filtro-form').submit()">
-      <option value="todos">Todos</option>
-      <% grupos.forEach(g => { %>
-        <option value="<%= g.id %>" <%= grupoId == g.id ? 'selected' : '' %>><%= g.nombre %></option>
+    <select id="grupo_id" name="grupo_id" class="form-centrado-select1"
+            onchange="document.getElementById('filtro-form').submit()">
+      <% const _grupo = (typeof grupoId !== 'undefined' ? String(grupoId) : 'todos'); %>
+      <option value="todos" <%= _grupo === 'todos' ? 'selected' : '' %>>Todos</option>
+      <% (grupos || []).forEach(g => { %>
+        <option value="<%= g.id %>" <%= _grupo === String(g.id) ? 'selected' : '' %>><%= g.nombre %></option>
       <% }) %>
     </select>
   </div>
 
   <div class="campo-filtro">
-    <label for="busqueda">Buscar</label>
-    <input id="busqueda-alumnos" type="text" class="form-centrado-select" placeholder="Nombre, apellidos, instrumentos...">
+    <label for="busqueda-alumnos">Buscar</label>
+    <input id="busqueda-alumnos"
+           name="busqueda"
+           type="text"
+           class="form-centrado-select"
+           placeholder="Nombre, apellidos, instrumentos..."
+           value="<%= typeof busqueda !== 'undefined' ? busqueda : '' %>">
   </div>
 </form>
+
 
 <% if (alumnos.length > 0) { %>
   <div class="dashboard-grid" id="grid-alumnos">

@@ -109,7 +109,7 @@ const parseBoolQS = (v) => {
 /* ==================== Generación de PDF ==================== */
 
 async function streamInformePDF(res, informeId, opts = {}) {
-  // --- Datos base (con nombres de grupo/instrumento del informe) ---
+  // --- Datos base ---
   const { rows: [inf] } = await pool.query(`
     SELECT i.id, i.informe, i.fecha, i.observaciones,
            i.grupo_id, g.nombre  AS grupo_nombre,
@@ -134,6 +134,34 @@ async function streamInformePDF(res, informeId, opts = {}) {
     WHERE informe_id = $1
     ORDER BY COALESCE(fila, 2147483647), alumno_id, campo_id
   `, [informeId]);
+
+  // --- Filtro especial para informes de "porcentaje de horas" ---
+// --- Filtro especial para informes de "porcentaje de horas..." ---
+// Quitamos cualquier columna de campos cuyo nombre haga referencia a "Alumno"
+// (igual que en la vista, pero sin depender de la posición).
+const norm = (s) =>
+  (s || '')
+    .normalize('NFD').replace(/\p{Diacritic}/gu, '')
+    .toLowerCase().trim();
+
+const tituloNorm = norm(inf.informe);
+const isHoras = tituloNorm.includes('porcentaje de horas');
+
+function esColumnaAlumnoRedundante(campo) {
+  const n = norm(campo.nombre);
+  // Coincidencias amplias: "alumno", "alumnos", "id alumno", "alumno id", etc.
+  if (!n) return false;
+  if (n === 'alumno' || n === 'alumnos') return true;
+  if (n.includes('alumno')) return true;
+  if (/(^|[\s_\-])(id|dni)[\s_\-]*alumno($|[\s_\-])/.test(n)) return true;
+  if (/(^|[\s_\-])alumno[\s_\-]*(id|dni)($|[\s_\-])/.test(n)) return true;
+  return false;
+}
+
+// Por defecto, no tocamos campos. Si es informe de horas, filtramos.
+let camposV = isHoras ? campos.filter(c => !esColumnaAlumnoRedundante(c)) : campos.slice();
+
+
 
   // --- Fechas seguras ---
   const fmtDate  = new Intl.DateTimeFormat('es-ES', { dateStyle: 'medium' });
@@ -163,7 +191,7 @@ async function streamInformePDF(res, informeId, opts = {}) {
   res.setHeader('Content-Type', 'application/pdf');
   res.setHeader('Content-Disposition', `inline; filename="informe-${informeId}.pdf"`);
 
-  // --- Pivot filas (agrupa por alumno/fila) ---
+  // --- Pivot filas ---
   const alumnosIds = [...new Set(resultados.map(r => r.alumno_id).filter(v => v !== null))];
   const nombreAlumno = await getAlumnosNombres(alumnosIds);
   const gruposAlumno = await getGruposPorAlumno(alumnosIds);
@@ -176,14 +204,13 @@ async function streamInformePDF(res, informeId, opts = {}) {
     porFila.get(key).c.set(r.campo_id, r.valor);
   }
   const filas = [...porFila.values()].sort((a,b)=> a.fila - b.fila || (a.alumnoId ?? 0) - (b.alumnoId ?? 0));
-  const hayAlumnos = alumnosIds.length > 0;
 
-  // --- Flags visibilidad: SOLO lo que venga del QS/opts (para reflejar la vista) ---
+  // --- Flags visibilidad (reflejan la vista) ---
   const showGroup      = (typeof opts.showGroup === 'boolean') ? opts.showGroup : false;
   const showInstrument = (typeof opts.showInstrument === 'boolean') ? opts.showInstrument : false;
 
   // --- Crear PDF ---
-  const orientation = campos.length > 6 ? 'landscape' : 'portrait';
+  const orientation = camposV.length > 6 ? 'landscape' : 'portrait';
   const pdf = new PDFDocument({ size: 'A4', layout: orientation, margin: 40 });
   pdf.pipe(res);
 
@@ -192,10 +219,10 @@ async function streamInformePDF(res, informeId, opts = {}) {
   const LEFT   = MARGIN;
   const RIGHT  = pdf.page.width - MARGIN;
   const FOOTER_H = 70;
-  const CONTENT_BOTTOM_MARGIN = 20; // espacio visual antes del pie
+  const CONTENT_BOTTOM_MARGIN = 20;
   const contentBottom = () => pdf.page.height - (FOOTER_H + CONTENT_BOTTOM_MARGIN);
 
-  // Header (devuelve Y de inicio de contenido). Footer no empuja el cursor.
+  // Header (devuelve Y de inicio de contenido)
   function drawHeader(firstPage = false) {
     const top = 20;
 
@@ -205,7 +232,7 @@ async function streamInformePDF(res, informeId, opts = {}) {
       if (fs.existsSync(pLogo)) pdf.image(pLogo, LEFT, top, { height: 40 });
     } catch {}
 
-    // Web / correo (coordenadas absolutas)
+    // Web / correo
     pdf.font('Helvetica-Bold').fontSize(10)
        .text('www.josg.org', RIGHT - 160, top, { width: 160, align: 'right' });
     pdf.font('Helvetica').fontSize(9)
@@ -247,7 +274,7 @@ async function streamInformePDF(res, informeId, opts = {}) {
       contentTopY = top + 56;
     }
 
-    // Pie — pintamos con altura acotada y sin saltos
+    // Pie (fijo, sin empujar cursor)
     const bottomY = pdf.page.height - FOOTER_H + 10;
 
     pdf.save().moveTo(LEFT, bottomY).lineTo(RIGHT, bottomY)
@@ -258,10 +285,7 @@ async function streamInformePDF(res, informeId, opts = {}) {
 
     pdf.font('Helvetica').fontSize(9)
        .text(fechaGranada, LEFT, bottomY - 16, {
-         width: RIGHT - LEFT,
-         height: 14,
-         ellipsis: true,
-         lineBreak: false
+         width: RIGHT - LEFT, height: 14, ellipsis: true, lineBreak: false
        });
 
     const footerText = [
@@ -273,13 +297,9 @@ async function streamInformePDF(res, informeId, opts = {}) {
 
     pdf.font('Helvetica').fontSize(8)
        .text(footerText, LEFT, bottomY + 6, {
-         width: RIGHT - LEFT,
-         height: FOOTER_H - 26,
-         ellipsis: true,
-         lineBreak: false
+         width: RIGHT - LEFT, height: FOOTER_H - 26, ellipsis: true, lineBreak: false
        });
 
-    // Cursor de contenido
     pdf.y = contentTopY;
     return contentTopY;
   }
@@ -288,28 +308,31 @@ async function streamInformePDF(res, informeId, opts = {}) {
   let y = drawHeader(true);
 
   // --- Geometría de la tabla (Alumno | [Grupo] | [Instrumento] | campos…) ---
-  const colPrimLabel = hayAlumnos ? 'Alumno' : 'Fila';
-  const colPrimW     = hayAlumnos ? 150 : 60;
+  const hayAlumnos   = alumnosIds.length > 0;
   const includeGrupo = hayAlumnos && showGroup;
   const includeInst  = hayAlumnos && showInstrument;
-  const colGrupoW    = includeGrupo ? 90 : 0;
-  const colInstW     = includeInst  ? 90 : 0;
 
-  const nColsDatos   = campos.length;
-  const anchoTabla   = (RIGHT - LEFT);
-  const anchoRest    = anchoTabla - colPrimW - colGrupoW - colInstW;
-  const colW         = Math.max(70, Math.floor(anchoRest / Math.max(1, nColsDatos)));
-  const rowH         = 18;
+  const colPrimW   = hayAlumnos ? 150 : 0; // si NO hay alumnos, no hay primera columna
+  const colGrupoW  = includeGrupo ? 90 : 0;
+  const colInstW   = includeInst  ? 90 : 0;
+
+  const nColsDatos = camposV.length;
+  const anchoTabla = (RIGHT - LEFT);
+  const anchoRest  = anchoTabla - colPrimW - colGrupoW - colInstW;
+  const colW       = Math.max(70, Math.floor(anchoRest / Math.max(1, nColsDatos)));
+  const rowH       = 18;
 
   const drawTableHeader = () => {
     let x = LEFT;
-    const totalW = colPrimW + colGrupoW + colInstW + colW * nColsDatos;
+    const totalW = (hayAlumnos ? colPrimW : 0) + colGrupoW + colInstW + colW * nColsDatos;
+
     pdf.rect(LEFT, y, totalW, rowH).stroke();
+    pdf.font('Helvetica-Bold').fontSize(10);
 
-    pdf.font('Helvetica-Bold').fontSize(10)
-       .text(colPrimLabel, x + 4, y + 4, { width: colPrimW - 8, height: rowH - 8, ellipsis: true, lineBreak: false });
-    x += colPrimW;
-
+    if (hayAlumnos) {
+      pdf.text('Músico', x + 4, y + 4, { width: colPrimW - 8, height: rowH - 8, ellipsis: true, lineBreak: false });
+      x += colPrimW;
+    }
     if (includeGrupo) {
       pdf.text('Grupo', x + 4, y + 4, { width: colGrupoW - 8, height: rowH - 8, ellipsis: true, lineBreak: false });
       x += colGrupoW;
@@ -319,63 +342,53 @@ async function streamInformePDF(res, informeId, opts = {}) {
       x += colInstW;
     }
 
-    for (const c of campos) {
+    for (const c of camposV) {
       pdf.text(c.nombre, x + 4, y + 4, { width: colW - 8, height: rowH - 8, ellipsis: true, lineBreak: false });
       x += colW;
     }
+
     y += rowH + 2;
     pdf.font('Helvetica').fontSize(10);
   };
 
   const needNewPage = () => (y + rowH) > contentBottom();
-
-  const newPageWithHeader = () => {
-    pdf.addPage();
-    y = drawHeader(false);
-    drawTableHeader();
-  };
+  const newPageWithHeader = () => { pdf.addPage(); y = drawHeader(false); drawTableHeader(); };
 
   drawTableHeader();
 
   // --- Filas ---
-  if (filas.length === 0) {
+  if (filas.length === 0 || nColsDatos === 0) {
     pdf.font('Helvetica-Oblique').text('No hay datos para mostrar.', LEFT, y);
   } else {
     for (const f of filas) {
       if (needNewPage()) newPageWithHeader();
 
-      const totalW = colPrimW + colGrupoW + colInstW + colW * nColsDatos;
+      const totalW = (hayAlumnos ? colPrimW : 0) + colGrupoW + colInstW + colW * nColsDatos;
       pdf.rect(LEFT, y - 2, totalW, rowH).stroke();
 
-      // primera columna (Alumno / Fila)
       let x = LEFT;
-      const etiqueta = hayAlumnos
-        ? (nombreAlumno.get(String(f.alumnoId)) || `Alumno ${f.alumnoId ?? '-'}`)
-        : (f.fila ?? '-');
 
-      pdf.text(String(etiqueta), x + 4, y + 2, {
-        width: colPrimW - 8, height: rowH - 4, ellipsis: true, lineBreak: false
-      });
-      x += colPrimW;
+      // Primera col: solo si hay alumnos
+      if (hayAlumnos) {
+        const etiqueta = nombreAlumno.get(String(f.alumnoId)) || `Músico ${f.alumnoId ?? '-'}`;
+        pdf.text(String(etiqueta), x + 4, y + 2, { width: colPrimW - 8, height: rowH - 4, ellipsis: true, lineBreak: false });
+        x += colPrimW;
+      }
 
-      // Grupo / Instrumento por alumno (si procede)
       if (includeGrupo) {
         const gStr = (f.alumnoId != null) ? (gruposAlumno.get(String(f.alumnoId)) || '—') : '—';
-        pdf.text(gStr, x + 4, y + 2, {
-          width: colGrupoW - 8, height: rowH - 4, ellipsis: true, lineBreak: false
-        });
+        pdf.text(gStr, x + 4, y + 2, { width: colGrupoW - 8, height: rowH - 4, ellipsis: true, lineBreak: false });
         x += colGrupoW;
       }
+
       if (includeInst) {
         const iStr = (f.alumnoId != null) ? (instrAlumno.get(String(f.alumnoId)) || '—') : '—';
-        pdf.text(iStr, x + 4, y + 2, {
-          width: colInstW - 8, height: rowH - 4, ellipsis: true, lineBreak: false
-        });
+        pdf.text(iStr, x + 4, y + 2, { width: colInstW - 8, height: rowH - 4, ellipsis: true, lineBreak: false });
         x += colInstW;
       }
 
       // Campos del informe
-      for (const c of campos) {
+      for (const c of camposV) {
         let v = f.c.get(c.id) ?? '';
         const t = (c.tipo || '').toLowerCase();
         if (t.includes('bool') || t === 'booleano') {
@@ -385,9 +398,7 @@ async function streamInformePDF(res, informeId, opts = {}) {
         } else if (t.includes('numero') || t.includes('num')) {
           const n = Number(v); v = Number.isFinite(n) ? n.toString().replace('.', ',') : (v ?? '');
         }
-        pdf.text(String(v), x + 4, y + 2, {
-          width: colW - 8, height: rowH - 4, ellipsis: true, lineBreak: false
-        });
+        pdf.text(String(v), x + 4, y + 2, { width: colW - 8, height: rowH - 4, ellipsis: true, lineBreak: false });
         x += colW;
       }
 

@@ -1,3 +1,5 @@
+//node database/init.js --reset --yes ***resetea BD Completa
+
 const express = require('express');
 const session = require('express-session');
 const { isAuthenticated, isAdmin, isDocente } = require('./middleware/auth');
@@ -73,7 +75,7 @@ const pdfRoutes = require('./routes/pdf');   // ruta relativa al proyecto
 app.use(pdfRoutes);
 
 app.use('/configuracion', isAdmin, configuracionRoutes);
-app.use('/usuarios', usuariosRoutes);        // Solo admin
+app.use('/usuarios', isAuthenticated,usuariosRoutes);        
 app.use('/profesores', isAuthenticated, profesoresRoutes); // Admin, docentes y usuarios
 app.use('/alumnos', isAuthenticated, alumnosRoutes);        
 app.use('/grupos', isAdmin, gruposRoutes);  
@@ -92,7 +94,6 @@ app.use('/proveedores', isAdmin, proveedoresRoutes);
 app.use('/categorias', isAdmin, categoriasRoutes);
 app.use('/cuentas', isAdmin, cuentasRoutes);
 app.use('/recuperar',recuperarRoutes);
-app.use(express.static('public'));
 
 // Ruta de inicio
 app.get('/', (req, res) => {
@@ -105,11 +106,6 @@ app.get('/obras', (req, res) => {
   res.set('Retry-After', '3600');  // sugerencia para clientes / SEO (1 hora)
   res.render('obras', { title: 'Zona de obras' });
 });
-
-app.locals.formatDate = (isoDate) => {
-  if (!isoDate) return '';
-  return new Date(isoDate).toLocaleDateString('es-ES');
-};
 
 app.use((req, res, next) => {
   res.locals.mensaje = req.session.mensaje || null;

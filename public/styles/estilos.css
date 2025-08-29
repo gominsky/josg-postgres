@@ -874,6 +874,56 @@ th.col-inst,   td.col-inst   { width: 150px; min-width: 150px; }
   font-size: 0.85rem;
   margin: 0.2rem;
 }
+/* Formulario como tarjeta (misma “forma” que las fichas), sin cambiar colores */
+.filtro-card--shape{
+  display: grid;
+  grid-template-columns: repeat(3, minmax(220px, 1fr));
+  gap: 12px;
+  align-items: end;
+
+  border: 2px solid var(--sb-black);   /* borde negro como las cards */
+  border-radius: 16px;                  /* esquinas redondeadas como las cards */
+  padding: 12px 16px;
+  background: transparent;              /* ← mantiene tu color de fondo actual */
+  margin: 12px 0 18px;
+}
+
+/* Responsive: apila en pantallas estrechas */
+@media (max-width: 900px){
+  .filtro-card--shape{ grid-template-columns: 1fr; }
+}
+/* Formulario superior en alumnos_lista: fondo naranja + centrado */
+.filtro-card--shape{
+  /* forma (igual que las fichas) */
+  border: 2px solid var(--sb-black);
+  border-radius: 16px;
+  padding: 12px 16px;
+
+  /* grid de 3 columnas en desktop */
+  display: grid;
+  grid-template-columns: repeat(3, minmax(220px, 1fr));
+  gap: 12px;
+  align-items: end;
+
+  /* color de fondo solicitado */
+  background: var(--sb-orange); /* #FF9501 */
+
+  /* centrado horizontal + ancho controlado */
+  width: var(--filtro-w, 60%);     /* ajusta 60% si lo quieres más estrecho/ ancho */
+  max-width: 920px;                /* techo para pantallas grandes */
+  margin: 12px auto 18px;          /* ← centra horizontalmente */
+  color: var(--sb-black);
+}
+
+/* responsive: apilar en pantallas estrechas y usar todo el ancho */
+@media (max-width: 900px){
+  .filtro-card--shape{
+    grid-template-columns: 1fr;
+    width: 100%;
+    max-width: none;
+  }
+}
+
 /*Calendario ********************************************************************/
 /* Contenedor del calendario */
 #calendar {

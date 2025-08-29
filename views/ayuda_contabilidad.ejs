@@ -1,32 +1,10 @@
 <% title = 'Ayuda · Contabilidad (Gastos)' %>
 <% hero  = false %>
+<link rel="stylesheet" href="/styles/estilos_help.css">
 
-<div class="contenedor-ayuda">
-  <style>
-    :root{
-      --ink:#111827; --muted:#6b7280; --accent-100:#fff6e9; --accent-200:#ffe0b3;
-      --accent-300:#ffd188; --accent-400:#ffb554; --accent-500:#ff9500; --accent-700:#8a4b00;
-      --card:#ffffff; --border:#e5e7eb; --shadow:0 1px 2px rgba(0,0,0,.05);
-    }
-    .panel{background:var(--card); border:1px solid var(--border); border-radius:16px; box-shadow:var(--shadow); padding:16px; }
-    .h1{margin:0 0 .5rem; font-size:clamp(1.35rem,1.1rem + 1.2vw,2rem); font-weight:800; color:var(--ink);}
-    .toc{display:flex; flex-wrap:wrap; gap:.5rem; margin:.5rem 0 1rem;}
-    .toc a{display:inline-block; padding:.32rem .6rem; border:1px solid var(--accent-300); background:var(--accent-100); color:var(--accent-700); border-radius:999px; text-decoration:none; font-weight:700; font-size:.86rem;}
-    .section{margin:12px 0; padding:12px 0; border-top:1px dashed var(--border);}
-    h2{margin:.25rem 0 .5rem; font-size:1.15rem;}
-    p{margin:.25rem 0; color:#1f2937;}
-    .hint{background:#f3f4f6; border:1px dashed #d1d5db; border-radius:10px; padding:.5rem .7rem; color:#374151; font-size:.95rem;}
-    .grid-2{display:grid; gap:12px; grid-template-columns:1fr; }
-    @media(min-width:900px){ .grid-2{grid-template-columns:1fr 1fr;} }
-    .card{border:1px solid var(--border); border-radius:12px; padding:12px; background:#fff;}
-    .list{margin:.35rem 0 .2rem 1.1rem;}
-    .list li{margin:.18rem 0;}
-    .kbd{font-family:ui-monospace,Menlo,monospace;background:#1118270f;border:1px solid #0001;border-radius:6px;padding:0 .35rem;}
-    .pill{display:inline-block;border:1px solid var(--border);border-radius:999px;padding:.14rem .5rem;background:#f9fafb;font-size:.85rem;}
-    .cta{display:flex; gap:10px; flex-wrap:wrap; margin:.4rem 0;}
-    .cta a{border:1px solid var(--border);border-radius:10px;padding:.5rem .8rem;text-decoration:none;color:var(--ink);background:#fff;}
-    .badge{display:inline-block;background:var(--accent-100);border:1px solid var(--accent-300);color:var(--accent-700);border-radius:999px;padding:.1rem .45rem;font-weight:700;font-size:.78rem;}
-  </style>
+
+<div class="help-wrap">
+  
 
   <div class="panel">
     <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
@@ -60,7 +38,7 @@
         <li>Adjunta el PDF o imagen de la factura.</li>
         <li>Desde la ficha, registra un <strong>pago</strong> y aplícalo a la factura (total o parcial).</li>
       </ol>
-      <p class="hint">El estado de la factura se recalcula automáticamente: <em>Pendiente</em>, <em>Parcial</em> o <em>Pagada</em> (se respeta <em>Anulada</em> si la marcas así).</p>
+      <p class="notice info">El estado de la factura se recalcula automáticamente: <em>Pendiente</em>, <em>Parcial</em> o <em>Pagada</em> (se respeta <em>Anulada</em> si la marcas así).</p>
     </section>
 
     <!-- Listado -->
@@ -104,7 +82,7 @@
     <section id="adjuntos" class="section">
       <h2>Adjuntos de factura</h2>
       <p>Desde la ficha puedes subir hasta 5 archivos por operación (tamaño máx. 10 MB por archivo). Se admiten PDF y formatos de imagen (JPG/PNG/WebP). También puedes eliminar adjuntos individuales.</p>
-      <p class="hint">Los adjuntos se guardan con nombre seguro en <span class="kbd">/uploads/facturas</span>.</p>
+      <p class="notice info">Los adjuntos se guardan con nombre seguro en <span class="kbd">/uploads/facturas</span>.</p>
     </section>
 
     <!-- Pagos -->
@@ -114,7 +92,7 @@
         <div class="card">
           <h3 style="margin:.1rem 0 .35rem;">Desde la ficha de factura</h3>
           <p>Registra un pago indicando fecha, importe, método y referencia. El sistema impide pagar por encima del saldo de la factura.</p>
-          <p class="hint">Cada pago genera una cabecera y una aplicación a la factura. Borrar un pago deshace sus aplicaciones y se recalculan estados.</p>
+          <p class="notice info">Cada pago genera una cabecera y una aplicación a la factura. Borrar un pago deshace sus aplicaciones y se recalculan estados.</p>
         </div>
         <div class="card">
           <h3 style="margin:.1rem 0 .35rem;">Listado y exportación</h3>
@@ -140,7 +118,7 @@
           </ul>
         </li>
       </ul>
-      <p class="hint">Si no seleccionas nada, las exportaciones usan las tarjetas visibles con los filtros actuales.</p>
+      <p class="notice info">Si no seleccionas nada, las exportaciones usan las tarjetas visibles con los filtros actuales.</p>
     </section>
 
     <!-- Cuentas -->
@@ -177,8 +155,8 @@
     </section>
 
     <div class="section" style="display:flex;gap:10px;flex-wrap:wrap;">
-      <a class="enlace-final" href="/contabilidad/facturas"><span class="pill">← Volver a Facturas</span></a>
-      <a class="enlace-final" href="/"><span class="pill">← Volver al inicio</span></a>
+      <a class="link" href="/contabilidad/facturas"><span class="pill">← Volver a Facturas</span></a>
+      <a class="link" href="/"><span class="pill">← Volver al inicio</span></a>
     </div>
   </div>
 </div>
