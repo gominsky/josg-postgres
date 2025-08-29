@@ -5,18 +5,24 @@ const bcrypt = require('bcrypt');
 
 // Iniciar sesión
 router.post('/login', async (req, res) => {
-  const { email, password } = req.body;
+  const email = (req.body.email || '').trim();
+  const password = req.body.password || '';
 
   try {
-    const result = await db.query('SELECT * FROM usuarios WHERE email = $1', [email]);
+    const { rows } = await db.query(`
+      SELECT id, nombre, apellidos, email, rol, password_hash
+      FROM usuarios
+      WHERE email = $1
+      LIMIT 1
+    `, [email]);
 
-    const user = result.rows[0];
-    if (!user) {
+    const user = rows[0];
+    if (!user || !user.password_hash) {
       req.session.error = 'Correo o contraseña incorrectos';
       return res.redirect('/');
     }
 
-    const esValida = await bcrypt.compare(password, user.password);
+    const esValida = await bcrypt.compare(password, user.password_hash || '');
     if (!esValida) {
       req.session.error = 'Correo o contraseña incorrectos';
       return res.redirect('/');
@@ -37,9 +43,7 @@ router.post('/login', async (req, res) => {
 
 // Cerrar sesión
 router.get('/logout', (req, res) => {
-  req.session.destroy(() => {
-    res.redirect('/');
-  });
+  req.session.destroy(() => res.redirect('/'));
 });
 
 module.exports = router;

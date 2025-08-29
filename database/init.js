@@ -84,7 +84,7 @@ async function init({ reset = false } = {}) {
         created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         updated_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );
-
+      
       CREATE TABLE IF NOT EXISTS alumnos (
         id                   INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
         nombre               TEXT,
@@ -146,6 +146,32 @@ async function init({ reset = false } = {}) {
         updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );
     `, 'tables:base');
+      await run(`
+      DO $$
+      BEGIN
+        -- Asegurar que existe password_hash (por si vienes de un legacy raro)
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_schema = 'public' AND table_name = 'usuarios' AND column_name = 'password_hash'
+        ) THEN
+          ALTER TABLE public.usuarios ADD COLUMN password_hash TEXT;
+        END IF;
+
+        -- Si existe la columna legacy "password", migrar su contenido y (opcional) eliminarla
+        IF EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_schema = 'public' AND table_name = 'usuarios' AND column_name = 'password'
+        ) THEN
+          UPDATE public.usuarios
+            SET password_hash = COALESCE(password_hash, password)
+          WHERE password IS NOT NULL
+            AND (password_hash IS NULL OR password_hash = '');
+
+          -- Si quieres, elimina la columna legacy:
+          -- ALTER TABLE public.usuarios DROP COLUMN password;
+        END IF;
+      END $$;
+      `, 'migrate:usuarios-password_hash-safe');
 
     // Para esquemas legacy (si no venías de RESET)
     await run(`
