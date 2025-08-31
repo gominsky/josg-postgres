@@ -43,14 +43,17 @@
 <% if (alumnos.length > 0) { %>
   <div class="dashboard-grid" id="grid-alumnos">
     <% alumnos.forEach(alumno => { %>
-      <a href="/alumnos/<%= alumno.id %>" class="card <%= alumno.activo === false ? 'pasivo' : 'activo' %>">
-        <div><%= alumno.nombre %> <%= alumno.apellidos %></div>
-        <% if (alumno.instrumentos) { %>
-          <div style="font-size: 0.85rem; color: #666; margin-top: 0.2rem;">
-            <%= alumno.instrumentos %>
-          </div>
-        <% } %>
-      </a>
+      <a href="/alumnos/<%= alumno.id %>" class="card <%= alumno.activo === false ? 'pasivo' : 'activo' %>"
+        data-fulltext="<%= (alumno.nombre + ' ' + alumno.apellidos + ' ' + (alumno.instrumentos||'')).toLowerCase() %>">
+       <div class="alumno-nombre" title="<%= alumno.nombre %> <%= alumno.apellidos %>">
+         <%= alumno.nombre %> <%= alumno.apellidos %>
+       </div>
+       <% if (alumno.instrumentos) { %>
+         <div style="font-size: 0.85rem; color: #666; margin-top: 0.2rem;">
+           <%= alumno.instrumentos %>
+         </div>
+       <% } %>
+     </a>    
     <% }) %>
   </div>
 <% } %>
@@ -72,8 +75,8 @@
     const filtro = this.value.toLowerCase().trim();
     const tarjetas = document.querySelectorAll('#grid-alumnos .card');
     tarjetas.forEach(t => {
-      const texto = t.textContent.toLowerCase();
-      t.style.display = texto.includes(filtro) ? '' : 'none';
+      const base = t.getAttribute('data-fulltext') || t.textContent.toLowerCase();
+      t.style.display = base.includes(filtro) ? '' : 'none';
     });
   });
 </script>

@@ -9,6 +9,16 @@ const db = require('./database/db');
 const expressLayouts = require('express-ejs-layouts');
 const methodOverride = require('method-override');
 require('dotenv').config();
+
+process.on('beforeExit', (code) => console.log('[proc] beforeExit code=', code));
+process.on('exit',       (code) => console.log('[proc] exit code=', code));
+process.on('uncaughtException', (err) => {
+  console.error('[proc] uncaughtException:', err);
+});
+process.on('unhandledRejection', (reason, p) => {
+  console.error('[proc] unhandledRejection:', reason);
+});
+
 app.use(session({
   secret: process.env.SESSION_SECRET,
   resave: false,
@@ -71,8 +81,9 @@ const proveedoresRoutes = require('./routes/proveedores');
 const categoriasRoutes = require('./routes/categorias');
 const cuentasRoutes = require('./routes/cuentas');
 const recuperarRoutes = require('./routes/recuperar');
-const pdfRoutes = require('./routes/pdf');   // ruta relativa al proyecto
-app.use(pdfRoutes);
+const pdfRoutes = require('./routes/pdf'); 
+const layoutsRoutes = require('./routes/layouts');
+
 
 app.use('/configuracion', isAdmin, configuracionRoutes);
 app.use('/usuarios', isAuthenticated,usuariosRoutes);        
@@ -93,8 +104,10 @@ app.use('/contabilidad', isAdmin, contabilidadRoutes);
 app.use('/proveedores', isAdmin, proveedoresRoutes);
 app.use('/categorias', isAdmin, categoriasRoutes);
 app.use('/cuentas', isAdmin, cuentasRoutes);
+app.use('/layouts', isAuthenticated, layoutsRoutes);
 app.use('/recuperar',recuperarRoutes);
-
+app.use(require('./routes/share_stateless'));
+app.use(pdfRoutes);
 // Ruta de inicio
 app.get('/', (req, res) => {
   res.render('index', { title: 'Inicio - JOSG' });
@@ -116,13 +129,17 @@ app.use((req, res, next) => {
 const initDatabase = require('./database/init'); // Ajusta el path si es necesario
 
 (async () => {
-  await initDatabase(); // crea estructura de la base de datos
-
-  const PORT = process.env.PORT || 3001;
-  app.listen(PORT, () => {
-    console.log(`Servidor corriendo en http://localhost:${PORT}`);
-  });
+  try {
+    await initDatabase();               // <- si falla, lo verás en catch
+    const PORT = process.env.PORT || 3001;
+    app.listen(PORT, () => {
+      console.log(`Servidor corriendo en http://localhost:${PORT}`);
+    });
+  } catch (err) {
+    console.error('Fallo al iniciar la app:', err);
+  }
 })();
+
 
 /* Iniciar servidor
 const PORT = 3001;

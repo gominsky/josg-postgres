@@ -1713,3 +1713,16 @@ form {
   .table-lite .col-aplicado  { width: 160px; }
   .num { white-space: nowrap; font-variant-numeric: tabular-nums; }
 
+  #grid-alumnos .card .alumno-nombre{
+    display:block;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+/* Una línea con elipsis en el nombre del docente */
+#grid-profesores .card .docente-nombre{
+  display:block;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}  

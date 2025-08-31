@@ -1,0 +1,7 @@
+<div class="share-wrap d-flex align-items-center gap-2" data-kind="<%= kind %>" data-params='<%- JSON.stringify(params) %>'>
+    <button type="button" class="btn btn-outline-primary btn-sm share-generate">Generar enlace público</button>
+    <input type="text" class="form-control form-control-sm share-url d-none" readonly style="max-width: 420px;" value="">
+    <button type="button" class="btn btn-outline-secondary btn-sm share-copy d-none">Copiar</button>
+    <span class="text-success small ms-1 share-status d-none">Copiado ✓</span>
+    <span class="text-danger small ms-1 share-error d-none"></span>
+    </div>

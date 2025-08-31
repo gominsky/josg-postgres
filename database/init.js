@@ -146,7 +146,9 @@ async function init({ reset = false } = {}) {
         updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );
     `, 'tables:base');
-      await run(`
+
+    // --- Migración segura: copiar password → password_hash y ELIMINAR columna legacy ---
+    await run(`
       DO $$
       BEGIN
         -- Asegurar que existe password_hash (por si vienes de un legacy raro)
@@ -157,21 +159,20 @@ async function init({ reset = false } = {}) {
           ALTER TABLE public.usuarios ADD COLUMN password_hash TEXT;
         END IF;
 
-        -- Si existe la columna legacy "password", migrar su contenido y (opcional) eliminarla
+        -- Si existe la columna legacy "password", migrar su contenido y eliminarla
         IF EXISTS (
           SELECT 1 FROM information_schema.columns
           WHERE table_schema = 'public' AND table_name = 'usuarios' AND column_name = 'password'
         ) THEN
           UPDATE public.usuarios
-            SET password_hash = COALESCE(password_hash, password)
-          WHERE password IS NOT NULL
-            AND (password_hash IS NULL OR password_hash = '');
+             SET password_hash = COALESCE(password_hash, password)
+           WHERE password IS NOT NULL
+             AND (password_hash IS NULL OR password_hash = '');
 
-          -- Si quieres, elimina la columna legacy:
-          -- ALTER TABLE public.usuarios DROP COLUMN password;
+          ALTER TABLE public.usuarios DROP COLUMN password;  -- ← clave para evitar 23502
         END IF;
       END $$;
-      `, 'migrate:usuarios-password_hash-safe');
+    `, 'migrate:usuarios-password_hash-safe');
 
     // Para esquemas legacy (si no venías de RESET)
     await run(`
@@ -392,6 +393,92 @@ async function init({ reset = false } = {}) {
       CREATE INDEX IF NOT EXISTS idx_pago_cuota_cuotaal ON pago_cuota_alumno(cuota_alumno_id);
     `, 'tables:cuotas+pagos');
 
+    // Fix FK cascades en tablas de pagos/cuotas
+    await run(`
+      DO $$
+      BEGIN
+        -- Asegurar CASCADE en FK (pago_cuota_alumno.cuota_alumno_id → cuotas_alumno.id)
+        IF EXISTS (
+          SELECT 1
+          FROM pg_constraint c
+          JOIN pg_class t ON t.oid = c.conrelid
+          JOIN pg_namespace n ON n.oid = t.relnamespace
+          WHERE n.nspname = 'public'
+            AND t.relname = 'pago_cuota_alumno'
+            AND c.conname = 'pago_cuota_alumno_cuota_alumno_id_fkey'
+            AND c.confdeltype <> 'c'   -- 'c' = CASCADE
+        ) THEN
+          ALTER TABLE public.pago_cuota_alumno
+            DROP CONSTRAINT pago_cuota_alumno_cuota_alumno_id_fkey;
+          ALTER TABLE public.pago_cuota_alumno
+            ADD CONSTRAINT pago_cuota_alumno_cuota_alumno_id_fkey
+            FOREIGN KEY (cuota_alumno_id)
+            REFERENCES public.cuotas_alumno(id)
+            ON DELETE CASCADE;
+        ELSIF NOT EXISTS (
+          SELECT 1
+          FROM pg_constraint c
+          JOIN pg_class t ON t.oid = c.conrelid
+          JOIN pg_namespace n ON n.oid = t.relnamespace
+          WHERE n.nspname = 'public'
+            AND t.relname = 'pago_cuota_alumno'
+            AND c.conname = 'pago_cuota_alumno_cuota_alumno_id_fkey'
+        ) THEN
+          ALTER TABLE public.pago_cuota_alumno
+            ADD CONSTRAINT pago_cuota_alumno_cuota_alumno_id_fkey
+            FOREIGN KEY (cuota_alumno_id)
+            REFERENCES public.cuotas_alumno(id)
+            ON DELETE CASCADE;
+        END IF;
+      END $$;
+    `, 'fix:fk_pago_cuota_cascade');
+
+    await run(`
+      DO $$
+      BEGIN
+        -- pagos.alumno_id: permitir NULL si fuera NOT NULL
+        IF EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_schema='public' AND table_name='pagos'
+            AND column_name='alumno_id' AND is_nullable='NO'
+        ) THEN
+          ALTER TABLE public.pagos ALTER COLUMN alumno_id DROP NOT NULL;
+        END IF;
+      
+        -- FK pagos.alumno_id → alumnos.id con ON DELETE SET NULL
+        IF EXISTS (
+          SELECT 1
+          FROM pg_constraint c
+          JOIN pg_class t ON t.oid = c.conrelid
+          JOIN pg_namespace n ON n.oid = t.relnamespace
+          WHERE n.nspname='public' AND t.relname='pagos'
+            AND c.conname='pagos_alumno_id_fkey'
+            AND c.confdeltype <> 'n'   -- 'n' = SET NULL
+        ) THEN
+          ALTER TABLE public.pagos
+            DROP CONSTRAINT pagos_alumno_id_fkey;
+          ALTER TABLE public.pagos
+            ADD CONSTRAINT pagos_alumno_id_fkey
+            FOREIGN KEY (alumno_id)
+            REFERENCES public.alumnos(id)
+            ON DELETE SET NULL;
+        ELSIF NOT EXISTS (
+          SELECT 1
+          FROM pg_constraint c
+          JOIN pg_class t ON t.oid = c.conrelid
+          JOIN pg_namespace n ON n.oid = t.relnamespace
+          WHERE n.nspname='public' AND t.relname='pagos'
+            AND c.conname='pagos_alumno_id_fkey'
+        ) THEN
+          ALTER TABLE public.pagos
+            ADD CONSTRAINT pagos_alumno_id_fkey
+            FOREIGN KEY (alumno_id)
+            REFERENCES public.alumnos(id)
+            ON DELETE SET NULL;
+        END IF;
+      END $$;
+    `, 'fix:fk_pagos_alumno_set_null');
+
     // ============================
     // 8) LAYOUT ESCENARIO
     // ============================
@@ -409,6 +496,21 @@ async function init({ reset = false } = {}) {
         CONSTRAINT ck_xy_range CHECK (x >= 0 AND x <= 1 AND y >= 0 AND y <= 1)
       );
     `, 'tables:layout');
+        // === 8bis) LAYOUTS POR USUARIO ===
+    await run(`
+      CREATE TABLE IF NOT EXISTS user_layouts (
+        id         BIGINT  GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+        user_id    INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+        menu       TEXT    NOT NULL,                      -- p.ej. 'contabilidad', 'configuracion', 'cuotas'
+        order_ids  TEXT[]  NOT NULL,                      -- orden de las fichas por su data-id
+        sizes      JSONB   NOT NULL DEFAULT '{}'::jsonb,  -- { "<id>": { "w": 1|2, "h": 1|2 }, ... }
+        colors     JSONB   NOT NULL DEFAULT '{}'::jsonb,  -- { "<id>": "is-blue", ... }
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        UNIQUE (user_id, menu)
+      );
+      CREATE INDEX IF NOT EXISTS idx_user_layouts_user ON user_layouts(user_id);
+      CREATE INDEX IF NOT EXISTS idx_user_layouts_menu ON user_layouts(menu);
+    `, 'tables:user_layouts');
 
     // ============================
     // 9) RESET DE CONTRASEÑAS

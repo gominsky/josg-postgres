@@ -135,6 +135,53 @@
           <span class="badge-soft">Requiere: fechas y grupo</span>
         </div>
       </a>
+<!-- Compartir planilla (PDF público) -->
+<a href="#" id="cardShareGuardias" class="action-card" aria-label="Generar enlace público de la planilla (PDF)">
+  <div class="icon-badge" aria-hidden="true">
+    <!-- icono link -->
+    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"
+         viewBox="0 0 16 16" fill="currentColor">
+      <path d="M6.354 5.5H4a3 3 0 0 0 0 6h3a3 3 0 0 0 2.674-1.664.5.5 0 1 1 .893.448A4 4 0 0 1 7 12.5H4a4 4 0 0 1 0-8h2.354a.5.5 0 0 1 0 1z"/>
+      <path d="M12 3.5H9a3 3 0 0 0-2.674 1.664.5.5 0 1 1-.893-.448A4 4 0 0 1 9 2.5h3a4 4 0 0 1 0 8H9.646a.5.5 0 0 1 0-1H12a3 3 0 0 0 0-6z"/>
+    </svg>
+  </div>
+  <div>
+    <p class="action-title">Enlace público de la planilla</p>
+    <p class="action-desc">Genera un link firmado al PDF según el rango de fechas (y grupo opcional).</p>
+    <p class="req-line"><span class="badge-soft">Requiere: fechas</span></p>
+
+    <!-- Controles compactos -->
+    <div class="row g-2 align-items-end mt-1">
+      <div class="col-7 col-md-7">
+        <label class="form-label form-label-sm mb-1">Caducidad</label>
+        <select class="form-select form-select-sm" id="shareGuardiasExpire">
+          <option value="">Sin caducidad</option>
+          <option value="168">7 días</option>
+          <option value="720" selected>30 días</option>
+          <option value="2160">90 días</option>
+        </select>
+      </div>
+      <div class="col-5 col-md-5 d-grid">
+        <button type="button" class="btn btn-main-blanco btn-sm" id="shareGuardiasBtn">
+          Generar enlace
+        </button>
+      </div>
+    </div>
+
+    <!-- Resultado inline -->
+    <div class="mt-2 d-none" id="shareGuardiasMini">
+      <div class="input-group input-group-sm">
+        <input type="text" class="form-control" id="shareGuardiasUrl" readonly>
+        <button type="button" class="btn btn-outline-secondary" id="shareGuardiasCopy">Copiar</button>
+      </div>
+      <div class="mt-1 d-flex gap-2 align-items-center">
+        <span class="badge-soft d-none" id="shareGuardiasExpBadge"></span>
+        <small class="text-muted d-none" id="shareGuardiasHint">Se copia automáticamente al generar.</small>
+      </div>
+      <small class="text-danger d-none" id="shareGuardiasErr"></small>
+    </div>
+  </div>
+</a>
 <!-- Ayuda de Guardias -->
 <a href="/guardias/ayuda" class="action-card" aria-label="Ayuda de guardias">
   <div class="icon-badge" aria-hidden="true">
@@ -149,19 +196,6 @@
     <span class="badge-soft">Guía y preguntas frecuentes</span>
   </div>
 </a>
-
-      <!-- Ir a Eventos -->
-      <a href="/eventos" class="action-card" aria-label="Volver a eventos">
-        <div class="icon-badge" aria-hidden="true">
-          <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="1.5" y="2.5" width="13" height="12" rx="2"/><path d="M11.5 1.5v3M4.5 1.5v3M1.5 6.5h13"/>
-          </svg>
-        </div>
-        <div>
-          <p class="action-title">Eventos</p>
-          <p class="action-desc">Abrir calendario.</p>
-        </div>
-      </a>
     </div>
   </form>
 
@@ -332,5 +366,88 @@
     });
   })();
   </script>
+  <script>
+    (() => {
+      const card   = document.getElementById('cardShareGuardias');
+      if (!card) return;
+      card.addEventListener('click', (e) => {
+      e.preventDefault();   // evita navegar a "#"
+      e.stopPropagation();  // por si hay escuchas en contenedores
+    });
   
+      const desde  = document.getElementById('desde');   // ya existen
+      const hasta  = document.getElementById('hasta');   // en esta vista
+      const grupo  = document.getElementById('grupo');   // (opcional)
+      const expSel = document.getElementById('shareGuardiasExpire');
+    
+      const mini   = document.getElementById('shareGuardiasMini');
+      const urlInp = document.getElementById('shareGuardiasUrl');
+      const expBad = document.getElementById('shareGuardiasExpBadge');
+      const hint   = document.getElementById('shareGuardiasHint');
+      const errBox = document.getElementById('shareGuardiasErr');
+      const btn    = document.getElementById('shareGuardiasBtn');
+      const copyBt = document.getElementById('shareGuardiasCopy');
+    
+      async function generateLink() {
+        errBox.classList.add('d-none');
+    
+        if (!desde.value || !hasta.value) {
+          errBox.textContent = 'Indica un rango de fechas para compartir la planilla.';
+          errBox.classList.remove('d-none');
+          return;
+        }
+    
+        btn.disabled = true; const old = btn.textContent; btn.textContent = 'Generando…';
+        try {
+          const payload = {
+            kind: 'guardias',
+            params: {
+              desde: desde.value,
+              hasta: hasta.value,
+              ...(grupo && grupo.value ? { grupo: grupo.value } : {})
+            }
+          };
+          const exp = expSel && expSel.value ? Number(expSel.value) : null;
+          if (exp) payload.expireHours = exp;
+    
+          const r = await fetch('/api/share', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+          const j = await r.json();
+          if (!j.ok) throw new Error(j.msg || 'No se pudo crear el enlace');
+    
+          urlInp.value = j.url;
+          mini.classList.remove('d-none');
+          hint.classList.remove('d-none');
+    
+          if (j.expiresAt) {
+            const d = new Date(j.expiresAt);
+            expBad.textContent = 'Caduca: ' + d.toLocaleString();
+            expBad.classList.remove('d-none');
+          } else {
+            expBad.classList.add('d-none');
+          }
+    
+          try { await navigator.clipboard.writeText(j.url); } catch {}
+        } catch (e) {
+          errBox.textContent = e.message || 'Error';
+          errBox.classList.remove('d-none');
+        } finally {
+          btn.disabled = false; btn.textContent = old;
+        }
+      }
+    
+      // Accesos: click en el botón, Enter/Espacio sobre la card
+      btn.addEventListener('click', generateLink);
+      card.addEventListener('keydown', (ev) => {
+        if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); generateLink(); }
+      });
+      copyBt.addEventListener('click', async () => {
+        try { await navigator.clipboard.writeText(urlInp.value); } catch {}
+      });
+    })();
+    </script>
+    
 

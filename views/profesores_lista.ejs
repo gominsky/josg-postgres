@@ -19,7 +19,7 @@
   </div>
 
   <div class="campo-filtro">
-    <label for="busqueda-profesores">Buscar</label> <!-- antes no apuntaba al id correcto -->
+    <label for="busqueda-profesores">Buscar</label>
     <input id="busqueda-profesores"
            name="busqueda"
            type="text"
@@ -31,26 +31,70 @@
 
 <% if (profesores.length > 0) { %>
   <div class="dashboard-grid" id="grid-profesores">
-    <% profesores.forEach(p => { %>
-      <a href="/profesores/<%= p.id %>" class="card <%= p.activo === false ? 'pasivo' : 'activo' %>">
-        <div><%= p.nombre %> <%= p.apellidos %></div>
+    <% profesores.forEach(p => { 
+         const full = `${p.nombre || ''} ${p.apellidos || ''}`.trim();
+    %>
+      <a href="/profesores/<%= p.id %>"
+         class="card <%= p.activo === false ? 'pasivo' : 'activo' %>"
+         data-fulltext="<%= full.toLowerCase() %>">
+        <div class="docente-nombre" title="<%= full %>"><%= full %></div>
       </a>
     <% }) %>
   </div>
 <% } %>
 
 <div class="volver-bloque-izquierda">
-    <a href="/" class="enlace-final">← Volver al inicio</a>
+  <a href="/" class="enlace-final">← Volver al inicio</a>
 </div>
 
 <script>
-  document.getElementById('busqueda-profesores').addEventListener('input', function () {
-    const filtro = this.value.toLowerCase().trim();
-    const tarjetas = document.querySelectorAll('#grid-profesores .card');
-    tarjetas.forEach(t => {
-      const texto = t.textContent.toLowerCase();
-      t.style.display = texto.includes(filtro) ? '' : 'none';
+  // Filtro: usa el texto completo del data-fulltext (aunque se vea abreviado)
+  (function(){
+    var input = document.getElementById('busqueda-profesores');
+    if(!input) return;
+    input.addEventListener('input', function () {
+      var filtro = this.value.toLowerCase().trim();
+      document.querySelectorAll('#grid-profesores .card').forEach(function(t){
+        var base = t.getAttribute('data-fulltext') || t.textContent.toLowerCase();
+        t.style.display = base.includes(filtro) ? '' : 'none';
+      });
     });
-  });
-</script>
+  })();
 
+  // (Opcional) Abreviar inteligentemente nombres muy largos (tipo "Juan C. Pérez M.")
+  (function(){
+    var MAX = 26; // cambia el límite si quieres
+    function abrevia(full){
+      full = (full || '').trim();
+      if (full.length <= MAX) return full;
+      var tokens = full.split(/\s+/);
+      if (tokens.length === 1) return full;
+
+      var conectores = new Set(['de','del','la','las','los','y']);
+      var nombre = tokens[0];
+      var resto  = tokens.slice(1);
+
+      // Abrevia palabras no conectoras a inicial con punto
+      var cuerpo = resto.map(function(w){
+        return conectores.has(w.toLowerCase()) ? w : (w[0].toUpperCase() + '.');
+      });
+
+      var out = [nombre].concat(cuerpo).join(' ');
+      if (out.length > MAX) {
+        // Mantén primer apellido completo si aún es largo
+        var apes = resto.filter(function(w){ return !conectores.has(w.toLowerCase()); });
+        if (apes.length) {
+          var primero = apes[0];
+          var abreApes = [primero].concat(apes.slice(1).map(function(a){ return a[0].toUpperCase()+'.'; }));
+          out = [nombre].concat(abreApes).join(' ');
+        }
+      }
+      return out;
+    }
+
+    document.querySelectorAll('#grid-profesores .card .docente-nombre').forEach(function(el){
+      var full = el.getAttribute('title') || el.textContent.trim();
+      el.textContent = abrevia(full);
+    });
+  })();
+</script>

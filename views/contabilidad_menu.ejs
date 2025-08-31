@@ -1,99 +1,290 @@
 <% title = 'Contabilidad'; hero = false; %>
 
+<div class="ctb-head d-flex align-items-center justify-content-between" style="max-width:1200px;margin:20px auto 12px;padding:0 12px;">
+  <h1 style="margin:0;font-weight:700;font-size:clamp(1.4rem,1.1rem + 1.2vw,2rem);color:#000;">Contabilidad</h1>
+  <div class="d-flex align-items-center gap-2">
+    <button id="btnLibre" class="btn btn-sm btn-outline-dark">Modo libre</button>
+    <button id="btnReset" class="btn btn-sm btn-outline-secondary">Restablecer</button>
+    <a href="/" class="ctb-back" aria-label="Volver al inicio" style="color:#000;text-decoration:none;">← Volver</a>
+  </div>
+</div>
+
+<div class="container page-wrap">
+  <div id="canvas-wrap" class="canvas-wrap" data-menu="contabilidad">
+    <div id="menu-config" class="sb-grid">
+      <!-- SIN subtítulos (solo título). data-id único por ficha -->
+      <a data-id="cuotas"               href="/cuotas"                      class="tile-sb is-yellow h2 w2"><span>Cuotas</span></a>
+      <a data-id="facturas"             href="/contabilidad/facturas"       class="tile-sb is-orange h1 w2"><span>Facturas</span></a>
+      <a data-id="factura-nueva"        href="/contabilidad/facturas/nueva" class="tile-sb is-cream  h1 w2"><span>Nueva factura</span></a>
+      <a data-id="proveedores"          href="/proveedores"                 class="tile-sb is-black  h1 w2"><span>Proveedores</span></a>
+      <a data-id="proveedor-nuevo"      href="/proveedores/nuevo"           class="tile-sb is-blue   h1 w2"><span>Nuevo proveedor</span></a>
+      <a data-id="pagos"                href="/contabilidad/pagos"          class="tile-sb is-rust   h1 w2"><span>Pagos</span></a>
+      <a data-id="pago-nuevo"           href="/contabilidad/pagos/nuevo"    class="tile-sb is-orange h2 w2"><span>Registrar pago</span></a>
+      <a data-id="ayuda"                href="/contabilidad/ayuda"          class="tile-sb is-cream  h1 w2"><span>Ayuda</span></a>
+    </div>
+  </div>
+</div>
+
 <style>
-  /* Solo estilos internos del contenido. NO tocamos .sb-grid */
-  .tile-rich .tile-inner{
-    display:flex; flex-direction:column; gap:10px;
-    width:100%; padding:22px 22px; color:inherit;
+  .container.page-wrap .sb-grid { margin-top: 22px; }
+
+  /* Lienzo */
+  .canvas-wrap{ position: relative; }
+
+  /* Modo libre y “solo ver” comparten layout absoluto */
+  .canvas-wrap.free,
+  .canvas-wrap.free-view{
+    height: 1200px; /* ajusta a gusto */
+    border: 1px dashed rgba(0,0,0,.08);
+    border-radius: 12px;
+    padding: 8px;
   }
-  .tile-rich .tile-title{
-    margin:0; font-weight:800; line-height:1.15;
-    font-size: clamp(1.1rem, 1rem + 0.9vw, 1.6rem);
+  .canvas-wrap.free #menu-config,
+  .canvas-wrap.free-view #menu-config{
+    display: block !important;
+    position: relative;
+    height: 100%;
   }
-  .tile-rich .tile-desc{
-    margin:0; opacity:.96;
-    font-size: clamp(.96rem, .9rem + .4vw, 1.1rem);
+  .canvas-wrap.free #menu-config .tile-sb,
+  .canvas-wrap.free-view #menu-config .tile-sb{
+    position: absolute !important;
+    margin: 0 !important;
+    min-width: 180px; min-height: 120px;
+    box-shadow: 0 4px 18px rgba(0,0,0,.08);
+    user-select: none;
+    touch-action: none;
   }
-  /* Contraste del texto como en index (por si la hoja global no lo aplica aquí) */
+
+  /* Contraste de texto como en index */
   .sb-grid .tile-sb.is-black,
   .sb-grid .tile-sb.is-blue,
   .sb-grid .tile-sb.is-orange,
   .sb-grid .tile-sb.is-rust { color:#fff; }
   .sb-grid .tile-sb.is-cream,
   .sb-grid .tile-sb.is-yellow { color:#111; }
-  .tile-rich, .tile-rich * { color: inherit; }
 
-  .container.page-wrap .sb-grid {
-    margin-top: 16px;          /* un poco de aire extra */
+  /* Toolbars — ocultas siempre fuera del modo libre; visibles en .free */
+  .tile-tools{ display:none; }
+  .canvas-wrap:not(.free) .tile-tools { display: none !important; }
+  .canvas-wrap.free .tile-tools{
+    position:absolute; top:6px; right:6px; display:flex; gap:6px; z-index:2;
   }
-  @media (min-width:1200px){
-    .container.page-wrap .sb-grid { margin-top: 22px; }
+  .canvas-wrap.free .tile-tools button{
+    border:1px solid rgba(0,0,0,.15); background:#fff; border-radius:6px;
+    padding:4px 8px; font-size:12px; line-height:1; cursor:pointer;
+    box-shadow:0 1px 2px rgba(0,0,0,.08);
   }
+  .canvas-wrap.free .tile-tools button:hover{ background:#f5f5f5; }
+
+  .dragging{ outline: 2px dashed rgba(0,0,0,.25); outline-offset: 0; }
 </style>
 
-<div class="ctb-head d-flex align-items-center justify-content-between" style="max-width:1200px;margin:20px auto 12px;padding:0 12px;">
-  <h1 style="margin:0;font-weight:700;font-size:clamp(1.4rem,1.1rem + 1.2vw,2rem);color:#000;">Contabilidad</h1>
-  <a href="/" class="ctb-back" aria-label="Volver al inicio" style="color:#000;text-decoration:none;">← Volver</a>
-</div>
+<script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
+<script>
+(()=> {
+  const wrap = document.getElementById('canvas-wrap');
+  const grid = document.getElementById('menu-config');
+  const btn  = document.getElementById('btnLibre');
+  const btnReset = document.getElementById('btnReset');
+  if (!wrap || !grid || !btn) return;
 
-<div class="container page-wrap">
-  <div class="sb-grid">
-    <!-- Usa las mismas clases del index: h1/h2 (alto), w1/w2/w3 (ancho), is-* (color) -->
+  const menuKey = 'layout:' + (wrap.dataset.menu || 'contabilidad');
+  const COLORS = ['is-cream','is-yellow','is-blue','is-orange','is-rust','is-black'];
 
-    <a href="/contabilidad/facturas" class="tile-sb is-orange h2 w2 tile-rich">
-      <div class="tile-inner">
-        <p class="tile-title">Listado de facturas</p>
-        <p class="tile-desc">Consulta, filtra y gestiona facturas de proveedores.</p>
-      </div>
-    </a>
+  const load = () => { try{ const r=localStorage.getItem(menuKey); return r?JSON.parse(r):null; } catch { return null; } };
+  const save = (o) => { try{ localStorage.setItem(menuKey, JSON.stringify(o)); } catch {} };
+  const clear= () => { try{ localStorage.removeItem(menuKey); } catch {} };
+  const def  = () => ({ mode:'grid', items:{} });
 
-    <a href="/contabilidad/facturas/nueva" class="tile-sb is-cream h2 w2 tile-rich">
-      <div class="tile-inner">
-        <p class="tile-title">Nueva factura</p>
-        <p class="tile-desc">Crear una factura de proveedor.</p>
-      </div>
-    </a>
+  function applyItemStyles(tile, it){
+    if(!it) return;
+    COLORS.forEach(c=>tile.classList.remove(c));
+    if(it.color) tile.classList.add(it.color);
+    if(typeof it.x==='number') tile.style.left = it.x+'px';
+    if(typeof it.y==='number') tile.style.top  = it.y+'px';
+    if(typeof it.w==='number') tile.style.width  = it.w+'px';
+    if(typeof it.h==='number') tile.style.height = it.h+'px';
+    if(typeof it.z==='number') tile.style.zIndex = String(it.z);
+  }
 
-    <a href="/proveedores" class="tile-sb is-yellow h1 w2 tile-rich">
-      <div class="tile-inner">
-        <p class="tile-title">Listado de proveedores</p>
-        <p class="tile-desc">Gestiona el directorio de proveedores.</p>
-      </div>
-    </a>
+  function snapshot(){
+    const rw=wrap.getBoundingClientRect(), items={};
+    for(const t of grid.querySelectorAll('.tile-sb')){
+      const id=t.dataset.id; if(!id) continue;
+      const r=t.getBoundingClientRect();
+      items[id]={ x:Math.max(0,r.left-rw.left), y:Math.max(0,r.top-rw.top),
+                  w:r.width, h:r.height,
+                  color:COLORS.find(c=>t.classList.contains(c))||null,
+                  z:0 };
+    }
+    return items;
+  }
 
-    <a href="/proveedores/nuevo" class="tile-sb is-blue h1 w2 tile-rich">
-      <div class="tile-inner">
-        <p class="tile-title">Nuevo proveedor</p>
-        <p class="tile-desc">Dar de alta un proveedor rápidamente.</p>
-      </div>
-    </a>
+  function collect(){
+    const items={};
+    for(const t of grid.querySelectorAll('.tile-sb')){
+      const id=t.dataset.id; if(!id) continue;
+      items[id]={ x:parseFloat(t.style.left)||0,
+                  y:parseFloat(t.style.top)||0,
+                  w:parseFloat(t.style.width)||t.getBoundingClientRect().width,
+                  h:parseFloat(t.style.height)||t.getBoundingClientRect().height,
+                  color:COLORS.find(c=>t.classList.contains(c))||null,
+                  z:parseInt(t.style.zIndex||'0',10) };
+    }
+    return items;
+  }
 
-    <a href="/contabilidad/pagos" class="tile-sb is-rust h2 w2 tile-rich">
-      <div class="tile-inner">
-        <p class="tile-title">Listado de pagos</p>
-        <p class="tile-desc">Consulta y filtra pagos por proveedor, fecha y estado.</p>
-      </div>
-    </a>
+  function persistTile(tile){
+    const cur=load()||def(); if(cur.mode!=='free'&&cur.mode!=='free-view') cur.mode='free-view';
+    const id=tile.dataset.id; if(!id) return;
+    cur.items[id]={ x:parseFloat(tile.style.left)||0,
+                    y:parseFloat(tile.style.top)||0,
+                    w:parseFloat(tile.style.width)||tile.getBoundingClientRect().width,
+                    h:parseFloat(tile.style.height)||tile.getBoundingClientRect().height,
+                    color:COLORS.find(c=>tile.classList.contains(c))||null,
+                    z:parseInt(tile.style.zIndex||'0',10) };
+    save(cur);
+  }
 
-    <a href="/contabilidad/pagos/nuevo" class="tile-sb is-cream h2 w2 tile-rich">
-      <div class="tile-inner">
-        <p class="tile-title">Registrar pago</p>
-        <p class="tile-desc">Crea un pago y aplícalo a una o varias facturas.</p>
-      </div>
-    </a>
+  // === Herramientas (Color / Frente) ===
+  function cycleColor(tile){
+    const cur = COLORS.find(c => tile.classList.contains(c));
+    const idx = cur ? COLORS.indexOf(cur) : -1;
+    const next = COLORS[(idx+1) % COLORS.length];
+    COLORS.forEach(c => tile.classList.remove(c));
+    tile.classList.add(next);
+  }
+  function addTools(tile){
+    if (tile.querySelector('.tile-tools')) return;
+    const tools = document.createElement('div');
+    tools.className = 'tile-tools';
+    const bColor = document.createElement('button'); bColor.type='button'; bColor.textContent='Color';
+    const bFront = document.createElement('button'); bFront.type='button'; bFront.textContent='⇪ Frente';
+    bColor.addEventListener('click', (e)=>{ e.preventDefault(); e.stopPropagation(); cycleColor(tile); persistTile(tile); });
+    bFront.addEventListener('click', (e)=>{ e.preventDefault(); e.stopPropagation(); tile.style.zIndex=String(Date.now()); persistTile(tile); });
+    tools.append(bColor,bFront);
+    tile.appendChild(tools);
+  }
 
-    <a href="/cuotas" class="tile-sb is-yellow h1 w2 tile-rich">
-      <div class="tile-inner">
-        <p class="tile-title">Cuotas</p>
-        <p class="tile-desc">Definir importes, periodos y recibos.</p>
-      </div>
-    </a>
+  // === Interact (drag/resize) ===
+  function enableInteract(){
+    const c=wrap;
+    interact('.canvas-wrap.free #menu-config .tile-sb')
+      .draggable({
+        listeners:{
+          start:e=>e.target.classList.add('dragging'),
+          move:e=>{
+            const t=e.target;
+            const x=(parseFloat(t.style.left)||0)+e.dx;
+            const y=(parseFloat(t.style.top)||0)+e.dy;
+            const rc=c.getBoundingClientRect(), rt=t.getBoundingClientRect();
+            t.style.left=Math.max(0,Math.min(x,rc.width-rt.width))+'px';
+            t.style.top =Math.max(0,Math.min(y,rc.height-rt.height))+'px';
+          },
+          end:e=>{e.target.classList.remove('dragging'); persistTile(e.target);}
+        },
+        modifiers:[interact.modifiers.restrictRect({restriction:c,endOnly:true})]
+      })
+      .resizable({
+        edges:{left:true,right:true,top:true,bottom:true},
+        listeners:{
+          move:e=>{
+            const t=e.target;
+            const ox=parseFloat(t.style.left)||0, oy=parseFloat(t.style.top)||0;
+            let w=Math.max(180,e.rect.width), h=Math.max(120,e.rect.height);
+            t.style.width=w+'px'; t.style.height=h+'px';
+            const nx=ox+e.deltaRect.left, ny=oy+e.deltaRect.top;
+            const rc=c.getBoundingClientRect();
+            t.style.left=Math.max(0,Math.min(nx,rc.width-w))+'px';
+            t.style.top =Math.max(0,Math.min(ny,rc.height-h))+'px';
+          },
+          end:e=>persistTile(e.target)
+        },
+        modifiers:[interact.modifiers.restrictEdges({outer:c,endOnly:true})]
+      });
+  }
 
-    <a href="/contabilidad/ayuda" class="tile-sb is-black h1 w2 tile-rich">
-      <div class="tile-inner">
-        <p class="tile-title">Ayuda</p>
-        <p class="tile-desc">Cómo registrar facturas, pagos y proveedores.</p>
-      </div>
-    </a>
-  </div>
-</div>
+  function preventWhileFree(e){ if(wrap.classList.contains('free')){ e.preventDefault(); e.stopPropagation(); } }
+
+  // === Modos ===
+  function enterView(){
+    // Asegura que no queden toolbars visibles en modo vista
+    grid.querySelectorAll('.tile-sb .tile-tools').forEach(t => t.remove());
+
+    wrap.classList.add('free-view');
+    const cur=load(), items=cur?.items||{};
+    for(const a of grid.querySelectorAll('a.tile-sb')){
+      a.style.position='absolute';
+      a.style.margin='0';
+      applyItemStyles(a, items[a.dataset.id]);
+    }
+  }
+
+  function exitView(){
+    wrap.classList.remove('free-view');
+    for(const a of grid.querySelectorAll('a.tile-sb')){
+      a.style.position='';
+      a.style.left=a.style.top=a.style.width=a.style.height=a.style.zIndex='';
+    }
+  }
+
+  function enterFree(){
+    if(!wrap.classList.contains('free-view')) enterView();
+    wrap.classList.add('free'); btn.textContent='Guardar';
+    const cur=load()||def();
+    if(!cur.items||!Object.keys(cur.items).length){
+      cur.items=snapshot(); cur.mode='free-view'; save(cur);
+    }
+    grid.querySelectorAll('a.tile-sb').forEach(a=>a.addEventListener('click',preventWhileFree));
+    grid.querySelectorAll('.tile-sb').forEach(addTools);
+    enableInteract();
+  }
+
+  function exitFree(saveLayout = true){
+    if (saveLayout){
+      const cur = load() || def();
+      cur.mode  = 'free-view';
+      cur.items = collect();
+      save(cur);
+    }
+    // Salir de edición
+    wrap.classList.remove('free');
+    btn.textContent = 'Modo libre';
+
+    // Limpieza agresiva de toolbars
+    grid.querySelectorAll('.tile-sb .tile-tools').forEach(t => t.remove());
+
+    // Desbloquear enlaces
+    grid.querySelectorAll('a.tile-sb').forEach(a => a.removeEventListener('click', preventWhileFree));
+
+    // Desactivar interact
+    if (window.interact) interact('.tile-sb').unset();
+  }
+
+  // Hotkey guardar sin salir
+  document.addEventListener('keydown',(e)=>{
+    if(!wrap.classList.contains('free')) return;
+    const isMac=/Mac/i.test(navigator.platform); const mod=isMac?e.metaKey:e.ctrlKey;
+    if(mod && e.key.toLowerCase()==='s'){
+      e.preventDefault();
+      const cur=load()||def(); cur.mode='free-view'; cur.items=collect(); save(cur);
+      btn.textContent='Guardado'; setTimeout(()=>btn.textContent='Guardar',700);
+      // Si quieres ocultar toolbars también aquí, descomenta:
+      // grid.querySelectorAll('.tile-sb .tile-tools').forEach(t => t.remove());
+    }
+  });
+
+  // Estado inicial
+  (()=> {
+    const cur=load();
+    if(cur?.mode==='free' || cur?.mode==='free-view'){
+      enterView();
+      btn.textContent='Modo libre';
+    }
+  })();
+
+  // Botones
+  btn.addEventListener('click', ()=>{ if(wrap.classList.contains('free')) exitFree(true); else enterFree(); });
+  btnReset?.addEventListener('click', ()=>{ if(wrap.classList.contains('free')) exitFree(false); exitView(); clear(); });
+})();
+</script>

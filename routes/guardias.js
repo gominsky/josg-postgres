@@ -878,44 +878,66 @@ router.post('/generar-multiples', async (req, res) => {
   }
 });
 
-router.post('/informe', async (req, res) => {
-  const { desde, hasta, grupo } = req.body;
-  const desdeISO = toISODate(desde);
-  const hastaISO = toISODate(hasta);
-
-  if (!desdeISO || !hastaISO || !grupo?.trim()) {
-    return res.send('<script>alert("⚠️ Debes indicar un rango de fechas y un grupo."); window.history.back();</script>');
-  }
-
-  let sql = `
-    SELECT 
-      e.fecha_inicio AS fecha,
-      e.titulo AS evento,
-      gr.nombre AS grupo,
-      a1.nombre || ' ' || a1.apellidos AS guardia1,
-      a2.nombre || ' ' || a2.apellidos AS guardia2
-    FROM eventos e
-    JOIN guardias g ON g.evento_id = e.id
-    LEFT JOIN alumnos a1 ON g.alumno_id_1 = a1.id
-    LEFT JOIN alumnos a2 ON g.alumno_id_2 = a2.id
-    LEFT JOIN grupos gr ON e.grupo_id = gr.id
-    WHERE DATE(e.fecha_inicio) BETWEEN $1 AND $2
-  `;
-  const params = [desdeISO, hastaISO];
-  if (grupo !== 'todos') { sql += ' AND gr.id = $3'; params.push(grupo); }
-
+/* ============
+   PDF – común
+   ============ */
+async function handleGuardiasPdf(req, res, next) {
   try {
-    const eventos = (await db.query(sql, params)).rows;
-    if (!eventos.length) {
-      return res.send('<script>alert("No hay eventos entre las fechas indicadas para ese grupo."); window.history.back();</script>');
+    const isGet = req.method === 'GET';
+    const desde = isGet ? req.query.desde : req.body.desde;
+    const hasta = isGet ? req.query.hasta : req.body.hasta;
+    let   grupo = isGet ? (req.query.grupo || '') : (req.body.grupo || '');
+
+    const desdeISO = toISODate(desde);
+    const hastaISO = toISODate(hasta);
+
+    if (!desdeISO || !hastaISO) {
+      if (isGet) return res.status(400).send('Faltan fechas (usa YYYY-MM-DD)');
+      return res.send('<script>alert("⚠️ Debes indicar un rango de fechas."); window.history.back();</script>');
     }
-    const grupoNombre = (eventos[0]?.grupo || 'Todos los grupos').replace(/\s*\(.*\)/, '');
+
+    // Normaliza grupo: si vacío o 'todos' -> sin filtro
+    const filtraGrupo = (grupo && grupo.trim() && grupo !== 'todos');
+
+    let sql = `
+      SELECT 
+        e.fecha_inicio AS fecha,
+        e.titulo AS evento,
+        gr.nombre AS grupo,
+        a1.nombre || ' ' || a1.apellidos AS guardia1,
+        a2.nombre || ' ' || a2.apellidos AS guardia2
+      FROM eventos e
+      JOIN guardias g ON g.evento_id = e.id
+      LEFT JOIN alumnos a1 ON g.alumno_id_1 = a1.id
+      LEFT JOIN alumnos a2 ON g.alumno_id_2 = a2.id
+      LEFT JOIN grupos gr ON e.grupo_id = gr.id
+      WHERE DATE(e.fecha_inicio) BETWEEN $1 AND $2
+    `;
+    const params = [desdeISO, hastaISO];
+    if (filtraGrupo) { sql += ' AND gr.id = $3'; params.push(grupo); }
+
+    const eventos = (await db.query(sql, params)).rows;
+
+    if (!eventos.length) {
+      if (isGet) return res.status(404).send('No hay eventos entre las fechas indicadas' + (filtraGrupo ? ' para ese grupo' : '') + '.');
+      return res.send('<script>alert("No hay eventos entre las fechas indicadas' + (filtraGrupo ? ' para ese grupo' : '') + '."); window.history.back();</script>');
+    }
+
+    const grupoNombre = filtraGrupo ? (eventos[0]?.grupo || 'Grupo') : 'Todos los grupos';
     generarPdfGuardias(res, { eventos, desde, hasta, grupoNombre });
+
   } catch (err) {
     console.error('❌ Error al generar informe:', err.message);
-    res.status(500).send('Error al generar informe');
+    if (req.method === 'GET') return res.status(500).send('Error al generar informe');
+    return res.status(500).send('Error al generar informe');
   }
-});
+}
+
+// POST existente → usa el handler común
+router.post('/informe', handleGuardiasPdf);
+
+// GET público para los enlaces firmados (/s/:token.pdf redirige aquí)
+router.get('/planilla.pdf', handleGuardiasPdf);
 
 router.get('/ayuda', (req, res) => {
   const locals = { title: 'Ayuda · Guardias', hero: false };

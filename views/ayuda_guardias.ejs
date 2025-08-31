@@ -2,115 +2,181 @@
 <% hero  = false %>
 <link rel="stylesheet" href="/styles/estilos_help.css">
 
-
 <div class="help-wrap">
-  
+  <div class="panel">
 
-  <div class="card">
-    <div class="panel-header">
-      <h1 class="h1-titulo">Ayuda · Guardias</h1>
-      <a href="/guardias" class="link">Ir a Guardias →</a>
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+      <h1 class="h1">Ayuda · Guardias</h1>
+      <div class="cta">
+        <a href="/guardias">Ir a Guardias →</a>
+        <a href="/eventos">Ir a Calendario →</a>
+      </div>
     </div>
 
     <!-- Índice -->
     <nav class="toc" aria-label="Índice">
-      <a href="#que-es">¿Qué es?</a>
-      <a href="#planilla">Planilla</a>
-      <a href="#asignar">Asignación automática</a>
-      <a href="#editar">Edición / notas</a>
+      <a href="#flujo">Flujo rápido</a>
+      <a href="#planilla">Planilla & listado</a>
+      <a href="#asignacion">Asignación automática</a>
+      <a href="#edicion">Edición y notas</a>
       <a href="#pdf">Informe PDF</a>
       <a href="#reglas">Reglas del sistema</a>
+      <a href="#tips">Consejos</a>
       <a href="#faq">FAQ</a>
     </nav>
 
-    <!-- Introducción -->
-    <section id="que-es" class="section">
-      <h2>¿Qué es el módulo de Guardias?</h2>
-      <p>Gestiona las <strong>guardias</strong> de cada evento y grupo. El sistema sugiere automáticamente parejas disponibles, equilibrando la carga y cumpliendo reglas de novatos.</p>
-      <div class="notice info">Cada evento puede tener hasta <strong>dos miembros</strong> de guardia.</div>
+    <!-- Flujo rápido -->
+    <section id="flujo" class="section">
+      <h2>Flujo rápido</h2>
+      <ol class="list">
+        <li>Abre <span class="kbd">Guardias</span> y selecciona <strong>Grupo</strong> y <strong>Fechas</strong>.</li>
+        <li>Para rellenar huecos, usa <em>Asignación automática</em> (individual o múltiple por rango).</li>
+        <li>Para ajustes finos, abre una guardia en la planilla y <em>Edita</em> alumnos/notas.</li>
+        <li>Cuando esté listo, genera el <em>Informe PDF</em> del periodo filtrado.</li>
+      </ol>
+      <p class="notice info">Los atajos de rango (<span class="pill">30 días</span>, <span class="pill">Trimestre</span>, <span class="pill">YTD</span>) funcionan igual que en Eventos/Informes.</p>
     </section>
 
-    <!-- Planilla -->
+    <!-- Planilla & listado -->
     <section id="planilla" class="section">
-      <h2>Planilla</h2>
-      <ul class="list">
-        <li>Filtra por <strong>grupo</strong> y <strong>fechas</strong>. Usa los chips: <span class="kbd">Este mes</span>, <span class="kbd">Este trimestre</span>, <span class="kbd">Este año</span>.</li>
-        <li>Acciones: <em>ver</em> planilla, <em>asignar</em> guardias (una o múltiples), <em>eliminar</em> y <em>editar</em>.</li>
-        <li>Los filtros se conservan en la URL para volver al mismo estado.</li>
-      </ul>
-    </section>
-
-    <!-- Asignación automática -->
-    <section id="asignar" class="section">
-      <h2>Asignación automática</h2>
-      <ul class="list">
-        <li><strong>Individual:</strong> botón “Asignar guardia” en un evento sin guardia.</li>
-        <li><strong>Múltiple:</strong> desde la pantalla principal, indicando fechas (y opcionalmente grupo).</li>
-        <li><strong>Equidad:</strong> se priorizan alumnos con <em>menos guardias actuales</em>.</li>
-        <li><strong>Disponibilidad:</strong> nadie puede tener dos guardias el mismo día.</li>
-        <li><strong>Novatos:</strong> el sistema evita <u>dos novatos juntos</u> en la misma guardia.</li>
-      </ul>
-      <div class="notice info">
-        <strong>Definición de novato:</strong> un alumno es novato si su <em>fecha de matrícula</em> es posterior al <u>1 de enero</u> del año del curso correspondiente (el curso empieza en septiembre) y lleva <u>menos de 2 guardias</u> en el curso. Al completar 2 guardias deja de ser novato.
+      <h2>Planilla y listado</h2>
+      <div class="grid-2">
+        <div class="card">
+          <h3 style="margin:.1rem 0 .35rem;">Planilla</h3>
+          <ul class="list">
+            <li>Filtra por <strong>Grupo</strong> y <strong>Fechas</strong>; los filtros quedan en la URL para retomar el estado.</li>
+            <li>Cada fila muestra fecha, turno/guardia y los alumnos asignados (si los hay).</li>
+            <li>Haz clic en una fila para abrir la <em>Edición</em> (cambiar alumnos, añadir notas, eliminar).</li>
+          </ul>
+          <p class="notice info">Si ves un hueco sin asignación, podrás lanzar la <em>Asignación automática</em> desde ahí mismo.</p>
+        </div>
+        <div class="card">
+          <h3 style="margin:.1rem 0 .35rem;">Listado (rango)</h3>
+          <ul class="list">
+            <li>Pasa parámetros <span class="kbd">?desde=YYYY-MM-DD&hasta=YYYY-MM-DD</span> para listar guardias en tabla.</li>
+            <li>Cada fila es clicable y abre la edición de la guardia.</li>
+            <li>Incluye un mini formulario para consultar otro rango rápido.</li>
+          </ul>
+        </div>
       </div>
     </section>
 
-    <!-- Edición -->
-    <section id="editar" class="section">
+    <!-- Asignación -->
+    <section id="asignacion" class="section">
+      <h2>Asignación automática</h2>
+      <div class="grid-2">
+        <div class="card">
+          <h3 style="margin:.1rem 0 .35rem;">Modos</h3>
+          <ul class="list">
+            <li><strong>Individual</strong>: botón <em>Asignar guardia</em> en un hueco concreto.</li>
+            <li><strong>Múltiple</strong>: desde la portada indica <span class="kbd">Fechas</span> y (opcional) <span class="kbd">Grupo</span>.</li>
+          </ul>
+          <p class="notice info">Útil para rellenar muchos días de golpe manteniendo la equidad.</p>
+        </div>
+        <div class="card">
+          <h3 style="margin:.1rem 0 .35rem;">Criterios</h3>
+          <ul class="list">
+            <li><strong>Equidad</strong>: prioriza a quien tiene menos guardias en el curso.</li>
+            <li><strong>Disponibilidad</strong>: nadie tendrá dos guardias el mismo día.</li>
+            <li><strong>Novatos</strong>: impide asignar dos novatos juntos en la misma guardia.</li>
+          </ul>
+          <p class="notice info">Si faltan datos de disponibilidad en un día, el sistema puede omitir esa asignación.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Edición y notas -->
+    <section id="edicion" class="section">
       <h2>Edición y notas</h2>
-      <ul class="list">
-        <li>Haz clic en una fila de la planilla para abrir <strong>edición</strong>.</li>
-        <li>Al guardar, se valida: disponibilidad del día y la regla de <em>no</em> dos novatos juntos.</li>
-        <li>Las <strong>notas</strong> sirven para incidencias, cambios o aclaraciones.</li>
-      </ul>
+      <div class="grid-2">
+        <div class="card">
+          <h3 style="margin:.1rem 0 .35rem;">Edición</h3>
+          <ul class="list">
+            <li>Desde la planilla, abre la guardia para cambiar alumnos o turno.</li>
+            <li>Al guardar, se validan disponibilidad y la regla de novatos.</li>
+            <li>Acción <strong>Eliminar</strong> disponible si procede.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3 style="margin:.1rem 0 .35rem;">Notas</h3>
+          <ul class="list">
+            <li>Registra incidencias, cambios o comentarios operativos.</li>
+            <li>Se muestran junto a la guardia para trazabilidad.</li>
+          </ul>
+        </div>
+      </div>
     </section>
 
     <!-- PDF -->
     <section id="pdf" class="section">
       <h2>Informe PDF</h2>
+      <p>Genera un PDF por <strong>Grupo</strong> y <strong>Rango de fechas</strong> con la planilla del periodo.</p>
       <ul class="list">
-        <li>Genera un PDF por <strong>grupo</strong> y <strong>rango de fechas</strong>.</li>
-        <li>Requiere indicar fechas y grupo en la pantalla principal.</li>
+        <li>Ruta desde Guardias con filtros activos; el PDF respeta el rango seleccionado.</li>
+        <li>Útil para compartir en coordinación o archivar.</li>
       </ul>
     </section>
 
     <!-- Reglas -->
     <section id="reglas" class="section">
       <h2>Reglas del sistema</h2>
+      <div class="grid-2">
+        <div class="card">
+          <h3 style="margin:.1rem 0 .35rem;">Asignación</h3>
+          <ul class="list">
+            <li>Solo se asignan alumnos <strong>activos</strong> del grupo.</li>
+            <li>Se evita <strong>2 guardias el mismo día</strong> para una persona.</li>
+            <li><strong>No</strong> se permiten <strong>dos novatos</strong> en la misma guardia.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3 style="margin:.1rem 0 .35rem;">Curso y novatos</h3>
+          <ul class="list">
+            <li><strong>Cambio de curso (septiembre)</strong>: la carga actual se reinicia a 0; el histórico global se mantiene.</li>
+            <li><strong>Novato</strong>: matrícula posterior al <span class="kbd">1 de enero</span> del año del curso y menos de <span class="kbd">2 guardias</span>. Al completar 2 deja de ser novato.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- Consejos -->
+    <section id="tips" class="section">
+      <h2>Consejos</h2>
       <ul class="list">
-        <li>Solo se asignan alumnos <strong>activos</strong> del grupo.</li>
-        <li>Se evita que un alumno tenga <strong>dos guardias</strong> el mismo día.</li>
-        <li><strong>No</strong> se permite asignar <strong>dos novatos</strong> juntos.</li>
-        <li><strong>Cambio de curso (septiembre):</strong> el sistema pone a <em>cero</em> las <strong>guardias actuales</strong>. El <strong>histórico</strong> global se mantiene.</li>
-        <li>La <strong>carga actual</strong> se equilibra preferentemente en la asignación.</li>
+        <li>Empieza con un rango corto (<span class="pill">30 días</span>) y amplía si hace falta.</li>
+        <li>Si el reparto no te convence, reasigna puntualmente desde la planilla y vuelve a equilibrar.</li>
+        <li>Comprueba que todos los alumnos del grupo estén activos antes de asignar masivamente.</li>
       </ul>
-      <p class="notice info">El algoritmo no fuerza “veterano+novato”, solo impide “novato+novato”. Si necesitas otras reglas, consúltalo con coordinación.</p>
+      <p class="notice info">Los filtros de Guardias son compatibles con los de otras secciones para mantener coherencia.</p>
     </section>
 
     <!-- FAQ -->
     <section id="faq" class="section">
-      <h2>Preguntas frecuentes</h2>
-
-      <div class="card" style="padding:12px 14px; margin-bottom:10px;">
-        <h3 style="margin:0 0 .25rem; font-size:1rem;">¿Cómo sé si alguien es novato?</h3>
-        <p>Se calcula automáticamente con la fecha de matrícula y las guardias del curso. Al hacer 2 guardias, deja de ser novato.</p>
-      </div>
-
-      <div class="card" style="padding:12px 14px; margin-bottom:10px;">
-        <h3 style="margin:0 0 .25rem; font-size:1rem;">Intenté guardar y me sale aviso de novatos</h3>
-        <p>La combinación seleccionada tiene dos novatos. Cambia uno de los alumnos o intercambia con otro compañero.</p>
-      </div>
-
-      <div class="card" style="padding:12px 14px;">
-        <h3 style="margin:0 0 .25rem; font-size:1rem;">¿Cuándo se “resetea” la carga actual?</h3>
-        <p>Al comenzar el curso (septiembre) la carga actual de todos pasa a 0. El histórico total sigue sumando.</p>
+      <h2>FAQ</h2>
+      <div class="grid-2">
+        <div class="card">
+          <h3 style="margin:.1rem 0 .35rem;">¿Cómo sé si alguien es novato?</h3>
+          <p>Se calcula automáticamente con la fecha de matrícula y guardias del curso; al hacer 2 deja de ser novato.</p>
+        </div>
+        <div class="card">
+          <h3 style="margin:.1rem 0 .35rem;">Me avisa de “dos novatos”</h3>
+          <p>Significa que la combinación tiene dos novatos; cambia uno de los alumnos o intercambia con otro día.</p>
+        </div>
+        <div class="card">
+          <h3 style="margin:.1rem 0 .35rem;">¿Se puede exportar todo un trimestre?</h3>
+          <p>Sí. Selecciona el rango del trimestre y genera el PDF; quedará con la planilla de ese periodo.</p>
+        </div>
+        <div class="card">
+          <h3 style="margin:.1rem 0 .35rem;">¿Puedo editar varias guardias a la vez?</h3>
+          <p>Para cambios masivos usa la asignación múltiple; para ajustes finos edita fila a fila en la planilla.</p>
+        </div>
       </div>
     </section>
 
-    <div class="footer-links">
-      <a class="link" href="/guardias">← Volver a Guardias</a>
-      <a class="link" href="/eventos">← Ir a Eventos</a>
-      <a class="link" href="/">← Inicio</a>
+    <div class="section" style="display:flex;gap:10px;flex-wrap:wrap;">
+      <a class="cta" href="/guardias"><span class="pill">← Volver a Guardias</span></a>
+      <a class="cta" href="/"><span class="pill">← Volver al inicio</span></a>
     </div>
+
   </div>
 </div>

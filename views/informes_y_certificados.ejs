@@ -274,6 +274,54 @@
           <p class="req-line"><span class="badge-soft">Requiere: Grupo</span></p>
         </div>
       </button>
+      <!-- Compartir plano (último) -->
+<div class="action-card" id="cardSharePlano" role="group" tabindex="0" aria-label="Generar enlace público del plano">
+  <div class="icon-badge" aria-hidden="true">
+    <!-- icono link -->
+    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"
+         viewBox="0 0 16 16" fill="currentColor">
+      <path d="M6.354 5.5H4a3 3 0 0 0 0 6h3a3 3 0 0 0 2.674-1.664.5.5 0 1 1 .893.448A4 4 0 0 1 7 12.5H4a4 4 0 0 1 0-8h2.354a.5.5 0 0 1 0 1z"/>
+      <path d="M12 3.5H9a3 3 0 0 0-2.674 1.664.5.5 0 1 1-.893-.448A4 4 0 0 1 9 2.5h3a4 4 0 0 1 0 8H9.646a.5.5 0 0 1 0-1H12a3 3 0 0 0 0-6z"/>
+    </svg>
+  </div>
+
+  <div>
+    <p class="action-title">Enlace público del plano de distribución</p>
+    <p class="action-desc">Genera un link firmado al PDF del <em>último</em> plano del grupo seleccionado.</p>
+    <p class="req-line"><span class="badge-soft">Requiere: grupo concreto</span></p>
+
+    <div class="row g-2 align-items-end">
+      <div class="col-md-5">
+        <label class="form-label form-label-sm mb-1">Caducidad</label>
+        <select class="form-select form-select-sm" id="sharePlanoExpire">
+          <option value="">Sin caducidad</option>
+          <option value="168">7 días</option>
+          <option value="720" selected>30 días</option>
+          <option value="2160">90 días</option>
+        </select>
+      </div>
+      <div class="col-md-7 d-grid">
+        <button type="button" class="btn btn-main-blanco btn-sm" id="sharePlanoBtn">
+          Generar enlace
+        </button>
+      </div>
+    </div>
+
+    <!-- Resultado -->
+    <div class="mt-2 share-mini d-none" id="sharePlanoMini">
+      <div class="input-group input-group-sm">
+        <input type="text" class="form-control share-url" id="sharePlanoUrl" readonly>
+        <button type="button" class="btn btn-outline-secondary share-copy" id="sharePlanoCopy">Copiar</button>
+      </div>
+      <div class="mt-1 d-flex gap-2 align-items-center">
+        <span class="badge-soft d-none" id="sharePlanoExpBadge"></span>
+        <small class="text-muted d-none" id="sharePlanoHint">Se copia automáticamente al generar.</small>
+      </div>
+      <small class="text-danger d-none" id="sharePlanoErr"></small>
+    </div>
+  </div>
+</div>
+
     </div>
   </form>
 
@@ -418,3 +466,79 @@
     });
   })();
 </script>
+<script>
+  (() => {
+    const card    = document.getElementById('cardSharePlano');
+    if (!card) return;
+  
+    const sel     = document.getElementById('grupo'); // selector ya existente
+    const btn     = document.getElementById('sharePlanoBtn');
+    const expSel  = document.getElementById('sharePlanoExpire');
+    const mini    = document.getElementById('sharePlanoMini');
+    const urlInp  = document.getElementById('sharePlanoUrl');
+    const copyBt  = document.getElementById('sharePlanoCopy');
+    const expBadg = document.getElementById('sharePlanoExpBadge');
+    const hint    = document.getElementById('sharePlanoHint');
+    const errBox  = document.getElementById('sharePlanoErr');
+  
+    async function generateLink() {
+      errBox.classList.add('d-none');
+      const grupo = sel && sel.value;
+      if (!grupo || grupo === 'todos' || grupo === 'ninguno') {
+        errBox.textContent = 'Selecciona un grupo concreto antes de generar el enlace.';
+        errBox.classList.remove('d-none');
+        return;
+      }
+      btn.disabled = true;
+      const old = btn.textContent;
+      btn.textContent = 'Generando…';
+  
+      try {
+        const expireHours = expSel && expSel.value ? Number(expSel.value) : undefined;
+        const r = await fetch('/api/share', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            kind: 'plano',
+            params: { grupo, latest: true },
+            ...(expireHours ? { expireHours } : {})
+          })
+        });
+        const j = await r.json();
+        if (!j.ok) throw new Error(j.msg || 'No se pudo crear el enlace');
+  
+        urlInp.value = j.url;
+        mini.classList.remove('d-none');
+        hint.classList.remove('d-none');
+  
+        // Mostrar caducidad de forma destacada
+        if (j.expiresAt) {
+          const d = new Date(j.expiresAt);
+          expBadg.textContent = 'Caduca: ' + d.toLocaleString();
+          expBadg.classList.remove('d-none');
+        } else {
+          expBadg.classList.add('d-none');
+        }
+  
+        try { await navigator.clipboard.writeText(j.url); } catch {}
+      } catch (e) {
+        errBox.textContent = e.message || 'Error';
+        errBox.classList.remove('d-none');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = old;
+      }
+    }
+  
+    // Accesible: click / Enter / Space
+    btn.addEventListener('click', generateLink);
+    card.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); generateLink(); }
+    });
+  
+    copyBt.addEventListener('click', async () => {
+      try { await navigator.clipboard.writeText(urlInp.value); } catch {}
+    });
+  })();
+  </script>
+  

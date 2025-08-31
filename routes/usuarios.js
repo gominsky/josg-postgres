@@ -39,8 +39,8 @@ router.post('/nuevo', async (req, res) => {
     const hash = await bcrypt.hash(password, saltRounds);
 
     const SQL_USER = `
-      INSERT INTO usuarios (nombre, apellidos, email, password, rol, creado_en)
-      VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)
+      INSERT INTO usuarios (nombre, apellidos, email, password_hash, rol)
+      VALUES ($1, $2, $3, $4, $5)
       RETURNING id
     `;
 
@@ -127,7 +127,7 @@ router.post('/:id/editar', async (req, res) => {
       const hash = await bcrypt.hash(password, saltRounds);
       sql = `
         UPDATE usuarios
-        SET nombre = $1, apellidos = $2, email = $3, password = $4, rol = $5
+        SET nombre = $1, apellidos = $2, email = $3, password_hash = $4, rol = $5
         WHERE id = $6
       `;
       params = [nombre, apellidos, emailNew, hash, rol, id];

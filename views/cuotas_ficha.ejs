@@ -55,13 +55,13 @@
   <div class="acciones-finales d-flex justify-content-between align-items-center mt-4">
     <a href="/cuotas" class="enlace-final-naranja">← Volver</a>
     <div class="d-flex align-items-center gap-2">
-      <button type="submit" class="btn-main">
+      <button type="submit" class="btn-main-blanco">
         <%= isEdicion ? 'Actualizar' : 'Registrar' %>
       </button>
       <% if (isEdicion) { %>
         <button
           type="submit"
-          class="btn-rojo"
+          class="btn-main-blanco"
           formaction="/cuotas/<%= cuota.id %>?_method=DELETE"
           formmethod="POST"
           onclick="return confirm('¿Eliminar esta cuota?');"
