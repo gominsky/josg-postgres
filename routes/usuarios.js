@@ -18,6 +18,24 @@ function isPKDuplicate(err) {
 function isEmailDuplicate(err) {
   return err && err.code === '23505' && /email/i.test(String(err.constraint || err.detail || ''));
 }
+// Upsert manual en profesores por email (sin ON CONFLICT)
+async function upsertProfesorByEmail(dbOrClient, { nombre, apellidos, email }) {
+  const sel = await dbOrClient.query(
+    'SELECT id FROM profesores WHERE LOWER(email) = LOWER($1) LIMIT 1',
+    [email]
+  );
+  if (sel.rows.length) {
+    await dbOrClient.query(
+      'UPDATE profesores SET nombre = $1, apellidos = $2, email = $3 WHERE id = $4',
+      [nombre, apellidos, email, sel.rows[0].id]
+    );
+  } else {
+    await dbOrClient.query(
+      'INSERT INTO profesores (nombre, apellidos, email) VALUES ($1, $2, $3)',
+      [nombre, apellidos, email]
+    );
+  }
+}
 
 /* ====== NUEVO USUARIO ====== */
 router.get('/nuevo', (req, res) => {
@@ -61,17 +79,10 @@ router.post('/nuevo', async (req, res) => {
       }
     }
 
-    // Si es docente, garantizamos su presencia en profesores (upsert por email)
     if (rol === 'docente') {
-      await db.query(
-        `INSERT INTO profesores (nombre, apellidos, email)
-         VALUES ($1, $2, $3)
-         ON CONFLICT (email) DO UPDATE
-           SET nombre = EXCLUDED.nombre, apellidos = EXCLUDED.apellidos`,
-        [nombre, apellidos, email]
-      );
-    }
-
+        await upsertProfesorByEmail(db, { nombre, apellidos, email });
+    }  // Si es docente, garantizamos su presencia en profesores (sin ON CONFLICT)
+      
     res.redirect('/usuarios?creado=1');
   } catch (err) {
     console.error('Error al crear usuario:', err);
@@ -149,57 +160,62 @@ router.post('/:id/editar', async (req, res) => {
       }
       throw e;
     }
-
     if (rol === 'docente') {
-      // Mantener/crear fila en profesores (upsert por email)
-      if (emailOld && emailOld !== emailNew) {
-        const upd = await db.query(
+  if (emailOld && emailOld !== emailNew) {
+    // 1) Intento de actualizar por el email antiguo
+    const upd = await db.query(
+      `UPDATE profesores
+         SET nombre = $1, apellidos = $2, email = $3
+       WHERE LOWER(email) = LOWER($4)`,
+      [nombre, apellidos, emailNew, emailOld]
+    );
+
+    if (upd.rowCount === 0) {
+      // 2) Si no existía por emailOld, mira si ya hay fila con emailNew
+      const sel = await db.query(
+        'SELECT id FROM profesores WHERE LOWER(email) = LOWER($1)',
+        [emailNew]
+      );
+      if (sel.rows.length) {
+        await db.query(
           `UPDATE profesores
-             SET nombre = $1, apellidos = $2, email = $3
-           WHERE email = $4`,
-          [nombre, apellidos, emailNew, emailOld]
+             SET nombre = $1, apellidos = $2
+           WHERE id = $3`,
+          [nombre, apellidos, sel.rows[0].id]
         );
-        if (upd.rowCount === 0) {
-          await db.query(
-            `INSERT INTO profesores (nombre, apellidos, email)
-             VALUES ($1, $2, $3)
-             ON CONFLICT (email) DO UPDATE
-               SET nombre = EXCLUDED.nombre, apellidos = EXCLUDED.apellidos`,
-            [nombre, apellidos, emailNew]
-          );
-        }
       } else {
         await db.query(
           `INSERT INTO profesores (nombre, apellidos, email)
-           VALUES ($1, $2, $3)
-           ON CONFLICT (email) DO UPDATE
-             SET nombre = EXCLUDED.nombre, apellidos = EXCLUDED.apellidos`,
+           VALUES ($1, $2, $3)`,
           [nombre, apellidos, emailNew]
         );
       }
-    } else {
-      // Ya no es docente: limpia FKs y borra de profesores (por ambos emails)
-      const emails = [emailOld, emailNew].filter(Boolean);
-
-      // 1) Relaciones con instrumentos
-      await db.query(`
-        WITH p AS (SELECT id FROM profesores WHERE email = ANY($1))
-        DELETE FROM profesor_instrumento pi
-        USING p
-        WHERE pi.profesor_id = p.id
-      `, [emails]);
-
-      // 2) Relaciones con grupos
-      await db.query(`
-        WITH p AS (SELECT id FROM profesores WHERE email = ANY($1))
-        DELETE FROM profesor_grupo pg
-        USING p
-        WHERE pg.profesor_id = p.id
-      `, [emails]);
-
-      // 3) Borrar el/los profesores
-      await db.query(`DELETE FROM profesores WHERE email = ANY($1)`, [emails]);
     }
+  } else {
+    // Email no cambia: upsert manual por emailNew
+    await upsertProfesorByEmail(db, { nombre, apellidos, email: emailNew });
+  }
+} else {
+  // (tu rama “ya no es docente” sigue igual)
+  const emails = [emailOld, emailNew].filter(Boolean);
+
+  await db.query(`
+    WITH p AS (SELECT id FROM profesores WHERE email = ANY($1))
+    DELETE FROM profesor_instrumento pi
+    USING p
+    WHERE pi.profesor_id = p.id
+  `, [emails]);
+
+  await db.query(`
+    WITH p AS (SELECT id FROM profesores WHERE email = ANY($1))
+    DELETE FROM profesor_grupo pg
+    USING p
+    WHERE pg.profesor_id = p.id
+  `, [emails]);
+
+  await db.query(`DELETE FROM profesores WHERE email = ANY($1)`, [emails]);
+}
+
 
     await db.query('COMMIT');
     res.redirect('/usuarios');
@@ -210,7 +226,7 @@ router.post('/:id/editar', async (req, res) => {
   }
 });
 
-/* ====== ELIMINAR ====== */
+
 /* ====== ELIMINAR ====== */
 router.post('/:id/eliminar', async (req, res) => {
   try {

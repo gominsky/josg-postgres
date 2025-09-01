@@ -21,28 +21,29 @@ router.get('/ayuda', (_req, res) => {
 // Listado JSON para FullCalendar (start/end normalizados)
 router.get('/listado', async (req, res) => {
   const sql = `
-    WITH e2 AS (
-      SELECT
-        e.*,
-        CASE
-          WHEN e.fecha_inicio ~ 'T'
-            THEN to_timestamp(e.fecha_inicio, 'YYYY-MM-DD"T"HH24:MI')
-          ELSE to_timestamp(e.fecha_inicio || ' ' || COALESCE(e.hora_inicio,'00:00'), 'YYYY-MM-DD HH24:MI')
-        END AS start_ts,
-        CASE
-          WHEN e.fecha_fin ~ 'T'
-            THEN to_timestamp(e.fecha_fin, 'YYYY-MM-DD"T"HH24:MI')
-          ELSE to_timestamp(e.fecha_fin || ' ' || COALESCE(e.hora_fin,'00:00'), 'YYYY-MM-DD HH24:MI')
-        END AS end_ts
-      FROM eventos e
-    )
-    SELECT e2.id, e2.titulo, e2.descripcion, e2.grupo_id, e2.activo,
-           g.nombre AS grupo_nombre,
-           to_char(e2.start_ts, 'YYYY-MM-DD"T"HH24:MI') AS start_iso,
-           to_char(e2.end_ts,   'YYYY-MM-DD"T"HH24:MI') AS end_iso
-    FROM e2
-    LEFT JOIN grupos g ON e2.grupo_id = g.id
-  `;
+  WITH e2 AS (
+    SELECT
+      e.*,
+      CASE
+        WHEN (e.fecha_inicio::text) ~ 'T'
+          THEN to_timestamp(e.fecha_inicio::text, 'YYYY-MM-DD"T"HH24:MI')
+        ELSE to_timestamp((e.fecha_inicio::text) || ' ' || COALESCE(e.hora_inicio::text,'00:00'), 'YYYY-MM-DD HH24:MI')
+      END AS start_ts,
+      CASE
+        WHEN (e.fecha_fin::text) ~ 'T'
+          THEN to_timestamp(e.fecha_fin::text, 'YYYY-MM-DD"T"HH24:MI')
+        ELSE to_timestamp((e.fecha_fin::text) || ' ' || COALESCE(e.hora_fin::text,'00:00'), 'YYYY-MM-DD HH24:MI')
+      END AS end_ts
+    FROM eventos e
+  )
+  SELECT e2.id, e2.titulo, e2.descripcion, e2.grupo_id, e2.activo,
+         g.nombre AS grupo_nombre,
+         to_char(e2.start_ts, 'YYYY-MM-DD"T"HH24:MI') AS start_iso,
+         to_char(e2.end_ts,   'YYYY-MM-DD"T"HH24:MI') AS end_iso
+  FROM e2
+  LEFT JOIN grupos g ON e2.grupo_id = g.id
+`;
+
 
   try {
     const { rows } = await db.query(sql);
@@ -86,28 +87,27 @@ router.get('/', async (req, res) => {
 
   if (desde && hasta) {
     const query = `
-      WITH e2 AS (
-        SELECT e.*,
-          CASE
-            WHEN e.fecha_inicio ~ 'T'
-              THEN to_timestamp(e.fecha_inicio, 'YYYY-MM-DD"T"HH24:MI')
-            ELSE to_timestamp(e.fecha_inicio || ' ' || COALESCE(e.hora_inicio,'00:00'), 'YYYY-MM-DD HH24:MI')
-          END AS start_ts,
-          CASE
-            WHEN e.fecha_fin ~ 'T'
-              THEN to_timestamp(e.fecha_fin, 'YYYY-MM-DD"T"HH24:MI')
-            ELSE to_timestamp(e.fecha_fin || ' ' || COALESCE(e.hora_fin,'00:00'), 'YYYY-MM-DD HH24:MI')
-          END AS end_ts
-        FROM eventos e
-      )
-      SELECT e2.*, g.nombre AS grupo_nombre
-      FROM e2
-      JOIN grupos g ON e2.grupo_id = g.id
-      WHERE e2.start_ts::date >= $1::date
-        AND e2.end_ts::date   <= $2::date
-      ORDER BY e2.start_ts
-    `;
-
+  WITH e2 AS (
+    SELECT e.*,
+      CASE
+        WHEN (e.fecha_inicio::text) ~ 'T'
+          THEN to_timestamp(e.fecha_inicio::text, 'YYYY-MM-DD"T"HH24:MI')
+        ELSE to_timestamp((e.fecha_inicio::text) || ' ' || COALESCE(e.hora_inicio::text,'00:00'), 'YYYY-MM-DD HH24:MI')
+      END AS start_ts,
+      CASE
+        WHEN (e.fecha_fin::text) ~ 'T'
+          THEN to_timestamp(e.fecha_fin::text, 'YYYY-MM-DD"T"HH24:MI')
+        ELSE to_timestamp((e.fecha_fin::text) || ' ' || COALESCE(e.hora_fin::text,'00:00'), 'YYYY-MM-DD HH24:MI')
+      END AS end_ts
+    FROM eventos e
+  )
+  SELECT e2.*, g.nombre AS grupo_nombre
+  FROM e2
+  JOIN grupos g ON e2.grupo_id = g.id
+  WHERE e2.start_ts::date >= $1::date
+    AND e2.end_ts::date   <= $2::date
+  ORDER BY e2.start_ts
+`;
     try {
       const { rows: eventos } = await db.query(query, [desde, hasta]);
       const { rows: grupos } = await db.query('SELECT * FROM grupos ORDER BY nombre');
