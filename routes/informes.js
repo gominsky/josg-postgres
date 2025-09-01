@@ -6,6 +6,62 @@ const fs = require('fs');
 const { isAuthenticated } = require('../middleware/auth');
 const { toISODate } = require('../utils/fechas');
 router.use(express.json());
+
+// === Helpers curso/trimestre para "Prueba de atril" (curso desde 1 de agosto) ===
+function _norm(s){
+  return (s||'').toString().toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .replace(/[^\w\s]/g,' ').replace(/\s+/g,' ').trim();
+}
+
+// Domingo de Pascua (algoritmo gregoriano)
+function _easterSunday(year){
+  const a=year%19, b=Math.floor(year/100), c=year%100,
+        d=Math.floor(b/4), e=b%4, f=Math.floor((b+8)/25),
+        g=Math.floor((b-f+1)/3), h=(19*a+b-d-g+15)%30,
+        i=Math.floor(c/4), k=c%4, l=(32+2*e+2*i-h-k)%7,
+        m=Math.floor((a+11*h+22*l)/451),
+        month=Math.floor((h+l-7*m+114)/31),
+        day=((h+l-7*m+114)%31)+1;
+  return new Date(year, month-1, day); // local
+}
+
+// Curso desde 1 de agosto; T2 desde Navidad; T3 desde lunes tras Pascua
+function _cursoYTrimestre(fechaISO){
+  const d = fechaISO ? new Date(fechaISO + 'T12:00:00') : new Date();
+  const y = d.getFullYear(), m = d.getMonth()+1;
+  const yStart = (m >= 8) ? y : (y - 1);
+  const yEnd   = yStart + 1;
+  const curso  = String(yStart % 100).padStart(2,'0') + '/' + String(yEnd % 100).padStart(2,'0');
+
+  // T2: desde 25/dic del año de inicio
+  const navidad = new Date(yStart, 11, 25, 12); // 25-dic
+  // T3: lunes tras Pascua del año siguiente
+  const pascua  = _easterSunday(yStart + 1);
+  const inicioT3 = new Date(pascua); inicioT3.setDate(pascua.getDate() + 1); // lunes
+
+  let trimestre = 'T1';
+  if (d >= navidad && d < inicioT3) trimestre = 'T2';
+  else if (d >= inicioT3)          trimestre = 'T3';
+
+  return { curso, trimestre };
+}
+
+// Quita sufijo final " 25/26T1|T2|T3" si ya lo tuviera (evita duplicados)
+function _stripSuffix(nombre){
+  return String(nombre||'').replace(/\s+\d{2}\/\d{2}T[123]\s*$/i,'').trim();
+}
+
+// Completa el título SOLO si empieza por "prueba de atril"
+function completaTituloPruebaAtril(nombre, fechaISO){
+  const base = _stripSuffix(nombre);
+  if (!_norm(base).startsWith('prueba de atril')) return base;
+  const { curso, trimestre } = _cursoYTrimestre(fechaISO);
+  return `${base} ${curso}${trimestre}`.trim();
+}
+
+
+
 // ⛔️ Anti-caché para todo lo de /ficha (GET y POST)
 router.get('/ayuda', (_req, res) => {
   res.render('ayuda_informes', { title: 'Ayuda · Informes y certificados', hero: false });
@@ -259,9 +315,9 @@ router.post('/ficha/guardar-json', async (req, res) => {
   const norm = (s) => (s || '')
     .toString()
     .toLowerCase()
-    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')   // quita tildes
-    .replace(/[^\w\s]/g, ' ')                           // quita punct.
-    .replace(/\s+/g, ' ')                               // espacios a 1
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^\w\s]/g, ' ')
+    .replace(/\s+/g, ' ')
     .trim();
 
   const esPruebaAtril = norm(nombre_informe).startsWith('prueba de atril');
@@ -288,6 +344,13 @@ router.post('/ficha/guardar-json', async (req, res) => {
   // ---- FIN AUTO-CAMPOS ----
 
   const fechaISO = toISODate(fecha) || new Date().toISOString().slice(0, 10);
+
+  // 👇 TÍTULO FINAL: si es “Prueba de atril…”, añade curso+trimestre (y reemplaza si ya hay)
+  let nombreFinal = (nombre_informe || '').toString().trim();
+  if (esPruebaAtril) {
+    nombreFinal = completaTituloPruebaAtril(nombreFinal, fechaISO);
+  }
+
   const grupoIdFinal = ['ninguno', 'todos', '', null, undefined].includes(grupo_id) ? null : Number(grupo_id);
   const instrumentoIdFinal = ['ninguno', 'todos', '', null, undefined].includes(instrumento_id) ? null : Number(instrumento_id);
 
@@ -300,14 +363,14 @@ router.post('/ficha/guardar-json', async (req, res) => {
         `INSERT INTO informes (informe, grupo_id, instrumento_id, fecha)
          VALUES ($1, $2, $3, $4)
          RETURNING id`,
-        [nombre_informe, grupoIdFinal, instrumentoIdFinal, fechaISO]
+        [nombreFinal, grupoIdFinal, instrumentoIdFinal, fechaISO]
       );
       informeIdFinal = insert.rows[0].id;
     } else {
       // Actualizar nombre y fecha
       await db.query(
         `UPDATE informes SET informe = $1, fecha = $2 WHERE id = $3`,
-        [nombre_informe, fechaISO, informeIdFinal]
+        [nombreFinal, fechaISO, informeIdFinal]
       );
     }
 
@@ -315,7 +378,7 @@ router.post('/ficha/guardar-json', async (req, res) => {
     await db.query(`DELETE FROM informe_resultados WHERE informe_id = $1`, [informeIdFinal]);
     await db.query(`DELETE FROM informe_campos WHERE informe_id = $1`, [informeIdFinal]);
 
-    // 3. Insertar campos (usando el array ya normalizado + posibles auto-campos)
+    // 3. Insertar campos
     const campoInsert = `
       INSERT INTO informe_campos (informe_id, nombre, tipo, obligatorio)
       VALUES ($1, $2, $3, $4)
@@ -340,7 +403,6 @@ router.post('/ficha/guardar-json', async (req, res) => {
     for (const r of parsedResultados) {
       for (let i = 0; i < camposIds.length; i++) {
         const campoId = camposIds[i];
-        // Si añadimos auto-campos en servidor, no habrá valor: caerá a '' (ok)
         const valor = r[`campo_${i}`] ?? '';
         await db.query(resultadoInsert, [
           informeIdFinal,
