@@ -5,165 +5,138 @@
   <style>
     :root{
       --ink:#111827; --border:#e5e7eb; --shadow:0 1px 2px rgba(0,0,0,.05);
-      --acc1:#0ea5e9; --acc2:#22c55e;
+      --brand-orange:#FF9501; --brand-yellow:#ffb020; --brand-cream:#fff3dc;
+      --brand-black:#111827; --brand-blue:#1f3a8a; --brand-rust:#c8472c;
     }
-  
-    /* ===================== FORMULARIO (look informes) ===================== */
+
+    /* ===== Panel filtros ===== */
     #prov-wrap .form-panel{
       background:#fff; border:1px solid rgba(0,0,0,.08);
       border-radius:16px; box-shadow:var(--shadow);
       padding:14px 16px 18px; margin-bottom:14px;
       display:grid; grid-template-columns:1fr;
     }
-    #prov-wrap .form-panel > .form-head,
-    #prov-wrap .form-panel > .form-fields,
-    #prov-wrap .form-panel > .form-toolbar{ grid-column:1 / -1; width:100%; }
-  
-    #prov-wrap .form-head{
-      display:flex; align-items:center; justify-content:space-between;
-      gap:12px; flex-wrap:wrap; margin-bottom:10px;
-    }
-    #prov-wrap .form-title{
-      margin:0; font-weight:700; color:var(--ink);
-      font-size:clamp(1.4rem,1.1rem + 1.2vw,2rem);
-    }
-    #prov-wrap .btn.btn-outline{
-      border:1px solid rgba(0,0,0,.12); background:#fff; color:#111;
-      border-radius:10px; padding:.48rem .9rem; text-decoration:none; white-space:nowrap;
-      box-shadow:var(--shadow);
-    }
+    #prov-wrap .form-head{ display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:10px; }
+    #prov-wrap .form-title{ margin:0; font-weight:700; color:var(--ink); font-size:clamp(1.4rem,1.1rem + 1.2vw,2rem); }
+    #prov-wrap .btn.btn-outline{ border:1px solid rgba(0,0,0,.12); background:#fff; color:#111; border-radius:10px; padding:.48rem .9rem; text-decoration:none; white-space:nowrap; box-shadow:var(--shadow); }
     #prov-wrap .btn.btn-outline:hover{ background:#f3f4f6; }
-  
-    /* Filtros */
-    #prov-wrap .form-fields{
-      display:grid; gap:14px; padding-top:8px; border-top:1px dashed rgba(0,0,0,.08);
-      grid-template-columns:1fr; margin-bottom:10px;
-    }
-    @media (min-width:992px){
-      #prov-wrap .form-fields{ grid-template-columns:2fr 5fr; align-items:end; gap:18px; }
-    }
+
+    #prov-wrap .form-fields{ display:grid; gap:14px; padding-top:8px; border-top:1px dashed rgba(0,0,0,.08); grid-template-columns:1fr; margin-bottom:10px; }
+    @media (min-width:992px){ #prov-wrap .form-fields{ grid-template-columns:2fr 5fr; align-items:end; gap:18px; } }
     #prov-wrap .form-label{ font-weight:600; color:var(--ink); margin-bottom:.35rem; }
-    #prov-wrap .control{
-      width:100%; padding:.56rem .75rem; font-size:1rem;
-      border:1px solid var(--border); border-radius:10px; background:#fff;
-      box-shadow:var(--shadow);
-    }
-    /* Altura del select Estado para igualar al buscador */
-    #prov-wrap #estado.control,
-    #prov-wrap select#estado.form-select{
-      padding-top:.66rem; padding-bottom:.66rem;
-      min-height:44px; line-height:1.25;
-    }
-  
-    /* Barras Diseño / Exportación */
-    #prov-wrap .form-toolbar{
-      display:flex; align-items:center; gap:10px; flex-wrap:wrap;
-      margin:10px 0 0;
-    }
+    #prov-wrap .control{ width:100%; padding:.56rem .75rem; font-size:1rem; border:1px solid var(--border); border-radius:10px; background:#fff; box-shadow:var(--shadow); }
+    #prov-wrap #estado.control{ padding-top:.66rem; padding-bottom:.66rem; min-height:44px; line-height:1.25; }
+
+    /* ===== Chips ===== */
+    #prov-wrap .form-toolbar{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin:10px 0 0; }
     #prov-wrap .form-toolbar .label{ color:#6b7280; font-weight:600; margin:0; line-height:1; }
-  
-    /* ===================== CHIPS (diseño/export/selección) ===================== */
-    .btn-chip{
-      border:1px solid var(--border); background:#fff; color:var(--ink);
-      border-radius:999px; padding:.36rem .72rem; cursor:pointer; white-space:nowrap;
-    }
+    .btn-chip{ border:1px solid var(--border); background:#fff; color:#111827; border-radius:999px; padding:.36rem .72rem; cursor:pointer; white-space:nowrap; }
     .btn-chip:hover{ background:#f3f4f6; }
-  
-    /* ===================== GRID + TARJETAS ===================== */
-    .grid{
-      display:grid; gap:18px; padding:8px 8px 0;
-      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    .btn-chip.active{ background:#111827; color:#fff; border-color:#111827; }
+    .btn-chip:focus-visible{ outline:2px solid #111827; outline-offset:2px; }
+
+    /* ===== Grid (un pelín más ancho) ===== */
+    .grid{ display:grid; gap:18px; padding:8px 8px 0; grid-template-columns: repeat(auto-fill, minmax(372px, 1fr)); }
+    @media (min-width:1200px){ .grid{ grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+
+    /* ===== Contenido tarjeta ===== */
+    .prov-card{
+      position:relative; display:block; text-decoration:none; color:inherit;
+      padding:16px 18px; transition:transform .12s ease; min-height:180px;
     }
-    @media (min-width:1024px){ .grid{ grid-template-columns: repeat(3, minmax(0, 1fr)); } }
-  
-    .card{
-      display:grid; grid-template-columns:110px 1fr; min-height:190px;
-      background:#fff; border:1px solid var(--border); border-radius:16px;
-      box-shadow:var(--shadow); color:var(--ink); position:relative; overflow:hidden;
-      text-decoration:none; transition:transform .12s ease, box-shadow .12s ease;
+    .prov-card:hover{ transform:translateY(-2px); }
+
+    .prov-head{ display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:8px; }
+    .prov-title-row{ display:flex; align-items:center; gap:8px; min-width:0; }
+    .prov-title{
+      font-weight:800; font-size:1.08rem; line-height:1.25rem;
+      white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
     }
-    .card:hover{ transform:translateY(-2px); box-shadow:0 10px 20px rgba(0,0,0,.08); }
-  
-    .media{
-      display:flex; align-items:center; justify-content:center; padding:14px;
-      background:
-        radial-gradient(110px 110px at 25% 25%, rgba(255,255,255,.45), transparent),
-        linear-gradient(160deg, var(--acc1), var(--acc2));
-    }
-    .grid[data-look="b"] .card{ border-color:#d1d5db; }
-    .grid[data-look="b"] .media{
-      background:repeating-linear-gradient(45deg, rgba(0,0,0,.05) 0 10px, rgba(0,0,0,.025) 10px 20px);
-    }
-    .grid[data-look="c"] .card{ background:rgba(255,255,255,.85); backdrop-filter:blur(6px); }
-    .grid[data-look="c"] .media{
-      background:linear-gradient(135deg, rgba(255,255,255,.7), rgba(255,255,255,.2));
-    }
-  
-    .avatar{
-      width:72px; height:72px; border-radius:16px; display:flex; align-items:center; justify-content:center;
-      background:#ffffffc9; border:1px solid #e5e7eb; font-weight:800; font-size:26px; color:#0b1220;
-    }
-    .body{ padding:14px 16px 12px 6px; display:flex; flex-direction:column; gap:8px; min-width:0; }
-    .top{ display:flex; align-items:center; gap:8px; position:relative; padding-right:44px; } /* hueco para check */
-    .title{ font-weight:800; font-size:1.12rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-    .sub{ color:#6b7280; }
-    .meta{ display:flex; gap:12px; flex-wrap:wrap; color:#475569; font-size:.95rem; }
-    .meta .i{ width:16px; height:16px; fill:currentColor; opacity:.8; }
-  
-    .actions{ display:flex; align-items:center; gap:10px; margin-top:auto; }
-    .btn-ghost{
-      border:1px solid var(--border); background:#fff; border-radius:999px; padding:.32rem .65rem; font-size:.9rem;
-    }
+
+    .prov-sub{ color:#6b7280; margin:.25rem 0 .35rem; }
+    .prov-meta{ display:grid; gap:4px; font-size:.93rem; color:#475569; }
+    .i{ width:16px; height:16px; fill:currentColor; opacity:.85; vertical-align:-2px; margin-right:4px; }
+
+    .prov-actions{ display:flex; align-items:center; gap:10px; margin-top:10px; }
+    .btn-ghost{ border:1px solid var(--border); background:#fff; border-radius:999px; padding:.32rem .65rem; font-size:.9rem; }
     .btn-ghost:hover{ background:#f9fafb; }
-    .spacer{ flex:1; }
-    .cif{
-      font-family:ui-monospace, Menlo, monospace; background:#f9fafb; border:1px dashed #d1d5db;
-      padding:.18rem .45rem; border-radius:8px; color:#334155;
-    }
-  
+    .prov-spacer{ flex:1; }
+    .prov-cif{ font-family:ui-monospace, Menlo, monospace; background:#f9fafb; border:1px dashed #d1d5db; padding:.18rem .45rem; border-radius:8px; color:#334155; white-space:nowrap; }
+
     /* Selección */
-    .sel{ display:flex; align-items:center; gap:8px; margin:8px 8px 12px; }
-    .count{ color:#6b7280; font-size:.94rem; }
-    .check{ position:absolute; top:10px; right:10px; width:18px; height:18px; accent-color:#0ea5e9; }
-    .card.selected{ outline:2px solid #0ea5e9; outline-offset:2px; }
-  
-    /* Punto de estado */
-    #prov-wrap .card .top .status-dot{
-      position:static !important; margin:0 6px 0 0; width:10px; height:10px; border-radius:50%;
-      display:inline-block; vertical-align:middle;
-      box-shadow:0 0 0 2px rgba(0,0,0,.06) inset, 0 0 8px rgba(0,0,0,.15);
+    .prov-card.selected{ outline:2px solid #0ea5e9; outline-offset:2px; }
+
+    /* ===== Punto de estado junto al título ===== */
+    #prov-wrap .status-dot{
+      position: static !important;
+      width:10px; height:10px; border-radius:50%; display:inline-block; flex:0 0 10px;
+      box-shadow:0 0 0 2px rgba(0,0,0,.06) inset, 0 0 6px rgba(0,0,0,.10);
     }
-    .status-dot.is-ok{  background:#22c55e; }
+    .status-dot.is-ok{ background:#22c55e; }
     .status-dot.is-off{ background:#ef4444; }
-  
-    /* Paletas alternas */
-    .grid .card:nth-child(6n+1){ --acc1:#0ea5e9; --acc2:#22c55e; }
-    .grid .card:nth-child(6n+2){ --acc1:#a855f7; --acc2:#06b6d4; }
-    .grid .card:nth-child(6n+3){ --acc1:#f59e0b; --acc2:#ef4444; }
-    .grid .card:nth-child(6n+4){ --acc1:#14b8a6; --acc2:#3b82f6; }
-    .grid .card:nth-child(6n+5){ --acc1:#ef4444; --acc2:#f97316; }
-    .grid .card:nth-child(6n+6){ --acc1:#6366f1; --acc2:#22c55e; }
-  
-    /* Responsive tarjeta */
-    @media (max-width:640px){
-      .card{ grid-template-columns:90px 1fr; }
-      .avatar{ width:60px; height:60px; font-size:22px; }
+
+    /* ===== Forma base de .card-oro ===== */
+    #prov-wrap .card-oro{
+      border-radius:16px !important;
+      border:1px solid rgba(17,24,39,.10) !important;
+      box-shadow:0 1px 2px rgba(0,0,0,.05) !important;
+      background:#fff !important;
+      overflow:hidden;
     }
+    #prov-wrap .card-oro:hover{ box-shadow:0 10px 20px rgba(0,0,0,.1) !important; }
+
+    /* ===== Estilos de marca (data-style en #grid) ===== */
+    /* 0) Classic */
+    #grid[data-style="classic"] .card-oro{
+      background:#fff !important; border-color:#d1d5db !important; box-shadow:0 4px 12px rgba(0,0,0,.06) !important; color:#111827 !important;
+    }
+    /* 1) Naranja Pro */
+    #grid[data-style="orange"] .card-oro{
+      background: var(--brand-orange) !important; border-color:#d97706 !important;
+      box-shadow:0 8px 18px rgba(255,149,1,.25) !important; color:#111;
+    }
+    #grid[data-style="orange"] .prov-sub, #grid[data-style="orange"] .prov-meta{ color:#111827; }
+    #grid[data-style="orange"] .btn-ghost{ background:#fff; border-color:#111827; }
+    /* 2) Noir */
+    #grid[data-style="noir"] .card-oro{
+      background:#0d1117 !important; border-color:#1f2937 !important; box-shadow:0 8px 22px rgba(0,0,0,.35) !important; color:#f8fafc !important;
+    }
+    #grid[data-style="noir"] .card-oro::before{
+      content:""; position:absolute; left:0; right:0; top:0; height:6px; background: var(--brand-orange);
+    }
+    #grid[data-style="noir"] .prov-sub, #grid[data-style="noir"] .prov-meta{ color:#cbd5e1; }
+    #grid[data-style="noir"] .btn-ghost{ background:#111827; border-color:#334155; color:#e2e8f0; }
+    #grid[data-style="noir"] .btn-ghost:hover{ background:#0b1220; }
+    /* 3) Cream Pattern */
+    #grid[data-style="cream"] .card-oro{
+      background:
+        repeating-linear-gradient(135deg, rgba(0,0,0,.035) 0 8px, transparent 8px 16px),
+        var(--brand-cream) !important;
+      border-color: rgba(0,0,0,.18) !important; box-shadow: 0 6px 16px rgba(0,0,0,.08) !important; color:#0f172a !important;
+    }
+    #grid[data-style="cream"] .prov-sub{ color:#334155; } #grid[data-style="cream"] .prov-meta{ color:#475569; }
+    /* 4) Gradient Bold */
+    #grid[data-style="gradient"] .card-oro{
+      background: linear-gradient(160deg, var(--brand-orange) 0%, var(--brand-yellow) 100%) !important;
+      border-color: rgba(17,24,39,.25) !important; box-shadow: 0 10px 26px rgba(255,149,1,.25) !important; color:#111 !important;
+    }
+    #grid[data-style="gradient"] .card-oro::before{ content:""; position:absolute; inset:0 auto 0 0; width:6px; background:#000; opacity:.75; }
+    #grid[data-style="gradient"] .prov-sub, #grid[data-style="gradient"] .prov-meta{ color:#111827; }
+
+    /* Tabla: dot centrado sin sombras extra */
+    #prov-wrap #tabla-wrap .status-dot{ position: static !important; margin: 0 auto; box-shadow:none; }
   </style>
-  
+
   <form id="filtro-form" method="GET" class="form-panel">
     <div class="form-head">
       <h1 class="form-title">Proveedores</h1>
       <a href="/proveedores/nuevo" class="btn btn-outline">＋ Nuevo proveedor</a>
-    
     </div>
-  
-    <!-- Fila 2: Filtros -->
+
     <div class="form-fields">
       <div>
         <label for="estado" class="form-label">Estado</label>
-        <select id="estado" name="estado" class="control"
-                onchange="document.getElementById('filtro-form').submit()">
+        <select id="estado" name="estado" class="control" onchange="document.getElementById('filtro-form').submit()">
           <option value="">Todos</option>
           <option value="1" <%= estado === '1' ? 'selected' : '' %>>Activos</option>
           <option value="0" <%= estado === '0' ? 'selected' : '' %>>Inactivos</option>
@@ -171,84 +144,105 @@
       </div>
       <div>
         <label for="busqueda-proveedores" class="form-label">Buscar</label>
-        <input id="busqueda-proveedores" type="text" name="q"
-               value="<%= q || '' %>" class="control"
-               placeholder="Nombre, CIF/NIF, email, teléfono…">
+        <input id="busqueda-proveedores" type="text" name="q" value="<%= q || '' %>" class="control" placeholder="Nombre, CIF/NIF, email, teléfono…">
       </div>
     </div>
-  
-    <!-- Fila 3: Diseño (usa tus .btn-chip existentes) -->
+
+    <!-- Estilo de tarjetas -->
     <div class="form-toolbar">
-      <span class="label">Diseño:</span>
-      <button type="button" class="btn-chip" data-look="a">Color</button>
-      <button type="button" class="btn-chip" data-look="b">Contorno</button>
-      <button type="button" class="btn-chip" data-look="c">Glass</button>
+      <span class="label">Estilo:</span>
+      <button type="button" class="btn-chip" data-style="classic">Clásica</button>
+      <button type="button" class="btn-chip" data-style="orange">Naranja Pro</button>
+      <button type="button" class="btn-chip" data-style="noir">Noir</button>
+      <button type="button" class="btn-chip" data-style="cream">Cream Pattern</button>
+      <button type="button" class="btn-chip" data-style="gradient">Gradient Bold</button>
+    </div>
+
+    <!-- Vista -->
+    <div class="form-toolbar">
+      <span class="label">Vista:</span>
+      <button type="button" class="btn-chip" data-view="cards" aria-pressed="true">Tarjetas</button>
+      <button type="button" class="btn-chip" data-view="table" aria-pressed="false">Tabla</button>
     </div>
   </form>
-   
-  <!-- Exportación -->
+
+  <!-- Exportación + selección -->
   <div class="form-toolbar">
     <span class="label">Exportar:</span>
     <button type="button" class="btn-chip" onclick="exportar('pdf')">PDF</button>
     <button type="button" class="btn-chip" onclick="exportar('png')">PNG</button>
     <button type="button" class="btn-chip" onclick="exportar('vcf')">vCard</button>
   </div>
-  <!-- Selección -->
-  <div class="sel">
+  <div class="form-toolbar" style="margin-top:10px;">
     <button type="button" class="btn-chip" id="selVis">Seleccionar visibles</button>
     <button type="button" class="btn-chip" id="selNone">Quitar selección</button>
-    <span class="count" id="selCount">0 seleccionados</span>
+    <span class="count" id="selCount" style="color:#6b7280; font-size:.94rem;">0 seleccionados</span>
   </div>
 
-  <!-- Grid tarjetas -->
   <% if ((proveedores || []).length > 0) { %>
-    <div class="grid" id="grid" data-look="a">
-      <% const initials = (s='') => s.trim().split(/\s+/).slice(0,2).map(x => (x[0]||'').toUpperCase()).join(''); %>
+    <!-- Tarjetas -->
+    <div class="grid" id="grid" data-style="classic">
       <% proveedores.forEach(p => { %>
-        <a href="/proveedores/<%= p.id %>" class="card"
-           data-id="<%= p.id %>"
-           data-activo="<%= p.activo ? '1':'0' %>"
+        <a href="/proveedores/<%= p.id %>" class="card-oro prov-card"
+           data-id="<%= p.id %>" data-activo="<%= p.activo ? '1':'0' %>"
            data-texto="<%= (p.nombre + ' ' + (p.cif||'') + ' ' + (p.email||'') + ' ' + (p.telefono||'') + ' ' + (p.contacto||'')).toLowerCase() %>">
 
-          <input type="checkbox" class="check" aria-label="Seleccionar <%= p.nombre %>">
-
-          <div class="media" aria-hidden="true">
-            <div class="avatar"><%= initials(p.nombre) %></div>
-          </div>
-
-          <div class="body">
-            <div class="top">
+          <div class="prov-head">
+            <input type="checkbox" class="check" aria-label="Seleccionar <%= p.nombre %>">
+            <div class="prov-title-row">
+              <span class="prov-title"><%= p.nombre %></span>
               <span class="status-dot <%= p.activo ? 'is-ok' : 'is-off' %>"
                     title="<%= p.activo ? 'Activo' : 'Inactivo' %>"></span>
-              <span class="title"><%= p.nombre %></span>
             </div>
+          </div>
 
-            <% if (p.contacto) { %>
-              <div class="sub">Contacto: <strong><%= p.contacto %></strong></div>
-            <% } %>
+          <% if (p.contacto) { %>
+            <div class="prov-sub">Contacto: <strong><%= p.contacto %></strong></div>
+          <% } %>
 
-            <div class="meta">
-              <% if (p.email) { %>
-                <span><svg class="i"><use href="#i-mail"/></svg> <%= p.email %></span>
-              <% } %>
-              <% if (p.telefono) { %>
-                <span><svg class="i"><use href="#i-phone"/></svg> <%= p.telefono %></span>
-              <% } %>
-            </div>
+          <div class="prov-meta">
+            <% if (p.email) { %><span><svg class="i"><use href="#i-mail"/></svg><%= p.email %></span><% } %>
+            <% if (p.telefono) { %><span><svg class="i"><use href="#i-phone"/></svg><%= p.telefono %></span><% } %>
+          </div>
 
-            <div class="actions">
-              <% if (p.email) { %>
-                <button type="button" class="btn-ghost" onclick="event.stopPropagation(); window.location='mailto:<%= p.email %>'">Email</button>
-              <% } %>
-              <% if (p.telefono) { %>
-                <button type="button" class="btn-ghost" onclick="event.stopPropagation(); window.location='tel:<%= p.telefono %>'">Llamar</button>
-              <% } %>
-              <span class="spacer"></span>
-              <span class="cif"><%= p.cif || '—' %></span>
-            </div>
+          <div class="prov-actions">
+            <% if (p.email) { %><button type="button" class="btn-ghost" onclick="event.stopPropagation(); window.location='mailto:<%= p.email %>'">Email</button><% } %>
+            <% if (p.telefono) { %><button type="button" class="btn-ghost" onclick="event.stopPropagation(); window.location='tel:<%= p.telefono %>'">Llamar</button><% } %>
+            <span class="prov-spacer"></span>
+            <span class="prov-cif"><%= p.cif || '—' %></span>
           </div>
         </a>
       <% }) %>
+    </div>
+
+    <!-- Tabla -->
+    <div id="tabla-wrap" class="table-responsive mt-3" style="display:none;">
+      <table class="tabla-estilizada tabla-tight tabla-hover">
+        <thead>
+          <tr>
+            <th style="width:36px;"><input type="checkbox" id="chkAllTabla" aria-label="Seleccionar todos"></th>
+            <th>Nombre</th><th>CIF/NIF</th><th>Email</th><th>Teléfono</th><th>Contacto</th>
+            <th class="text-center">Estado</th>
+          </tr>
+        </thead>
+        <tbody id="tbody-proveedores">
+          <% proveedores.forEach(p => { %>
+            <tr class="fila-enlace" data-id="<%= p.id %>" data-activo="<%= p.activo ? '1':'0' %>"
+                data-texto="<%= (p.nombre + ' ' + (p.cif||'') + ' ' + (p.email||'') + ' ' + (p.telefono||'') + ' ' + (p.contacto||'')).toLowerCase() %>"
+                onclick="location.href='/proveedores/<%= p.id %>'">
+              <td><input type="checkbox" class="check-row" aria-label="Seleccionar <%= p.nombre %>"></td>
+              <td><strong><%= p.nombre %></strong></td>
+              <td><%= p.cif || '—' %></td>
+              <td><%= p.email || '—' %></td>
+              <td><%= p.telefono || '—' %></td>
+              <td><%= p.contacto || '—' %></td>
+              <td class="text-center">
+                <span class="status-dot <%= p.activo ? 'is-ok' : 'is-off' %>" title="<%= p.activo ? 'Activo' : 'Inactivo' %>"></span>
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
     </div>
   <% } else { %>
     <p class="mt-4" style="text-align:center;">No hay proveedores con esos filtros.</p>
@@ -263,61 +257,183 @@
 
 <script>
 (()=>{
-  const grid   = document.getElementById('grid');
-  const input  = document.getElementById('busqueda-proveedores');
-  const estado = document.getElementById('estado');
-  const lookBtns = document.querySelectorAll('.btn-chip[data-look]');
-  const selCount = document.getElementById('selCount');
-  const cards  = () => Array.from(document.querySelectorAll('#grid .card'));
+  const grid       = document.getElementById('grid');
+  const tablaWrap  = document.getElementById('tabla-wrap');
+  const tbody      = document.getElementById('tbody-proveedores');
+  const chkAllTbl  = document.getElementById('chkAllTabla');
+  const input      = document.getElementById('busqueda-proveedores');
+  const estado     = document.getElementById('estado');
+  const styleBtns  = document.querySelectorAll('.btn-chip[data-style]');
+  const viewBtns   = document.querySelectorAll('.btn-chip[data-view]');
+  const selCount   = document.getElementById('selCount');
 
-  // Filtro
+  const cards  = () => Array.from(document.querySelectorAll('#grid .card-oro.prov-card'));
+  const rows   = () => Array.from(document.querySelectorAll('#tbody-proveedores tr'));
+
+  /* ===== Filtro ===== */
   function filtrar(){
     const q = (input?.value || '').toLowerCase().trim();
     const est = estado?.value || '';
     cards().forEach(card => {
       const txt = card.getAttribute('data-texto') || '';
       const act = card.getAttribute('data-activo') || '';
-      const ok = (!q || txt.includes(q)) && (!est || act === est);
-      card.style.display = ok ? '' : 'none';
+      card.style.display = ((!q || txt.includes(q)) && (!est || act === est)) ? '' : 'none';
+    });
+    rows().forEach(tr => {
+      const txt = tr.getAttribute('data-texto') || '';
+      const act = tr.getAttribute('data-activo') || '';
+      tr.style.display = ((!q || txt.includes(q)) && (!est || act === est)) ? '' : 'none';
     });
     contarSel();
   }
   input?.addEventListener('input', filtrar);
+  estado?.addEventListener('change', filtrar);
 
-  // Selección
-  function contarSel(){ selCount.textContent = cards().filter(c=>c.classList.contains('selected')).length + ' seleccionados'; }
+  /* ===== Selección sincronizada ===== */
+  function setSelected(ids, selected){
+    // Tarjetas
+    cards().forEach(c => {
+      const id = c.getAttribute('data-id');
+      if (!ids || ids.has(id)) {
+        const cb = c.querySelector('.check');
+        if (cb) cb.checked = !!selected;
+        c.classList.toggle('selected', !!selected);
+      }
+    });
+    // Tabla
+    rows().forEach(r => {
+      const id = r.getAttribute('data-id');
+      if (!ids || ids.has(id)) {
+        const cb = r.querySelector('.check-row');
+        if (cb) cb.checked = !!selected;
+        r.classList.toggle('selected', !!selected);
+      }
+    });
+  }
+
+  function contarSel(){
+    const selCards = cards().filter(c => c.classList.contains('selected')).map(c => c.getAttribute('data-id'));
+    const selRows  = rows().filter(r => r.classList.contains('selected')).map(r => r.getAttribute('data-id'));
+    const n = new Set([...selCards, ...selRows]).size;
+    if (selCount) selCount.textContent = n + ' seleccionados';
+  }
+
+  // Selección en TARJETAS
   grid?.addEventListener('change', e => {
     const cb = e.target.closest('.check'); if(!cb) return;
-    const card = e.target.closest('.card'); card?.classList.toggle('selected', cb.checked);
+    const card = e.target.closest('.prov-card');
+    card?.classList.toggle('selected', cb.checked);
+    const id = card?.getAttribute('data-id');
+    if (id) {
+      const tr = rows().find(r => r.getAttribute('data-id') === id);
+      if (tr){ const c = tr.querySelector('.check-row'); if (c) c.checked = cb.checked; tr.classList.toggle('selected', cb.checked); }
+    }
     contarSel();
   });
-  grid?.addEventListener('click', e => { if (e.target.closest('.check')) e.stopPropagation(); });
+  // Evitar navegación al pulsar el checkbox de tarjeta
+  // Evitar que al hacer clic en el checkbox se navegue al enlace,
+// pero sin bloquear su cambio de estado.
+grid?.addEventListener('click', e => {
+  if (e.target.closest('.check')) {
+    e.stopPropagation();          // ← quitamos e.preventDefault()
+  }
+}, true);
 
+
+  // Selección en TABLA
+  tbody?.addEventListener('change', e => {
+    const cb = e.target.closest('.check-row'); if(!cb) return;
+    const tr = e.target.closest('tr');
+    tr?.classList.toggle('selected', cb.checked);
+    const id = tr?.getAttribute('data-id');
+    if (id) {
+      const card = cards().find(c => c.getAttribute('data-id') === id);
+      if (card){ const c = card.querySelector('.check'); if (c) c.checked = cb.checked; card.classList.toggle('selected', cb.checked); }
+    }
+    contarSel();
+  });
+  // Evitar que el checkbox dispare el click de la fila
+  tbody?.addEventListener('click', e => {
+    if (e.target.closest('.check-row')) { e.stopPropagation(); }
+  }, true);
+
+  // Seleccionar visibles / Quitar selección
   document.getElementById('selVis')?.addEventListener('click', () => {
-    cards().forEach(c => { const v = c.offsetParent !== null; const cb = c.querySelector('.check'); if(cb) cb.checked=v; c.classList.toggle('selected', v); });
-    contarSel();
+    const visiblesCards = cards().filter(c => c.offsetParent !== null);
+    const visiblesRows  = rows().filter(r => r.offsetParent !== null);
+    const ids = new Set([...visiblesCards.map(c=>c.getAttribute('data-id')),
+                         ...visiblesRows.map(r=>r.getAttribute('data-id'))]);
+    setSelected(ids, true); contarSel();
   });
-  document.getElementById('selNone')?.addEventListener('click', () => {
-    cards().forEach(c => { const cb=c.querySelector('.check'); if(cb) cb.checked=false; c.classList.remove('selected'); });
-    contarSel();
+  document.getElementById('selNone')?.addEventListener('click', () => { setSelected(null, false); contarSel(); });
+
+  // Seleccionar todos en tabla (solo visibles)
+  chkAllTbl?.addEventListener('change', () => {
+    const visibles = rows().filter(r => r.offsetParent !== null);
+    const ids = new Set(visibles.map(r => r.getAttribute('data-id')));
+    setSelected(ids, chkAllTbl.checked); contarSel();
   });
 
-  // Look (3 diseños)
-  function applyLook(v){ if(!grid) return; grid.setAttribute('data-look', v); lookBtns.forEach(b=>b.classList.toggle('active', b.dataset.look===v)); localStorage.setItem('prov-look', v); }
-  lookBtns.forEach(b => b.addEventListener('click', ()=>applyLook(b.dataset.look)));
-  applyLook(localStorage.getItem('prov-look') || 'a');
+  /* ===== Estilo tarjetas ===== */
+  function applyStyle(v){
+    if (!grid) return;
+    grid.setAttribute('data-style', v);
+    styleBtns.forEach(b => {
+      const on = b.dataset.style === v;
+      b.classList.toggle('active', on);
+      b.setAttribute('aria-pressed', String(on));
+    });
+    localStorage.setItem('prov-style', v);
+  }
+  styleBtns.forEach(b => b.addEventListener('click', ()=>applyStyle(b.dataset.style)));
+  applyStyle(localStorage.getItem('prov-style') || 'classic');
 
-  // Exportar
+  /* ===== Vista tarjetas/tabla ===== */
+  function applyView(v){
+    const isCards = (v === 'cards');
+    if (grid)      grid.style.display     = isCards ? '' : 'none';
+    if (tablaWrap) tablaWrap.style.display = isCards ? 'none' : '';
+    viewBtns.forEach(b => {
+      const on = b.dataset.view === v;
+      b.classList.toggle('active', on);
+      b.setAttribute('aria-pressed', String(on));
+    });
+    localStorage.setItem('prov-view', v);
+    filtrar();
+  }
+  viewBtns.forEach(b => b.addEventListener('click', ()=>applyView(b.dataset.view)));
+  applyView(localStorage.getItem('prov-view') || 'cards');
+
+  /* ===== Exportar (seleccionados o, si no hay, visibles) ===== */
   window.exportar = function(tipo){
-    const sel = cards().filter(c=>c.classList.contains('selected') && c.offsetParent!==null).map(c=>c.getAttribute('data-id'));
-    const vis = cards().filter(c=>c.offsetParent!==null).map(c=>c.getAttribute('data-id'));
-    const ids = (sel.length ? sel : vis).filter(Boolean);
-    const look = grid?.getAttribute('data-look') || 'a';
-    const qs = new URLSearchParams(); if(ids.length) qs.set('ids', ids.join(',')); qs.set('look', look);
-    const url = tipo==='vcf' ? `/proveedores/export/vcf?${qs}` : tipo==='png' ? `/proveedores/export/png?${qs}` : `/proveedores/export/pdf?${qs}`;
+    const visiblesCards = cards().filter(c=>c.offsetParent!==null);
+    const visiblesRows  = rows().filter(r=>r.offsetParent!==null);
+
+    const selCards = visiblesCards.filter(c=>c.classList.contains('selected')).map(c=>c.getAttribute('data-id'));
+    const selRows  = visiblesRows.filter(r=>r.classList.contains('selected')).map(r=>r.getAttribute('data-id'));
+    const sel = [...new Set([...selCards, ...selRows])];
+
+    const vis = [...new Set([
+      ...visiblesCards.map(c=>c.getAttribute('data-id')),
+      ...visiblesRows.map(r=>r.getAttribute('data-id'))
+    ])];
+
+    const ids   = (sel.length ? sel : vis).filter(Boolean);
+    const style = grid?.getAttribute('data-style') || 'classic';
+
+    const qs = new URLSearchParams();
+    if(ids.length) qs.set('ids', ids.join(','));
+    // Mandamos ambos por compatibilidad backend:
+    qs.set('style', style);
+    qs.set('look',  style);
+
+    const url = tipo==='vcf' ? `/proveedores/export/vcf?${qs}` :
+                tipo==='png' ? `/proveedores/export/png?${qs}` :
+                               `/proveedores/export/pdf?${qs}`;
     window.location = url;
   };
 
+  /* init */
   filtrar();
 })();
 </script>
