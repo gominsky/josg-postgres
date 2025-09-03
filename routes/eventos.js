@@ -185,6 +185,71 @@ router.post('/', async (req, res) => {
   }
 });
 
+// Crear eventos masivos (mismo grupo/título + varias fechas)
+router.post('/masivo', async (req, res) => {
+  const {
+    titulo, descripcion, grupo_id, activo,
+    hora_inicio, hora_fin, // HH:MM (del formulario)
+    fechas // Array de 'YYYY-MM-DD' seleccionadas en el mini-calendario
+  } = req.body;
+
+  try {
+    const activoValue = activo === '1';
+    if (!titulo || !grupo_id || !Array.isArray(fechas) || fechas.length === 0) {
+      return res.status(400).json({ error: 'Faltan datos' });
+    }
+    if (!hora_inicio || !hora_fin) {
+      return res.status(400).json({ error: 'Faltan horas de inicio/fin' });
+    }
+
+    // Transacción para insertar en bloque
+    await db.query('BEGIN');
+
+    const insertSQL = `
+      INSERT INTO eventos (
+        titulo, descripcion, fecha_inicio, fecha_fin, grupo_id,
+        activo, hora_inicio, hora_fin, token
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+      RETURNING id
+    `;
+
+    const ids = [];
+    for (const fISO of fechas) {
+      // fecha_inicio/fin en ISO combinadas con horas
+      const fecha_inicio = fISO;
+      const fecha_fin = fISO;
+
+      // Si la hora fin es "menor" que la de inicio => pasa a día siguiente
+      const start = new Date(`${fecha_inicio}T${hora_inicio}:00`);
+      let end = new Date(`${fecha_fin}T${hora_fin}:00`);
+      if (end <= start) end = new Date(start.getTime() + 60 * 60 * 1000); // +1h de cortesía
+
+      const token = Math.random().toString(36).substring(2, 10);
+
+      const params = [
+        titulo?.trim() || null,
+        descripcion?.trim() || null,
+        fecha_inicio,               // YYYY-MM-DD
+        fecha_fin,                  // YYYY-MM-DD (guardas el día; las horas van en campos separados)
+        grupo_id,
+        activoValue,
+        hora_inicio,
+        hora_fin,
+        token
+      ];
+      const r = await db.query(insertSQL, params);
+      ids.push(r.rows[0].id);
+    }
+
+    await db.query('COMMIT');
+    return res.json({ created: ids.length, ids });
+  } catch (err) {
+    await db.query('ROLLBACK');
+    console.error('Error en creación masiva:', err);
+    return res.status(500).json({ error: 'Error al crear eventos masivos' });
+  }
+});
+
 // Actualizar evento
 router.put('/:id', async (req, res) => {
   const { titulo, descripcion, fecha_inicio, fecha_fin, grupo_id, activo } = req.body;

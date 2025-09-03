@@ -1,8 +1,12 @@
 <% title = 'Agenda de Eventos' %>
 <% hero = false %>
-<div class="container mt-4">
-  <div class="d-flex justify-content-between align-items-center mb-3">
-    <h1 class="h1-titulo mb-0">Listado de eventos</h1>
+
+<!-- Barra superior con botones a la derecha pero no pegados al borde -->
+<div class="d-flex align-items-center mb-3">
+  <div class="ms-auto me-5 d-flex gap-2"><!-- me-5 los trae un poco hacia el centro -->
+    <button type="button" class="btn-main-blanco fw-bold px-3 py-2" data-bs-toggle="modal" data-bs-target="#eventoMasivoModal">
+      Eventos masivos
+    </button>
     <a href="/guardias" class="btn-main-blanco fw-bold px-3 py-2">Guardias</a>
   </div>
 </div>
@@ -15,8 +19,7 @@ const composeDT = (fecha, hora, fallbackHora='00:00') => {
   const f = toISO(fecha);
   if (!f) return null;
   const h = (hora && hora.length >= 4) ? hora.slice(0,5) : fallbackHora;
-  // Evitar fecha inválida si la parte ya viene con hora
-  if (String(fecha).includes('T') && !hora) return new Date(fecha); 
+  if (String(fecha).includes('T') && !hora) return new Date(fecha);
   return new Date(`${f}T${h}:00`);
 };
 %>
@@ -36,7 +39,7 @@ const composeDT = (fecha, hora, fallbackHora='00:00') => {
             </tr>
           </thead>
           <tbody>
-            <% eventos.forEach(ev => { 
+            <% eventos.forEach(ev => {
                  const ini = composeDT(ev.fecha_inicio, ev.hora_inicio, '00:00');
                  const fin = composeDT(ev.fecha_fin, ev.hora_fin, '23:59');
             %>
@@ -94,3 +97,203 @@ const composeDT = (fecha, hora, fallbackHora='00:00') => {
 <% } %>
 
 <%- include('eventos_modal_scripts') %>
+
+<!-- ===== Modal para creación MASIVA (cabecera como el original, compacto, sin acento) ===== -->
+<div class="modal fade modal-sheet" id="eventoMasivoModal" tabindex="-1" aria-labelledby="eventoMasivoTitulo" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <form id="eventoMasivoForm" class="modal-content"><!-- visible, sin transparent -->
+      <!-- Cabecera estilo original (sin el punto/acento) -->
+      <div class="sheet-head">
+        <h5 class="modal-title mb-0" id="eventoMasivoTitulo">Crear eventos masivos</h5>
+        <button type="button" class="btn-close ms-auto" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+
+      <div class="modal-body p-3">
+        <div class="mb-2">
+          <label class="form-label">Título</label>
+          <input type="text" name="titulo" class="form-control form-control-sm" required>
+        </div>
+
+        <div class="mb-2">
+          <label class="form-label">Descripción</label>
+          <textarea name="descripcion" class="form-control form-control-sm" rows="2"></textarea>
+        </div>
+
+        <div class="mb-2">
+          <label class="form-label">Grupo</label>
+          <select name="grupo_id" class="form-select form-select-sm" required>
+            <% if (grupos && grupos.length > 0) { %>
+              <option value="" disabled selected>Selecciona un grupo…</option>
+              <% grupos.forEach(a => { %>
+                <option value="<%= a.id %>"><%= a.nombre %></option>
+              <% }) %>
+            <% } else { %>
+              <option disabled selected>No hay grupos disponibles</option>
+            <% } %>
+          </select>
+        </div>
+
+        <div class="row g-2">
+          <div class="col-sm-6">
+            <label class="form-label">Hora inicio</label>
+            <input type="time" name="hora_inicio" class="form-control form-control-sm" value="09:00" required>
+          </div>
+          <div class="col-sm-6">
+            <label class="form-label">Hora fin</label>
+            <input type="time" name="hora_fin" class="form-control form-control-sm" value="10:00" required>
+          </div>
+        </div>
+
+        <div class="form-check form-switch mt-2">
+          <input type="checkbox" name="activo" id="activoMasivo" class="form-check-input">
+          <label for="activoMasivo" class="form-check-label ms-2">Activar QR</label>
+        </div>
+
+        <hr class="my-2">
+
+        <div class="mb-2">
+          <label class="form-label">Días</label>
+          <input id="multiDaysPicker" class="form-control form-control-sm" placeholder="Elige varios días…" readonly>
+          <div id="multiDaysPickerHost" class="border rounded mt-2 p-2"></div>
+          <div class="form-text">Selecciona los días del evento.</div>
+        </div>
+      </div>
+
+      <div class="modal-footer py-2 px-3">
+        <button type="submit" class="btn-main-blanco fw-bold px-3 py-1">Crear</button>
+        <button type="button" class="btn-main-blanco fw-bold px-3 py-1" data-bs-dismiss="modal">Cancelar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Flatpickr (con localización en español) -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/es.js"></script>
+
+<style>
+  /* Z-index seguros para modal Bootstrap */
+  .modal { z-index: 1055; }
+  .modal-backdrop { z-index: 1050; }
+
+  /* Compactación del modal masivo */
+  #eventoMasivoModal .modal-dialog { max-width: 600px; }
+  /* Intentamos no hacer scroll: el contenido es compacto; si aún hiciera falta en pantallas pequeñas, solo entonces scrollea */
+  @media (min-height: 680px) {
+    #eventoMasivoModal .modal-body { max-height: none; }
+  }
+  @media (max-height: 679px) {
+    #eventoMasivoModal .modal-body { max-height: 65vh; overflow: auto; }
+  }
+
+  /* Cabecera estilo original (sin acento/punto) */
+  .sheet-head {
+    display:flex; align-items:center; gap:12px;
+    padding: 12px 14px; background:#111; color:#fff;
+  }
+
+  /* Calendario: más pequeño y en español */
+  #multiDaysPickerHost { max-width:100%; overflow:hidden; }
+  #eventoMasivoModal .flatpickr-calendar { transform: scale(.9); transform-origin: top left; }
+  #eventoMasivoModal .flatpickr-day { width:32px; height:28px; line-height:28px; font-size:12px; }
+  #eventoMasivoModal .flatpickr-months .flatpickr-month,
+  #eventoMasivoModal .flatpickr-weekdays { font-size:12px; }
+
+  /* Selección naranja */
+  #eventoMasivoModal .flatpickr-day.selected,
+  #eventoMasivoModal .flatpickr-day.start,
+  #eventoMasivoModal .flatpickr-day.end {
+    background:#ff7a18 !important; border-color:#ff7a18 !important; color:#fff !important;
+  }
+  #eventoMasivoModal .flatpickr-day.selected:hover,
+  #eventoMasivoModal .flatpickr-day.start:hover,
+  #eventoMasivoModal .flatpickr-day.end:hover {
+    background:#e56700 !important; border-color:#e56700 !important;
+  }
+  #eventoMasivoModal .flatpickr-day.inRange {
+    background: rgba(255,122,24,.15) !important; border-color:#ff7a18 !important;
+  }
+</style>
+
+<script>
+(function () {
+  const modalEl = document.getElementById('eventoMasivoModal');
+  const form = document.getElementById('eventoMasivoForm');
+
+  function initCalendar() {
+    if (modalEl._fpInstance) return modalEl._fpInstance;
+    const input = modalEl.querySelector('#multiDaysPicker');
+    const host  = modalEl.querySelector('#multiDaysPickerHost');
+    if (!input || !host) return null;
+
+    // Localizar a español y lunes como primer día
+    if (window.flatpickr && window.flatpickr.l10ns && window.flatpickr.l10ns.es) {
+      flatpickr.localize(flatpickr.l10ns.es);
+    }
+
+    const fp = flatpickr(host, {
+      inline: true,
+      mode: 'multiple',
+      dateFormat: 'Y-m-d',
+      showMonths: 2,               // dos meses visibles
+      clickOpens: false,
+      locale: (flatpickr.l10ns && flatpickr.l10ns.es) ? flatpickr.l10ns.es : 'es',
+      weekNumbers: false,          // puedes poner true si te gusta ver el nº de semana
+      defaultDate: [],             // sin fechas preseleccionadas
+      onChange: (selectedDates, _str, instance) => {
+        const isoList = selectedDates.map(d => instance.formatDate(d, 'Y-m-d')).sort();
+        input.value = isoList.join(', ');
+        instance._selectedIso = isoList;
+      }
+    });
+
+    modalEl._fpInstance = fp;
+    return fp;
+  }
+
+  modalEl.addEventListener('shown.bs.modal', () => { initCalendar(); });
+
+  modalEl.addEventListener('hidden.bs.modal', () => {
+    const fp = modalEl._fpInstance;
+    if (fp) { fp.clear(); fp.destroy(); modalEl._fpInstance = null; }
+    const input = modalEl.querySelector('#multiDaysPicker');
+    if (input) input.value = '';
+  });
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const data = new FormData(form);
+    const body = Object.fromEntries(data.entries());
+    body.activo = form.querySelector('[name="activo"]').checked ? '1' : '0';
+
+    const fp = modalEl._fpInstance;
+    const fechas = (fp && fp._selectedIso) ? fp._selectedIso : [];
+    if (!fechas.length) { alert('Selecciona al menos un día'); return; }
+    body.fechas = fechas;
+
+    try {
+      const res = await fetch('/eventos/masivo', {
+        method: 'POST',
+        headers: { 'Content-Type':'application/json' },
+        body: JSON.stringify(body)
+      });
+      if (!res.ok) throw new Error('Error al crear eventos masivos');
+      const bsModal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+      bsModal.hide(); location.reload();
+    } catch (err) {
+      console.error(err); alert('Hubo un problema creando los eventos.');
+    }
+  });
+})();
+</script>
+
+<script>
+/* Elevar el modal al <body> por si contenedores padres tienen transform/overflow */
+document.addEventListener('DOMContentLoaded', () => {
+  const modal = document.getElementById('eventoMasivoModal');
+  if (modal && modal.parentNode !== document.body) {
+    document.body.appendChild(modal);
+  }
+});
+</script>
