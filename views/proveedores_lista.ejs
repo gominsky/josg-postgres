@@ -1,255 +1,304 @@
 <% title = 'Proveedores' %>
 <% hero  = false %>
 
-<div id="prov-wrap" class="container my-4">
+<div id="prov-wrap" class="my-4">
   <style>
     :root{
-      --ink:#111827; --border:#e5e7eb; --shadow:0 1px 2px rgba(0,0,0,.05);
+      --ink:#111827;
+      --border:#e5e7eb; --shadow:0 1px 2px rgba(0,0,0,.05);
       --brand-orange:#FF9501; --brand-yellow:#ffb020; --brand-cream:#fff3dc;
       --brand-black:#111827; --brand-blue:#1f3a8a; --brand-rust:#c8472c;
     }
 
     /* ===== Panel filtros ===== */
     #prov-wrap .form-panel{
-      background:#fff; border:1px solid rgba(0,0,0,.08);
+      background:#fff;
+      border:1px solid rgba(0,0,0,.08);
       border-radius:16px; box-shadow:var(--shadow);
-      padding:14px 16px 18px; margin-bottom:14px;
+      padding:12px 14px 16px; margin-bottom:14px;
       display:grid; grid-template-columns:1fr;
     }
-    #prov-wrap .form-head{ display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:10px; }
-    #prov-wrap .form-title{ margin:0; font-weight:700; color:var(--ink); font-size:clamp(1.4rem,1.1rem + 1.2vw,2rem); }
-    #prov-wrap .btn.btn-outline{ border:1px solid rgba(0,0,0,.12); background:#fff; color:#111; border-radius:10px; padding:.48rem .9rem; text-decoration:none; white-space:nowrap; box-shadow:var(--shadow); }
+    #prov-wrap .form-head{ display:flex; align-items:center; justify-content:space-between;
+      gap:10px; flex-wrap:wrap; margin-bottom:8px; }
+    #prov-wrap .form-title{ margin:0; font-weight:700; color:var(--ink); font-size:1.2rem;
+    }
+    #prov-wrap .btn.btn-outline{ border:1px solid rgba(0,0,0,.12); background:#fff; color:#111; border-radius:8px; padding:.3rem .75rem; text-decoration:none; white-space:nowrap; box-shadow:var(--shadow); font-size:.9rem;
+    }
     #prov-wrap .btn.btn-outline:hover{ background:#f3f4f6; }
 
-    #prov-wrap .form-fields{ display:grid; gap:14px; padding-top:8px; border-top:1px dashed rgba(0,0,0,.08); grid-template-columns:1fr; margin-bottom:10px; }
-    @media (min-width:992px){ #prov-wrap .form-fields{ grid-template-columns:2fr 5fr; align-items:end; gap:18px; } }
-    #prov-wrap .form-label{ font-weight:600; color:var(--ink); margin-bottom:.35rem; }
-    #prov-wrap .control{ width:100%; padding:.56rem .75rem; font-size:1rem; border:1px solid var(--border); border-radius:10px; background:#fff; box-shadow:var(--shadow); }
-    #prov-wrap #estado.control{ padding-top:.66rem; padding-bottom:.66rem; min-height:44px; line-height:1.25; }
+    #prov-wrap .form-fields{ display:grid; gap:12px; padding-top:6px; border-top:1px dashed rgba(0,0,0,.08); grid-template-columns:1fr;
+      margin-bottom:8px; }
+    @media (min-width:992px){ #prov-wrap .form-fields{ grid-template-columns:2fr 5fr; align-items:end; gap:16px;
+    } }
+    #prov-wrap .form-label{ font-weight:600; color:var(--ink); margin-bottom:.3rem; font-size:.9rem; }
+    #prov-wrap .control{ width:100%; padding:.45rem .6rem; font-size:.9rem;
+      border:1px solid var(--border); border-radius:8px; background:#fff; box-shadow:var(--shadow); }
+    #prov-wrap #estado.control{ padding-top:.55rem; padding-bottom:.55rem; min-height:38px; line-height:1.25;
+    }
 
     /* ===== Chips ===== */
-    #prov-wrap .form-toolbar{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin:10px 0 0; }
-    #prov-wrap .form-toolbar .label{ color:#6b7280; font-weight:600; margin:0; line-height:1; }
-    .btn-chip{ border:1px solid var(--border); background:#fff; color:#111827; border-radius:999px; padding:.36rem .72rem; cursor:pointer; white-space:nowrap; }
+    #prov-wrap .form-toolbar{ display:flex; align-items:center; gap:8px; flex-wrap:wrap;
+      margin:8px 0 0; }
+    #prov-wrap .form-toolbar .label{ color:#6b7280; font-weight:600; margin:0; line-height:1; font-size:.85rem;
+    }
+    .btn-chip{ border:1px solid var(--border); background:#fff; color:#111827; border-radius:999px; padding:.25rem .6rem; cursor:pointer; white-space:nowrap; font-size:.85rem;
+    }
     .btn-chip:hover{ background:#f3f4f6; }
-    .btn-chip.active{ background:#111827; color:#fff; border-color:#111827; }
+    .btn-chip.active{ background:#111827; color:#fff; border-color:#111827;
+    }
     .btn-chip:focus-visible{ outline:2px solid #111827; outline-offset:2px; }
 
     /* ===== Grid (un pelín más ancho) ===== */
-    .grid{ display:grid; gap:18px; padding:8px 8px 0; grid-template-columns: repeat(auto-fill, minmax(372px, 1fr)); }
-    @media (min-width:1200px){ .grid{ grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+    .grid{ display:grid;
+      gap:16px; padding:6px 6px 0; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); }
+    @media (min-width:1200px){ .grid{ grid-template-columns: repeat(3, minmax(0, 1fr));
+    } }
 
     /* ===== Contenido tarjeta ===== */
     .prov-card{
-      position:relative; display:block; text-decoration:none; color:inherit;
-      padding:16px 18px; transition:transform .12s ease; min-height:180px;
+      position:relative;
+      display:block; text-decoration:none; color:inherit;
+      padding:14px 16px; transition:transform .12s ease; min-height:170px;
     }
-    .prov-card:hover{ transform:translateY(-2px); }
+    .prov-card:hover{ transform:translateY(-2px);
+    }
 
-    .prov-head{ display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:8px; }
-    .prov-title-row{ display:flex; align-items:center; gap:8px; min-width:0; }
+    .prov-head{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:6px; }
+    .prov-title-row{ display:flex; align-items:center; gap:6px; min-width:0;
+    }
     .prov-title{
-      font-weight:800; font-size:1.08rem; line-height:1.25rem;
+      font-weight:800; font-size:1rem; line-height:1.2rem;
       white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
     }
 
-    .prov-sub{ color:#6b7280; margin:.25rem 0 .35rem; }
-    .prov-meta{ display:grid; gap:4px; font-size:.93rem; color:#475569; }
-    .i{ width:16px; height:16px; fill:currentColor; opacity:.85; vertical-align:-2px; margin-right:4px; }
+    .prov-sub{ color:#6b7280; margin:.2rem 0 .3rem; font-size:.9rem; }
+    .prov-meta{ display:grid; gap:3px; font-size:.85rem; color:#475569;
+    }
+    .i{ width:14px; height:14px; fill:currentColor; opacity:.85; vertical-align:-2px; margin-right:3px; }
 
-    .prov-actions{ display:flex; align-items:center; gap:10px; margin-top:10px; }
-    .btn-ghost{ border:1px solid var(--border); background:#fff; border-radius:999px; padding:.32rem .65rem; font-size:.9rem; }
-    .btn-ghost:hover{ background:#f9fafb; }
+    .prov-actions{ display:flex; align-items:center; gap:8px; margin-top:8px;
+    }
+    .btn-ghost{ border:1px solid var(--border); background:#fff; border-radius:999px; padding:.25rem .55rem; font-size:.8rem; }
+    .btn-ghost:hover{ background:#f9fafb;
+    }
     .prov-spacer{ flex:1; }
-    .prov-cif{ font-family:ui-monospace, Menlo, monospace; background:#f9fafb; border:1px dashed #d1d5db; padding:.18rem .45rem; border-radius:8px; color:#334155; white-space:nowrap; }
+    .prov-cif{ font-family:ui-monospace, Menlo, monospace; background:#f9fafb; border:1px dashed #d1d5db; padding:.15rem .4rem;
+    border-radius:6px; color:#334155; white-space:nowrap; font-size:.85rem; }
 
     /* Selección */
-    .prov-card.selected{ outline:2px solid #0ea5e9; outline-offset:2px; }
+    .prov-card.selected{ outline:2px solid #0ea5e9; outline-offset:2px;
+    }
 
     /* ===== Punto de estado junto al título ===== */
     #prov-wrap .status-dot{
       position: static !important;
-      width:10px; height:10px; border-radius:50%; display:inline-block; flex:0 0 10px;
-      box-shadow:0 0 0 2px rgba(0,0,0,.06) inset, 0 0 6px rgba(0,0,0,.10);
+      width:8px; height:8px; border-radius:50%; display:inline-block; flex:0 0 8px;
+      box-shadow:0 0 0 1.5px rgba(0,0,0,.06) inset, 0 0 5px rgba(0,0,0,.10);
     }
     .status-dot.is-ok{ background:#22c55e; }
-    .status-dot.is-off{ background:#ef4444; }
+    .status-dot.is-off{ background:#ef4444;
+    }
 
     /* ===== Forma base de .card-oro ===== */
     #prov-wrap .card-oro{
-      border-radius:16px !important;
+      border-radius:14px !important;
       border:1px solid rgba(17,24,39,.10) !important;
       box-shadow:0 1px 2px rgba(0,0,0,.05) !important;
       background:#fff !important;
       overflow:hidden;
     }
-    #prov-wrap .card-oro:hover{ box-shadow:0 10px 20px rgba(0,0,0,.1) !important; }
+    #prov-wrap .card-oro:hover{ box-shadow:0 8px 16px rgba(0,0,0,.1) !important;
+    }
 
     /* ===== Estilos de marca (data-style en #grid) ===== */
     /* 0) Classic */
     #grid[data-style="classic"] .card-oro{
-      background:#fff !important; border-color:#d1d5db !important; box-shadow:0 4px 12px rgba(0,0,0,.06) !important; color:#111827 !important;
+      background:#fff !important;
+      border-color:#d1d5db !important; box-shadow:0 4px 10px rgba(0,0,0,.06) !important; color:#111827 !important;
     }
     /* 1) Naranja Pro */
     #grid[data-style="orange"] .card-oro{
-      background: var(--brand-orange) !important; border-color:#d97706 !important;
-      box-shadow:0 8px 18px rgba(255,149,1,.25) !important; color:#111;
+      background: var(--brand-orange) !important;
+      border-color:#d97706 !important;
+      box-shadow:0 6px 14px rgba(255,149,1,.25) !important; color:#111;
     }
-    #grid[data-style="orange"] .prov-sub, #grid[data-style="orange"] .prov-meta{ color:#111827; }
+    #grid[data-style="orange"] .prov-sub, #grid[data-style="orange"] .prov-meta{ color:#111827;
+    }
     #grid[data-style="orange"] .btn-ghost{ background:#fff; border-color:#111827; }
     /* 2) Noir */
     #grid[data-style="noir"] .card-oro{
-      background:#0d1117 !important; border-color:#1f2937 !important; box-shadow:0 8px 22px rgba(0,0,0,.35) !important; color:#f8fafc !important;
+      background:#0d1117 !important;
+      border-color:#1f2937 !important; box-shadow:0 6px 18px rgba(0,0,0,.35) !important; color:#f8fafc !important;
     }
     #grid[data-style="noir"] .card-oro::before{
-      content:""; position:absolute; left:0; right:0; top:0; height:6px; background: var(--brand-orange);
+      content:"";
+      position:absolute; left:0; right:0; top:0; height:5px; background: var(--brand-orange);
     }
-    #grid[data-style="noir"] .prov-sub, #grid[data-style="noir"] .prov-meta{ color:#cbd5e1; }
+    #grid[data-style="noir"] .prov-sub, #grid[data-style="noir"] .prov-meta{ color:#cbd5e1;
+    }
     #grid[data-style="noir"] .btn-ghost{ background:#111827; border-color:#334155; color:#e2e8f0; }
-    #grid[data-style="noir"] .btn-ghost:hover{ background:#0b1220; }
+    #grid[data-style="noir"] .btn-ghost:hover{ background:#0b1220;
+    }
     /* 3) Cream Pattern */
     #grid[data-style="cream"] .card-oro{
       background:
         repeating-linear-gradient(135deg, rgba(0,0,0,.035) 0 8px, transparent 8px 16px),
         var(--brand-cream) !important;
-      border-color: rgba(0,0,0,.18) !important; box-shadow: 0 6px 16px rgba(0,0,0,.08) !important; color:#0f172a !important;
+      border-color: rgba(0,0,0,.18) !important; box-shadow: 0 5px 14px rgba(0,0,0,.08) !important; color:#0f172a !important;
     }
-    #grid[data-style="cream"] .prov-sub{ color:#334155; } #grid[data-style="cream"] .prov-meta{ color:#475569; }
+    #grid[data-style="cream"] .prov-sub{ color:#334155;
+    } #grid[data-style="cream"] .prov-meta{ color:#475569; }
     /* 4) Gradient Bold */
     #grid[data-style="gradient"] .card-oro{
       background: linear-gradient(160deg, var(--brand-orange) 0%, var(--brand-yellow) 100%) !important;
-      border-color: rgba(17,24,39,.25) !important; box-shadow: 0 10px 26px rgba(255,149,1,.25) !important; color:#111 !important;
+      border-color: rgba(17,24,39,.25) !important; box-shadow: 0 8px 22px rgba(255,149,1,.25) !important; color:#111 !important;
     }
-    #grid[data-style="gradient"] .card-oro::before{ content:""; position:absolute; inset:0 auto 0 0; width:6px; background:#000; opacity:.75; }
-    #grid[data-style="gradient"] .prov-sub, #grid[data-style="gradient"] .prov-meta{ color:#111827; }
+    #grid[data-style="gradient"] .card-oro::before{ content:""; position:absolute;
+      inset:0 auto 0 0; width:5px; background:#000; opacity:.75; }
+    #grid[data-style="gradient"] .prov-sub, #grid[data-style="gradient"] .prov-meta{ color:#111827;
+    }
 
     /* Tabla: dot centrado sin sombras extra */
-    #prov-wrap #tabla-wrap .status-dot{ position: static !important; margin: 0 auto; box-shadow:none; }
+    #prov-wrap #tabla-wrap .status-dot{ position: static !important;
+      margin: 0 auto; box-shadow:none; }
   </style>
 
-  <form id="filtro-form" method="GET" class="form-panel">
-    <div class="form-head">
-      <h1 class="form-title">Proveedores</h1>
-      <a href="/proveedores/nuevo" class="btn btn-outline">＋ Nuevo proveedor</a>
-    </div>
-
-    <div class="form-fields">
-      <div>
-        <label for="estado" class="form-label">Estado</label>
-        <select id="estado" name="estado" class="control" onchange="document.getElementById('filtro-form').submit()">
-          <option value="">Todos</option>
-          <option value="1" <%= estado === '1' ? 'selected' : '' %>>Activos</option>
-          <option value="0" <%= estado === '0' ? 'selected' : '' %>>Inactivos</option>
-        </select>
+  <div class="container-fluid">
+    <form id="filtro-form" method="GET" class="form-panel">
+      <div class="form-head">
+        <h1 class="form-title">Proveedores</h1>
+        <a href="/proveedores/nuevo" class="btn btn-outline">＋ Nuevo proveedor</a>
       </div>
-      <div>
-        <label for="busqueda-proveedores" class="form-label">Buscar</label>
-        <input id="busqueda-proveedores" type="text" name="q" value="<%= q || '' %>" class="control" placeholder="Nombre, CIF/NIF, email, teléfono…">
+
+      <div class="form-fields">
+        <div>
+          <label for="estado" class="form-label">Estado</label>
+          <select id="estado" name="estado" class="control" onchange="document.getElementById('filtro-form').submit()">
+            <option value="">Todos</option>
+            <option value="1" <%= estado === '1' ?
+ 'selected' : '' %>>Activos</option>
+            <option value="0" <%= estado === '0' ?
+ 'selected' : '' %>>Inactivos</option>
+          </select>
+        </div>
+        <div>
+          <label for="busqueda-proveedores" class="form-label">Buscar</label>
+          <input id="busqueda-proveedores" type="text" name="q" value="<%= q || '' %>" class="control" placeholder="Nombre, CIF/NIF, email, teléfono…">
+        </div>
       </div>
-    </div>
-
-    <!-- Estilo de tarjetas -->
-    <div class="form-toolbar">
-      <span class="label">Estilo:</span>
-      <button type="button" class="btn-chip" data-style="classic">Clásica</button>
-      <button type="button" class="btn-chip" data-style="orange">Naranja Pro</button>
-      <button type="button" class="btn-chip" data-style="noir">Noir</button>
-      <button type="button" class="btn-chip" data-style="cream">Cream Pattern</button>
-      <button type="button" class="btn-chip" data-style="gradient">Gradient Bold</button>
-    </div>
-
-    <!-- Vista -->
-    <div class="form-toolbar">
-      <span class="label">Vista:</span>
-      <button type="button" class="btn-chip" data-view="cards" aria-pressed="true">Tarjetas</button>
-      <button type="button" class="btn-chip" data-view="table" aria-pressed="false">Tabla</button>
-    </div>
-  </form>
-
-  <!-- Exportación + selección -->
-  <div class="form-toolbar">
-    <span class="label">Exportar:</span>
-    <button type="button" class="btn-chip" onclick="exportar('pdf')">PDF</button>
-    <button type="button" class="btn-chip" onclick="exportar('png')">PNG</button>
-    <button type="button" class="btn-chip" onclick="exportar('vcf')">vCard</button>
-  </div>
-  <div class="form-toolbar" style="margin-top:10px;">
-    <button type="button" class="btn-chip" id="selVis">Seleccionar visibles</button>
-    <button type="button" class="btn-chip" id="selNone">Quitar selección</button>
-    <span class="count" id="selCount" style="color:#6b7280; font-size:.94rem;">0 seleccionados</span>
+      
+      <div class="form-toolbar">
+        <span class="label">Estilo:</span>
+        <button type="button" class="btn-chip" data-style="classic">Clásica</button>
+        <button
+ type="button" class="btn-chip" data-style="orange">Naranja Pro</button>
+        <button type="button" class="btn-chip" data-style="noir">Noir</button>
+        <button type="button" class="btn-chip" data-style="cream">Cream Pattern</button>
+        
+        
+        <span class="label" style="margin-left:10px;">Vista:</span>
+        <button type="button" class="btn-chip" data-view="cards" aria-pressed="true">Tarjetas</button>
+        <button type="button" class="btn-chip" data-view="table" aria-pressed="false">Tabla</button>
+      </div>
+      
+      <div class="form-toolbar">
+        <span class="label">Exportar:</span>
+        <button type="button"
+ class="btn-chip" onclick="exportar('pdf')">PDF</button>
+        <button type="button" class="btn-chip" onclick="exportar('png')">PNG</button>
+        <button type="button" class="btn-chip" onclick="exportar('vcf')">vCard</button>
+        <span class="prov-spacer"></span>
+        <button type="button" class="btn-chip" id="selVis">Seleccionar visibles</button>
+        <button type="button" class="btn-chip" id="selNone">Quitar selección</button>
+        <span class="count" id="selCount" style="color:#6b7280;
+ font-size:.85rem;">0 seleccionados</span>
+      </div>
+    </form>
   </div>
 
-  <% if ((proveedores || []).length > 0) { %>
-    <!-- Tarjetas -->
-    <div class="grid" id="grid" data-style="classic">
-      <% proveedores.forEach(p => { %>
-        <a href="/proveedores/<%= p.id %>" class="card-oro prov-card"
-           data-id="<%= p.id %>" data-activo="<%= p.activo ? '1':'0' %>"
-           data-texto="<%= (p.nombre + ' ' + (p.cif||'') + ' ' + (p.email||'') + ' ' + (p.telefono||'') + ' ' + (p.contacto||'')).toLowerCase() %>">
+  <div class="container">
+    <% if ((proveedores || []).length > 0) { %>
+      <div class="grid" id="grid" data-style="classic">
+        <% proveedores.forEach(p => { %>
+          <a href="/proveedores/<%= p.id %>" class="card-oro prov-card"
+             data-id="<%= p.id %>" data-activo="<%= p.activo ? '1':'0' %>"
+             data-texto="<%= (p.nombre + ' ' + (p.cif||'') + ' ' + (p.email||'') + ' ' + (p.telefono||'') + ' ' + (p.contacto||'')).toLowerCase()
+ %>">
 
-          <div class="prov-head">
-            <input type="checkbox" class="check" aria-label="Seleccionar <%= p.nombre %>">
-            <div class="prov-title-row">
-              <span class="prov-title"><%= p.nombre %></span>
-              <span class="status-dot <%= p.activo ? 'is-ok' : 'is-off' %>"
-                    title="<%= p.activo ? 'Activo' : 'Inactivo' %>"></span>
+            <div class="prov-head">
+              <input type="checkbox" class="check" aria-label="Seleccionar <%= p.nombre %>">
+              <div class="prov-title-row">
+                <span class="prov-title"><%= p.nombre %></span>
+                <span class="status-dot <%= p.activo ? 'is-ok' : 'is-off' %>"
+                     
+ title="<%= p.activo ? 'Activo' : 'Inactivo' %>"></span>
+              </div>
             </div>
-          </div>
 
-          <% if (p.contacto) { %>
-            <div class="prov-sub">Contacto: <strong><%= p.contacto %></strong></div>
-          <% } %>
+            <% if (p.contacto) { %>
+              <div class="prov-sub">Contacto: <strong><%= p.contacto %></strong></div>
+            <% } %>
 
-          <div class="prov-meta">
-            <% if (p.email) { %><span><svg class="i"><use href="#i-mail"/></svg><%= p.email %></span><% } %>
-            <% if (p.telefono) { %><span><svg class="i"><use href="#i-phone"/></svg><%= p.telefono %></span><% } %>
-          </div>
+            <div class="prov-meta">
+              <% if (p.email) { %><span><svg class="i"><use 
+ href="#i-mail"/></svg><%= p.email %></span><% } %>
+              <% if (p.telefono) { %><span><svg class="i"><use href="#i-phone"/></svg><%= p.telefono %></span><% } %>
+            </div>
 
-          <div class="prov-actions">
-            <% if (p.email) { %><button type="button" class="btn-ghost" onclick="event.stopPropagation(); window.location='mailto:<%= p.email %>'">Email</button><% } %>
-            <% if (p.telefono) { %><button type="button" class="btn-ghost" onclick="event.stopPropagation(); window.location='tel:<%= p.telefono %>'">Llamar</button><% } %>
-            <span class="prov-spacer"></span>
-            <span class="prov-cif"><%= p.cif || '—' %></span>
-          </div>
-        </a>
-      <% }) %>
-    </div>
+            <div class="prov-actions">
+              <% if (p.email) { %><button type="button" class="btn-ghost" onclick="event.stopPropagation();
+ window.location='mailto:<%= p.email %>'">Email</button><% } %>
+              <% if (p.telefono) { %><button type="button" class="btn-ghost" onclick="event.stopPropagation();
+ window.location='tel:<%= p.telefono %>'">Llamar</button><% } %>
+              <span class="prov-spacer"></span>
+              <span class="prov-cif"><%= p.cif || '—' %></span>
+            </div>
+          </a>
+        <% }) %>
+      </div>
 
-    <!-- Tabla -->
-    <div id="tabla-wrap" class="table-responsive mt-3" style="display:none;">
-      <table class="tabla-estilizada tabla-tight tabla-hover">
-        <thead>
-          <tr>
-            <th style="width:36px;"><input type="checkbox" id="chkAllTabla" aria-label="Seleccionar todos"></th>
-            <th>Nombre</th><th>CIF/NIF</th><th>Email</th><th>Teléfono</th><th>Contacto</th>
-            <th class="text-center">Estado</th>
-          </tr>
-        </thead>
-        <tbody id="tbody-proveedores">
-          <% proveedores.forEach(p => { %>
-            <tr class="fila-enlace" data-id="<%= p.id %>" data-activo="<%= p.activo ? '1':'0' %>"
-                data-texto="<%= (p.nombre + ' ' + (p.cif||'') + ' ' + (p.email||'') + ' ' + (p.telefono||'') + ' ' + (p.contacto||'')).toLowerCase() %>"
-                onclick="location.href='/proveedores/<%= p.id %>'">
-              <td><input type="checkbox" class="check-row" aria-label="Seleccionar <%= p.nombre %>"></td>
-              <td><strong><%= p.nombre %></strong></td>
-              <td><%= p.cif || '—' %></td>
-              <td><%= p.email || '—' %></td>
-              <td><%= p.telefono || '—' %></td>
-              <td><%= p.contacto || '—' %></td>
-              <td class="text-center">
-                <span class="status-dot <%= p.activo ? 'is-ok' : 'is-off' %>" title="<%= p.activo ? 'Activo' : 'Inactivo' %>"></span>
-              </td>
+      <div id="tabla-wrap" class="table-responsive mt-3" style="display:none;">
+        <table class="tabla-estilizada tabla-tight tabla-hover">
+          <thead>
+       
+ <tr>
+              <th style="width:36px;"><input type="checkbox" id="chkAllTabla" aria-label="Seleccionar todos"></th>
+              <th>Nombre</th><th>CIF/NIF</th><th>Email</th><th>Teléfono</th><th>Contacto</th>
+              <th class="text-center">Estado</th>
             </tr>
-          <% }) %>
-        </tbody>
-      </table>
-    </div>
-  <% } else { %>
-    <p class="mt-4" style="text-align:center;">No hay proveedores con esos filtros.</p>
-  <% } %>
+          </thead>
+          <tbody id="tbody-proveedores">
+            <% proveedores.forEach(p => { %>
+              
+ <tr class="fila-enlace" data-id="<%= p.id %>" data-activo="<%= p.activo ? '1':'0' %>"
+                  data-texto="<%= (p.nombre + ' ' + (p.cif||'') + ' ' + (p.email||'') + ' ' + (p.telefono||'') + ' ' + (p.contacto||'')).toLowerCase() %>"
+                  onclick="location.href='/proveedores/<%= p.id %>'">
+                <td><input type="checkbox" class="check-row" aria-label="Seleccionar <%= p.nombre %>"></td>
+                <td><strong><%= 
+ p.nombre %></strong></td>
+                <td><%= p.cif ||
+ '—' %></td>
+                <td><%= p.email ||
+ '—' %></td>
+                <td><%= p.telefono ||
+ '—' %></td>
+                <td><%= p.contacto ||
+ '—' %></td>
+                <td class="text-center">
+                  <span class="status-dot <%= p.activo ? 'is-ok' : 'is-off' %>" title="<%= p.activo ? 'Activo' : 'Inactivo' %>"></span>
+                </td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+ 
+      </div>
+    <% } else { %>
+      <p class="mt-4" style="text-align:center;">No hay proveedores con esos filtros.</p>
+    <% } %>
+  </div>
 </div>
 
-<!-- SVG icons -->
 <svg width="0" height="0" style="position:absolute;visibility:hidden">
   <symbol id="i-mail" viewBox="0 0 24 24"><path d="M4 6h16v12H4z"/><path d="M22 6l-10 7L2 6"/></symbol>
   <symbol id="i-phone" viewBox="0 0 24 24"><path d="M6 2h4l2 5-3 2a14 14 0 0 0 6 6l2-3 5 2v4a2 2 0 0 1-2 2 18 18 0 0 1-18-18 2 2 0 0 1 2-2z"/></symbol>
@@ -259,32 +308,31 @@
 (()=>{
   const grid       = document.getElementById('grid');
   const tablaWrap  = document.getElementById('tabla-wrap');
-  const tbody      = document.getElementById('tbody-proveedores');
+  const tbody  
+     = document.getElementById('tbody-proveedores');
   const chkAllTbl  = document.getElementById('chkAllTabla');
   const input      = document.getElementById('busqueda-proveedores');
   const estado     = document.getElementById('estado');
   const styleBtns  = document.querySelectorAll('.btn-chip[data-style]');
   const viewBtns   = document.querySelectorAll('.btn-chip[data-view]');
   const selCount   = document.getElementById('selCount');
-
   const cards  = () => Array.from(document.querySelectorAll('#grid .card-oro.prov-card'));
   const rows   = () => Array.from(document.querySelectorAll('#tbody-proveedores tr'));
-
   /* ===== Filtro ===== */
   function filtrar(){
     const q = (input?.value || '').toLowerCase().trim();
-    const est = estado?.value || '';
+  const est = estado?.value || '';
     cards().forEach(card => {
       const txt = card.getAttribute('data-texto') || '';
       const act = card.getAttribute('data-activo') || '';
       card.style.display = ((!q || txt.includes(q)) && (!est || act === est)) ? '' : 'none';
     });
-    rows().forEach(tr => {
+  rows().forEach(tr => {
       const txt = tr.getAttribute('data-texto') || '';
       const act = tr.getAttribute('data-activo') || '';
       tr.style.display = ((!q || txt.includes(q)) && (!est || act === est)) ? '' : 'none';
     });
-    contarSel();
+  contarSel();
   }
   input?.addEventListener('input', filtrar);
   estado?.addEventListener('change', filtrar);
@@ -300,7 +348,7 @@
         c.classList.toggle('selected', !!selected);
       }
     });
-    // Tabla
+  // Tabla
     rows().forEach(r => {
       const id = r.getAttribute('data-id');
       if (!ids || ids.has(id)) {
@@ -313,9 +361,9 @@
 
   function contarSel(){
     const selCards = cards().filter(c => c.classList.contains('selected')).map(c => c.getAttribute('data-id'));
-    const selRows  = rows().filter(r => r.classList.contains('selected')).map(r => r.getAttribute('data-id'));
+  const selRows  = rows().filter(r => r.classList.contains('selected')).map(r => r.getAttribute('data-id'));
     const n = new Set([...selCards, ...selRows]).size;
-    if (selCount) selCount.textContent = n + ' seleccionados';
+  if (selCount) selCount.textContent = n + ' seleccionados';
   }
 
   // Selección en TARJETAS
@@ -333,13 +381,11 @@
   // Evitar navegación al pulsar el checkbox de tarjeta
   // Evitar que al hacer clic en el checkbox se navegue al enlace,
 // pero sin bloquear su cambio de estado.
-grid?.addEventListener('click', e => {
+  grid?.addEventListener('click', e => {
   if (e.target.closest('.check')) {
     e.stopPropagation();          // ← quitamos e.preventDefault()
   }
 }, true);
-
-
   // Selección en TABLA
   tbody?.addEventListener('change', e => {
     const cb = e.target.closest('.check-row'); if(!cb) return;
@@ -356,7 +402,6 @@ grid?.addEventListener('click', e => {
   tbody?.addEventListener('click', e => {
     if (e.target.closest('.check-row')) { e.stopPropagation(); }
   }, true);
-
   // Seleccionar visibles / Quitar selección
   document.getElementById('selVis')?.addEventListener('click', () => {
     const visiblesCards = cards().filter(c => c.offsetParent !== null);
@@ -373,64 +418,59 @@ grid?.addEventListener('click', e => {
     const ids = new Set(visibles.map(r => r.getAttribute('data-id')));
     setSelected(ids, chkAllTbl.checked); contarSel();
   });
-
   /* ===== Estilo tarjetas ===== */
   function applyStyle(v){
     if (!grid) return;
     grid.setAttribute('data-style', v);
-    styleBtns.forEach(b => {
+  styleBtns.forEach(b => {
       const on = b.dataset.style === v;
       b.classList.toggle('active', on);
       b.setAttribute('aria-pressed', String(on));
     });
-    localStorage.setItem('prov-style', v);
+  localStorage.setItem('prov-style', v);
   }
   styleBtns.forEach(b => b.addEventListener('click', ()=>applyStyle(b.dataset.style)));
   applyStyle(localStorage.getItem('prov-style') || 'classic');
-
   /* ===== Vista tarjetas/tabla ===== */
   function applyView(v){
     const isCards = (v === 'cards');
-    if (grid)      grid.style.display     = isCards ? '' : 'none';
-    if (tablaWrap) tablaWrap.style.display = isCards ? 'none' : '';
+  if (grid)      grid.style.display     = isCards ? '' : 'none';
+  if (tablaWrap) tablaWrap.style.display = isCards ? 'none' : '';
     viewBtns.forEach(b => {
       const on = b.dataset.view === v;
       b.classList.toggle('active', on);
       b.setAttribute('aria-pressed', String(on));
     });
-    localStorage.setItem('prov-view', v);
+  localStorage.setItem('prov-view', v);
     filtrar();
   }
   viewBtns.forEach(b => b.addEventListener('click', ()=>applyView(b.dataset.view)));
   applyView(localStorage.getItem('prov-view') || 'cards');
-
   /* ===== Exportar (seleccionados o, si no hay, visibles) ===== */
   window.exportar = function(tipo){
     const visiblesCards = cards().filter(c=>c.offsetParent!==null);
-    const visiblesRows  = rows().filter(r=>r.offsetParent!==null);
+  const visiblesRows  = rows().filter(r=>r.offsetParent!==null);
 
     const selCards = visiblesCards.filter(c=>c.classList.contains('selected')).map(c=>c.getAttribute('data-id'));
     const selRows  = visiblesRows.filter(r=>r.classList.contains('selected')).map(r=>r.getAttribute('data-id'));
     const sel = [...new Set([...selCards, ...selRows])];
-
-    const vis = [...new Set([
+  const vis = [...new Set([
       ...visiblesCards.map(c=>c.getAttribute('data-id')),
       ...visiblesRows.map(r=>r.getAttribute('data-id'))
     ])];
-
-    const ids   = (sel.length ? sel : vis).filter(Boolean);
+  const ids   = (sel.length ? sel : vis).filter(Boolean);
     const style = grid?.getAttribute('data-style') || 'classic';
-
-    const qs = new URLSearchParams();
+  const qs = new URLSearchParams();
     if(ids.length) qs.set('ids', ids.join(','));
     // Mandamos ambos por compatibilidad backend:
     qs.set('style', style);
-    qs.set('look',  style);
+  qs.set('look',  style);
 
     const url = tipo==='vcf' ? `/proveedores/export/vcf?${qs}` :
-                tipo==='png' ? `/proveedores/export/png?${qs}` :
+                tipo==='png' ?
+  `/proveedores/export/png?${qs}` :
                                `/proveedores/export/pdf?${qs}`;
-    window.location = url;
+  window.location = url;
   };
 
   /* init */

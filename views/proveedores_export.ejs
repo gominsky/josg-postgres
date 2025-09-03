@@ -9,21 +9,20 @@
       /* base */
       --ink:#0b1220; --muted:#475569; --border:rgba(0,0,0,.12);
       /* marca */
-      --brand-orange:#FF9501; --brand-yellow:#ffb020; --brand-cream:#fff3dc;
-      --brand-black:#111827;
+      --brand-orange:#FF9501; --brand-yellow:#ffb020; --brand-cream:#fff3dc; --brand-black:#111827;
     }
     *{ box-sizing:border-box; }
     body{
       font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Arial, "Apple Color Emoji", "Segoe UI Emoji";
       margin:0; color:var(--ink); background:#f7f8fb;
+      -webkit-print-color-adjust: exact; print-color-adjust: exact;
     }
 
-    /* === Lienzo (más ancho por tarjeta) === */
+    /* === Lienzo (tarjetas algo más anchas) === */
     .page{
       padding:10mm;
       display:grid;
-      /* tarjetas algo más anchas: 100mm vs 92mm */
-      grid-template-columns: repeat(auto-fill, minmax(100mm, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(100mm, 1fr)); /* 100mm (antes 92mm) */
       gap: 8mm;
     }
 
@@ -45,15 +44,13 @@
     .biz-body{ padding:6mm 6mm 5mm 5mm; display:flex; flex-direction:column; gap:2.2mm; min-width:0; }
     .title-row{ display:flex; align-items:center; gap:3mm; min-width:0; }
     .biz-title{ font-size:5mm; font-weight:800; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
-    .status-dot{ width:3.2mm; height:3.2mm; border-radius:50%; display:inline-block; box-shadow:0 0 0 .5mm rgba(0,0,0,.06) inset; }
-    .status-ok{ background:#22c55e; } .status-off{ background:#ef4444; }
 
     .biz-sub{ color:#64748b; font-size:3.8mm; }
     .meta-line{ display:flex; gap:6mm; flex-wrap:wrap; color:#334155; font-size:3.6mm; }
     .meta-item{ display:inline-flex; align-items:center; gap:2.5mm; }
     .i{ width:4mm; height:4mm; fill:currentColor; opacity:.85; }
 
-    /* ===== Estilos (server-side por style o compat por look) ===== */
+    /* ===== Estilo (style) con compatibilidad con look antiguo ===== */
     <% var __style = (typeof style !== 'undefined' && style)
          ? style
          : ((typeof look !== 'undefined' && look)
@@ -81,7 +78,6 @@
       .biz-media{ background:#11161c; }
       .biz-avatar{ background:#0f172a; color:#e2e8f0; border-color:#111820; }
       .biz-sub, .meta-line{ color:#cbd5e1; }
-      .status-dot{ box-shadow:0 0 0 .5mm rgba(255,255,255,.2) inset; }
     <% } %>
 
     /* 3) Cream Pattern */
@@ -111,7 +107,6 @@
 
     @page{ size: A4; margin: 0; }
     @media print{
-      body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
       .page{ padding:10mm; background:none; }
     }
   </style>
@@ -129,8 +124,7 @@
         <div class="biz-body">
           <div class="title-row">
             <span class="biz-title"><%= p.nombre %></span>
-            <span class="status-dot <%= p.activo ? 'status-ok' : 'status-off' %>"
-                  title="<%= p.activo ? 'Activo' : 'Inactivo' %>"></span>
+            <!-- Exportación: sin check y sin indicador de estado -->
           </div>
 
           <% if (p.contacto) { %>

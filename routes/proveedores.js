@@ -6,6 +6,29 @@ const fs = require('fs');
 const os = require('os');
 const archiver = require('archiver');
 const puppeteer = require('puppeteer');
+function getExportOpts(req){
+  const allowed = new Set(['classic','orange','noir','cream','gradient']);
+
+  const rawStyle = (req.query.style || '').toLowerCase().trim();
+  const rawLook  = (req.query.look  || '').toLowerCase().trim(); // compat antiguo a/b/c
+  let style = rawStyle ||
+              (rawLook === 'a' ? 'classic'
+               : rawLook === 'b' ? 'cream'
+               : rawLook === 'c' ? 'gradient'
+               : 'classic');
+  if (!allowed.has(style)) style = 'classic';
+
+  const compact = ['1','true','yes','on'].includes(String(req.query.compact||'').toLowerCase());
+  const showHeader = ['1','true','yes','on'].includes(String(req.query.showHeader||'').toLowerCase());
+  const brandName = req.query.brandName || '';
+  const brandLogoUrl = req.query.brandLogoUrl || '';
+
+  // Filtros (los mismos que en la lista)
+  const estado = (req.query.estado === '1' || req.query.estado === '0') ? req.query.estado : '';
+  const q = req.query.q || '';
+
+  return { style, compact, showHeader, brandName, brandLogoUrl, estado, q };
+}
 
 // GET /proveedores — listado con filtros
 router.get('/', async (req, res) => {
@@ -164,35 +187,43 @@ async function fetchProveedores({ ids, estado = '', q = '' }) {
 
 // Vista HTML “imprimible” que reutiliza el diseño de tarjetas
 router.get('/export/view', async (req, res) => {
-  const ids = (req.query.ids || '')
-    .split(',')
-    .map(x => x.trim())
-    .filter(Boolean);
-  const look = (req.query.look || 'a').toLowerCase(); // a/b/c
-  const proveedores = await fetchProveedores({ ids });
+  const ids = (req.query.ids || '').split(',').map(x => x.trim()).filter(Boolean);
+  const { style, compact, showHeader, brandName, brandLogoUrl, estado, q } = getExportOpts(req);
 
-  res.render('proveedores_export', { proveedores, look, title: 'Tarjetas de Proveedores' });
+  const proveedores = await fetchProveedores({ ids, estado, q });
+  res.render('proveedores_export', {
+    title: 'Tarjetas de Proveedores',
+    proveedores,
+    style,
+    compact,
+    showHeader,
+    brandName,
+    brandLogoUrl
+  });
 });
+
 
 // PDF (una o varias por A4)
 router.get('/export/pdf', async (req, res) => {
-  const ids = (req.query.ids || '')
-    .split(',')
-    .map(x => x.trim())
-    .filter(Boolean);
-  const look = (req.query.look || 'a').toLowerCase();
+  const ids = (req.query.ids || '').split(',').map(x => x.trim()).filter(Boolean);
+  const { style, compact, showHeader, brandName, brandLogoUrl, estado, q } = getExportOpts(req);
 
-  const proveedores = await fetchProveedores({ ids });
+  const proveedores = await fetchProveedores({ ids, estado, q });
+
   const html = await new Promise((resolve, reject) => {
-    req.app.render('proveedores_export', { proveedores, look, title: 'Tarjetas de Proveedores' }, (err, out) => {
-      if (err) reject(err); else resolve(out);
-    });
+    req.app.render('proveedores_export', {
+      title: 'Tarjetas de Proveedores',
+      proveedores, style, compact, showHeader, brandName, brandLogoUrl
+    }, (err, out) => err ? reject(err) : resolve(out));
   });
 
   const browser = await puppeteer.launch({ args: ['--no-sandbox'] });
   try {
     const page = await browser.newPage();
+    await page.emulateMediaType('screen');           // asegúrate de aplicar estilos de pantalla
     await page.setContent(html, { waitUntil: 'networkidle0' });
+    await page.waitForSelector('.bizcard');          // espera a que pinten las tarjetas
+
     const pdf = await page.pdf({
       format: 'A4',
       printBackground: true,
@@ -200,30 +231,28 @@ router.get('/export/pdf', async (req, res) => {
     });
     await browser.close();
 
-    const filename = `proveedores_tarjetas.pdf`;
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-    return res.send(pdf);
+    res.setHeader('Content-Disposition', 'attachment; filename="proveedores_tarjetas.pdf"');
+    res.send(pdf);
   } catch (e) {
     await browser.close();
     console.error(e);
-    return res.status(500).send('No se pudo generar el PDF');
+    res.status(500).send('No se pudo generar el PDF');
   }
 });
 
+
 // PNG por tarjeta (ZIP)
 router.get('/export/png', async (req, res) => {
-  const ids = (req.query.ids || '')
-    .split(',')
-    .map(x => x.trim())
-    .filter(Boolean);
-  const look = (req.query.look || 'a').toLowerCase();
+  const ids = (req.query.ids || '').split(',').map(x => x.trim()).filter(Boolean);
+  const { style, compact, showHeader, brandName, brandLogoUrl, estado, q } = getExportOpts(req);
 
-  const proveedores = await fetchProveedores({ ids });
+  const proveedores = await fetchProveedores({ ids, estado, q });
   const html = await new Promise((resolve, reject) => {
-    req.app.render('proveedores_export', { proveedores, look, title: 'Tarjetas de Proveedores' }, (err, out) => {
-      if (err) reject(err); else resolve(out);
-    });
+    req.app.render('proveedores_export', {
+      title: 'Tarjetas de Proveedores',
+      proveedores, style, compact, showHeader, brandName, brandLogoUrl
+    }, (err, out) => err ? reject(err) : resolve(out));
   });
 
   const tmpdir = fs.mkdtempSync(path.join(os.tmpdir(), 'prov-cards-'));
@@ -232,9 +261,10 @@ router.get('/export/png', async (req, res) => {
   try {
     const page = await browser.newPage();
     await page.setViewport({ width: 1400, height: 900, deviceScaleFactor: 2 });
+    await page.emulateMediaType('screen');
     await page.setContent(html, { waitUntil: 'networkidle0' });
+    await page.waitForSelector('.bizcard');
 
-    // Capturar cada tarjeta por su data-id
     const cards = await page.$$('.bizcard[data-id]');
     const files = [];
     for (const card of cards) {
@@ -248,9 +278,8 @@ router.get('/export/png', async (req, res) => {
 
     await browser.close();
 
-    // Empaquetar ZIP
     res.setHeader('Content-Type', 'application/zip');
-    res.setHeader('Content-Disposition', `attachment; filename="proveedores_tarjetas_png.zip"`);
+    res.setHeader('Content-Disposition', 'attachment; filename="proveedores_tarjetas_png.zip"');
 
     const archive = archiver('zip', { zlib: { level: 9 } });
     archive.on('error', err => { throw err; });
@@ -260,9 +289,10 @@ router.get('/export/png', async (req, res) => {
   } catch (e) {
     await browser.close();
     console.error(e);
-    return res.status(500).send('No se pudieron generar las imágenes');
+    res.status(500).send('No se pudieron generar las imágenes');
   }
 });
+
 
 // vCard (.vcf) combinado
 router.get('/export/vcf', async (req, res) => {
