@@ -4,6 +4,9 @@ const db = require('../database/db');
 const QRCode = require('qrcode');
 const { toISODate } = require('../utils/fechas');
 const { generarControlAsistenciaPDF } = require('../utils/pdfControlAsistencia');
+// Util para componer el PDF
+const { pdfControlAsistencia } = require('../utils/pdfControlAsistencia');
+
 // Helper: extrae {fechaISO, horaHHMM} desde un valor tipo "YYYY-MM-DDTHH:MM" o suelto
 function splitISODateTime(input) {
   if (!input) return { fechaISO: null, horaHHMM: null };
@@ -13,12 +16,53 @@ function splitISODateTime(input) {
   }
   return { fechaISO: toISODate(input), horaHHMM: null };
 }
-// Util para componer el PDF
-const { pdfControlAsistencia } = require('../utils/pdfControlAsistencia');
+
+// ======== NUEVOS HELPERS (validación/simple) ========
+function hhmmOrNull(v) {
+  if (v === undefined || v === null) return null;
+  if (typeof v !== 'string') return null;
+  const t = v.trim();
+  return t && /^\d{2}:\d{2}$/.test(t) ? t : null;
+}
+function idOrNull(v) {
+  const n = Number(v);
+  return Number.isInteger(n) ? n : null;
+}
+function strOrNull(v) {
+  return (typeof v === 'string' && v.trim() !== '') ? v.trim() : null;
+}
+
+// ======== NUEVO: “fotografía” de asignados por evento (miembros del grupo vigentes en esa fecha) ========
+// Inserta en evento_asignaciones la "foto" de alumnos del grupo vigentes ese día
+// y copia hora_inicio/hora_fin del evento en la asignación
+async function asignarAlumnosAEvento(db, eventoId, grupoId, fechaISO /* 'YYYY-MM-DD' */) {
+  if (!grupoId) return;
+  const sql = `
+    INSERT INTO evento_asignaciones (evento_id, alumno_id, hora_inicio, hora_fin)
+    SELECT $1, al.id, e.hora_inicio, e.hora_fin
+    FROM alumno_grupo ag
+    JOIN alumnos al ON al.id = ag.alumno_id
+    JOIN eventos  e ON e.id = $1
+    WHERE ag.grupo_id = $2
+      AND (al.activo IS TRUE)
+      AND (al.fecha_matriculacion IS NULL OR al.fecha_matriculacion <= $3::date)
+      AND (al.fecha_baja IS NULL OR al.fecha_baja >= $3::date)
+  ON CONFLICT (evento_id, alumno_id) DO NOTHING
+  `;
+  await db.query(sql, [eventoId, Number(grupoId), fechaISO]);
+}
+
+
+// ----------------------------------------------------------------------------------
+// AYUDA
+// ----------------------------------------------------------------------------------
 router.get('/ayuda', (_req, res) => {
   res.render('ayuda_eventos', { title: 'Ayuda · Eventos', hero: false });
 });
-// Listado JSON para FullCalendar (start/end normalizados)
+
+// ----------------------------------------------------------------------------------
+// LISTADO JSON para FullCalendar
+// ----------------------------------------------------------------------------------
 router.get('/listado', async (req, res) => {
   const sql = `
   WITH e2 AS (
@@ -43,8 +87,6 @@ router.get('/listado', async (req, res) => {
   FROM e2
   LEFT JOIN grupos g ON e2.grupo_id = g.id
 `;
-
-
   try {
     const { rows } = await db.query(sql);
 
@@ -78,7 +120,9 @@ router.get('/listado', async (req, res) => {
   }
 });
 
-// Vista principal: calendario o lista según parámetros (filtro con start_ts/end_ts)
+// ----------------------------------------------------------------------------------
+// VISTA PRINCIPAL: Calendario o Lista
+// ----------------------------------------------------------------------------------
 router.get('/', async (req, res) => {
   const desdeRaw = req.query.desde || '';
   const hastaRaw = req.query.hasta || '';
@@ -122,7 +166,9 @@ router.get('/', async (req, res) => {
   }
 });
 
-// Obtener evento por id (JSON)
+// ----------------------------------------------------------------------------------
+// OBTENER 1 EVENTO (JSON)
+// ----------------------------------------------------------------------------------
 router.get('/:id', async (req, res) => {
   const id = parseInt(req.params.id, 10);
   if (!id) return res.status(400).json({ error: 'ID inválido' });
@@ -139,21 +185,21 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// Crear evento
+// ----------------------------------------------------------------------------------
+// CREAR 1 EVENTO (con foto de asignaciones)
+// ----------------------------------------------------------------------------------
 router.post('/', async (req, res) => {
   const { titulo, descripcion, fecha_inicio, fecha_fin, grupo_id, activo } = req.body;
 
-  const activoValue = activo === '1' ? true : false;
-
+  const activoValue = (activo === '1');
   const { fechaISO: fIniISO, horaHHMM: hiFromIni } = splitISODateTime(fecha_inicio);
   const { fechaISO: fFinISO, horaHHMM: hfFromFin } = splitISODateTime(fecha_fin);
-
   if (!fIniISO || !fFinISO) {
     return res.status(400).json({ error: 'Fechas inválidas' });
   }
 
-  const hora_inicio = hiFromIni || null;
-  const hora_fin    = hfFromFin || null;
+  const hora_inicio = hhmmOrNull(hiFromIni);
+  const hora_fin    = hhmmOrNull(hfFromFin);
   const token = Math.random().toString(36).substring(2, 10); // 8 caracteres
 
   const sql = `
@@ -169,7 +215,7 @@ router.post('/', async (req, res) => {
     descripcion?.trim() || null,
     fIniISO,
     fFinISO,
-    grupo_id,
+    grupo_id || null,
     activoValue,
     hora_inicio,
     hora_fin,
@@ -177,24 +223,35 @@ router.post('/', async (req, res) => {
   ];
 
   try {
+    await db.query('BEGIN');
     const result = await db.query(sql, params);
-    res.json({ id: result.rows[0].id });
+    const newId = result.rows[0].id;
+
+    if (grupo_id) {
+      await asignarAlumnosAEvento(db, newId, grupo_id, fIniISO);
+    }
+
+    await db.query('COMMIT');
+    res.json({ id: newId });
   } catch (err) {
+    await db.query('ROLLBACK');
     console.error('Error al guardar evento:', err);
     res.status(500).json({ error: 'Error al guardar evento' });
   }
 });
 
-// Crear eventos masivos (mismo grupo/título + varias fechas)
+// ----------------------------------------------------------------------------------
+// CREAR EVENTOS MASIVOS (con foto por cada fecha)
+// ----------------------------------------------------------------------------------
 router.post('/masivo', async (req, res) => {
   const {
     titulo, descripcion, grupo_id, activo,
-    hora_inicio, hora_fin, // HH:MM (del formulario)
-    fechas // Array de 'YYYY-MM-DD' seleccionadas en el mini-calendario
+    hora_inicio, hora_fin, // HH:MM
+    fechas // Array de 'YYYY-MM-DD'
   } = req.body;
 
   try {
-    const activoValue = activo === '1';
+    const activoValue = (activo === '1');
     if (!titulo || !grupo_id || !Array.isArray(fechas) || fechas.length === 0) {
       return res.status(400).json({ error: 'Faltan datos' });
     }
@@ -202,7 +259,6 @@ router.post('/masivo', async (req, res) => {
       return res.status(400).json({ error: 'Faltan horas de inicio/fin' });
     }
 
-    // Transacción para insertar en bloque
     await db.query('BEGIN');
 
     const insertSQL = `
@@ -210,35 +266,31 @@ router.post('/masivo', async (req, res) => {
         titulo, descripcion, fecha_inicio, fecha_fin, grupo_id,
         activo, hora_inicio, hora_fin, token
       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
-      RETURNING id
+      RETURNING id, fecha_inicio
     `;
 
     const ids = [];
     for (const fISO of fechas) {
-      // fecha_inicio/fin en ISO combinadas con horas
-      const fecha_inicio = fISO;
-      const fecha_fin = fISO;
-
-      // Si la hora fin es "menor" que la de inicio => pasa a día siguiente
-      const start = new Date(`${fecha_inicio}T${hora_inicio}:00`);
-      let end = new Date(`${fecha_fin}T${hora_fin}:00`);
-      if (end <= start) end = new Date(start.getTime() + 60 * 60 * 1000); // +1h de cortesía
-
+      const fecha_inicio = toISODate(fISO);
+      const fecha_fin = fecha_inicio;
       const token = Math.random().toString(36).substring(2, 10);
 
       const params = [
         titulo?.trim() || null,
         descripcion?.trim() || null,
-        fecha_inicio,               // YYYY-MM-DD
-        fecha_fin,                  // YYYY-MM-DD (guardas el día; las horas van en campos separados)
-        grupo_id,
+        fecha_inicio,
+        fecha_fin,
+        Number(grupo_id),
         activoValue,
-        hora_inicio,
-        hora_fin,
+        hhmmOrNull(hora_inicio),
+        hhmmOrNull(hora_fin),
         token
       ];
       const r = await db.query(insertSQL, params);
-      ids.push(r.rows[0].id);
+      const evId = r.rows[0].id;
+      ids.push(evId);
+
+      await asignarAlumnosAEvento(db, evId, Number(grupo_id), fecha_inicio);
     }
 
     await db.query('COMMIT');
@@ -250,22 +302,22 @@ router.post('/masivo', async (req, res) => {
   }
 });
 
-// Actualizar evento
+// ----------------------------------------------------------------------------------
+// ACTUALIZAR EVENTO
+// ----------------------------------------------------------------------------------
 router.put('/:id', async (req, res) => {
   const { titulo, descripcion, fecha_inicio, fecha_fin, grupo_id, activo } = req.body;
   const id = parseInt(req.params.id, 10);
 
-  const activoValue = activo === '1' ? true : false;
-
+  const activoValue = (activo === '1');
   const { fechaISO: fIniISO, horaHHMM: hiFromIni } = splitISODateTime(fecha_inicio);
   const { fechaISO: fFinISO, horaHHMM: hfFromFin } = splitISODateTime(fecha_fin);
-
   if (!fIniISO || !fFinISO) {
     return res.status(400).json({ error: 'Fechas inválidas' });
   }
 
-  const hora_inicio = hiFromIni || null;
-  const hora_fin    = hfFromFin || null;
+  const hora_inicio = hhmmOrNull(hiFromIni);
+  const hora_fin    = hhmmOrNull(hfFromFin);
 
   const sql = `
     UPDATE eventos
@@ -285,7 +337,7 @@ router.put('/:id', async (req, res) => {
     descripcion?.trim() || null,
     fIniISO,
     fFinISO,
-    grupo_id,
+    grupo_id || null,
     activoValue,
     hora_inicio,
     hora_fin,
@@ -301,20 +353,16 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-// Eliminar evento (y su guardia si existe)
+// ----------------------------------------------------------------------------------
+// ELIMINAR EVENTO (y sus dependencias)
+// ----------------------------------------------------------------------------------
 router.delete('/:id', async (req, res) => {
   const id = parseInt(req.params.id, 10);
 
   try {
-    // 1. Borrar guardias relacionadas
     await db.query('DELETE FROM guardias WHERE evento_id = $1', [id]);
-
-    // 2. Borrar asistencias
     await db.query('DELETE FROM asistencias WHERE evento_id = $1', [id]);
-
-    // 3. Borrar evento
     await db.query('DELETE FROM eventos WHERE id = $1', [id]);
-
     res.json({ deleted: true });
   } catch (err) {
     console.error('Error al eliminar evento:', err);
@@ -322,7 +370,9 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
-// QR del evento
+// ----------------------------------------------------------------------------------
+// QR DEL EVENTO
+// ----------------------------------------------------------------------------------
 router.get('/:id/qr', async (req, res) => {
   const eventoId = req.params.id;
 
@@ -339,13 +389,11 @@ router.get('/:id/qr', async (req, res) => {
 
     const evento = rows[0];
 
-    // Título con grupo entre paréntesis
     const tituloConGrupo = `${evento.titulo}${evento.grupo_nombre ? ` (${evento.grupo_nombre})` : ''}`;
 
     const qrData = JSON.stringify({ evento_id: evento.id, token: evento.token });
     const qrDataUrl = await QRCode.toDataURL(qrData);
 
-    // Construir Date a partir de fecha ISO + hora HH:MM si existe
     const fISO = toISODate(evento.fecha_inicio);
     const hhmm = (evento.hora_inicio || '00:00');
     const fechaObj = fISO ? new Date(`${fISO}T${hhmm}:00`) : null;
@@ -415,7 +463,9 @@ router.get('/:id/qr', async (req, res) => {
   }
 });
 
-// Mostrar formulario de firma manual (backend limpia fecha/hora y ordena alumnos)
+// ----------------------------------------------------------------------------------
+// FIRMA MANUAL: FORM
+// ----------------------------------------------------------------------------------
 router.get('/:id/firma_manual', async (req, res) => {
   const eventoId = parseInt(req.params.id, 10);
   if (isNaN(eventoId)) return res.status(400).send('ID inválido');
@@ -427,39 +477,55 @@ router.get('/:id/firma_manual', async (req, res) => {
     WHERE e.id = $1
   `;
 
-  const alumnosSQL = `
-    SELECT a.*, 
-           CASE WHEN asi.alumno_id IS NOT NULL THEN 1 ELSE 0 END AS firmado
-    FROM alumnos a
-    LEFT JOIN asistencias asi 
-      ON a.id = asi.alumno_id AND asi.evento_id = $1
-    JOIN alumno_grupo ag ON ag.alumno_id = a.id
-    WHERE ag.grupo_id = $2
-    ORDER BY a.apellidos, a.nombre
-  `;
+  const asignacionesSQL = `
+  WITH datos AS (
+    SELECT
+      a.id,
+      a.nombre,
+      a.apellidos,
+      a.dni,
+      '' AS instrumento,  -- HOTFIX: sin join a repertorios
+      CASE WHEN asi.alumno_id IS NOT NULL THEN 1 ELSE 0 END AS firmado,
+      ea.hora_inicio,
+      ea.hora_fin,
+      ea.rol,
+      ea.notas,
+      ea.ausencia_tipo_id,
+      au.tipo  AS ausencia_tipo,
+      ea.actividad_complementaria_id,
+      ac.tipo  AS actividad_complementaria,
+      'zzz' AS orden_instrumento
+    FROM evento_asignaciones ea
+    JOIN alumnos a  ON a.id = ea.alumno_id
+    LEFT JOIN asistencias asi
+           ON asi.evento_id = ea.evento_id
+          AND asi.alumno_id = ea.alumno_id
+    LEFT JOIN ausencias au ON au.id = ea.ausencia_tipo_id
+    LEFT JOIN actividades_complementarias ac ON ac.id = ea.actividad_complementaria_id
+    WHERE ea.evento_id = $1
+  )
+  SELECT * FROM datos
+  ORDER BY orden_instrumento, apellidos NULLS LAST, nombre NULLS LAST, id
+`;
+
+  function toISO10(v) {
+    if (!v) return '';
+    if (v instanceof Date) return v.toISOString().slice(0,10);
+    const s = String(v);
+    if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0,10);
+    if (s.includes('T')) return s.split('T')[0];
+    return s.slice(0,10);
+  }
 
   try {
     const { rows: eventoRows } = await db.query(eventoSQL, [eventoId]);
     if (eventoRows.length === 0) return res.status(404).send('Evento no encontrado');
 
     const evento = eventoRows[0];
-    if (!evento.grupo_id) return res.status(400).send('Grupo del evento no definido');
 
-    const { rows: alumnos } = await db.query(alumnosSQL, [eventoId, evento.grupo_id]);
+    const { rows: alumnos } = await db.query(asignacionesSQL, [eventoId]);
 
-    // ---- Orden “es” sin tocar BD (ignora tildes, respeta ñ)
-    const coll = new Intl.Collator('es', { sensitivity: 'base' });
-    alumnos.sort((a, b) => {
-      const ap = coll.compare(a.apellidos || '', b.apellidos || '');
-      if (ap) return ap;
-      const no = coll.compare(a.nombre || '', b.nombre || '');
-      if (no) return no;
-      return (a.id || 0) - (b.id || 0);
-    });
-
-    // ---- Formateo de fecha/hora para la vista
-    const toISO = v => (v ? String(v).split('T')[0] : '');
-    const fechaISO = toISO(evento.fecha_inicio);
+    const fechaISO = toISO10(evento.fecha_inicio);
     const horaIni = (evento.hora_inicio || '').slice(0, 5) || null;
     const horaFin = (evento.hora_fin || '').slice(0, 5) || null;
 
@@ -468,8 +534,13 @@ router.get('/:id/firma_manual', async (req, res) => {
     let hFin = horaFin || '—';
 
     if (fechaISO) {
-      const d = new Date(`${fechaISO}T${horaIni || '00:00'}:00`);
-      iniTxt = d.toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' });
+      const iso = `${fechaISO}T${horaIni || '00:00'}:00`;
+      const d = new Date(iso);
+      if (!isNaN(d.getTime())) {
+        iniTxt = d.toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' });
+      } else {
+        iniTxt = fechaISO;
+      }
     }
 
     const firmados = alumnos.filter(a => a.firmado).map(a => a.id);
@@ -481,67 +552,70 @@ router.get('/:id/firma_manual', async (req, res) => {
   }
 });
 
+// ----------------------------------------------------------------------------------
+// FIRMA MANUAL: AJAX
+// ----------------------------------------------------------------------------------
+// Guardar firma/unfirma vía AJAX (robusto + transacción + coherencia con ausencias)
 
-// Guardar firmas manuales (post completo)
-router.post('/:id/firma_manual', async (req, res) => {
-  const eventoId = parseInt(req.params.id);
-  const firmadosActuales = req.body.alumnosFirmados || [];
-
-  const nuevosFirmados = Array.isArray(firmadosActuales)
-    ? firmadosActuales.map(id => parseInt(id))
-    : [parseInt(firmadosActuales)];
-
-  try {
-    const { rows: registrosActuales } = await db.query(
-      'SELECT alumno_id FROM asistencias WHERE evento_id = $1',
-      [eventoId]
-    );
-    const actualesIds = registrosActuales.map(r => r.alumno_id);
-
-    const aInsertar = nuevosFirmados.filter(id => !actualesIds.includes(id));
-    const aEliminar = actualesIds.filter(id => !nuevosFirmados.includes(id));
-
-    const tareas = [];
-    for (const id of aInsertar) {
-      tareas.push(db.query('INSERT INTO asistencias (evento_id, alumno_id) VALUES ($1, $2)', [eventoId, id]));
-    }
-    for (const id of aEliminar) {
-      tareas.push(db.query('DELETE FROM asistencias WHERE evento_id = $1 AND alumno_id = $2', [eventoId, id]));
-    }
-
-    await Promise.all(tareas);
-    res.redirect(`/eventos/${eventoId}/firma_manual`);
-  } catch (err) {
-    console.error('Error actualizando asistencias:', err);
-    res.status(500).send('Error actualizando asistencias');
-  }
-});
-
-// Guardar firma/unfirma vía AJAX
 router.post('/:id/firma_manual/ajax', async (req, res) => {
-  const eventoId = parseInt(req.params.id, 10);
-  const alumnoId = parseInt(req.body.alumno_id, 10);
-  const firmado = req.body.firmado === 'true';
+  const eventoId = Number(req.params.id);
+  const alumnoId = Number(req.body.alumno_id);
+  const firmado = String(req.body.firmado) === 'true';
 
-  if (!eventoId || !alumnoId) {
-    return res.status(400).json({ error: 'Datos inválidos' });
+  if (!Number.isInteger(eventoId) || !Number.isInteger(alumnoId)) {
+    return res.status(400).json({ success: false, error: 'Parámetros inválidos' });
   }
 
-  const insertSQL = `INSERT INTO asistencias (evento_id, alumno_id) VALUES ($1, $2)`;
-  const deleteSQL = `DELETE FROM asistencias WHERE evento_id = $1 AND alumno_id = $2`;
-
   try {
-    if (firmado) {
-      await db.query(insertSQL, [eventoId, alumnoId]);
-    } else {
-      await db.query(deleteSQL, [eventoId, alumnoId]);
+    await db.query('BEGIN');
+
+    // Debe existir asignación
+    const asig = await db.query(
+      'SELECT 1 FROM evento_asignaciones WHERE evento_id = $1 AND alumno_id = $2',
+      [eventoId, alumnoId]
+    );
+    if (!asig.rows.length) {
+      await db.query('ROLLBACK');
+      return res.status(400).json({ success: false, error: 'Alumno no asignado a este evento' });
     }
-    res.json({ success: true });
+
+    if (firmado) {
+      await db.query(
+        `INSERT INTO asistencias (evento_id, alumno_id)
+         SELECT $1, $2
+         WHERE NOT EXISTS (
+           SELECT 1 FROM asistencias WHERE evento_id = $1 AND alumno_id = $2
+         )`,
+        [eventoId, alumnoId]
+      );
+      await db.query(
+        `UPDATE evento_asignaciones
+            SET ausencia_tipo_id = NULL
+          WHERE evento_id = $1 AND alumno_id = $2`,
+        [eventoId, alumnoId]
+      );
+    } else {
+      await db.query(
+        'DELETE FROM asistencias WHERE evento_id = $1 AND alumno_id = $2',
+        [eventoId, alumnoId]
+      );
+      // Si no quieres forzar ausencia aquí, no hagas nada más.
+      // (Ya hablamos del "Injustificada": si no lo quieres ahora, lo dejamos fuera)
+    }
+
+    await db.query('COMMIT');
+    return res.json({ success: true });
   } catch (err) {
-    res.status(500).json({ error: 'Error actualizando firma' });
+    await db.query('ROLLBACK');
+    console.error('Error actualizando firma AJAX:', err);
+    return res.status(500).json({ success: false, error: 'Error actualizando firma' });
   }
 });
 
+
+// ----------------------------------------------------------------------------------
+// PDF CONTROL DE ASISTENCIA
+// ----------------------------------------------------------------------------------
 router.get('/:id/firmas.pdf', async (req, res, next) => {
   try {
     const eventoId = Number(req.params.id);
@@ -549,6 +623,184 @@ router.get('/:id/firmas.pdf', async (req, res, next) => {
     await pdfControlAsistencia(db, res, eventoId);
   } catch (err) {
     next(err);
+  }
+});
+
+// ----------------------------------------------------------------------------------
+// ========== NUEVAS RUTAS: ASIGNACIONES (foto por evento) ==========
+// ----------------------------------------------------------------------------------
+
+// Listar asignaciones (con nombres de catálogos)
+router.get('/:id/asignaciones', async (req, res) => {
+  const eventoId = Number(req.params.id);
+  if (!Number.isInteger(eventoId)) return res.status(400).json({ error: 'ID inválido' });
+
+  const sql = `
+    SELECT
+      ea.evento_id,
+      ea.alumno_id,
+      a.nombre,
+      a.apellidos,
+      ea.hora_inicio,
+      ea.hora_fin,
+      COALESCE(ea.hora_inicio, e.hora_inicio) AS hora_inicio_efectiva,
+      COALESCE(ea.hora_fin,    e.hora_fin)    AS hora_fin_efectiva,
+      ea.rol,
+      ea.notas,
+      ea.ausencia_tipo_id,
+      au.tipo  AS ausencia_tipo,
+      ea.actividad_complementaria_id,
+      ac.tipo  AS actividad_complementaria
+    FROM evento_asignaciones ea
+    JOIN alumnos a  ON a.id = ea.alumno_id
+    JOIN eventos e  ON e.id = ea.evento_id
+    LEFT JOIN ausencias au ON au.id = ea.ausencia_tipo_id
+    LEFT JOIN actividades_complementarias ac ON ac.id = ea.actividad_complementaria_id
+    WHERE ea.evento_id = $1
+    ORDER BY a.apellidos NULLS LAST, a.nombre NULLS LAST, a.id
+  `;
+  try {
+    const { rows } = await db.query(sql, [eventoId]);
+    res.json(rows);
+  } catch (err) {
+    console.error('Error obteniendo asignaciones:', err);
+    res.status(500).json({ error: 'Error obteniendo asignaciones' });
+  }
+});
+
+// Repoblar asignaciones desde el grupo del evento (añade las que falten)
+router.post('/:id/asignaciones/refresh', async (req, res) => {
+  const eventoId = Number(req.params.id);
+  if (!Number.isInteger(eventoId)) return res.status(400).json({ error: 'ID inválido' });
+
+  try {
+    const ev = await db.query('SELECT id, grupo_id, fecha_inicio FROM eventos WHERE id=$1', [eventoId]);
+    if (!ev.rows.length) return res.status(404).json({ error: 'Evento no encontrado' });
+    const { grupo_id, fecha_inicio } = ev.rows[0];
+    if (!grupo_id || !fecha_inicio) return res.status(400).json({ error: 'Evento sin grupo o fecha' });
+
+    await asignarAlumnosAEvento(db, eventoId, Number(grupo_id), toISODate(fecha_inicio));
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('Error refrescando asignaciones:', err);
+    res.status(500).json({ error: 'Error refrescando asignaciones' });
+  }
+});
+
+// Actualizar una asignación concreta (horas, rol, notas, ausencia, actividad)
+router.put('/:id/asignaciones/:alumnoId', async (req, res) => {
+  const eventoId = Number(req.params.id);
+  const alumnoId = Number(req.params.alumnoId);
+  if (!Number.isInteger(eventoId) || !Number.isInteger(alumnoId)) {
+    return res.status(400).json({ error: 'Parámetros inválidos' });
+  }
+
+  // Saneadores
+  const toNullIfEmpty = v =>
+    (v === '' || v === undefined || v === null) ? null : String(v);
+
+  const toIntOrNull = v => {
+    if (v === '' || v === undefined || v === null) return null;
+    const n = Number(v);
+    return Number.isInteger(n) ? n : null;
+  };
+
+  const payload = {
+    hora_inicio: toNullIfEmpty(req.body.hora_inicio),
+    hora_fin:    toNullIfEmpty(req.body.hora_fin),
+    rol:         toNullIfEmpty(req.body.rol),
+    notas:       toNullIfEmpty(req.body.notas),
+    ausencia_tipo_id:            toIntOrNull(req.body.ausencia_tipo_id),
+    actividad_complementaria_id: toIntOrNull(req.body.actividad_complementaria_id)
+  };
+
+  try {
+    await db.query('BEGIN');
+
+    // Verifica que exista la asignación
+    const ex = await db.query(
+      'SELECT 1 FROM evento_asignaciones WHERE evento_id = $1 AND alumno_id = $2',
+      [eventoId, alumnoId]
+    );
+    if (!ex.rows.length) {
+      await db.query('ROLLBACK');
+      return res.status(404).json({ error: 'Asignación no encontrada' });
+    }
+
+    const upd = await db.query(
+      `UPDATE evento_asignaciones
+          SET hora_inicio = $3,
+              hora_fin    = $4,
+              rol         = $5,
+              notas       = $6,
+              ausencia_tipo_id = $7,
+              actividad_complementaria_id = $8
+        WHERE evento_id = $1 AND alumno_id = $2
+        RETURNING evento_id, alumno_id, hora_inicio, hora_fin, rol, notas,
+                  ausencia_tipo_id, actividad_complementaria_id`,
+      [
+        eventoId,
+        alumnoId,
+        payload.hora_inicio,
+        payload.hora_fin,
+        payload.rol,
+        payload.notas,
+        payload.ausencia_tipo_id,
+        payload.actividad_complementaria_id
+      ]
+    );
+
+    await db.query('COMMIT');
+    return res.json(upd.rows[0]);
+  } catch (err) {
+    await db.query('ROLLBACK');
+    console.error('Error actualizando asignación:', err);
+    return res.status(500).json({ error: 'Error actualizando asignación' });
+  }
+});
+
+
+
+// Quitar un asignado del evento
+router.delete('/:id/asignaciones/:alumnoId', async (req, res) => {
+  const eventoId = Number(req.params.id);
+  const alumnoId = Number(req.params.alumnoId);
+  if (!Number.isInteger(eventoId) || !Number.isInteger(alumnoId)) {
+    return res.status(400).json({ error: 'Parámetros inválidos' });
+  }
+  try {
+    const { rowCount } = await db.query(
+      'DELETE FROM evento_asignaciones WHERE evento_id=$1 AND alumno_id=$2',
+      [eventoId, alumnoId]
+    );
+    if (rowCount === 0) return res.status(404).json({ error: 'Asignación no encontrada' });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('Error eliminando asignación:', err);
+    res.status(500).json({ error: 'Error eliminando asignación' });
+  }
+});
+
+// Resumen asignación/asistencia para badges
+router.get('/:id/asignaciones/resumen', async (req, res) => {
+  const eventoId = Number(req.params.id);
+  if (!Number.isInteger(eventoId)) return res.status(400).json({ error: 'ID inválido' });
+
+  try {
+    const { rows } = await db.query(`
+      SELECT
+        COUNT(*)::int AS asignados,
+        COUNT(a.alumno_id)::int AS asistieron
+      FROM evento_asignaciones ea
+      LEFT JOIN asistencias a
+        ON a.evento_id = ea.evento_id
+       AND a.alumno_id = ea.alumno_id
+      WHERE ea.evento_id = $1
+    `, [eventoId]);
+    res.json(rows[0] || { asignados: 0, asistieron: 0 });
+  } catch (err) {
+    console.error('Error en resumen de asignaciones:', err);
+    res.status(500).json({ error: 'Error en resumen de asignaciones' });
   }
 });
 

@@ -8,14 +8,26 @@ router.post('/api/login', async (req, res) => {
   if (!email || !password) return res.json({ success: false, error: 'Faltan credenciales' });
 
   try {
+    // Selecciona el hash correcto y aliaséalo como "password"
     const result = await db.query(
-      `SELECT * FROM usuarios WHERE email = $1 AND rol IN ('docente', 'admin')`,
+      `SELECT id, nombre, rol, password_hash AS password
+       FROM usuarios
+       WHERE email = $1 AND rol IN ('docente', 'admin')`,
       [email]
     );
+
     const user = result.rows[0];
     if (!user) return res.json({ success: false, error: 'Credenciales inválidas' });
 
-    const match = await bcrypt.compare(password, user.password);
+    // Protégete si el usuario no tiene hash
+    if (!user.password) {
+      return res.json({
+        success: false,
+        error: 'La cuenta no tiene contraseña configurada. Contacta con un admin.'
+      });
+    }
+
+    const match = await bcrypt.compare(String(password), String(user.password));
     if (!match) return res.json({ success: false, error: 'Credenciales inválidas' });
 
     res.json({ success: true, usuario: { id: user.id, nombre: user.nombre, rol: user.rol } });
@@ -24,6 +36,7 @@ router.post('/api/login', async (req, res) => {
     res.status(500).json({ success: false, error: 'Error interno' });
   }
 });
+
 router.get('/api/eventos', async (req, res) => {
   const usuarioId = parseInt(req.query.usuario_id, 10);
   if (isNaN(usuarioId)) return res.status(400).json([]);

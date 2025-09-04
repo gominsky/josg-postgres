@@ -190,7 +190,7 @@ router.put('/:id', upload.single('foto'), async (req, res) => {
     email,
     telefono,
     direccion,
-    fecha_nacimiento,
+    fecha_nacimiento, // puede venir '' desde <input type="date">
     especialidad,
     instrumentos,
     grupos
@@ -204,36 +204,41 @@ router.put('/:id', upload.single('foto'), async (req, res) => {
   }
 
   try {
-    // 1) Construir query UPDATE dinámicamente
-    const campos = [
-      'nombre = $1',
-      'apellidos = $2',
-      'email = $3',
-      'telefono = $4',
-      'direccion = $5',
-      'fecha_nacimiento = $6',
-      'especialidad = $7',
-      'activo = $8'
-    ];
-    const params = [
-      nombre, apellidos, email, telefono,
-      direccion, fecha_nacimiento, especialidad, activo
-    ];
+    // === 1) UPDATE dinámico con placeholders correctos ===
+    const campos = [];
+    const params = [];
 
-    if (foto) {
-      campos.push(`foto = $${params.length + 1}`);
-      params.push(foto);
-    }
+    // helper para ir añadiendo campos sin “contar a mano” $1, $2…
+    const set = (col, val, kind) => {
+      params.push(val);
+      const i = params.length;
+      if (kind === 'dateOrNull') {
+        campos.push(`${col} = NULLIF($${i}, '')::date`); // <-- clave del fix
+      } else {
+        campos.push(`${col} = $${i}`);
+      }
+    };
+
+    set('nombre', nombre);
+    set('apellidos', apellidos);
+    set('email', email);
+    set('telefono', telefono);
+    set('direccion', direccion);
+    set('fecha_nacimiento', fecha_nacimiento, 'dateOrNull'); // <-- aquí evita el 22007
+    set('especialidad', especialidad);
+    set('activo', activo);
+
+    if (foto) set('foto', foto);
 
     params.push(id);
     const updateQuery = `UPDATE profesores SET ${campos.join(', ')} WHERE id = $${params.length}`;
     await db.query(updateQuery, params);
 
-    // 2) Limpiar relaciones anteriores
+    // === 2) Limpiar relaciones anteriores ===
     await db.query('DELETE FROM profesor_instrumento WHERE profesor_id = $1', [id]);
     await db.query('DELETE FROM profesor_grupo WHERE profesor_id = $1', [id]);
 
-    // 3) Insertar nuevas relaciones
+    // === 3) Insertar nuevas relaciones ===
     const instrumentosArray = Array.isArray(instrumentos) ? instrumentos : instrumentos ? [instrumentos] : [];
     const gruposArray = Array.isArray(grupos) ? grupos : grupos ? [grupos] : [];
 
@@ -277,7 +282,7 @@ router.put('/:id', upload.single('foto'), async (req, res) => {
           email,
           telefono,
           direccion,
-          fecha_nacimiento,
+          fecha_nacimiento, // mostramos lo que vino del form
           especialidad,
           activo
         },
@@ -293,6 +298,7 @@ router.put('/:id', upload.single('foto'), async (req, res) => {
     }
   }
 });
+
 // DELETE: Eliminar profesor
 router.post('/:id/eliminar', async (req, res) => {
   const { id } = req.params;

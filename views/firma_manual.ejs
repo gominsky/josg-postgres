@@ -1,10 +1,13 @@
-<% title = 'Control de asistencia' %>
+<% title = 'Configuración de evento' %>
 <% hero = false %>
 
 <div class="container mt-4">
   <div class="d-flex justify-content-between align-items-center mb-3">
-    <h1 class="h1-titulo mb-0">Control de asistencia</h1>
-    <a href="/eventos" class="btn-main-blanco fw-bold px-3 py-2">Eventos</a>
+    <h1 class="h1-titulo mb-0">Configuración de evento</h1>
+    <div class="d-flex gap-2">
+      <button id="btnRefreshAsign" class="btn-main-blanco fw-bold px-3 py-2">Repoblar desde grupo</button>
+      <a href="/eventos" class="btn-main-blanco fw-bold px-3 py-2">Eventos</a>
+    </div>
   </div>
 
   <div class="text-center mb-3">
@@ -15,66 +18,240 @@
     </p>
   </div>
 
-  <form method="POST" action="/eventos/<%= evento.id %>/firma_manual" style="background-color: transparent;">
-    <table class="tabla-estilizada w-100">
+  <!-- UNA SOLA TABLA: firmas + edición de asignación -->
+  <div class="table-responsive">
+    <table class="table table-sm align-middle tabla-estilizada">
       <thead>
         <tr>
           <th>Nombre completo</th>
-          <th>DNI</th>
-          <th>Firmado</th>
+          <th>Instrumento</th>
+          <th class="text-center">Firmado</th>
+          <th style="width:110px">Inicio</th>
+          <th style="width:110px">Fin</th>
+          <th style="width:140px">Rol</th>
+          <th style="width:180px">Ausencia</th>
+          <th style="width:220px">Actividad compl.</th>
+          <th style="width:240px">Notas</th>
+          <th style="width:160px"></th>
         </tr>
       </thead>
-      <tbody>
-        <% alumnos.forEach(alumno => { %>
-          <tr>
-            <td class="text-start"><%= alumno.apellidos %>, <%= alumno.nombre %></td>
-            <td><%= alumno.dni %></td>
+      <tbody id="asigBody">
+        <% alumnos.forEach(row => { %>
+          <tr class="<%= row.ausencia_tipo_id ? 'row-ausente' : '' %> <%= row.actividad_complementaria_id ? 'row-actividad' : '' %>" data-alumno="<%= row.id %>">
+            <td class="text-start"><%= row.apellidos %>, <%= row.nombre %></td>
+           <td><%= row.instrumento || '' %></td>
+
+            <!-- Firmado -->
             <td class="text-center">
               <input
-                class="form-check-input"
+                class="form-check-input chk-firmado"
                 type="checkbox"
-                name="alumnosFirmados"
-                value="<%= alumno.id %>"
-                id="alumno_<%= alumno.id %>"
-                <%= firmados.includes(alumno.id) ? 'checked' : '' %>
+                value="<%= row.id %>"
+                <%= firmados.includes(row.id) ? 'checked' : '' %>
               >
             </td>
+
+            <!-- Inicio / Fin -->
+            <td><input type="time" class="form-control form-control-sm inp-ini" value="<%= (row.hora_inicio || '').slice(0,5) %>"></td>
+            <td><input type="time" class="form-control form-control-sm inp-fin" value="<%= (row.hora_fin || '').slice(0,5) %>"></td>
+
+            <!-- Rol -->
+            <td><input type="text" class="form-control form-control-sm inp-rol" value="<%= row.rol || '' %>"></td>
+
+            <!-- Ausencia -->
+            <td>
+              <select class="form-select form-select-sm sel-aus"></select>
+            </td>
+
+            <!-- Actividad complementaria -->
+            <td>
+              <select class="form-select form-select-sm sel-act"></select>
+            </td>
+
+            <!-- Notas -->
+            <td><input type="text" class="form-control form-control-sm inp-notas" value="<%= row.notas || '' %>"></td>
+
+            <!-- Acciones -->
+            <td class="text-end">
+            <td class="text-end">
+            <button type="button" class="btn-main-blanco btn-sm me-2 btn-save">Guardar</button>
+            <button type="button" class="btn btn-outline-danger btn-sm btn-del" aria-label="Eliminar">&times;</button>
+          </td>
           </tr>
         <% }) %>
       </tbody>
     </table>
+  </div>
 
-    <div class="text-center mt-4 d-flex gap-2 justify-content-center">
-      <button type="submit" class="btn-main-blanco fw-bold px-4 py-2">Guardar firmas</button>
-      <a class="btn-main-blanco fw-bold px-4 py-2" href="/eventos/<%= evento.id %>/firmas.pdf">
-        Exportar PDF
-      </a>
-    </div>
-  </form>
+  <div class="text-center mt-3">
+    <a class="btn-main-blanco fw-bold px-4 py-2" href="/eventos/<%= evento.id %>/firmas.pdf">Exportar PDF</a>
+  </div>
 
   <div class="volver-bloque-izquierda mt-4">
     <a href="/eventos" class="enlace-final">← Volver al calendario</a>
   </div>
 </div>
 
+<style>
+  /* Estética mínima */
+  .row-ausente { background: #fff3cd; }
+  .row-actividad { box-shadow: inset 2px 0 0 #0d6efd; }
+  .tabla-estilizada input.form-control, .tabla-estilizada select.form-select { height: 31px; padding: 2px 8px; font-size: .9rem; }
+</style>
+
 <script>
-  // Guardado instantáneo vía AJAX (opcional)
-  document.addEventListener('DOMContentLoaded', () => {
-    const checks = document.querySelectorAll('input[name="alumnosFirmados"]');
-    checks.forEach(chk => {
-      chk.addEventListener('change', () => {
-        const alumnoId = chk.value;
-        const firmado = chk.checked;
-        const eventoId = <%= evento.id %>;
-        fetch(`/eventos/${eventoId}/firma_manual/ajax`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ alumno_id: alumnoId, firmado })
-        })
-        .then(res => res.json())
-        .then(data => { if (!data.success) alert('Error al actualizar firma'); })
-        .catch(() => alert('Error en la solicitud'));
+(function(){
+  const eventoId = <%= evento.id %>;
+  const $tbody = document.getElementById('asigBody');
+  const $btnRefresh = document.getElementById('btnRefreshAsign');
+
+  // Utilidades
+  function setBusy(btn, busy, txtBusy){
+    if (!btn) return;
+    btn.disabled = !!busy;
+    if (busy) {
+      btn.dataset._txt = btn.textContent;
+      if (txtBusy) btn.textContent = txtBusy;
+    } else {
+      if (btn.dataset._txt) btn.textContent = btn.dataset._txt;
+      delete btn.dataset._txt;
+    }
+  }
+  function rowPayload(tr){
+    return {
+      hora_inicio: (tr.querySelector('.inp-ini')?.value || null),
+      hora_fin:    (tr.querySelector('.inp-fin')?.value || null),
+      rol:         (tr.querySelector('.inp-rol')?.value || null),
+      notas:       (tr.querySelector('.inp-notas')?.value || null),
+      ausencia_tipo_id: (tr.querySelector('.sel-aus')?.value || null),
+      actividad_complementaria_id: (tr.querySelector('.sel-act')?.value || null),
+    };
+  }
+  async function jsonOrText(res){
+    const ct = res.headers.get('content-type') || '';
+    if (ct.includes('application/json')) return res.json();
+    const t = await res.text();
+    return { error: t };
+  }
+
+  // ===============================
+  // 1) Firmas (checkbox) - AJAX
+  // ===============================
+  $tbody.addEventListener('change', async (ev)=>{
+    const chk = ev.target.closest('.chk-firmado');
+    if (!chk) return;
+    const alumnoId = chk.value;
+    const firmado = chk.checked;
+
+    try {
+      const res = await fetch(`/eventos/${eventoId}/firma_manual/ajax`, {
+        method:'POST',
+        headers:{ 'Content-Type':'application/json' },
+        body: JSON.stringify({ alumno_id: alumnoId, firmado })
       });
-    });
+      const data = await jsonOrText(res);
+      if (!res.ok || (data && data.success === false)) {
+        console.error('Firma AJAX fallo:', res.status, data);
+        throw new Error(data?.error || `HTTP ${res.status}`);
+      }
+      // Opcional: feedback visual (fila ausente si desmarcas)
+      // chk.closest('tr')?.classList.toggle('row-ausente', !firmado);
+    } catch (err) {
+      alert('No se pudo guardar la firma');
+      console.error(err);
+      chk.checked = !firmado; // revertir
+    }
   });
+
+  // =========================================
+  // 2) Guardar y Eliminar asignación (PUT/DEL)
+  // =========================================
+  $tbody.addEventListener('click', async (ev)=>{
+    const tr = ev.target.closest('tr');
+    if (!tr) return;
+    const alumnoId = tr.dataset.alumno;
+
+    // Guardar
+    const btnSave = ev.target.closest('.btn-save');
+    if (btnSave) {
+      const payload = rowPayload(tr);
+      try {
+        setBusy(btnSave, true, 'Guardando…');
+        const res = await fetch(`/eventos/${eventoId}/asignaciones/${alumnoId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type':'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await jsonOrText(res);
+        if (!res.ok) {
+          console.error('PUT asignación fallo:', res.status, data);
+          throw new Error(data?.error || `HTTP ${res.status}`);
+        }
+        // Marca visual
+        const ausId = data?.ausencia_tipo_id ?? payload.ausencia_tipo_id;
+        const actId = data?.actividad_complementaria_id ?? payload.actividad_complementaria_id;
+        tr.classList.toggle('row-ausente', !!ausId);
+        tr.classList.toggle('row-actividad', !!actId);
+
+        btnSave.textContent = 'Guardado';
+        setTimeout(()=>{ if (btnSave) btnSave.textContent = 'Guardar'; }, 900);
+      } catch (err) {
+        alert('Error guardando asignación');
+        console.error(err);
+      } finally {
+        setBusy(btnSave, false);
+      }
+      return;
+    }
+
+    // Eliminar
+    const btnDel = ev.target.closest('.btn-del');
+    if (btnDel) {
+      if (!confirm('¿Quitar a este alumno del evento?')) return;
+      try {
+        setBusy(btnDel, true, 'Eliminando…');
+        const res = await fetch(`/eventos/${eventoId}/asignaciones/${alumnoId}`, { method: 'DELETE' });
+        const data = await jsonOrText(res);
+        if (!res.ok) {
+          console.error('DELETE asignación fallo:', res.status, data);
+          throw new Error(data?.error || `HTTP ${res.status}`);
+        }
+        tr.remove();
+      } catch (err) {
+        alert('Error eliminando asignación');
+        console.error(err);
+      } finally {
+        setBusy(btnDel, false);
+      }
+      return;
+    }
+  });
+
+  // ============================
+  // 3) Repoblar desde el grupo
+  // ============================
+  if ($btnRefresh) {
+    $btnRefresh.addEventListener('click', async ()=>{
+      if (!confirm('Añadirá los alumnos del grupo vigentes ese día (no borra). ¿Continuar?')) return;
+      try {
+        setBusy($btnRefresh, true, 'Repoblando…');
+        const res = await fetch(`/eventos/${eventoId}/asignaciones/refresh`, { method:'POST' });
+        if (!res.ok) {
+          const data = await jsonOrText(res);
+          console.error('REFRESH fallo:', res.status, data);
+          throw new Error(data?.error || `HTTP ${res.status}`);
+        }
+        location.reload();
+      } catch (err) {
+        alert('Error refrescando asignaciones');
+        console.error(err);
+      } finally {
+        setBusy($btnRefresh, false);
+      }
+    });
+  }
+})();
 </script>
+
+
+

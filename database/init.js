@@ -287,6 +287,46 @@ async function init({ reset = false } = {}) {
       CREATE INDEX IF NOT EXISTS idx_asistencias_alumno      ON asistencias(alumno_id);
       CREATE INDEX IF NOT EXISTS idx_asistencias_evento_hora ON asistencias(evento_id, hora);
 
+      CREATE TABLE IF NOT EXISTS ausencias (
+        id   INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+        tipo TEXT UNIQUE NOT NULL
+      );
+
+      -- Actividades complementarias (letra como id)
+      CREATE TABLE IF NOT EXISTS actividades_complementarias (
+        id   INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+        tipo TEXT UNIQUE NOT NULL,
+        descripcion TEXT
+      );
+
+      CREATE TABLE IF NOT EXISTS evento_asignaciones (
+        evento_id   INTEGER NOT NULL,
+        alumno_id   INTEGER NOT NULL,
+        hora_inicio TIME,      -- si NULL, hereda la del evento
+        hora_fin    TIME,      -- si NULL, hereda la del evento
+        rol         TEXT,      -- ejemplo: "Solista", "Acompañante"
+        notas       TEXT,      -- comentarios/observaciones libres
+        ausencia_tipo_id INTEGER,                 -- FK -> ausencias(id)
+        actividad_complementaria_id INTEGER,      -- FK -> actividades_complementarias(id)
+
+        PRIMARY KEY (evento_id, alumno_id),
+
+        CONSTRAINT fk_ea_evento FOREIGN KEY (evento_id)
+          REFERENCES eventos(id) ON DELETE CASCADE,
+        CONSTRAINT fk_ea_alumno FOREIGN KEY (alumno_id)
+          REFERENCES alumnos(id) ON DELETE CASCADE,
+        CONSTRAINT fk_ea_ausencia FOREIGN KEY (ausencia_tipo_id)
+          REFERENCES ausencias(id) ON UPDATE RESTRICT ON DELETE RESTRICT,
+        CONSTRAINT fk_ea_actividad FOREIGN KEY (actividad_complementaria_id)
+          REFERENCES actividades_complementarias(id) ON UPDATE RESTRICT ON DELETE RESTRICT
+      );
+
+      -- Índices auxiliares para consultas rápidas
+      CREATE INDEX IF NOT EXISTS idx_ea_evento      ON evento_asignaciones (evento_id);
+      CREATE INDEX IF NOT EXISTS idx_ea_alumno      ON evento_asignaciones (alumno_id);
+      CREATE INDEX IF NOT EXISTS idx_ea_ausencia    ON evento_asignaciones (ausencia_tipo_id);
+      CREATE INDEX IF NOT EXISTS idx_ea_actividad   ON evento_asignaciones (actividad_complementaria_id);
+
       CREATE TABLE IF NOT EXISTS guardias (
         id          INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
         evento_id   INTEGER NOT NULL REFERENCES eventos(id) ON DELETE CASCADE,

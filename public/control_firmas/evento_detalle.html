@@ -59,10 +59,16 @@
         const evento = await eventoRes.json();
 
         document.getElementById('titulo').innerText = evento.titulo;
-        document.getElementById('info-evento').innerHTML = `
-          <p><strong>Grupo:</strong> ${evento.grupo_nombre}</p>
-          <p><strong>Inicio:</strong> ${formatearFecha(evento.fecha_inicio)}</p>
-        `;
+        const inicioLinea = `${normalizarFecha(evento.fecha_inicio)} ${normalizarHora(evento.hora_inicio)}${
+        evento.fecha_fin ? '-' + normalizarHora(evento.hora_fin) : ''
+      }`;
+
+      document.getElementById('info-evento').innerHTML = `
+        <p><strong>Grupo:</strong> ${evento.grupo_nombre}</p>
+        <p><strong>Inicio:</strong> ${inicioLinea}</p>
+      `;
+
+
 
         document.getElementById('observaciones_generales').value = evento.observaciones || '';
 
@@ -205,6 +211,51 @@
         alert('Error al actualizar el estado del QR');
       }
     }
+    function formatearFechaDMY(fechaStr) {
+  // fechaStr = "YYYY-MM-DD"
+  const [y,m,d] = String(fechaStr).split('-');
+  return `${d}/${m}/${y}`;
+}
+function formatearHoraHM(horaStr) {
+  // horaStr = "HH:MM:SS" o "HH:MM"
+  if (!horaStr) return '';
+  const [h,min] = String(horaStr).split(':');
+  return `${h.padStart(2,'0')}:${min.padStart(2,'0')}`;
+}
+function normalizarFecha(val) {
+  if (!val) return '';
+  // Si llega como ISO (contiene 'T'), usar Date y locale ES
+  if (typeof val === 'string' && val.includes('T')) {
+    const d = new Date(val);
+    return d.toLocaleDateString('es-ES'); // dd/mm/aaaa según navegador
+  }
+  // Si llega "YYYY-MM-DD"
+  if (typeof val === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(val)) {
+    const [y, m, d] = val.split('-');
+    return `${d}/${m}/${y}`;
+  }
+  // Fallback por si llega Date u otro formato
+  const d = new Date(val);
+  return d.toLocaleDateString('es-ES');
+}
+
+function normalizarHora(val) {
+  if (!val) return '';
+  // ISO -> usar Date
+  if (typeof val === 'string' && val.includes('T')) {
+    const d = new Date(val);
+    return d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+  }
+  // "HH:MM:SS" o "HH:MM"
+  if (typeof val === 'string') {
+    const [h = '00', m = '00'] = val.split(':');
+    return `${h.padStart(2, '0')}:${m.padStart(2, '0')}`;
+  }
+  // Fallback
+  const d = new Date(val);
+  return d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+}
+
   </script>
 </body>
 </html>
