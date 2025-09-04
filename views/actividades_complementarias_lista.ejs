@@ -1,0 +1,25 @@
+<% title = 'Actividades complementarias' %>
+<% hero = false %>
+<div class="header-compact">
+  <h1 class="h1-titulo">Actividades complementarias</h1>
+  <a href="/actividades/nuevo" class="btn-main-blanco">+ Añadir</a>
+</div>
+
+<% if (items.length === 0) { %>
+  <p class="enlace-final" style="text-align: center; margin-top: 2rem;">No hay actividades registradas.</p>
+<% } else { %>
+  <div class="dashboard-grid">
+    <% items.forEach(i => { %>
+      <a href="/actividades/editar/<%= i.id %>" class="card-oro" style="text-decoration: none;">
+        <div style="font-weight: 600; font-size: 1rem; margin-bottom: .25rem;"><%= i.tipo %></div>
+        <% if (i.descripcion) { %>
+          <div style="font-size: .9rem; opacity: .9;"><%= i.descripcion %></div>
+        <% } %>
+      </a>
+    <% }) %>
+  </div>
+<% } %>
+
+<div class="volver-bloque-izquierda">
+  <a href="/configuracion" class="enlace-final">← Volver a configuración</a>
+</div>

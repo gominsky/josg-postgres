@@ -19,29 +19,37 @@
   </div>
 
   <!-- UNA SOLA TABLA: firmas + edición de asignación -->
-  <div class="table-responsive">
+  <div>
     <table class="table table-sm align-middle tabla-estilizada">
       <thead>
         <tr>
-          <th>Nombre completo</th>
-          <th>Instrumento</th>
-          <th class="text-center">Firmado</th>
-          <th style="width:110px">Inicio</th>
-          <th style="width:110px">Fin</th>
-          <th style="width:140px">Rol</th>
-          <th style="width:180px">Ausencia</th>
-          <th style="width:220px">Actividad compl.</th>
-          <th style="width:240px">Notas</th>
+          <th class="th-sort" data-sort="apellidos">Nombre completo</th>
+          <th class="th-sort" data-sort="instrumento">Instrumento</th>
+          <th class="th-sort text-center" data-sort="firmado">Firmado</th>
+          <th class="th-sort" data-sort="inicio" style="width:120px">Inicio</th>
+          <th class="th-sort" data-sort="fin" style="width:120px">Fin</th>
+          <th class="th-sort" data-sort="ausencia" style="width:200px">Ausencia</th>
+          <th class="th-sort" data-sort="actividad" style="width:220px">Actividad compl.</th>
+          <th class="th-sort" data-sort="notas" style="width:260px">Notas</th>
           <th style="width:160px"></th>
         </tr>
       </thead>
       <tbody id="asigBody">
         <% alumnos.forEach(row => { %>
-          <tr class="<%= row.ausencia_tipo_id ? 'row-ausente' : '' %> <%= row.actividad_complementaria_id ? 'row-actividad' : '' %>" data-alumno="<%= row.id %>">
+          <tr class="<%= row.ausencia_tipo_id ? 'row-ausente' : '' %> <%= row.actividad_complementaria_id ? 'row-actividad' : '' %>"
+              data-alumno="<%= row.id %>"
+              data-apellidos="<%= (row.apellidos || '') + ', ' + (row.nombre || '') %>"
+              data-instrumento="<%= row.instrumento_mostrado || '' %>"
+              data-firmado="<%= firmados.includes(row.id) ? '1' : '0' %>"
+              data-inicio="<%= (row.hora_inicio || '').slice(0,5) %>"
+              data-fin="<%= (row.hora_fin || '').slice(0,5) %>"
+              data-ausencia="<%= row.ausencia_tipo || '' %>"
+              data-actividad="<%= row.actividad_complementaria || '' %>"
+              data-notas="<%= row.notas || '' %>"
+          >
             <td class="text-start"><%= row.apellidos %>, <%= row.nombre %></td>
-           <td><%= row.instrumento || '' %></td>
-
-            <!-- Firmado -->
+            <td><%= row.instrumento_mostrado || (row.instrumentos || '') %></td>
+      
             <td class="text-center">
               <input
                 class="form-check-input chk-firmado"
@@ -50,36 +58,30 @@
                 <%= firmados.includes(row.id) ? 'checked' : '' %>
               >
             </td>
-
-            <!-- Inicio / Fin -->
+      
             <td><input type="time" class="form-control form-control-sm inp-ini" value="<%= (row.hora_inicio || '').slice(0,5) %>"></td>
             <td><input type="time" class="form-control form-control-sm inp-fin" value="<%= (row.hora_fin || '').slice(0,5) %>"></td>
-
-            <!-- Rol -->
-            <td><input type="text" class="form-control form-control-sm inp-rol" value="<%= row.rol || '' %>"></td>
-
-            <!-- Ausencia -->
+      
+      
             <td>
               <select class="form-select form-select-sm sel-aus"></select>
             </td>
-
-            <!-- Actividad complementaria -->
+      
             <td>
               <select class="form-select form-select-sm sel-act"></select>
             </td>
-
-            <!-- Notas -->
+      
             <td><input type="text" class="form-control form-control-sm inp-notas" value="<%= row.notas || '' %>"></td>
-
-            <!-- Acciones -->
+      
             <td class="text-end">
-            <td class="text-end">
-            <button type="button" class="btn-main-blanco btn-sm me-2 btn-save">Guardar</button>
-            <button type="button" class="btn btn-outline-danger btn-sm btn-del" aria-label="Eliminar">&times;</button>
-          </td>
+              <button type="button" class="btn-main-blanco btn-sm me-2 btn-save">Guardar</button>
+              <button type="button" class="btn btn-outline-danger btn-sm btn-del" aria-label="Eliminar">&times;</button>
+            </td>
           </tr>
         <% }) %>
       </tbody>
+      
+        
     </table>
   </div>
 
@@ -91,13 +93,26 @@
     <a href="/eventos" class="enlace-final">← Volver al calendario</a>
   </div>
 </div>
-
-<style>
   /* Estética mínima */
-  .row-ausente { background: #fff3cd; }
-  .row-actividad { box-shadow: inset 2px 0 0 #0d6efd; }
-  .tabla-estilizada input.form-control, .tabla-estilizada select.form-select { height: 31px; padding: 2px 8px; font-size: .9rem; }
+  <style>
+  .tabla-estilizada td, .tabla-estilizada th {
+    padding: 10px 12px;
+    vertical-align: middle;
+  }
+  .tabla-estilizada input.form-control,
+  .tabla-estilizada select.form-select {
+    height: 36px;
+    padding: 4px 10px;
+    font-size: .95rem;
+  }
+  .row-ausente    { background: #fff7df; }            /* suave */
+  .row-actividad  { box-shadow: inset 3px 0 0 #0d6efd; }
+  .th-sort { cursor: pointer; user-select: none; }
+  .th-sort::after { content: ' ⇅'; font-size: .8em; opacity: .5; }
+  .th-sort.asc::after  { content: ' ↑'; opacity: .9; }
+  .th-sort.desc::after { content: ' ↓'; opacity: .9; }
 </style>
+
 
 <script>
 (function(){
@@ -251,7 +266,61 @@
     });
   }
 })();
+
+(function(){
+  const $tbody = document.getElementById('asigBody');
+  const $ths = document.querySelectorAll('th.th-sort');
+
+  function getKeyFromTr(tr, key){
+    const val = tr.dataset[key] ?? '';
+    return val;
+  }
+
+  function compare(a, b, key, asc) {
+    let va = getKeyFromTr(a, key);
+    let vb = getKeyFromTr(b, key);
+
+    // normalizaciones por tipo
+    if (key === 'firmado') {
+      va = Number(va); vb = Number(vb);
+    } else if (key === 'inicio' || key === 'fin') {
+      // HH:MM -> "HHMM"
+      va = (va || '').replace(':','');
+      vb = (vb || '').replace(':','');
+    } else {
+      // texto: case-insensitive
+      va = (va || '').toString().toLowerCase();
+      vb = (vb || '').toString().toLowerCase();
+    }
+
+    if (va < vb) return asc ? -1 : 1;
+    if (va > vb) return asc ? 1 : -1;
+    return 0;
+  }
+
+  function sortBy(key, th) {
+    const rows = Array.from($tbody.querySelectorAll('tr'));
+    const isAsc = !th.classList.contains('asc');
+    // reset classes
+    document.querySelectorAll('th.th-sort').forEach(h => h.classList.remove('asc','desc'));
+    th.classList.add(isAsc ? 'asc' : 'desc');
+
+    rows.sort((a,b)=>compare(a,b,key,isAsc));
+    rows.forEach(r => $tbody.appendChild(r));
+  }
+
+  $ths.forEach(th => {
+    th.addEventListener('click', () => {
+      const key = th.dataset.sort;
+      if (!key) return;
+      sortBy(key, th);
+    });
+  });
+})();
+
 </script>
+
+
 
 
 

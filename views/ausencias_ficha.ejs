@@ -1,0 +1,33 @@
+<% const isEdicion = Boolean(item && item.id); %>
+<% title = isEdicion ? 'Editar ausencia' : 'Nueva ausencia'; %>
+<% hero = false; %>
+
+<h1 class="h1-titulo"><%= title %></h1>
+
+<form id="form-ausencia" method="POST" action="<%= isEdicion ? '/ausencias/editar/' + item.id : '/ausencias' %>" class="formulario-alumno" style="border: 2px solid #FF9501; border-radius: 0.75rem; padding: 1rem;">
+  <div class="grupo-campos">
+    <h2>Datos</h2>
+    <div class="form-grid-2">
+      <label>Tipo:
+        <input type="text" name="tipo" id="tipo" value="<%= item?.tipo || '' %>" required>
+      </label>
+    </div>
+  </div>
+
+  <div class="acciones-finales d-flex justify-content-between align-items-center mt-4">
+    <a href="/ausencias" class="enlace-final">← Volver</a>
+    <div class="d-flex align-items-center gap-2">
+      <button type="submit" class="btn-main-blanco"><%= isEdicion ? 'Actualizar' : 'Registrar' %></button>
+      <% if (isEdicion) { %>
+        <button
+          type="submit"
+          class="btn-main-blanco"
+          form="form-ausencia"
+          formaction="/ausencias/eliminar/<%= item.id %>"
+          formmethod="POST"
+          onclick="return confirm('¿Eliminar esta ausencia?');"
+        >Eliminar</button>
+      <% } %>
+    </div>
+  </div>
+</form>

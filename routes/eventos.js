@@ -35,24 +35,45 @@ function strOrNull(v) {
 // ======== NUEVO: “fotografía” de asignados por evento (miembros del grupo vigentes en esa fecha) ========
 // Inserta en evento_asignaciones la "foto" de alumnos del grupo vigentes ese día
 // y copia hora_inicio/hora_fin del evento en la asignación
-async function asignarAlumnosAEvento(db, eventoId, grupoId, fechaISO /* 'YYYY-MM-DD' */) {
-  if (!grupoId) return;
+// "Fotografía" los alumnos del grupo al evento, copiando horas del evento.
+// fechaISO: 'YYYY-MM-DD'
+// "Fotografía" los alumnos del grupo al evento, copiando horas del evento ya casteadas a time.
+// fechaISO: 'YYYY-MM-DD'
+async function asignarAlumnosAEvento(db, eventoId, grupoId, fechaISO) {
+  if (!grupoId || !fechaISO) return;
+
   const sql = `
     INSERT INTO evento_asignaciones (evento_id, alumno_id, hora_inicio, hora_fin)
-    SELECT $1, al.id, e.hora_inicio, e.hora_fin
+    SELECT
+      $1 AS evento_id,
+      al.id AS alumno_id,
+      -- Hora inicio: castear texto/nullable a time
+      CASE
+        WHEN e.hora_inicio IS NULL OR NULLIF(trim(e.hora_inicio::text), '') IS NULL THEN NULL
+        ELSE (left(e.hora_inicio::text, 8))::time
+      END AS hora_inicio,
+      -- Hora fin: castear texto/nullable a time
+      CASE
+        WHEN e.hora_fin IS NULL OR NULLIF(trim(e.hora_fin::text), '') IS NULL THEN NULL
+        ELSE (left(e.hora_fin::text, 8))::time
+      END AS hora_fin
     FROM alumno_grupo ag
     JOIN alumnos al ON al.id = ag.alumno_id
-    JOIN eventos  e ON e.id = $1
+    JOIN eventos  e ON e.id   = $1
     WHERE ag.grupo_id = $2
-      AND (al.activo IS TRUE)
-      AND (al.fecha_matriculacion IS NULL OR al.fecha_matriculacion <= $3::date)
-      AND (al.fecha_baja IS NULL OR al.fecha_baja >= $3::date)
+      AND COALESCE(al.activo, TRUE) IS TRUE
+      AND (
+        al.fecha_matriculacion IS NULL
+        OR to_date(left(al.fecha_matriculacion::text, 10), 'YYYY-MM-DD') <= $3::date
+      )
+      AND (
+        al.fecha_baja IS NULL
+        OR to_date(left(al.fecha_baja::text, 10), 'YYYY-MM-DD') >= $3::date
+      )
   ON CONFLICT (evento_id, alumno_id) DO NOTHING
   `;
-  await db.query(sql, [eventoId, Number(grupoId), fechaISO]);
+  await db.query(sql, [Number(eventoId), Number(grupoId), fechaISO]);
 }
-
-
 // ----------------------------------------------------------------------------------
 // AYUDA
 // ----------------------------------------------------------------------------------
@@ -466,6 +487,9 @@ router.get('/:id/qr', async (req, res) => {
 // ----------------------------------------------------------------------------------
 // FIRMA MANUAL: FORM
 // ----------------------------------------------------------------------------------
+// Helper robusto ya con casts (debe existir en tu archivo):
+// async function asignarAlumnosAEvento(db, eventoId, grupoId, fechaISO) { ... }
+
 router.get('/:id/firma_manual', async (req, res) => {
   const eventoId = parseInt(req.params.id, 10);
   if (isNaN(eventoId)) return res.status(400).send('ID inválido');
@@ -473,19 +497,32 @@ router.get('/:id/firma_manual', async (req, res) => {
   const eventoSQL = `
     SELECT e.*, g.nombre AS grupo_nombre
     FROM eventos e
-    JOIN grupos g ON g.id = e.grupo_id
+    LEFT JOIN grupos g ON g.id = e.grupo_id
     WHERE e.id = $1
   `;
 
   const asignacionesSQL = `
-  WITH datos AS (
+  WITH base AS (
     SELECT
       a.id,
       a.nombre,
       a.apellidos,
       a.dni,
-      '' AS instrumento,  -- HOTFIX: sin join a repertorios
+
+      -- Instrumentos agregados (p.ej. "Violín, Clarinete")
+      string_agg(DISTINCT ins.nombre, ', ' ORDER BY ins.nombre)               AS instrumentos,
+
+      -- Flags y agregados para lógica de Violín
+      bool_or(ins.nombre ILIKE 'violín%')                                     AS has_violin,
+
+      -- ¿Pertenece además a un grupo llamado 'Violín I' o 'Violín II'? (aparte del grupo del evento)
+      bool_or(g2.nombre ILIKE 'violín i%')                                    AS es_violin_i,
+      bool_or(g2.nombre ILIKE 'violín ii%')                                   AS es_violin_ii,
+
+      -- firmado (asistencia)
       CASE WHEN asi.alumno_id IS NOT NULL THEN 1 ELSE 0 END AS firmado,
+
+      -- campos asignación
       ea.hora_inicio,
       ea.hora_fin,
       ea.rol,
@@ -493,39 +530,91 @@ router.get('/:id/firma_manual', async (req, res) => {
       ea.ausencia_tipo_id,
       au.tipo  AS ausencia_tipo,
       ea.actividad_complementaria_id,
-      ac.tipo  AS actividad_complementaria,
-      'zzz' AS orden_instrumento
+      ac.tipo  AS actividad_complementaria
+
     FROM evento_asignaciones ea
     JOIN alumnos a  ON a.id = ea.alumno_id
+
+    -- instrumentos
+    LEFT JOIN alumno_instrumento ai ON ai.alumno_id = a.id
+    LEFT JOIN instrumentos ins      ON ins.id = ai.instrumento_id
+
+    -- asistencias
     LEFT JOIN asistencias asi
            ON asi.evento_id = ea.evento_id
           AND asi.alumno_id = ea.alumno_id
+
+    -- catálogos
     LEFT JOIN ausencias au ON au.id = ea.ausencia_tipo_id
     LEFT JOIN actividades_complementarias ac ON ac.id = ea.actividad_complementaria_id
+
+    -- otros grupos del alumno (para detectar Violín I / Violín II)
+    LEFT JOIN alumno_grupo ag2 ON ag2.alumno_id = a.id
+    LEFT JOIN grupos g2        ON g2.id = ag2.grupo_id
+
     WHERE ea.evento_id = $1
+    GROUP BY
+      a.id, a.nombre, a.apellidos, a.dni,
+      firmado,
+      ea.hora_inicio, ea.hora_fin, ea.rol, ea.notas,
+      ea.ausencia_tipo_id, au.tipo,
+      ea.actividad_complementaria_id, ac.tipo
+  ),
+  con_instrumento_mostrado AS (
+    SELECT
+      *,
+      CASE
+        WHEN has_violin AND es_violin_i  THEN 'Violín I'
+        WHEN has_violin AND es_violin_ii THEN 'Violín II'
+        WHEN has_violin                  THEN 'Violín'
+        ELSE COALESCE(split_part(instrumentos, ', ', 1), '')
+      END AS instrumento_mostrado
+    FROM base
   )
-  SELECT * FROM datos
-  ORDER BY orden_instrumento, apellidos NULLS LAST, nombre NULLS LAST, id
+  SELECT
+    id, nombre, apellidos, dni,
+    instrumentos,
+    instrumento_mostrado,
+    firmado,
+    hora_inicio, hora_fin, rol, notas,
+    ausencia_tipo_id, ausencia_tipo,
+    actividad_complementaria_id, actividad_complementaria
+  FROM con_instrumento_mostrado
+  ORDER BY apellidos NULLS LAST, nombre NULLS LAST, id
 `;
 
-  function toISO10(v) {
+  const toISO10 = v => {
     if (!v) return '';
     if (v instanceof Date) return v.toISOString().slice(0,10);
     const s = String(v);
     if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0,10);
     if (s.includes('T')) return s.split('T')[0];
     return s.slice(0,10);
-  }
+  };
 
   try {
     const { rows: eventoRows } = await db.query(eventoSQL, [eventoId]);
     if (eventoRows.length === 0) return res.status(404).send('Evento no encontrado');
 
     const evento = eventoRows[0];
-
-    const { rows: alumnos } = await db.query(asignacionesSQL, [eventoId]);
-
     const fechaISO = toISO10(evento.fecha_inicio);
+
+    // 1) Cargar asignaciones
+    let { rows: alumnos } = await db.query(asignacionesSQL, [eventoId]);
+
+    // 2) Si NO hay asignaciones y el evento tiene grupo, repoblar automáticamente y reintentar UNA vez
+    if ((!alumnos || alumnos.length === 0) && evento.grupo_id && fechaISO) {
+      try {
+        await asignarAlumnosAEvento(db, eventoId, evento.grupo_id, fechaISO);
+        const retry = await db.query(asignacionesSQL, [eventoId]);
+        alumnos = retry.rows;
+      } catch (e) {
+        console.error('Auto-repoblar falló:', e);
+        // seguimos sin romper la vista; mostrará vacío
+      }
+    }
+
+    // Cabecera fecha/hora
     const horaIni = (evento.hora_inicio || '').slice(0, 5) || null;
     const horaFin = (evento.hora_fin || '').slice(0, 5) || null;
 
@@ -536,16 +625,21 @@ router.get('/:id/firma_manual', async (req, res) => {
     if (fechaISO) {
       const iso = `${fechaISO}T${horaIni || '00:00'}:00`;
       const d = new Date(iso);
-      if (!isNaN(d.getTime())) {
-        iniTxt = d.toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' });
-      } else {
-        iniTxt = fechaISO;
-      }
+      iniTxt = !isNaN(d.getTime())
+        ? d.toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' })
+        : fechaISO;
     }
 
-    const firmados = alumnos.filter(a => a.firmado).map(a => a.id);
+    const firmados = (alumnos || []).filter(a => a.firmado).map(a => a.id);
 
-    res.render('firma_manual', { evento, alumnos, firmados, iniTxt, hIni, hFin });
+    res.render('firma_manual', {
+      evento,
+      alumnos: alumnos || [],
+      firmados,
+      iniTxt,
+      hIni,
+      hFin
+    });
   } catch (err) {
     console.error('Error al cargar formulario de firmas:', err);
     res.status(500).send('Error al cargar formulario de firmas');
@@ -599,8 +693,6 @@ router.post('/:id/firma_manual/ajax', async (req, res) => {
         'DELETE FROM asistencias WHERE evento_id = $1 AND alumno_id = $2',
         [eventoId, alumnoId]
       );
-      // Si no quieres forzar ausencia aquí, no hagas nada más.
-      // (Ya hablamos del "Injustificada": si no lo quieres ahora, lo dejamos fuera)
     }
 
     await db.query('COMMIT');
@@ -671,19 +763,20 @@ router.get('/:id/asignaciones', async (req, res) => {
 // Repoblar asignaciones desde el grupo del evento (añade las que falten)
 router.post('/:id/asignaciones/refresh', async (req, res) => {
   const eventoId = Number(req.params.id);
-  if (!Number.isInteger(eventoId)) return res.status(400).json({ error: 'ID inválido' });
+  const e = (await db.query('SELECT grupo_id, fecha_inicio FROM eventos WHERE id = $1', [eventoId])).rows[0];
+  if (!e) return res.status(404).json({ error: 'Evento no encontrado' });
+
+  // Normaliza fecha a 'YYYY-MM-DD'
+  const fechaISO = String(e.fecha_inicio).includes('T')
+    ? String(e.fecha_inicio).slice(0, 10)
+    : String(e.fecha_inicio).slice(0, 10);
 
   try {
-    const ev = await db.query('SELECT id, grupo_id, fecha_inicio FROM eventos WHERE id=$1', [eventoId]);
-    if (!ev.rows.length) return res.status(404).json({ error: 'Evento no encontrado' });
-    const { grupo_id, fecha_inicio } = ev.rows[0];
-    if (!grupo_id || !fecha_inicio) return res.status(400).json({ error: 'Evento sin grupo o fecha' });
-
-    await asignarAlumnosAEvento(db, eventoId, Number(grupo_id), toISODate(fecha_inicio));
-    res.json({ ok: true });
+    await asignarAlumnosAEvento(db, eventoId, e.grupo_id, fechaISO);
+    return res.json({ ok: true });
   } catch (err) {
     console.error('Error refrescando asignaciones:', err);
-    res.status(500).json({ error: 'Error refrescando asignaciones' });
+    return res.status(500).json({ error: 'Error refrescando asignaciones' });
   }
 });
 

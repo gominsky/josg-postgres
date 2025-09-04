@@ -83,7 +83,8 @@ const cuentasRoutes = require('./routes/cuentas');
 const recuperarRoutes = require('./routes/recuperar');
 const pdfRoutes = require('./routes/pdf'); 
 const layoutsRoutes = require('./routes/layouts');
-
+const ausenciasRoutes = require('./routes/ausencias');
+const actividadesRoutes= require('./routes/actividades_complementarias');
 
 app.use('/configuracion', isAdmin, configuracionRoutes);
 app.use('/usuarios', isAuthenticated,usuariosRoutes);        
@@ -107,6 +108,8 @@ app.use('/cuentas', isAdmin, cuentasRoutes);
 app.use('/layouts', isAuthenticated, layoutsRoutes);
 app.use('/recuperar',recuperarRoutes);
 app.use(require('./routes/share_stateless'));
+app.use('/ausencias', isAuthenticated, ausenciasRoutes);
+app.use('/actividades', isAuthenticated, actividadesRoutes);
 app.use(pdfRoutes);
 // Ruta de inicio
 app.get('/', (req, res) => {
