@@ -1,7 +1,7 @@
 <% title = 'Configuración de evento' %>
 <% hero = false %>
 
-<div class="container mt-4">
+<div class="container-fluid mt-4" style="max-width: 1400px;">
   <div class="d-flex justify-content-between align-items-center mb-3">
     <h1 class="h1-titulo mb-0">Configuración de evento</h1>
     <div class="d-flex gap-2">
@@ -18,22 +18,23 @@
     </p>
   </div>
 
-  <!-- UNA SOLA TABLA: firmas + edición de asignación -->
+  <!-- Tabla única: firmas + edición -->
   <div>
     <table class="table table-sm align-middle tabla-estilizada">
       <thead>
         <tr>
           <th class="th-sort" data-sort="apellidos">Nombre completo</th>
           <th class="th-sort" data-sort="instrumento">Instrumento</th>
-          <th class="th-sort text-center" data-sort="firmado">Firmado</th>
-          <th class="th-sort" data-sort="inicio" style="width:120px">Inicio</th>
-          <th class="th-sort" data-sort="fin" style="width:120px">Fin</th>
-          <th class="th-sort" data-sort="ausencia" style="width:200px">Ausencia</th>
-          <th class="th-sort" data-sort="actividad" style="width:220px">Actividad compl.</th>
-          <th class="th-sort" data-sort="notas" style="width:260px">Notas</th>
-          <th style="width:160px"></th>
+          <th class="th-sort" data-sort="firmado">Firmado</th>
+          <th class="th-sort" data-sort="inicio">Inicio</th>
+          <th class="th-sort" data-sort="fin">Fin</th>
+          <th class="th-sort" data-sort="ausencia">Ausencia</th>
+          <th class="th-sort" data-sort="actividad">Actividad compl.</th>
+          <th class="th-sort" data-sort="notas">Notas</th>
+          <th style="width:160px">Acciones</th>
         </tr>
       </thead>
+
       <tbody id="asigBody">
         <% alumnos.forEach(row => { %>
           <tr class="<%= row.ausencia_tipo_id ? 'row-ausente' : '' %> <%= row.actividad_complementaria_id ? 'row-actividad' : '' %>"
@@ -45,83 +46,82 @@
               data-fin="<%= (row.hora_fin || '').slice(0,5) %>"
               data-ausencia="<%= row.ausencia_tipo || '' %>"
               data-actividad="<%= row.actividad_complementaria || '' %>"
-              data-notas="<%= row.notas || '' %>"
-          >
+              data-ausencia-id="<%= row.ausencia_tipo_id || '' %>"
+              data-actividad-id="<%= row.actividad_complementaria_id || '' %>"
+              data-notas="<%= row.notas || '' %>">
             <td class="text-start"><%= row.apellidos %>, <%= row.nombre %></td>
             <td><%= row.instrumento_mostrado || (row.instrumentos || '') %></td>
-      
+
             <td class="text-center">
               <input
                 class="form-check-input chk-firmado"
                 type="checkbox"
                 value="<%= row.id %>"
                 <%= firmados.includes(row.id) ? 'checked' : '' %>
+                style="transform:scale(1.6); accent-color: orange;"
               >
             </td>
-      
             <td><input type="time" class="form-control form-control-sm inp-ini" value="<%= (row.hora_inicio || '').slice(0,5) %>"></td>
             <td><input type="time" class="form-control form-control-sm inp-fin" value="<%= (row.hora_fin || '').slice(0,5) %>"></td>
-      
-      
-            <td>
-              <select class="form-select form-select-sm sel-aus"></select>
-            </td>
-      
-            <td>
-              <select class="form-select form-select-sm sel-act"></select>
-            </td>
-      
+            <td><select class="form-select form-select-sm sel-aus"></select></td>
+            <td><select class="form-select form-select-sm sel-act"></select></td>
             <td><input type="text" class="form-control form-control-sm inp-notas" value="<%= row.notas || '' %>"></td>
-      
             <td class="text-end">
-              <button type="button" class="btn-main-blanco btn-sm me-2 btn-save">Guardar</button>
               <button type="button" class="btn btn-outline-danger btn-sm btn-del" aria-label="Eliminar">&times;</button>
             </td>
           </tr>
         <% }) %>
       </tbody>
-      
-        
-    </table>
-  </div>
 
-  <div class="text-center mt-3">
-    <a class="btn-main-blanco fw-bold px-4 py-2" href="/eventos/<%= evento.id %>/firmas.pdf">Exportar PDF</a>
+      <tfoot>
+        <tr>
+          <td colspan="9" class="text-end align-middle">
+            <button id="btnGuardarLote" class="btn-main-blanco" disabled>
+              Guardar <span id="cntCambios">(0)</span>
+            </button>
+          </td>
+        </tr>
+      </tfoot>
+    </table>
   </div>
 
   <div class="volver-bloque-izquierda mt-4">
     <a href="/eventos" class="enlace-final">← Volver al calendario</a>
   </div>
 </div>
-  /* Estética mínima */
-  <style>
-  .tabla-estilizada td, .tabla-estilizada th {
-    padding: 10px 12px;
-    vertical-align: middle;
+
+<style>
+  .tabla-estilizada td, .tabla-estilizada th { padding: 10px 12px; vertical-align: middle; }
+  .tabla-estilizada input.form-control, .tabla-estilizada select.form-select {
+    height: 36px; padding: 4px 10px; font-size: .95rem;
   }
-  .tabla-estilizada input.form-control,
-  .tabla-estilizada select.form-select {
-    height: 36px;
-    padding: 4px 10px;
-    font-size: .95rem;
-  }
-  .row-ausente    { background: #fff7df; }            /* suave */
-  .row-actividad  { box-shadow: inset 3px 0 0 #0d6efd; }
+  .row-ausente   { background: #fff7df; }
+  .row-actividad { box-shadow: inset 3px 0 0 #0d6efd; }
+  .row-dirty     { background: rgba(255,149,1,.08); }
   .th-sort { cursor: pointer; user-select: none; }
   .th-sort::after { content: ' ⇅'; font-size: .8em; opacity: .5; }
   .th-sort.asc::after  { content: ' ↑'; opacity: .9; }
   .th-sort.desc::after { content: ' ↓'; opacity: .9; }
 </style>
 
-
 <script>
-(function(){
-  const eventoId = <%= evento.id %>;
-  const $tbody = document.getElementById('asigBody');
-  const $btnRefresh = document.getElementById('btnRefreshAsign');
+(() => {
+  const eventoId   = <%= evento.id %>;
+  const $tbody     = document.getElementById('asigBody');
+  const $btnRefresh= document.getElementById('btnRefreshAsign');
+  const $btnGuardar= document.getElementById('btnGuardarLote');
+  const $cnt       = document.getElementById('cntCambios');
 
+  // -------------------------------
   // Utilidades
-  function setBusy(btn, busy, txtBusy){
+  // -------------------------------
+  const jsonOrText = async (res) => {
+    const ct = res.headers.get('content-type') || '';
+    if (ct.includes('application/json')) return res.json();
+    return { error: await res.text() };
+  };
+
+  const setBusy = (btn, busy, txtBusy) => {
     if (!btn) return;
     btn.disabled = !!busy;
     if (busy) {
@@ -131,196 +131,219 @@
       if (btn.dataset._txt) btn.textContent = btn.dataset._txt;
       delete btn.dataset._txt;
     }
-  }
-  function rowPayload(tr){
+  };
+
+  const setDirty = (tr, dirty) => {
+    tr.dataset.dirty = dirty ? '1' : '0';
+    tr.classList.toggle('row-dirty', !!dirty);
+    updateCounter();
+  };
+
+  const updateCounter = () => {
+    const n = $tbody.querySelectorAll('tr[data-dirty="1"]').length;
+    if ($cnt) $cnt.textContent = `(${n})`;
+    if ($btnGuardar) $btnGuardar.disabled = n === 0;
+  };
+
+  const buildRowPayload = (tr) => {
+    const alumnoId   = Number(tr.dataset.alumno);
+    const firmado    = tr.querySelector('.chk-firmado')?.checked || false;
+    const ausenciaId = tr.querySelector('.sel-aus')?.value || '';
+    const actividadId= tr.querySelector('.sel-act')?.value || '';
+    const notas      = tr.querySelector('.inp-notas')?.value?.trim() || '';
+    const hIni       = tr.querySelector('.inp-ini')?.value?.slice(0,5) || '';
+    const hFin       = tr.querySelector('.inp-fin')?.value?.slice(0,5) || '';
+
     return {
-      hora_inicio: (tr.querySelector('.inp-ini')?.value || null),
-      hora_fin:    (tr.querySelector('.inp-fin')?.value || null),
-      rol:         (tr.querySelector('.inp-rol')?.value || null),
-      notas:       (tr.querySelector('.inp-notas')?.value || null),
-      ausencia_tipo_id: (tr.querySelector('.sel-aus')?.value || null),
-      actividad_complementaria_id: (tr.querySelector('.sel-act')?.value || null),
+      alumno_id: alumnoId,
+      firmado: !!firmado,
+      ausencia_tipo_id: ausenciaId ? Number(ausenciaId) : null,
+      actividad_complementaria_id: actividadId ? Number(actividadId) : null,
+      notas: notas || null,
+      hora_inicio: hIni || null,
+      hora_fin: hFin || null
     };
-  }
-  async function jsonOrText(res){
-    const ct = res.headers.get('content-type') || '';
-    if (ct.includes('application/json')) return res.json();
-    const t = await res.text();
-    return { error: t };
-  }
+  };
 
-  // ===============================
-  // 1) Firmas (checkbox) - AJAX
-  // ===============================
-  $tbody.addEventListener('change', async (ev)=>{
-    const chk = ev.target.closest('.chk-firmado');
-    if (!chk) return;
-    const alumnoId = chk.value;
-    const firmado = chk.checked;
+  // -------------------------------
+  // Catálogos: Ausencias / Actividades
+  // -------------------------------
+  const fetchJSON = async (url) => {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    return res.json();
+  };
 
+  const buildOptions = ($select, items, selectedId) => {
+    const optEmpty = document.createElement('option');
+    optEmpty.value = ''; optEmpty.textContent = '—';
+    $select.appendChild(optEmpty);
+    items.forEach(it => {
+      const opt = document.createElement('option');
+      opt.value = String(it.id);
+      opt.textContent = it.tipo;
+      if (selectedId && String(selectedId) === String(it.id)) opt.selected = true;
+      $select.appendChild(opt);
+    });
+  };
+
+  const populateAllSelects = async () => {
     try {
-      const res = await fetch(`/eventos/${eventoId}/firma_manual/ajax`, {
-        method:'POST',
-        headers:{ 'Content-Type':'application/json' },
-        body: JSON.stringify({ alumno_id: alumnoId, firmado })
+      const [ausencias, actividades] = await Promise.all([
+        fetchJSON('/ausencias/api'),
+        fetchJSON('/actividades/api')
+      ]);
+      $tbody.querySelectorAll('tr').forEach(tr => {
+        const selAus = tr.querySelector('.sel-aus');
+        const selAct = tr.querySelector('.sel-act');
+        if (selAus) buildOptions(selAus, ausencias, tr.dataset.ausenciaId || '');
+        if (selAct) buildOptions(selAct, actividades, tr.dataset.actividadId || '');
       });
-      const data = await jsonOrText(res);
-      if (!res.ok || (data && data.success === false)) {
-        console.error('Firma AJAX fallo:', res.status, data);
-        throw new Error(data?.error || `HTTP ${res.status}`);
-      }
-      // Opcional: feedback visual (fila ausente si desmarcas)
-      // chk.closest('tr')?.classList.toggle('row-ausente', !firmado);
     } catch (err) {
-      alert('No se pudo guardar la firma');
-      console.error(err);
-      chk.checked = !firmado; // revertir
+      console.error('Error cargando catálogos:', err);
+      $tbody.querySelectorAll('.sel-aus, .sel-act').forEach(s => {
+        if (!s.querySelector('option')) {
+          const opt = document.createElement('option');
+          opt.value = ''; opt.textContent = '—'; s.appendChild(opt);
+        }
+      });
     }
-  });
+  };
 
-  // =========================================
-  // 2) Guardar y Eliminar asignación (PUT/DEL)
-  // =========================================
-  $tbody.addEventListener('click', async (ev)=>{
-    const tr = ev.target.closest('tr');
+  // -------------------------------
+  // Eventos UI
+  // -------------------------------
+  // Marcar cambios por cualquier edición
+  $tbody.addEventListener('change', (ev) => {
+    const el = ev.target;
+    const tr = el.closest('tr');
     if (!tr) return;
-    const alumnoId = tr.dataset.alumno;
 
-    // Guardar
-    const btnSave = ev.target.closest('.btn-save');
-    if (btnSave) {
-      const payload = rowPayload(tr);
-      try {
-        setBusy(btnSave, true, 'Guardando…');
-        const res = await fetch(`/eventos/${eventoId}/asignaciones/${alumnoId}`, {
-          method: 'PUT',
-          headers: { 'Content-Type':'application/json' },
-          body: JSON.stringify(payload)
-        });
-        const data = await jsonOrText(res);
-        if (!res.ok) {
-          console.error('PUT asignación fallo:', res.status, data);
-          throw new Error(data?.error || `HTTP ${res.status}`);
-        }
-        // Marca visual
-        const ausId = data?.ausencia_tipo_id ?? payload.ausencia_tipo_id;
-        const actId = data?.actividad_complementaria_id ?? payload.actividad_complementaria_id;
-        tr.classList.toggle('row-ausente', !!ausId);
-        tr.classList.toggle('row-actividad', !!actId);
-
-        btnSave.textContent = 'Guardado';
-        setTimeout(()=>{ if (btnSave) btnSave.textContent = 'Guardar'; }, 900);
-      } catch (err) {
-        alert('Error guardando asignación');
-        console.error(err);
-      } finally {
-        setBusy(btnSave, false);
-      }
-      return;
+    if (el.classList.contains('sel-aus')) {
+      tr.dataset.ausenciaId = el.value || '';
+      tr.dataset.ausencia   = el.options[el.selectedIndex]?.textContent || '';
+    } else if (el.classList.contains('sel-act')) {
+      tr.dataset.actividadId = el.value || '';
+      tr.dataset.actividad   = el.options[el.selectedIndex]?.textContent || '';
+    } else if (el.classList.contains('chk-firmado')) {
+      tr.dataset.firmado = el.checked ? '1' : '0';
+    } else if (el.classList.contains('inp-ini')) {
+      tr.dataset.inicio = el.value?.slice(0,5) || '';
+    } else if (el.classList.contains('inp-fin')) {
+      tr.dataset.fin = el.value?.slice(0,5) || '';
+    } else if (el.classList.contains('inp-notas')) {
+      tr.dataset.notas = el.value || '';
     }
 
-    // Eliminar
+    setDirty(tr, true);
+  });
+
+  // Ordenación por cabecera (simple)
+  document.querySelectorAll('th.th-sort').forEach(th => {
+    th.addEventListener('click', () => {
+      const key = th.dataset.sort;
+      if (!key) return;
+      const rows = Array.from($tbody.querySelectorAll('tr'));
+      const asc = !th.classList.contains('asc');
+      document.querySelectorAll('th.th-sort').forEach(h => h.classList.remove('asc','desc'));
+      th.classList.add(asc ? 'asc' : 'desc');
+
+      const val = (tr, key) => {
+        let v = tr.dataset[key] ?? '';
+        if (key === 'firmado') v = Number(v);
+        else if (key === 'inicio' || key === 'fin') v = (v || '').replace(':','');
+        else v = (v || '').toString().toLowerCase();
+        return v;
+      };
+      rows.sort((a,b) => {
+        const va = val(a,key), vb = val(b,key);
+        if (va < vb) return asc ? -1 : 1;
+        if (va > vb) return asc ?  1 : -1;
+        return 0;
+      });
+      rows.forEach(r => $tbody.appendChild(r));
+    });
+  });
+
+  // Eliminar asignación (por fila)
+  $tbody.addEventListener('click', async (ev) => {
     const btnDel = ev.target.closest('.btn-del');
-    if (btnDel) {
-      if (!confirm('¿Quitar a este alumno del evento?')) return;
-      try {
-        setBusy(btnDel, true, 'Eliminando…');
-        const res = await fetch(`/eventos/${eventoId}/asignaciones/${alumnoId}`, { method: 'DELETE' });
-        const data = await jsonOrText(res);
-        if (!res.ok) {
-          console.error('DELETE asignación fallo:', res.status, data);
-          throw new Error(data?.error || `HTTP ${res.status}`);
-        }
-        tr.remove();
-      } catch (err) {
-        alert('Error eliminando asignación');
-        console.error(err);
-      } finally {
-        setBusy(btnDel, false);
-      }
-      return;
+    if (!btnDel) return;
+    const tr = btnDel.closest('tr');
+    const alumnoId = tr?.dataset.alumno;
+    if (!alumnoId) return;
+
+    if (!confirm('¿Quitar a este alumno del evento?')) return;
+    try {
+      setBusy(btnDel, true, 'Eliminando…');
+      const res = await fetch(`/eventos/${eventoId}/asignaciones/${alumnoId}`, { method:'DELETE' });
+      const data = await jsonOrText(res);
+      if (!res.ok) throw new Error(data?.error || `HTTP ${res.status}`);
+      tr.remove();
+      updateCounter();
+    } catch (err) {
+      console.error('Error eliminando asignación:', err);
+      alert('Error eliminando asignación');
+      setBusy(btnDel, false);
     }
   });
 
-  // ============================
-  // 3) Repoblar desde el grupo
-  // ============================
+  // Repoblar desde grupo
   if ($btnRefresh) {
-    $btnRefresh.addEventListener('click', async ()=>{
+    $btnRefresh.addEventListener('click', async () => {
       if (!confirm('Añadirá los alumnos del grupo vigentes ese día (no borra). ¿Continuar?')) return;
       try {
         setBusy($btnRefresh, true, 'Repoblando…');
         const res = await fetch(`/eventos/${eventoId}/asignaciones/refresh`, { method:'POST' });
-        if (!res.ok) {
-          const data = await jsonOrText(res);
-          console.error('REFRESH fallo:', res.status, data);
-          throw new Error(data?.error || `HTTP ${res.status}`);
-        }
+        const data = await jsonOrText(res);
+        if (!res.ok) throw new Error(data?.error || `HTTP ${res.status}`);
         location.reload();
       } catch (err) {
+        console.error('Error refrescando asignaciones:', err);
         alert('Error refrescando asignaciones');
-        console.error(err);
-      } finally {
         setBusy($btnRefresh, false);
       }
     });
   }
-})();
 
-(function(){
-  const $tbody = document.getElementById('asigBody');
-  const $ths = document.querySelectorAll('th.th-sort');
+  // Guardar en lote
+  const guardarLote = async () => {
+    const dirtyRows = Array.from($tbody.querySelectorAll('tr[data-dirty="1"]'));
+    if (!dirtyRows.length) return;
 
-  function getKeyFromTr(tr, key){
-    const val = tr.dataset[key] ?? '';
-    return val;
-  }
+    const cambios = dirtyRows.map(tr => buildRowPayload(tr));
+    const oldTxt = $btnGuardar.textContent;
+    setBusy($btnGuardar, true, 'Guardando…');
 
-  function compare(a, b, key, asc) {
-    let va = getKeyFromTr(a, key);
-    let vb = getKeyFromTr(b, key);
+    try {
+      const res = await fetch(`/eventos/${eventoId}/firma_manual/batch`, {
+        method:'PUT',
+        headers:{ 'Content-Type':'application/json' },
+        body: JSON.stringify({ cambios })
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
-    // normalizaciones por tipo
-    if (key === 'firmado') {
-      va = Number(va); vb = Number(vb);
-    } else if (key === 'inicio' || key === 'fin') {
-      // HH:MM -> "HHMM"
-      va = (va || '').replace(':','');
-      vb = (vb || '').replace(':','');
-    } else {
-      // texto: case-insensitive
-      va = (va || '').toString().toLowerCase();
-      vb = (vb || '').toString().toLowerCase();
+      // si el backend no manda JSON, no lo exigimos
+      try { await res.json(); } catch(_) {}
+
+      dirtyRows.forEach(tr => setDirty(tr, false));
+      $btnGuardar.textContent = '✔ Guardado';
+      setTimeout(() => setBusy($btnGuardar, false, oldTxt), 900);
+    } catch (err) {
+      console.error('Error guardando lote:', err);
+      alert('No se pudieron guardar los cambios');
+      setBusy($btnGuardar, false, oldTxt);
+      updateCounter();
     }
+  };
 
-    if (va < vb) return asc ? -1 : 1;
-    if (va > vb) return asc ? 1 : -1;
-    return 0;
-  }
-
-  function sortBy(key, th) {
-    const rows = Array.from($tbody.querySelectorAll('tr'));
-    const isAsc = !th.classList.contains('asc');
-    // reset classes
-    document.querySelectorAll('th.th-sort').forEach(h => h.classList.remove('asc','desc'));
-    th.classList.add(isAsc ? 'asc' : 'desc');
-
-    rows.sort((a,b)=>compare(a,b,key,isAsc));
-    rows.forEach(r => $tbody.appendChild(r));
-  }
-
-  $ths.forEach(th => {
-    th.addEventListener('click', () => {
-      const key = th.dataset.sort;
-      if (!key) return;
-      sortBy(key, th);
-    });
+  $btnGuardar?.addEventListener('click', (e) => {
+    e.preventDefault();
+    guardarLote();
   });
+
+  // Init
+  populateAllSelects();
+  updateCounter();
 })();
-
 </script>
-
-
-
-
-

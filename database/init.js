@@ -304,7 +304,7 @@ async function init({ reset = false } = {}) {
         alumno_id   INTEGER NOT NULL,
         hora_inicio TIME,      -- si NULL, hereda la del evento
         hora_fin    TIME,      -- si NULL, hereda la del evento
-        rol         TEXT,      -- ejemplo: "Solista", "Acompañante"
+        instrumento TEXT,      -- ejemplo: "Solista", "Acompañante"
         notas       TEXT,      -- comentarios/observaciones libres
         ausencia_tipo_id INTEGER,                 -- FK -> ausencias(id)
         actividad_complementaria_id INTEGER,      -- FK -> actividades_complementarias(id)

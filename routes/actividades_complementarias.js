@@ -96,4 +96,17 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
+// GET: API (JSON) de actividades complementarias
+router.get('/api', async (_req, res) => {
+  try {
+    const { rows } = await db.query(
+      'SELECT id, tipo, descripcion FROM actividades_complementarias ORDER BY lower(tipo) ASC, id ASC'
+    );
+    res.json(rows);
+  } catch (err) {
+    console.error('Error API actividades:', err);
+    res.status(500).json({ error: 'Error obteniendo actividades' });
+  }
+});
+
 module.exports = router;

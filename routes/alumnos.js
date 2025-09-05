@@ -87,7 +87,26 @@ router.get(['/alumnos/ayuda', '/musicos/ayuda'], (_req, res) => {
   res.render('ayuda_musicos', { title: 'Ayuda · Músicos', hero: false });
 });
 router.put('/:id', upload.single('foto'), async (req, res) => {
-  const id = req.params.id;
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id)) return res.status(400).send('ID inválido');
+
+  // Helpers de saneo
+  const toStrOrNull = (v) =>
+    v === '' || v === undefined || v === null ? null : String(v).trim();
+
+  const toIntOrNull = (v) => {
+    if (v === '' || v === undefined || v === null) return null;
+    const n = Number(v);
+    return Number.isInteger(n) ? n : null;
+  };
+
+  const toDateOrNull = (v) => {
+    if (!v || v === '') return null;
+    const s = String(v);
+    // admite 'YYYY-MM-DD' o ISO con 'T'
+    return s.includes('T') ? s.slice(0, 10) : s.slice(0, 10);
+  };
+
   const {
     nombre,
     apellidos,
@@ -108,72 +127,113 @@ router.put('/:id', upload.single('foto'), async (req, res) => {
   } = req.body;
 
   const foto = req.file ? req.file.filename : (fotoActual || null);
-  const activo = req.body.activo === '1' ? 1 : 0;
-  const fechaBaja = activo === 0 ? new Date().toISOString().split('T')[0] : null;
-  const fechaNacISO = toISODate(fecha_nacimiento);
-  const consulta = `
+  const activo = req.body.activo === '1' || req.body.activo === true ? 1 : 0;
+  const fechaBaja = activo === 0 ? new Date().toISOString().slice(0, 10) : null;
+
+  // Payload saneado
+  const payload = {
+    nombre:            toStrOrNull(nombre),
+    apellidos:         toStrOrNull(apellidos),
+    tutor:             toStrOrNull(tutor),
+    direccion:         toStrOrNull(direccion),
+    codigo_postal:     toIntOrNull(codigo_postal),       // <- evita '' -> 0 (error)
+    municipio:         toStrOrNull(municipio),
+    provincia:         toStrOrNull(provincia),
+    telefono:          toStrOrNull(telefono),
+    email:             toStrOrNull(email),
+    fecha_nacimiento:  toDateOrNull(fecha_nacimiento),
+    dni:               toStrOrNull(dni),
+    centro:            toStrOrNull(centro),
+    profesor_centro:   toStrOrNull(profesor_centro),
+    foto:              toStrOrNull(foto),
+    activo,                                             // 1/0
+    fecha_baja:        toDateOrNull(fechaBaja)
+  };
+
+  // Normaliza arrays (evita ids vacíos)
+  const arrInst = Array.isArray(instrumentos) ? instrumentos : (instrumentos ? [instrumentos] : []);
+  const cleanInst = arrInst.map(toIntOrNull).filter(n => n !== null);
+
+  const arrGrp = Array.isArray(grupos) ? grupos : (grupos ? [grupos] : []);
+  const cleanGrps = arrGrp.map(toIntOrNull).filter(n => n !== null);
+
+  const sql = `
     UPDATE alumnos
-    SET
-      nombre = $1,
-      apellidos = $2,
-      tutor = $3,
-      direccion = $4,
-      codigo_postal = $5,
-      municipio = $6,
-      provincia = $7,
-      telefono = $8,
-      email = $9,
-      fecha_nacimiento = $10,
-      dni = $11,
-      centro = $12,
-      profesor_centro = $13,
-      foto = $14,
-      activo = $15,
-      fecha_baja = $16
-    WHERE id = $17
+       SET nombre            = $2,
+           apellidos         = $3,
+           tutor             = $4,
+           direccion         = $5,
+           codigo_postal     = $6,   -- INTEGER o NULL
+           municipio         = $7,
+           provincia         = $8,
+           telefono          = $9,
+           email             = $10,
+           fecha_nacimiento  = $11,  -- DATE o NULL
+           dni               = $12,
+           centro            = $13,
+           profesor_centro   = $14,
+           foto              = $15,
+           activo            = $16,  -- 1/0 (boolean-like)
+           fecha_baja        = $17,  -- DATE o NULL
+           updated_at        = NOW()
+     WHERE id = $1
   `;
 
   const params = [
-    nombre,
-    apellidos,
-    tutor,
-    direccion,
-    codigo_postal,
-    municipio,
-    provincia,
-    telefono,
-    email,
-    fechaNacISO,
-    dni,
-    centro,
-    profesor_centro,
-    foto,
-    activo,
-    fechaBaja,
-    id
+    id,
+    payload.nombre,
+    payload.apellidos,
+    payload.tutor,
+    payload.direccion,
+    payload.codigo_postal,     // <- ya saneado (null o int)
+    payload.municipio,
+    payload.provincia,
+    payload.telefono,
+    payload.email,
+    payload.fecha_nacimiento,  // <- 'YYYY-MM-DD' o null
+    payload.dni,
+    payload.centro,
+    payload.profesor_centro,
+    payload.foto,
+    payload.activo,
+    payload.fecha_baja
   ];
 
   try {
-    await db.query(consulta, params);
+    await db.query('BEGIN');
 
+    // Update alumno
+    await db.query(sql, params);
+
+    // Relaciones: instrumentos
     await db.query('DELETE FROM alumno_instrumento WHERE alumno_id = $1', [id]);
-    const arrInst = Array.isArray(instrumentos) ? instrumentos : instrumentos ? [instrumentos] : [];
-    for (const iid of arrInst) {
-      await db.query('INSERT INTO alumno_instrumento (alumno_id, instrumento_id) VALUES ($1, $2)', [id, iid]);
+    if (cleanInst.length) {
+      const text = `
+        INSERT INTO alumno_instrumento (alumno_id, instrumento_id)
+        SELECT $1, x FROM UNNEST($2::int[]) AS t(x)
+      `;
+      await db.query(text, [id, cleanInst]);
     }
 
+    // Relaciones: grupos
     await db.query('DELETE FROM alumno_grupo WHERE alumno_id = $1', [id]);
-    const arrGrp = Array.isArray(grupos) ? grupos : grupos ? [grupos] : [];
-    for (const gid of arrGrp) {
-      await db.query('INSERT INTO alumno_grupo (alumno_id, grupo_id) VALUES ($1, $2)', [id, gid]);
+    if (cleanGrps.length) {
+      const text = `
+        INSERT INTO alumno_grupo (alumno_id, grupo_id)
+        SELECT $1, x FROM UNNEST($2::int[]) AS t(x)
+      `;
+      await db.query(text, [id, cleanGrps]);
     }
 
+    await db.query('COMMIT');
     res.redirect(`/alumnos/${id}`);
   } catch (err) {
+    await db.query('ROLLBACK');
     console.error('Error al actualizar alumno:', err);
     res.status(500).send('Error al actualizar alumno');
   }
 });
+
 router.get('/:id/editar', async (req, res) => {
   const id = parseInt(req.params.id, 10);
 

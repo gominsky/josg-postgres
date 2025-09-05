@@ -12,15 +12,38 @@
 </div>
 
 <%
-// Helpers de plantilla
-const opts = { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' };
-const toISO = (v) => (v ? String(v).split('T')[0] : '');
+/** Helpers de fecha **/
+const opts = {
+  day: '2-digit',
+  month: '2-digit',
+  year: 'numeric',
+  hour: '2-digit',
+  minute: '2-digit',
+  timeZone: 'Europe/Madrid'
+};
+
+const isValidDate = (d) => d instanceof Date && !isNaN(d.getTime());
+
+const toISO = (v) => {
+  if (!v) return '';
+  if (v instanceof Date) {
+    const y = v.getFullYear();
+    const m = String(v.getMonth()+1).padStart(2,'0');
+    const d = String(v.getDate()).padStart(2,'0');
+    return `${y}-${m}-${d}`;
+  }
+  const s = String(v);
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0,10);  // 'YYYY-MM-DD...'
+  if (s.includes('T')) return s.split('T')[0];              // 'YYYY-MM-DDTHH:MM'
+  return '';
+};
+
 const composeDT = (fecha, hora, fallbackHora='00:00') => {
   const f = toISO(fecha);
   if (!f) return null;
   const h = (hora && hora.length >= 4) ? hora.slice(0,5) : fallbackHora;
-  if (String(fecha).includes('T') && !hora) return new Date(fecha);
-  return new Date(`${f}T${h}:00`);
+  const d = new Date(`${f}T${h}:00`);
+  return isValidDate(d) ? d : null;
 };
 %>
 
@@ -47,8 +70,26 @@ const composeDT = (fecha, hora, fallbackHora='00:00') => {
                 <td><strong><%= ev.titulo %></strong></td>
                 <td><%= ev.descripcion || '—' %></td>
                 <td><%= ev.grupo_nombre || '—' %></td>
-                <td><%= ini ? ini.toLocaleString('es-ES', opts) : (ev.fecha_inicio || '—') %></td>
-                <td><%= fin ? fin.toLocaleString('es-ES', opts) : (ev.fecha_fin || '—') %></td>
+
+<td>
+  <%= (ini && isValidDate(ini))
+      ? ini.toLocaleString('es-ES', opts)
+      : (ev.fecha_inicio
+          ? (new Date(toISO(ev.fecha_inicio) ? `${toISO(ev.fecha_inicio)}T00:00:00` : ev.fecha_inicio))
+              .toLocaleDateString('es-ES', { day:'2-digit', month:'2-digit', year:'numeric', timeZone:'Europe/Madrid' })
+          : '—') %>
+</td>
+<td>
+  <%= (fin && isValidDate(fin))
+      ? fin.toLocaleString('es-ES', opts)
+      : (ev.fecha_fin
+          ? (new Date(toISO(ev.fecha_fin) ? `${toISO(ev.fecha_fin)}T00:00:00` : ev.fecha_fin))
+              .toLocaleDateString('es-ES', { day:'2-digit', month:'2-digit', year:'numeric', timeZone:'Europe/Madrid' })
+          : '—') %>
+</td>
+
+
+
               </tr>
             <% }) %>
           </tbody>
