@@ -53,7 +53,6 @@ router.get('/', async (req, res) => {
   }
 });
 
-
 // GET: Formulario de edición
 router.get('/editar/:id', async (req, res) => {
   const id = req.params.id;

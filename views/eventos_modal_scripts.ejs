@@ -49,10 +49,13 @@
             <input type="datetime-local" name="fecha_fin" id="fecha_fin" class="form-control" required>
           </div>
         </div>
+
         <div class="form-check form-switch mt-3 qr-block">
           <input type="checkbox" name="activo" id="activo" class="form-check-input">
           <label for="activo" class="form-check-label ms-2">Activar QR para este evento</label>
         </div>
+      </div>
+
       <!-- Pie -->
       <div class="modal-footer">
         <button type="submit" class="btn-primary-negro">Guardar</button>
@@ -64,169 +67,260 @@
   </div>
 </div>
 
+<script>
+  // ------- Helpers para normalizar fecha/hora a <input type="datetime-local"> -------
+  function normDate(v){
+    if (!v) return '';
+    const s = String(v).trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+    if (s.includes('T')) return s.split('T')[0]; // YYYY-MM-DDTHH:MM:SS
+    if (/^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}(:\d{2})?$/.test(s)) return s.slice(0,10); // YYYY-MM-DD HH:MM[:SS]
+    const m = s.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+    if (m) return `${m[3]}-${m[2]}-${m[1]}`;
+    const d = new Date(s);
+    return isNaN(d) ? '' : d.toISOString().slice(0,10);
+  }
+  function normHM(v){
+    if (!v) return '';
+    const s = String(v).trim();
+    const m = s.match(/^(\d{2}):(\d{2})(?::\d{2})?$/);
+    if (m) return `${m[1]}:${m[2]}`;
+    const t = s.match(/T(\d{2}:\d{2})/); if (t) return t[1];
+    const u = s.match(/\s(\d{2}:\d{2})/); if (u) return u[1];
+    return '';
+  }
+  function composeDTLocal(fechaVal, horaVal, fallbackHM='00:00'){
+    const d = normDate(fechaVal);
+    let hm  = normHM(horaVal);
+    if (!hm) hm = normHM(fechaVal) || fallbackHM; // intenta extraer hora de la propia fecha si viene
+    return d ? `${d}T${hm}` : '';
+  }
+</script>
 
-  <!-- Scripts -->
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/locales-all.global.min.js"></script>
-  <script>
-    const modalTitulo = document.getElementById('eventoModalTitulo');
-    document.addEventListener('DOMContentLoaded', () => {
-      const form             = document.getElementById('eventoForm');
-      const modalEl          = document.getElementById('eventoModal');
-      const modal            = new bootstrap.Modal(modalEl);
-      const btnEliminar      = document.getElementById('btnEliminar');
-      const btnQR            = document.getElementById('btnQR');
-      const btnFirmaManual   = document.getElementById('btnFirmaManual');
-    
-      // Funciones helper
-      const ocultarBtns = () => {
-        btnEliminar.classList.add('d-none');
-        btnQR.classList.add('d-none');
-        btnFirmaManual.classList.add('d-none');
-      };
-      const mostrarBtns = () => {
-        btnEliminar.classList.remove('d-none');
-        btnQR.classList.remove('d-none');
-        btnFirmaManual.classList.remove('d-none');
-      };
-    
-      // Ocultar siempre al cargar
-      ocultarBtns();
-    
-      // CLICK en fila de lista → EDITAR
-      document.querySelectorAll('.evento-row').forEach(fila => {
-        fila.style.cursor = 'pointer';
-        fila.addEventListener('click', async () => {
-          const id = fila.dataset.id;
-          try {
-            const res = await fetch(`/eventos/${id}`);
-            if (!res.ok) throw new Error();
-            const evento = await res.json();
-    
-            // Rellenar form
-            form.reset();
-            form.id.value          = evento.id;
-            form.titulo.value      = evento.titulo || '';
-            form.descripcion.value = evento.descripcion || '';
-            form.grupo_id.value    = evento.grupo_id || '';
-            form.fecha_inicio.value = evento.fecha_inicio.slice(0,16);
-            form.fecha_fin.value    = evento.fecha_fin.slice(0,16);
-            form.activo.checked     = evento.activo == 1;
-    
-            // Mostrar botones en edición
-            mostrarBtns();
-    
-            btnQR.onclick = () => window.open(`/eventos/${evento.id}/qr`, '_blank');
-            btnFirmaManual.onclick = () => window.location.href = `/eventos/${evento.id}/firma_manual`;
-    
-            modal.show();
-          } catch {
-            alert('Error al cargar el evento');
-          }
-        });
-      });
-    
-      // FULLCALENDAR
-      if (typeof FullCalendar !== 'undefined') {
-        const calendarEl = document.getElementById('calendar');
-        const calendar = new FullCalendar.Calendar(calendarEl, {
-          locale: 'es',
-          firstDay: 1,
-          initialView: 'dayGridMonth',
-          allDayText: 'Todo el día',
-          headerToolbar: {
-            left: 'prev,next today',
-            center: 'title',
-            right: 'dayGridMonth,timeGridWeek,customList'
-          },
-          customButtons: {
-            customList: {
-              text: 'Lista',
-              click() {
-                const v = calendar.view;
-                const from = v.currentStart.toISOString().split('T')[0];
-                const to   = v.currentEnd  .toISOString().split('T')[0];
-                window.location.href = `/eventos?desde=${from}&hasta=${to}`;
-              }
-            }
-          },
-          buttonText: { today:'Hoy', month:'Mes', week:'Semana', day:'Día', list:'Lista' },
-          events: '/eventos/listado',
-          views: { dayGridMonth: { displayEventTime:false } },
-          dateClick(info) {
-            modalTitulo.innerText = 'Nuevo evento';
-            // PREPARAR CREACIÓN
-            form.reset();
-            form.id.value         = '';
-            form.titulo.value     = '';
-            form.descripcion.value= '';
-            form.grupo_id.value   = '';
-            form.fecha_inicio.value = `${info.dateStr}T09:00`;
-            form.fecha_fin.value    = `${info.dateStr}T10:00`;
-            form.activo.checked     = false;
-    
-            ocultarBtns();
-            modal.show();
-          },
-          eventClick(info) {
-            // EDITAR desde calendario
-            modalTitulo.innerText = 'Editar evento';
-            const e = info.event;
-            form.reset();
-            form.id.value          = e.id;
-            form.titulo.value      = e.extendedProps.titulo || '';
-            form.descripcion.value = e.extendedProps.descripcion || '';
-            form.grupo_id.value    = e.extendedProps.grupo_id || '';
-            form.fecha_inicio.value= e.startStr?.slice(0,16) || '';
-            form.fecha_fin.value   = e.endStr?.slice(0,16) || '';
-            form.activo.checked    = e.extendedProps.activo == 1;
-    
-            mostrarBtns();
-            btnQR.onclick = () => window.open(`/eventos/${e.id}/qr`, '_blank');
-            btnFirmaManual.onclick = () => window.location.href = `/eventos/${e.id}/firma_manual`;
-    
-            modal.show();
-          }
-        });
-        calendar.render();
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  // ---- refs principales ----
+  const form       = document.getElementById('eventoForm');
+  const inputId    = form ? form.querySelector('input[name="id"]') : null;
+  const modalEl    = document.getElementById('eventoModal');
+  const modal      = modalEl ? bootstrap.Modal.getOrCreateInstance(modalEl) : null;
+  const btnEliminar    = document.getElementById('btnEliminar');
+  const btnQR          = document.getElementById('btnQR');
+  const btnFirmaManual = document.getElementById('btnFirmaManual');
+  const modalTitulo    = document.getElementById('eventoModalTitulo');
+
+  if (!form || !modal) return; // seguridad
+
+  // Mover modal al <body> (evita problemas de stacking/overflow)
+  if (modalEl.parentNode !== document.body) document.body.appendChild(modalEl);
+
+  // Helpers mostrar/ocultar botones de edición
+  const ocultarBtns = () => {
+    btnEliminar.classList.add('d-none');
+    btnQR.classList.add('d-none');
+    btnFirmaManual.classList.add('d-none');
+  };
+  const mostrarBtns = () => {
+    btnEliminar.classList.remove('d-none');
+    btnQR.classList.remove('d-none');
+    btnFirmaManual.classList.remove('d-none');
+  };
+
+  // --------------- Abrir desde LISTA (click en fila) ---------------
+  document.querySelectorAll('.evento-row').forEach(fila => {
+    fila.style.cursor = 'pointer';
+    fila.addEventListener('click', async () => {
+      const id = fila.dataset.id;
+      try {
+        const res = await fetch(`/eventos/${id}`);
+        if (!res.ok) throw new Error();
+        const evento = await res.json();
+
+        form.reset();
+        inputId.value           = String(evento.id || '');
+        form.titulo.value       = evento.titulo || '';
+        form.descripcion.value  = evento.descripcion || '';
+        form.grupo_id.value     = evento.grupo_id || '';
+        form.fecha_inicio.value = composeDTLocal(evento.fecha_inicio, evento.hora_inicio, '09:00');
+        form.fecha_fin.value    = composeDTLocal(evento.fecha_fin,   evento.hora_fin,   '10:00');
+        form.activo.checked     = Number(evento.activo) === 1;
+
+        mostrarBtns();
+        btnQR.onclick = () => window.open(`/eventos/${evento.id}/qr`, '_blank');
+        btnFirmaManual.onclick = () => window.location.href = `/eventos/${evento.id}/firma_manual`;
+
+        modalTitulo.innerText = 'Editar evento';
+        modal.show();
+      } catch {
+        alert('Error al cargar el evento');
       }
-    
-      // GUARDAR evento
-      form.addEventListener('submit', async e => {
-        e.preventDefault();
-        const data = new FormData(form);
-        const body = Object.fromEntries(data.entries());
-        body.activo = form.activo.checked ? '1' : '0';
-    
-        const method = body.id ? 'PUT' : 'POST';
-        const url    = body.id ? `/eventos/${body.id}` : '/eventos';
-        const res    = await fetch(url, {
-          method,
-          headers: { 'Content-Type':'application/json' },
-          body: JSON.stringify(body)
-        });
-    
-        if (res.ok) {
-          modal.hide();
-          location.reload();
-        } else {
-          alert('Error al guardar el evento');
-        }
-      });
-    
-      // ELIMINAR evento
-      btnEliminar.addEventListener('click', async () => {
-        if (!confirm('¿Deseas eliminar este evento?')) return;
-        const id  = form.id.value;
-        const res = await fetch(`/eventos/${id}`, { method:'DELETE' });
-        if (res.ok) {
-          modal.hide();
-          location.reload();
-        } else {
-          alert('Error al eliminar');
-        }
-      });
     });
-    </script>
-    
+  });
+
+  // --------------- FULLCALENDAR (solo si existe el contenedor) ---------------
+  const calendarEl = document.getElementById('calendar');
+  if (typeof FullCalendar !== 'undefined' && calendarEl) {
+    const calendar = new FullCalendar.Calendar(calendarEl, {
+      locale: 'es',
+      firstDay: 1,
+      initialView: 'dayGridMonth',
+      allDayText: 'Todo el día',
+      headerToolbar: {
+        left: 'prev,next today',
+        center: 'title',
+        right: 'dayGridMonth,timeGridWeek,customList'
+      },
+      customButtons: {
+        customList: {
+          text: 'Lista',
+          click() {
+            const v = calendar.view;
+            const from = v.currentStart.toISOString().split('T')[0];
+            const to   = v.currentEnd  .toISOString().split('T')[0];
+            window.location.href = `/eventos?desde=${from}&hasta=${to}`;
+          }
+        }
+      },
+      buttonText: { today:'Hoy', month:'Mes', week:'Semana', day:'Día', list:'Lista' },
+      events: '/eventos/listado',
+      views: { dayGridMonth: { displayEventTime:false } },
+
+      dateClick(info) {
+        // Nuevo desde calendario
+        form.reset();
+        inputId.value = '';
+        form.titulo.value      = '';
+        form.descripcion.value = '';
+        form.grupo_id.value    = '';
+        form.fecha_inicio.value = `${info.dateStr}T09:00`;
+        form.fecha_fin.value    = `${info.dateStr}T10:00`;
+        form.activo.checked     = false;
+        ocultarBtns();
+        modalTitulo.innerText = 'Nuevo evento';
+        modal.show();
+      },
+
+      eventClick(info) {
+        // Editar desde calendario
+        const e = info.event;
+        form.reset();
+        inputId.value           = e.id;
+        form.titulo.value       = e.extendedProps.titulo || '';
+        form.descripcion.value  = e.extendedProps.descripcion || '';
+        form.grupo_id.value     = e.extendedProps.grupo_id || '';
+        form.fecha_inicio.value = e.startStr?.slice(0,16) || '';
+        form.fecha_fin.value    = e.endStr?.slice(0,16)   || '';
+        form.activo.checked     = Number(e.extendedProps.activo) === 1;
+
+        mostrarBtns();
+        btnQR.onclick = () => window.open(`/eventos/${e.id}/qr`, '_blank');
+        btnFirmaManual.onclick = () => window.location.href = `/eventos/${e.id}/firma_manual`;
+
+        modalTitulo.innerText = 'Editar evento';
+        modal.show();
+      }
+    });
+    calendar.render();
+  }
+
+  // --------------- GUARDAR (crear/editar) ---------------
+  form.addEventListener('submit', async e => {
+    e.preventDefault();
+    const data = new FormData(form);
+    const body = Object.fromEntries(data.entries());
+    body.activo = form.activo.checked ? '1' : '0';
+
+    const id = (inputId.value || '').trim();
+    const method = id ? 'PUT' : 'POST';
+    const url    = id ? `/eventos/${id}` : '/eventos';
+    if (!id) delete body.id; else body.id = id;
+
+    try {
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type':'application/json' },
+        body: JSON.stringify(body)
+      });
+      if (!res.ok) {
+        const t = await res.text().catch(()=> 'Error');
+        throw new Error(t || 'Error al guardar');
+      }
+      modal.hide();
+      location.reload();
+    } catch(err) {
+      console.error(err);
+      alert('Error al guardar el evento');
+    }
+  });
+
+  // --------------- ELIMINAR ---------------
+  btnEliminar.addEventListener('click', async () => {
+    if (!confirm('¿Deseas eliminar este evento?')) return;
+    const id = (inputId.value || '').trim();
+    if (!id) return alert('No hay id de evento.');
+    try {
+      const res = await fetch(`/eventos/${id}`, { method:'DELETE' });
+      if (!res.ok) throw new Error('Error al eliminar');
+      modal.hide();
+      location.reload();
+    } catch (err) {
+      console.error(err);
+      alert('Error al eliminar');
+    }
+  });
+
+  // --------------- EVENTOS MASIVOS: robustez en Lista ---------------
+  const masivoBtn   = document.querySelector('[data-bs-target="#eventoMasivoModal"]'); // tu botón existente
+  const masivoModal = document.getElementById('eventoMasivoModal');
+
+  // Si existen, aseguramos apertura incluso si falla el data API
+  if (masivoBtn && masivoModal) {
+    // Mueve el modal al body para evitar clipping/z-index
+    if (masivoModal.parentNode !== document.body) document.body.appendChild(masivoModal);
+
+    masivoBtn.addEventListener('click', (ev) => {
+      // Forzamos apertura manual para evitar fallos por doble Bootstrap o data API
+      ev.preventDefault();
+      const instance = bootstrap.Modal.getOrCreateInstance(masivoModal);
+      instance.show();
+    });
+
+    // Init Flatpickr al abrir (una única vez)
+    function ensureMasivoFlatpickr(){
+      if (!window.flatpickr || masivoModal._fpInited) return;
+      const host  = masivoModal.querySelector('#multiDaysPickerHost');
+      const input = masivoModal.querySelector('#multiDaysPicker');
+      if (!host || !input) return;
+      if (flatpickr.l10ns && flatpickr.l10ns.es) flatpickr.localize(flatpickr.l10ns.es);
+      const fp = flatpickr(host, {
+        inline:true, mode:'multiple', dateFormat:'Y-m-d', showMonths:2, clickOpens:false, defaultDate:[]
+      });
+      fp.set('onChange', (dates,_s,inst)=>{
+        const iso = dates.map(d=>inst.formatDate(d,'Y-m-d')).sort();
+        input.value = iso.join(', ');
+        inst._selectedIso = iso;
+      });
+      masivoModal._fpInited = true;
+      masivoModal._fp = fp;
+    }
+
+    masivoModal.addEventListener('shown.bs.modal', () => {
+      ensureMasivoFlatpickr();
+
+      // Si estás en vista Lista, salta al mes del filtro "desde"
+      const fDesde = document.querySelector('#fecha'); // name="desde" en tu formulario de Lista
+      if (masivoModal._fp && fDesde?.value) {
+        try { masivoModal._fp.jumpToDate(fDesde.value, true); } catch {}
+      }
+    });
+
+    masivoModal.addEventListener('hidden.bs.modal', () => {
+      const input = masivoModal.querySelector('#multiDaysPicker');
+      if (masivoModal._fp){
+        masivoModal._fp.clear();
+        if (input) input.value = '';
+      }
+    });
+  }
+});
+</script>

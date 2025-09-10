@@ -85,6 +85,7 @@ const pdfRoutes = require('./routes/pdf');
 const layoutsRoutes = require('./routes/layouts');
 const ausenciasRoutes = require('./routes/ausencias');
 const actividadesRoutes= require('./routes/actividades_complementarias');
+const espaciosRoutes = require('./routes/espacios');
 
 app.use('/configuracion', isAdmin, configuracionRoutes);
 app.use('/usuarios', isAuthenticated,usuariosRoutes);        
@@ -110,6 +111,7 @@ app.use('/recuperar',recuperarRoutes);
 app.use(require('./routes/share_stateless'));
 app.use('/ausencias', isAuthenticated, ausenciasRoutes);
 app.use('/actividades', isAuthenticated, actividadesRoutes);
+app.use('/espacios', isAuthenticated, espaciosRoutes);
 app.use(pdfRoutes);
 // Ruta de inicio
 app.get('/', (req, res) => {

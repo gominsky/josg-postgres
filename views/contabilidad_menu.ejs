@@ -12,7 +12,6 @@
 <div class="container page-wrap">
   <div id="canvas-wrap" class="canvas-wrap" data-menu="contabilidad">
     <div id="menu-config" class="sb-grid">
-      <!-- SIN subtítulos (solo título). data-id único por ficha -->
       <a data-id="cuotas"               href="/cuotas"                      class="tile-sb is-yellow h2 w2"><span>Cuotas</span></a>
       <a data-id="facturas"             href="/contabilidad/facturas"       class="tile-sb is-orange h1 w2"><span>Facturas</span></a>
       <a data-id="factura-nueva"        href="/contabilidad/facturas/nueva" class="tile-sb is-cream  h1 w2"><span>Nueva factura</span></a>
@@ -28,44 +27,24 @@
 <style>
   .container.page-wrap .sb-grid { margin-top: 22px; }
 
-  /* Lienzo */
   .canvas-wrap{ position: relative; }
-
-  /* Modo libre y “solo ver” comparten layout absoluto */
-  .canvas-wrap.free,
-  .canvas-wrap.free-view{
-    height: 1200px; /* ajusta a gusto */
-    border: 1px dashed rgba(0,0,0,.08);
-    border-radius: 12px;
-    padding: 8px;
+  .canvas-wrap.free, .canvas-wrap.free-view{
+    height: 1200px; border: 1px dashed rgba(0,0,0,.08);
+    border-radius: 12px; padding: 8px;
   }
-  .canvas-wrap.free #menu-config,
-  .canvas-wrap.free-view #menu-config{
-    display: block !important;
-    position: relative;
-    height: 100%;
+  .canvas-wrap.free #menu-config, .canvas-wrap.free-view #menu-config{
+    display: block !important; position: relative; height: 100%;
   }
-  .canvas-wrap.free #menu-config .tile-sb,
-  .canvas-wrap.free-view #menu-config .tile-sb{
-    position: absolute !important;
-    margin: 0 !important;
+  .canvas-wrap.free #menu-config .tile-sb, .canvas-wrap.free-view #menu-config .tile-sb{
+    position: absolute !important; margin: 0 !important;
     min-width: 180px; min-height: 120px;
-    box-shadow: 0 4px 18px rgba(0,0,0,.08);
-    user-select: none;
-    touch-action: none;
+    box-shadow: 0 4px 18px rgba(0,0,0,.08); user-select: none; touch-action: none;
   }
 
-  /* Contraste de texto como en index */
-  .sb-grid .tile-sb.is-black,
-  .sb-grid .tile-sb.is-blue,
-  .sb-grid .tile-sb.is-orange,
-  .sb-grid .tile-sb.is-rust { color:#fff; }
-  .sb-grid .tile-sb.is-cream,
-  .sb-grid .tile-sb.is-yellow { color:#111; }
+  .sb-grid .tile-sb.is-black, .sb-grid .tile-sb.is-blue, .sb-grid .tile-sb.is-orange, .sb-grid .tile-sb.is-rust { color:#fff; }
+  .sb-grid .tile-sb.is-cream, .sb-grid .tile-sb.is-yellow { color:#111; }
 
-  /* Toolbars — ocultas siempre fuera del modo libre; visibles en .free */
   .tile-tools{ display:none; }
-  .canvas-wrap:not(.free) .tile-tools { display: none !important; }
   .canvas-wrap.free .tile-tools{
     position:absolute; top:6px; right:6px; display:flex; gap:6px; z-index:2;
   }
@@ -75,36 +54,57 @@
     box-shadow:0 1px 2px rgba(0,0,0,.08);
   }
   .canvas-wrap.free .tile-tools button:hover{ background:#f5f5f5; }
-
   .dragging{ outline: 2px dashed rgba(0,0,0,.25); outline-offset: 0; }
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
 <script>
-(()=> {
+(()=>{
   const wrap = document.getElementById('canvas-wrap');
   const grid = document.getElementById('menu-config');
   const btn  = document.getElementById('btnLibre');
   const btnReset = document.getElementById('btnReset');
   if (!wrap || !grid || !btn) return;
 
-  const menuKey = 'layout:' + (wrap.dataset.menu || 'contabilidad');
+  const menuSlug = wrap.dataset.menu || 'contabilidad';
+  const API = `/api/layout/${encodeURIComponent(menuSlug)}`;
+  const LS_KEY = 'layout:' + menuSlug;
   const COLORS = ['is-cream','is-yellow','is-blue','is-orange','is-rust','is-black'];
 
-  const load = () => { try{ const r=localStorage.getItem(menuKey); return r?JSON.parse(r):null; } catch { return null; } };
-  const save = (o) => { try{ localStorage.setItem(menuKey, JSON.stringify(o)); } catch {} };
-  const clear= () => { try{ localStorage.removeItem(menuKey); } catch {} };
-  const def  = () => ({ mode:'grid', items:{} });
+  // -------- helpers de estado en cliente --------
+  const loadLocal = () => { try{ const r=localStorage.getItem(LS_KEY); return r?JSON.parse(r):null; } catch { return null; } };
+  const saveLocal = (o) => { try{ localStorage.setItem(LS_KEY, JSON.stringify(o)); } catch {} };
+  const clearLocal= () => { try{ localStorage.removeItem(LS_KEY); } catch {} };
+  const def = () => ({ mode:'grid', items:{} });
 
+  // -------- API servidor --------
+  async function loadServer(){
+    const r = await fetch(API, { credentials:'include' });
+    if (!r.ok) throw new Error('load failed ' + r.status);
+    return r.json(); // { order_ids, sizes, colors, positions }
+  }
+  async function saveServer(payload){
+    const r = await fetch(API, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      credentials:'include',
+      body: JSON.stringify(payload)
+    });
+    const t = await r.text();
+    if (!r.ok) throw new Error('save failed ' + r.status + ' ' + t);
+    return t;
+  }
+
+  // -------- utilidades de layout --------
   function applyItemStyles(tile, it){
     if(!it) return;
     COLORS.forEach(c=>tile.classList.remove(c));
     if(it.color) tile.classList.add(it.color);
-    if(typeof it.x==='number') tile.style.left = it.x+'px';
-    if(typeof it.y==='number') tile.style.top  = it.y+'px';
-    if(typeof it.w==='number') tile.style.width  = it.w+'px';
-    if(typeof it.h==='number') tile.style.height = it.h+'px';
-    if(typeof it.z==='number') tile.style.zIndex = String(it.z);
+    if(typeof it.x==='number') tile.style.left  = it.x+'px';
+    if(typeof it.y==='number') tile.style.top   = it.y+'px';
+    if(typeof it.w==='number') tile.style.width = it.w+'px';
+    if(typeof it.h==='number') tile.style.height= it.h+'px';
+    if(typeof it.z==='number') tile.style.zIndex= String(it.z);
   }
 
   function snapshot(){
@@ -112,10 +112,13 @@
     for(const t of grid.querySelectorAll('.tile-sb')){
       const id=t.dataset.id; if(!id) continue;
       const r=t.getBoundingClientRect();
-      items[id]={ x:Math.max(0,r.left-rw.left), y:Math.max(0,r.top-rw.top),
-                  w:r.width, h:r.height,
-                  color:COLORS.find(c=>t.classList.contains(c))||null,
-                  z:0 };
+      items[id] = {
+        x: Math.max(0, r.left - rw.left),
+        y: Math.max(0, r.top  - rw.top),
+        w: r.width, h: r.height,
+        color: COLORS.find(c=>t.classList.contains(c))||null,
+        z: 0
+      };
     }
     return items;
   }
@@ -124,29 +127,49 @@
     const items={};
     for(const t of grid.querySelectorAll('.tile-sb')){
       const id=t.dataset.id; if(!id) continue;
-      items[id]={ x:parseFloat(t.style.left)||0,
-                  y:parseFloat(t.style.top)||0,
-                  w:parseFloat(t.style.width)||t.getBoundingClientRect().width,
-                  h:parseFloat(t.style.height)||t.getBoundingClientRect().height,
-                  color:COLORS.find(c=>t.classList.contains(c))||null,
-                  z:parseInt(t.style.zIndex||'0',10) };
+      const rect=t.getBoundingClientRect();
+      items[id] = {
+        x: parseFloat(t.style.left)||0,
+        y: parseFloat(t.style.top)||0,
+        w: parseFloat(t.style.width)||rect.width,
+        h: parseFloat(t.style.height)||rect.height,
+        color: COLORS.find(c=>t.classList.contains(c))||null,
+        z: parseInt(t.style.zIndex||'0',10)
+      };
     }
     return items;
   }
 
-  function persistTile(tile){
-    const cur=load()||def(); if(cur.mode!=='free'&&cur.mode!=='free-view') cur.mode='free-view';
-    const id=tile.dataset.id; if(!id) return;
-    cur.items[id]={ x:parseFloat(tile.style.left)||0,
-                    y:parseFloat(tile.style.top)||0,
-                    w:parseFloat(tile.style.width)||tile.getBoundingClientRect().width,
-                    h:parseFloat(tile.style.height)||tile.getBoundingClientRect().height,
-                    color:COLORS.find(c=>tile.classList.contains(c))||null,
-                    z:parseInt(tile.style.zIndex||'0',10) };
-    save(cur);
+  // -------- guardado con debounce --------
+  let saveTimer=null;
+  function scheduleSave(state){
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(async ()=>{
+      const order_ids = Array.from(grid.querySelectorAll('.tile-sb')).map(a => a.dataset.id);
+      
+      // sizes (en “unidades” si te interesa; si no, déjalo vacío)
+      const sizes={}, colors={}, positions={};
+      for(const [id,it] of Object.entries(state.items||{})){
+        sizes[id] = { w: Math.max(1, Math.round((it.w||180)/180)),
+                      h: Math.max(1, Math.round((it.h||120)/120)) };
+        if(it.color) colors[id]=it.color;
+        positions[id] = { x:Math.round(it.x||0), y:Math.round(it.y||0),
+                          w:Math.round(it.w||180), h:Math.round(it.h||120),
+                          z:it.z||0, color:it.color||null };
+      }
+
+      const payload = { order_ids, sizes, colors, positions };
+      try {
+        const resp = await saveServer(payload);
+        console.log('[client] guardado OK', resp);
+      } catch (e) {
+        console.warn('[client] fallo guardando en servidor, guardo local', e);
+        saveLocal(state);
+      }
+    }, 400);
   }
 
-  // === Herramientas (Color / Frente) ===
+  // -------- herramientas UI --------
   function cycleColor(tile){
     const cur = COLORS.find(c => tile.classList.contains(c));
     const idx = cur ? COLORS.indexOf(cur) : -1;
@@ -156,17 +179,14 @@
   }
   function addTools(tile){
     if (tile.querySelector('.tile-tools')) return;
-    const tools = document.createElement('div');
-    tools.className = 'tile-tools';
+    const tools = document.createElement('div'); tools.className = 'tile-tools';
     const bColor = document.createElement('button'); bColor.type='button'; bColor.textContent='Color';
     const bFront = document.createElement('button'); bFront.type='button'; bFront.textContent='⇪ Frente';
     bColor.addEventListener('click', (e)=>{ e.preventDefault(); e.stopPropagation(); cycleColor(tile); persistTile(tile); });
     bFront.addEventListener('click', (e)=>{ e.preventDefault(); e.stopPropagation(); tile.style.zIndex=String(Date.now()); persistTile(tile); });
-    tools.append(bColor,bFront);
-    tile.appendChild(tools);
+    tools.append(bColor,bFront); tile.appendChild(tools);
   }
 
-  // === Interact (drag/resize) ===
   function enableInteract(){
     const c=wrap;
     interact('.canvas-wrap.free #menu-config .tile-sb')
@@ -206,17 +226,47 @@
 
   function preventWhileFree(e){ if(wrap.classList.contains('free')){ e.preventDefault(); e.stopPropagation(); } }
 
-  // === Modos ===
-  function enterView(){
-    // Asegura que no queden toolbars visibles en modo vista
+  // -------- persistencia por ficha --------
+  function persistTile(tile){
+    const cur = loadLocal() || def();
+    if(cur.mode!=='free' && cur.mode!=='free-view') cur.mode='free-view';
+    const id = tile.dataset.id; if(!id) return;
+    const rect = tile.getBoundingClientRect(), rw=wrap.getBoundingClientRect();
+    cur.items[id] = {
+      x: Math.max(0, rect.left-rw.left),
+      y: Math.max(0, rect.top -rw.top),
+      w: rect.width, h: rect.height,
+      color: COLORS.find(c=>tile.classList.contains(c))||null,
+      z: parseInt(tile.style.zIndex||'0',10)
+    };
+    saveLocal(cur);          // guardo por si acaso
+    scheduleSave(cur);       // mando a servidor
+  }
+
+  // -------- modos --------
+  async function enterView(){
+    // Limpia toolbars si vinimos de libre
     grid.querySelectorAll('.tile-sb .tile-tools').forEach(t => t.remove());
 
     wrap.classList.add('free-view');
-    const cur=load(), items=cur?.items||{};
+
+    // Preferimos servidor; si está vacío, usamos snapshot actual
+    let srv=null;
+    try { srv = await loadServer(); } catch { srv = null; }
+    const pos = srv?.positions || {};
+    const items = Object.keys(pos).length ? pos : snapshot(); // <-- evita apilar
+
     for(const a of grid.querySelectorAll('a.tile-sb')){
-      a.style.position='absolute';
-      a.style.margin='0';
+      a.style.position='absolute'; a.style.margin='0';
       applyItemStyles(a, items[a.dataset.id]);
+    }
+
+    // Si el servidor no tenía posiciones, súbelas ya (para futuras sesiones/dispositivos)
+    if (!Object.keys(srv?.positions||{}).length) {
+      const cur = loadLocal() || def();
+      cur.mode='free-view'; cur.items = items;
+      saveLocal(cur);
+      scheduleSave(cur);
     }
   }
 
@@ -228,13 +278,13 @@
     }
   }
 
-  function enterFree(){
-    if(!wrap.classList.contains('free-view')) enterView();
+  async function enterFree(){
+    // Asegura vista absoluta y parte de lo que VES ahora mismo
+    if(!wrap.classList.contains('free-view')) await enterView();
+
     wrap.classList.add('free'); btn.textContent='Guardar';
-    const cur=load()||def();
-    if(!cur.items||!Object.keys(cur.items).length){
-      cur.items=snapshot(); cur.mode='free-view'; save(cur);
-    }
+
+    // Bloquea clicks y añade herramientas
     grid.querySelectorAll('a.tile-sb').forEach(a=>a.addEventListener('click',preventWhileFree));
     grid.querySelectorAll('.tile-sb').forEach(addTools);
     enableInteract();
@@ -242,49 +292,44 @@
 
   function exitFree(saveLayout = true){
     if (saveLayout){
-      const cur = load() || def();
+      const cur = loadLocal() || def();
       cur.mode  = 'free-view';
       cur.items = collect();
-      save(cur);
+      saveLocal(cur);
+      scheduleSave(cur);
     }
-    // Salir de edición
     wrap.classList.remove('free');
     btn.textContent = 'Modo libre';
-
-    // Limpieza agresiva de toolbars
     grid.querySelectorAll('.tile-sb .tile-tools').forEach(t => t.remove());
-
-    // Desbloquear enlaces
     grid.querySelectorAll('a.tile-sb').forEach(a => a.removeEventListener('click', preventWhileFree));
-
-    // Desactivar interact
     if (window.interact) interact('.tile-sb').unset();
   }
 
-  // Hotkey guardar sin salir
+  // Hotkey Guardar sin salir
   document.addEventListener('keydown',(e)=>{
     if(!wrap.classList.contains('free')) return;
     const isMac=/Mac/i.test(navigator.platform); const mod=isMac?e.metaKey:e.ctrlKey;
     if(mod && e.key.toLowerCase()==='s'){
       e.preventDefault();
-      const cur=load()||def(); cur.mode='free-view'; cur.items=collect(); save(cur);
+      const cur = loadLocal() || def();
+      cur.mode='free-view'; cur.items=collect();
+      saveLocal(cur); scheduleSave(cur);
       btn.textContent='Guardado'; setTimeout(()=>btn.textContent='Guardar',700);
-      // Si quieres ocultar toolbars también aquí, descomenta:
-      // grid.querySelectorAll('.tile-sb .tile-tools').forEach(t => t.remove());
     }
   });
 
-  // Estado inicial
-  (()=> {
-    const cur=load();
-    if(cur?.mode==='free' || cur?.mode==='free-view'){
-      enterView();
-      btn.textContent='Modo libre';
-    }
+  // Estado inicial: si ya tenías vista guardada, arranca en “solo ver”
+  (async()=>{
+    try{
+      const s = await loadServer();
+      if (Object.keys(s.positions||{}).length) { await enterView(); btn.textContent='Modo libre'; return; }
+    } catch {}
+    const cur=loadLocal();
+    if(cur?.mode==='free' || cur?.mode==='free-view'){ await enterView(); btn.textContent='Modo libre'; }
   })();
 
   // Botones
   btn.addEventListener('click', ()=>{ if(wrap.classList.contains('free')) exitFree(true); else enterFree(); });
-  btnReset?.addEventListener('click', ()=>{ if(wrap.classList.contains('free')) exitFree(false); exitView(); clear(); });
+  btnReset?.addEventListener('click', ()=>{ if(wrap.classList.contains('free')) exitFree(false); exitView(); clearLocal(); });
 })();
 </script>

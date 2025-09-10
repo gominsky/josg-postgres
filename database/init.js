@@ -261,6 +261,7 @@ async function init({ reset = false } = {}) {
         hora_fin      TIME,
         observaciones TEXT,
         grupo_id      INTEGER NOT NULL REFERENCES grupos(id) ON DELETE CASCADE,
+        espacio_id    INTEGER,
         token         TEXT,
         activo        BOOLEAN NOT NULL DEFAULT FALSE,
         created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -286,6 +287,24 @@ async function init({ reset = false } = {}) {
       CREATE INDEX IF NOT EXISTS idx_asistencias_evento      ON asistencias(evento_id);
       CREATE INDEX IF NOT EXISTS idx_asistencias_alumno      ON asistencias(alumno_id);
       CREATE INDEX IF NOT EXISTS idx_asistencias_evento_hora ON asistencias(evento_id, hora);
+
+      CREATE TABLE IF NOT EXISTS espacios (
+        id                      INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+        nombre                  TEXT NOT NULL,
+        direccion               TEXT NOT NULL,
+        latitud                 NUMERIC,
+        longitud                NUMERIC,
+        telefono                TEXT,
+        email                   TEXT,
+        sitio_web               TEXT,
+        propietario             TEXT NOT NULL,
+        tipo_espacio            TEXT,
+        aforo                   INTEGER,
+        recursos_disponibles    TEXT,
+        observaciones           TEXT,
+        created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
 
       CREATE TABLE IF NOT EXISTS ausencias (
         id   INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -536,7 +555,7 @@ async function init({ reset = false } = {}) {
         CONSTRAINT ck_xy_range CHECK (x >= 0 AND x <= 1 AND y >= 0 AND y <= 1)
       );
     `, 'tables:layout');
-        // === 8bis) LAYOUTS POR USUARIO ===
+        // === 8bis) LAYOUTS PARA MENÚS POR USUARIO ===
     await run(`
       CREATE TABLE IF NOT EXISTS user_layouts (
         id         BIGINT  GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -545,6 +564,7 @@ async function init({ reset = false } = {}) {
         order_ids  TEXT[]  NOT NULL,                      -- orden de las fichas por su data-id
         sizes      JSONB   NOT NULL DEFAULT '{}'::jsonb,  -- { "<id>": { "w": 1|2, "h": 1|2 }, ... }
         colors     JSONB   NOT NULL DEFAULT '{}'::jsonb,  -- { "<id>": "is-blue", ... }
+        positions  JSONB   NOT NULL DEFAULT '{}'::jsonb,
         updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         UNIQUE (user_id, menu)
       );

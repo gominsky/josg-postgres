@@ -8,7 +8,6 @@ const { pdfControlAsistencia } = require('../utils/pdfControlAsistencia');
 /* -------------------------------------------
    Helpers comunes
 ------------------------------------------- */
-
 // "YYYY-MM-DDTHH:MM" → {fechaISO, horaHHMM}
 function splitISODateTime(input) {
   if (!input) return { fechaISO: null, horaHHMM: null };
@@ -18,7 +17,6 @@ function splitISODateTime(input) {
   }
   return { fechaISO: toISODate(input), horaHHMM: null };
 }
-
 function hhmmOrNull(v) {
   if (v === undefined || v === null) return null;
   if (typeof v !== 'string') return null;
@@ -32,7 +30,41 @@ function idOrNull(v) {
 function strOrNull(v) {
   return (typeof v === 'string' && v.trim() !== '') ? v.trim() : null;
 }
+// Devuelve 'Violín I' o 'Violín II' si aplica; si no, null.
+async function nombreGrupoViolinSiAplica(client, alumnoId) {
+  // ¿toca violín?
+  const rBase = await client.query(`
+    SELECT
+      MAX(CASE WHEN ins.nombre ~* '^\\s*viol(í|i)n(\\s|$)' THEN 1 ELSE 0 END) AS es_violin
+    FROM alumno_instrumento ai
+    JOIN instrumentos ins ON ins.id = ai.instrumento_id
+    WHERE ai.alumno_id = $1
+  `, [alumnoId]);
 
+  const esViolin = !!Number(rBase.rows[0]?.es_violin || 0);
+  if (!esViolin) return null;
+
+  // nº de grupos y flags "Violín I/II"
+  const rG = await client.query(`
+    SELECT
+      COUNT(DISTINCT ag.grupo_id) AS grupos_count,
+      MAX(CASE WHEN LOWER(g.nombre) ~ '(viol[ií]n\\s*i)(\\b|\\s|$)' THEN 1 ELSE 0 END)   AS en_v1,
+      MAX(CASE WHEN LOWER(g.nombre) ~ '(viol[ií]n\\s*ii|viol[ií]n\\s*2)(\\b|\\s|$)' THEN 1 ELSE 0 END) AS en_v2
+    FROM alumno_grupo ag
+    JOIN grupos g ON g.id = ag.grupo_id
+    WHERE ag.alumno_id = $1
+  `, [alumnoId]);
+
+  const gruposCount = Number(rG.rows[0]?.grupos_count || 0);
+  const enV1 = !!Number(rG.rows[0]?.en_v1 || 0);
+  const enV2 = !!Number(rG.rows[0]?.en_v2 || 0);
+
+  if (gruposCount > 1) {
+    if (enV1) return 'Violín I';  // prioridad I
+    if (enV2) return 'Violín II';
+  }
+  return null;
+}
 // Normaliza fecha a 'YYYY-MM-DD' sin UTC shift
 const toISO10 = v => {
   if (!v) return '';
@@ -47,45 +79,40 @@ const toISO10 = v => {
   if (s.includes('T')) return s.split('T')[0];
   return s.slice(0,10);
 };
-
-/**
- * Decide el valor final a guardar en `instrumento`:
- * - Si NO es violín → null (no forzamos).
- * - Si es violín y (aparte del grupo del evento) pertenece a "Violín I" o "Violín II":
- *   "Violín I" (prioridad) o "Violín II".
- */
-async function decideInstrumentoParaAlumno(client, { alumnoId, eventoGrupoId }) {
-  // 1) ¿El alumno toca violín? (desde relaciones)
-  const qBase = `
+// Devuelve 'Violín I' o 'Violín II' si aplica; si no, null (para respetar el instrumento del front)
+async function decideInstrumentoParaAlumno(client, { alumnoId }) {
+  // ¿toca violín?
+  const rBase = await client.query(`
     SELECT
       MAX(CASE WHEN ins.nombre ~* '^\\s*viol(í|i)n(\\s|$)' THEN 1 ELSE 0 END) AS es_violin
     FROM alumno_instrumento ai
     JOIN instrumentos ins ON ins.id = ai.instrumento_id
     WHERE ai.alumno_id = $1
-  `;
-  const rBase = await client.query(qBase, [alumnoId]);
+  `, [alumnoId]);
   const esViolin = !!Number(rBase.rows[0]?.es_violin || 0);
   if (!esViolin) return null;
 
-  // 2) ¿Pertenece a Violín I/II (excluyendo opcionalmente el grupo del evento)?
-  const qGrupos = `
+  // nº de grupos y flags Violín I / Violín II
+  const rG = await client.query(`
     SELECT
+      COUNT(DISTINCT ag.grupo_id) AS grupos_count,
       MAX(CASE WHEN LOWER(g.nombre) ~ '(viol[ií]n\\s*i)(\\b|\\s|$)'  THEN 1 ELSE 0 END) AS en_v1,
-      MAX(CASE WHEN LOWER(g.nombre) ~ '(viol[ií]n\\s*ii)(\\b|\\s|$)' THEN 1 ELSE 0 END) AS en_v2
+      MAX(CASE WHEN LOWER(g.nombre) ~ '(viol[ií]n\\s*ii|viol[ií]n\\s*2)(\\b|\\s|$)' THEN 1 ELSE 0 END) AS en_v2
     FROM alumno_grupo ag
     JOIN grupos g ON g.id = ag.grupo_id
     WHERE ag.alumno_id = $1
-      AND ($2::int IS NULL OR g.id <> $2)
-  `;
-  const rG = await client.query(qGrupos, [alumnoId, eventoGrupoId ?? null]);
+  `, [alumnoId]);
+
+  const gruposCount = Number(rG.rows[0]?.grupos_count || 0);
   const enV1 = !!Number(rG.rows[0]?.en_v1 || 0);
   const enV2 = !!Number(rG.rows[0]?.en_v2 || 0);
 
-  if (enV1) return 'Violín I';
-  if (enV2) return 'Violín II';
-  return null;
+  if (gruposCount > 1) {
+    if (enV1) return 'Violín I';
+    if (enV2) return 'Violín II';
+  }
+  return null; // no cumple → dejamos el instrumento original del front
 }
-
 /**
  * Foto de alumnos del grupo → evento_asignaciones
  * Copia horas del evento, casteadas a TIME de forma segura.
@@ -126,14 +153,12 @@ async function asignarAlumnosAEvento(db, eventoId, grupoId) {
 
   await db.query(sql, [Number(eventoId), Number(grupoId)]);
 }
-
 /* -------------------------------------------
    AYUDA
 ------------------------------------------- */
 router.get('/ayuda', (_req, res) => {
   res.render('ayuda_eventos', { title: 'Ayuda · Eventos', hero: false });
 });
-
 /* -------------------------------------------
    LISTADO JSON (FullCalendar)
 ------------------------------------------- */
@@ -193,50 +218,62 @@ router.get('/listado', async (_req, res) => {
     res.status(500).json({ error: 'Error al obtener eventos' });
   }
 });
-
 /* -------------------------------------------
    VISTA PRINCIPAL: Calendario/Lista
 ------------------------------------------- */
 router.get('/', async (req, res) => {
   const desdeRaw = req.query.desde || '';
   const hastaRaw = req.query.hasta || '';
+  const grupoRaw = req.query.grupo || 'todos';
+
   const desde = toISODate(desdeRaw);
   const hasta = toISODate(hastaRaw);
 
-  if (desde && hasta) {
-    const query = `
-  WITH e2 AS (
-    SELECT e.*,
-      CASE
-        WHEN (e.fecha_inicio::text) ~ 'T'
-          THEN to_timestamp(e.fecha_inicio::text, 'YYYY-MM-DD"T"HH24:MI')
-        ELSE to_timestamp((e.fecha_inicio::text) || ' ' || COALESCE(e.hora_inicio::text,'00:00'), 'YYYY-MM-DD HH24:MI')
-      END AS start_ts,
-      CASE
-        WHEN (e.fecha_fin::text) ~ 'T'
-          THEN to_timestamp(e.fecha_fin::text, 'YYYY-MM-DD"T"HH24:MI')
-        ELSE to_timestamp((e.fecha_fin::text) || ' ' || COALESCE(e.hora_fin::text,'00:00'), 'YYYY-MM-DD HH24:MI')
-      END AS end_ts
-    FROM eventos e
-  )
-  SELECT e2.*, g.nombre AS grupo_nombre
-  FROM e2
-  JOIN grupos g ON e2.grupo_id = g.id
-  WHERE e2.start_ts::date >= $1::date
-    AND e2.end_ts::date   <= $2::date
-  ORDER BY e2.start_ts
-`;
-    try {
-      const { rows: eventos } = await db.query(query, [desde, hasta]);
-      const { rows: grupos } = await db.query('SELECT * FROM grupos ORDER BY nombre');
-      res.render('eventos_lista', { eventos, grupos });
-    } catch (error) {
-      console.error('Error al obtener eventos entre fechas:', error);
-      res.status(500).send('Error al obtener eventos');
+  const grupoId = /^\d+$/.test(String(grupoRaw)) ? Number(grupoRaw) : null;
+  const filtrarPorGrupo = (grupoRaw !== 'todos') && Number.isInteger(grupoId);
+
+  try {
+    const { rows: grupos } = await db.query('SELECT * FROM grupos ORDER BY nombre');
+
+    if (desde && hasta) {
+      const query = `
+        WITH e2 AS (
+          SELECT e.*,
+            CASE
+              WHEN (e.fecha_inicio::text) ~ 'T'
+                THEN to_timestamp(e.fecha_inicio::text, 'YYYY-MM-DD"T"HH24:MI')
+              ELSE to_timestamp((e.fecha_inicio::text) || ' ' || COALESCE(e.hora_inicio::text,'00:00'), 'YYYY-MM-DD HH24:MI')
+            END AS start_ts,
+            CASE
+              WHEN (e.fecha_fin::text) ~ 'T'
+                THEN to_timestamp(e.fecha_fin::text, 'YYYY-MM-DD"T"HH24:MI')
+              ELSE to_timestamp((e.fecha_fin::text) || ' ' || COALESCE(e.hora_fin::text,'00:00'), 'YYYY-MM-DD HH24:MI')
+            END AS end_ts
+          FROM eventos e
+        )
+        SELECT e2.*, g.nombre AS grupo_nombre
+        FROM e2
+        JOIN grupos g ON e2.grupo_id = g.id
+        WHERE e2.start_ts::date >= $1::date
+          AND e2.end_ts::date   <= $2::date
+          ${filtrarPorGrupo ? 'AND e2.grupo_id = $3' : ''}
+        ORDER BY e2.start_ts
+      `;
+      const params = filtrarPorGrupo ? [desde, hasta, grupoId] : [desde, hasta];
+      const { rows: eventos } = await db.query(query, params);
+
+      return res.render('eventos_lista', {
+        eventos,
+        grupos,
+        filtros: { desde, hasta, grupo: filtrarPorGrupo ? String(grupoId) : 'todos' }
+      });
     }
-  } else {
-    const grupos = (await db.query('SELECT * FROM grupos ORDER BY nombre')).rows;
-    res.render('eventos_lista', { eventos: null, grupos });
+
+    // Sin rango => calendario
+    res.render('eventos_lista', { eventos: null, grupos, filtros: null });
+  } catch (error) {
+    console.error('Error al obtener eventos:', error);
+    res.status(500).send('Error al obtener eventos');
   }
 });
 
@@ -258,7 +295,6 @@ router.get('/:id', async (req, res) => {
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
-
 /* -------------------------------------------
    CREAR EVENTO (con foto de asignaciones)
 ------------------------------------------- */
@@ -313,7 +349,6 @@ router.post('/', async (req, res) => {
     res.status(500).json({ error: 'Error al guardar evento' });
   }
 });
-
 /* -------------------------------------------
    CREAR EVENTOS MASIVOS
 ------------------------------------------- */
@@ -375,7 +410,6 @@ router.post('/masivo', async (req, res) => {
     return res.status(500).json({ error: 'Error al crear eventos masivos' });
   }
 });
-
 /* -------------------------------------------
    ACTUALIZAR EVENTO
 ------------------------------------------- */
@@ -426,7 +460,6 @@ router.put('/:id', async (req, res) => {
     res.status(500).json({ error: 'Error al actualizar evento' });
   }
 });
-
 /* -------------------------------------------
    ELIMINAR EVENTO (y dependencias)
 ------------------------------------------- */
@@ -443,7 +476,6 @@ router.delete('/:id', async (req, res) => {
     res.status(500).json({ error: 'Error al eliminar evento' });
   }
 });
-
 /* -------------------------------------------
    QR DEL EVENTO
 ------------------------------------------- */
@@ -511,7 +543,6 @@ router.get('/:id/qr', async (req, res) => {
     res.status(500).send('Error generando el QR');
   }
 });
-
 /* -------------------------------------------
    FIRMA MANUAL: FORM
 ------------------------------------------- */
@@ -525,79 +556,86 @@ router.get('/:id/firma_manual', async (req, res) => {
     LEFT JOIN grupos g ON g.id = e.grupo_id
     WHERE e.id = $1
   `;
-
   const asignacionesSQL = `
-  WITH base AS (
-    SELECT
-      a.id,
-      a.nombre,
-      a.apellidos,
-      a.dni,
-
-      string_agg(DISTINCT ins.nombre, ', ' ORDER BY ins.nombre) AS instrumentos,
-
-      bool_or(ins.nombre ~* '^\\s*viol(í|i)n\\s*$') AS has_violin_puro,
-
-      CASE WHEN asi.alumno_id IS NOT NULL THEN 1 ELSE 0 END AS firmado,
-
-      ea.hora_inicio, ea.hora_fin, ea.instrumento, ea.notas,
-      ea.ausencia_tipo_id, au.tipo AS ausencia_tipo,
-      ea.actividad_complementaria_id, ac.tipo AS actividad_complementaria
-    FROM evento_asignaciones ea
-    JOIN alumnos a  ON a.id = ea.alumno_id
-    LEFT JOIN asistencias asi
-           ON asi.evento_id = ea.evento_id
-          AND asi.alumno_id = ea.alumno_id
-    LEFT JOIN ausencias au ON au.id = ea.ausencia_tipo_id
-    LEFT JOIN actividades_complementarias ac ON ac.id = ea.actividad_complementaria_id
-    LEFT JOIN alumno_instrumento ai ON ai.alumno_id = a.id
-    LEFT JOIN instrumentos ins      ON ins.id = ai.instrumento_id
-    WHERE ea.evento_id = $1
-    GROUP BY
-      a.id, a.nombre, a.apellidos, a.dni,
-      firmado,
-      ea.hora_inicio, ea.hora_fin, ea.instrumento, ea.notas,
-      ea.ausencia_tipo_id, au.tipo,
-      ea.actividad_complementaria_id, ac.tipo
-  ),
-  grupos_violin AS (
-    SELECT
-      b.id AS alumno_id,
-      bool_or(g2.nombre ~* '^\\s*viol(í|i)n\\s*(ii|2)\\b') AS en_violin_ii,
-      bool_or(g2.nombre ~* '^\\s*viol(í|i)n\\s*i\\b')      AS en_violin_i
-    FROM base b
-    LEFT JOIN alumno_grupo ag2 ON ag2.alumno_id = b.id
-    LEFT JOIN grupos g2        ON g2.id = ag2.grupo_id
-    GROUP BY b.id
-  ),
-  etiquetado AS (
-    SELECT
-      b.*,
-      CASE
-        WHEN b.has_violin_puro IS TRUE THEN
-          CASE
-            WHEN gv.en_violin_ii THEN 'Violín II'
-            WHEN gv.en_violin_i  THEN 'Violín I'
-            ELSE 'Violín'
-          END
-        ELSE
-          COALESCE(split_part(b.instrumentos, ', ', 1), '')
-      END AS instrumento_mostrado
-    FROM base b
-    LEFT JOIN grupos_violin gv ON gv.alumno_id = b.id
-  )
+WITH base AS (
   SELECT
-    id, nombre, apellidos, dni,
-    instrumentos,
-    instrumento_mostrado,
-    firmado,
-    hora_inicio, hora_fin, instrumento, notas,
-    ausencia_tipo_id, ausencia_tipo,
-    actividad_complementaria_id, actividad_complementaria
-  FROM etiquetado
-  ORDER BY apellidos NULLS LAST, nombre NULLS LAST, id
+    a.id,
+    a.nombre,
+    a.apellidos,
+    a.dni,
+    string_agg(DISTINCT ins.nombre, ', ' ORDER BY ins.nombre) AS instrumentos,
+    bool_or(ins.nombre ~* '^\\s*viol(í|i)n\\s*$') AS has_violin_puro,
+    CASE WHEN asi.alumno_id IS NOT NULL THEN TRUE ELSE FALSE END AS firmado,
+    ea.hora_inicio,
+    ea.hora_fin,
+    ea.instrumento AS instrumento,
+    ea.notas,
+    ea.ausencia_tipo_id,
+    au.tipo AS ausencia_tipo,
+    ea.actividad_complementaria_id,
+    ac.tipo AS actividad_complementaria
+  FROM evento_asignaciones ea
+  JOIN alumnos a ON a.id = ea.alumno_id
+  LEFT JOIN asistencias asi
+    ON asi.evento_id = ea.evento_id
+   AND asi.alumno_id = ea.alumno_id
+  LEFT JOIN ausencias au ON au.id = ea.ausencia_tipo_id
+  LEFT JOIN actividades_complementarias ac ON ac.id = ea.actividad_complementaria_id
+  LEFT JOIN alumno_instrumento ai ON ai.alumno_id = a.id
+  LEFT JOIN instrumentos ins ON ins.id = ai.instrumento_id
+  WHERE ea.evento_id = $1
+  GROUP BY
+    a.id, a.nombre, a.apellidos, a.dni, firmado,
+    ea.hora_inicio, ea.hora_fin, ea.instrumento, ea.notas,
+    ea.ausencia_tipo_id, au.tipo,
+    ea.actividad_complementaria_id, ac.tipo
+),
+grupos_info AS (
+  SELECT
+    b.id AS alumno_id,
+    COUNT(DISTINCT ag2.grupo_id) AS grupos_count,
+    bool_or(LOWER(g2.nombre) ~ '(viol[ií]n\\s*i)(\\b|\\s|$)')  AS en_violin_i,
+    bool_or(LOWER(g2.nombre) ~ '(viol[ií]n\\s*(ii|2))(\\b|\\s|$)') AS en_violin_ii
+  FROM base b
+  LEFT JOIN alumno_grupo ag2 ON ag2.alumno_id = b.id
+  LEFT JOIN grupos g2        ON g2.id = ag2.grupo_id
+  GROUP BY b.id
+),
+etiquetado AS (
+  SELECT
+    b.*,
+    CASE
+      WHEN b.has_violin_puro
+           AND gi.grupos_count > 1
+           AND (gi.en_violin_i OR gi.en_violin_ii)
+        THEN CASE WHEN gi.en_violin_i THEN 'Violín I' ELSE 'Violín II' END
+      ELSE COALESCE(split_part(b.instrumentos, ', ', 1), '')
+    END AS instrumento_mostrado
+  FROM base b
+  LEFT JOIN grupos_info gi ON gi.alumno_id = b.id
+)
+SELECT
+  id, nombre, apellidos, dni,
+  instrumentos,
+  instrumento_mostrado,
+  CASE
+    WHEN LOWER(instrumento_mostrado) ~ '(viol[ií]n|viola|violonchelo|chelo|contrabajo)' THEN 'Cuerda'
+    WHEN LOWER(instrumento_mostrado) ~ '(flauta|clarinete|oboe|fagot|saxof[oó]n|saxo)' THEN 'Viento madera'
+    WHEN LOWER(instrumento_mostrado) ~ '(trompeta|tromb[oó]n|tuba|trompa|corneta)'     THEN 'Viento metal'
+    WHEN LOWER(instrumento_mostrado) ~ '(percusi[oó]n|bater[ií]a|xil[oó]fono|timbales)' THEN 'Percusión'
+    WHEN LOWER(instrumento_mostrado) ~ '(piano|teclado|clavec[ií]n|organo|[ó]rgano)'    THEN 'Teclado'
+    WHEN LOWER(instrumento_mostrado) ~ '(guitarra|la[uú]d|bandurria|timple)'           THEN 'Cuerda pulsada'
+    WHEN LOWER(instrumento_mostrado) ~ '(arpa)'                                         THEN 'Arpa'
+    WHEN LOWER(instrumento_mostrado) ~ '(canto|voz|coral|coro)'                         THEN 'Voz'
+    ELSE 'Otros'
+  END AS familia_mostrada,
+  firmado,
+  hora_inicio, hora_fin, instrumento, notas,
+  ausencia_tipo_id, ausencia_tipo,
+  actividad_complementaria_id, actividad_complementaria
+FROM etiquetado
+ORDER BY apellidos NULLS LAST, nombre NULLS LAST, id;
 `;
-
   try {
     const { rows: eventoRows } = await db.query(eventoSQL, [eventoId]);
     if (eventoRows.length === 0) return res.status(404).send('Evento no encontrado');
@@ -653,7 +691,6 @@ router.get('/:id/firma_manual', async (req, res) => {
     res.status(500).send('Error al cargar formulario de firmas');
   }
 });
-
 /* -------------------------------------------
    FIRMA MANUAL: AJAX (marca asistencia)
 ------------------------------------------- */
@@ -709,7 +746,6 @@ router.post('/:id/firma_manual/ajax', async (req, res) => {
     return res.status(500).json({ success: false, error: 'Error actualizando firma' });
   }
 });
-
 /* -------------------------------------------
    PDF CONTROL DE ASISTENCIA
 ------------------------------------------- */
@@ -722,11 +758,9 @@ router.get('/:id/firmas.pdf', async (req, res, next) => {
     next(err);
   }
 });
-
 /* -------------------------------------------
    ========== ASIGNACIONES ==========
 ------------------------------------------- */
-
 // Listar asignaciones
 router.get('/:id/asignaciones', async (req, res) => {
   const eventoId = Number(req.params.id);
@@ -764,7 +798,6 @@ router.get('/:id/asignaciones', async (req, res) => {
     res.status(500).json({ error: 'Error obteniendo asignaciones' });
   }
 });
-
 // Repoblar desde grupo del evento (añade faltantes)
 router.post('/:id/asignaciones/refresh', async (req, res) => {
   const eventoId = Number(req.params.id);
@@ -782,135 +815,106 @@ router.post('/:id/asignaciones/refresh', async (req, res) => {
   }
 });
 
-// Actualizar una asignación (horas, instrumento, notas, ausencia, actividad) + regla Violín I/II
+// PUT /eventos/:id/asignaciones/:alumnoId
 router.put('/:id/asignaciones/:alumnoId', async (req, res) => {
   const eventoId = Number(req.params.id);
   const alumnoId = Number(req.params.alumnoId);
   if (!Number.isInteger(eventoId) || !Number.isInteger(alumnoId)) {
-    return res.status(400).json({ error: 'Parámetros inválidos' });
+    return res.status(400).json({ error: 'IDs inválidos' });
   }
 
-  const toNullIfEmpty = v =>
-    (v === '' || v === undefined || v === null) ? null : String(v);
-  const toIntOrNull = v => {
-    if (v === '' || v === undefined || v === null) return null;
-    const n = Number(v);
-    return Number.isInteger(n) ? n : null;
-  };
+  // Campos que podríamos aceptar del front
+  const {
+    hora_inicio,
+    hora_fin,
+    instrumento,                   // <- el importante
+    notas,
+    ausencia_tipo_id,
+    actividad_complementaria_id
+  } = req.body || {};
 
-  const body = req.body || {};
-  const payload = {
-    hora_inicio: toNullIfEmpty(body.hora_inicio),
-    hora_fin:    toNullIfEmpty(body.hora_fin),
-    instrumento: toNullIfEmpty(body.instrumento),
-    notas:       toNullIfEmpty(body.notas),
-    ausencia_tipo_id:            toIntOrNull(body.ausencia_tipo_id),
-    actividad_complementaria_id: toIntOrNull(body.actividad_complementaria_id)
-  };
-
+  const client = await db.connect();
   try {
-    await db.query('BEGIN');
+    await client.query('BEGIN');
 
-    // Verifica existencia
-    const ex = await db.query(
-      'SELECT 1 FROM evento_asignaciones WHERE evento_id = $1 AND alumno_id = $2',
+    // 1) Garantiza que exista la fila
+    await client.query(
+      `INSERT INTO evento_asignaciones (evento_id, alumno_id)
+       VALUES ($1, $2)
+       ON CONFLICT (evento_id, alumno_id) DO NOTHING`,
       [eventoId, alumnoId]
     );
-    if (!ex.rows.length) {
-      await db.query('ROLLBACK');
-      return res.status(404).json({ error: 'Asignación no encontrada' });
+
+    // 2) Construye UPDATE dinámico (solo setea lo que venga en el body)
+    const sets = [];
+    const params = [eventoId, alumnoId];
+    let i = 3;
+
+    // Importante: usamos hasOwnProperty para saber si el campo vino en el JSON,
+    // aunque sea '' (string vacío). Así puedes borrar con "" -> NULLIF(...).
+    if (Object.prototype.hasOwnProperty.call(req.body, 'hora_inicio')) {
+      sets.push(`hora_inicio = $${i}::time`);
+      params.push(hora_inicio || null);
+      i++;
+    }
+    if (Object.prototype.hasOwnProperty.call(req.body, 'hora_fin')) {
+      sets.push(`hora_fin = $${i}::time`);
+      params.push(hora_fin || null);
+      i++;
+    }
+    if (Object.prototype.hasOwnProperty.call(req.body, 'instrumento')) {
+      // Guarda NULL si llega "" o solo espacios
+      sets.push(`instrumento = NULLIF(btrim($${i}::text), '')`);
+      params.push(instrumento ?? null);
+      i++;
+    }
+    if (Object.prototype.hasOwnProperty.call(req.body, 'notas')) {
+      sets.push(`notas = $${i}::text`);
+      params.push(notas ?? null);
+      i++;
+    }
+    if (Object.prototype.hasOwnProperty.call(req.body, 'ausencia_tipo_id')) {
+      sets.push(`ausencia_tipo_id = $${i}::int`);
+      params.push(ausencia_tipo_id ?? null);
+      i++;
+    }
+    if (Object.prototype.hasOwnProperty.call(req.body, 'actividad_complementaria_id')) {
+      sets.push(`actividad_complementaria_id = $${i}::int`);
+      params.push(actividad_complementaria_id ?? null);
+      i++;
     }
 
-    // Grupo del evento para la regla Violín I/II
-    const evRow = await db.query('SELECT grupo_id FROM eventos WHERE id=$1', [eventoId]);
-    const eventoGrupoId = evRow.rows[0]?.grupo_id ?? null;
-
-    // Aplica regla Violín I/II si corresponde
-    const client = await db.connect();
-    try {
-      const vi = await decideInstrumentoParaAlumno(client, { alumnoId, eventoGrupoId });
-      if (vi) payload.instrumento = vi;
-    } finally {
-      client.release();
+    // Si no hay nada que actualizar, devolvemos la fila actual
+    let row;
+    if (sets.length) {
+      const { rows } = await client.query(
+        `UPDATE evento_asignaciones
+           SET ${sets.join(', ')}
+         WHERE evento_id = $1 AND alumno_id = $2
+         RETURNING evento_id, alumno_id, hora_inicio, hora_fin, instrumento, notas, ausencia_tipo_id, actividad_complementaria_id`,
+        params
+      );
+      row = rows[0];
+    } else {
+      const { rows } = await client.query(
+        `SELECT evento_id, alumno_id, hora_inicio, hora_fin, instrumento, notas, ausencia_tipo_id, actividad_complementaria_id
+           FROM evento_asignaciones
+          WHERE evento_id = $1 AND alumno_id = $2`,
+        [eventoId, alumnoId]
+      );
+      row = rows[0];
     }
 
-    const upd = await db.query(
-      `UPDATE evento_asignaciones
-          SET hora_inicio = $3,
-              hora_fin    = $4,
-              instrumento = $5,
-              notas       = $6,
-              ausencia_tipo_id = $7,
-              actividad_complementaria_id = $8
-        WHERE evento_id = $1 AND alumno_id = $2
-        RETURNING evento_id, alumno_id, hora_inicio, hora_fin, instrumento, notas,
-                  ausencia_tipo_id, actividad_complementaria_id`,
-      [
-        eventoId,
-        alumnoId,
-        payload.hora_inicio,
-        payload.hora_fin,
-        payload.instrumento,
-        payload.notas,
-        payload.ausencia_tipo_id,
-        payload.actividad_complementaria_id
-      ]
-    );
-
-    // Manejo de firmas si el front decide enviarlas aquí (opcional)
-    if ('firmado' in body) {
-      if (body.firmado === true || body.firmado === 'true' || body.firmado === 1 || body.firmado === '1') {
-        await db.query(
-          `INSERT INTO asistencias (evento_id, alumno_id)
-           SELECT $1, $2
-           WHERE NOT EXISTS (
-             SELECT 1 FROM asistencias WHERE evento_id = $1 AND alumno_id = $2
-           )`,
-          [eventoId, alumnoId]
-        );
-        await db.query(
-          `UPDATE evento_asignaciones
-              SET ausencia_tipo_id = NULL
-            WHERE evento_id = $1 AND alumno_id = $2`,
-          [eventoId, alumnoId]
-        );
-      } else if (body.firmado === false || body.firmado === 'false' || body.firmado === 0 || body.firmado === '0') {
-        await db.query(
-          'DELETE FROM asistencias WHERE evento_id = $1 AND alumno_id = $2',
-          [eventoId, alumnoId]
-        );
-      }
-    }
-
-    await db.query('COMMIT');
-    return res.json(upd.rows[0]);
+    await client.query('COMMIT');
+    return res.json(row || { ok: true });
   } catch (err) {
-    await db.query('ROLLBACK');
-    console.error('Error actualizando asignación:', err);
-    return res.status(500).json({ error: 'Error actualizando asignación' });
+    await client.query('ROLLBACK');
+    console.error('PUT asignación:', err);
+    return res.status(500).json({ error: 'Error guardando asignación' });
+  } finally {
+    client.release();
   }
 });
-
-// Eliminar asignación
-router.delete('/:id/asignaciones/:alumnoId', async (req, res) => {
-  const eventoId = Number(req.params.id);
-  const alumnoId = Number(req.params.alumnoId);
-  if (!Number.isInteger(eventoId) || !Number.isInteger(alumnoId)) {
-    return res.status(400).json({ error: 'Parámetros inválidos' });
-  }
-  try {
-    const { rowCount } = await db.query(
-      'DELETE FROM evento_asignaciones WHERE evento_id=$1 AND alumno_id=$2',
-      [eventoId, alumnoId]
-    );
-    if (rowCount === 0) return res.status(404).json({ error: 'Asignación no encontrada' });
-    res.json({ ok: true });
-  } catch (err) {
-    console.error('Error eliminando asignación:', err);
-    res.status(500).json({ error: 'Error eliminando asignación' });
-  }
-});
-
 // Resumen asignación/asistencia
 router.get('/:id/asignaciones/resumen', async (req, res) => {
   const eventoId = Number(req.params.id);
@@ -933,7 +937,32 @@ router.get('/:id/asignaciones/resumen', async (req, res) => {
     res.status(500).json({ error: 'Error en resumen de asignaciones' });
   }
 });
+// DELETE /eventos/:id/asignaciones/:alumnoId  -> quita la fila del evento
+router.delete('/:id/asignaciones/:alumnoId', async (req, res) => {
+  const eventoId = Number(req.params.id);
+  const alumnoId = Number(req.params.alumnoId);
+  if (!Number.isInteger(eventoId) || !Number.isInteger(alumnoId)) {
+    return res.status(400).json({ error: 'IDs inválidos' });
+  }
 
+  const client = await db.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query('DELETE FROM asistencias WHERE evento_id = $1 AND alumno_id = $2', [eventoId, alumnoId]);
+    const r = await client.query(
+      'DELETE FROM evento_asignaciones WHERE evento_id = $1 AND alumno_id = $2',
+      [eventoId, alumnoId]
+    );
+    await client.query('COMMIT');
+    res.json({ ok: true, deleted: r.rowCount > 0 });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error('DELETE asignación:', err);
+    res.status(500).json({ error: 'Error eliminando asignación' });
+  } finally {
+    client.release();
+  }
+});
 /* -------------------------------------------
    Guardado en lote (firma_manual)
 ------------------------------------------- */
@@ -974,8 +1003,8 @@ router.put('/:id/firma_manual/batch', async (req, res) => {
       // instrumento que llega del front
       let instrumentoFinal = (c.instrumento ?? '').toString().trim() || null;
 
-      // Regla Violín I/II
-      const vi = await decideInstrumentoParaAlumno(client, { alumnoId, eventoGrupoId });
+      // NUEVO: si aplica, forzar a 'Violín I' / 'Violín II'
+      const vi = await decideInstrumentoParaAlumno(client, { alumnoId });
       if (vi) instrumentoFinal = vi;
 
       // Upsert asignación
@@ -1025,6 +1054,538 @@ router.put('/:id/firma_manual/batch', async (req, res) => {
     await client.query('ROLLBACK');
     console.error('batch firma_manual:', err);
     return res.status(500).json({ ok:false, error:'Error guardando cambios' });
+  } finally {
+    client.release();
+  }
+});
+// GET /eventos/:id/instrumentos  → una fila por instrumento con agregados
+router.get('/:id/instrumentos', async (req, res) => {
+  const eventoId = Number(req.params.id);
+  if (!Number.isInteger(eventoId)) return res.status(400).json({ error:'ID inválido' });
+
+  // Reutilizamos la misma lógica de "instrumento_mostrado" de tu vista para que agrupen igual
+  const sql = `
+  WITH base AS (
+    SELECT
+      a.id AS alumno_id,
+      ea.instrumento,               -- valor guardado por fila (puede ser null)
+      ea.hora_inicio, ea.hora_fin,
+      ea.ausencia_tipo_id, ea.actividad_complementaria_id,
+      -- instrumentos del alumno (para fallback visual)
+      string_agg(DISTINCT ins.nombre, ', ' ORDER BY ins.nombre) AS instrumentos,
+      -- marca violín "puro"
+      bool_or(ins.nombre ~* '^\\s*viol(í|i)n\\s*$') AS has_violin_puro,
+      -- firmado
+      CASE WHEN asi.alumno_id IS NOT NULL THEN TRUE ELSE FALSE END AS firmado
+    FROM evento_asignaciones ea
+    JOIN alumnos a ON a.id = ea.alumno_id
+    LEFT JOIN asistencias asi
+      ON asi.evento_id = ea.evento_id AND asi.alumno_id = ea.alumno_id
+    LEFT JOIN alumno_instrumento ai ON ai.alumno_id = a.id
+    LEFT JOIN instrumentos ins      ON ins.id = ai.instrumento_id
+    WHERE ea.evento_id = $1
+    GROUP BY a.id, ea.instrumento, ea.hora_inicio, ea.hora_fin,
+             ea.ausencia_tipo_id, ea.actividad_complementaria_id, firmado
+  ),
+  grupos_info AS (
+    SELECT
+      b.alumno_id,
+      COUNT(DISTINCT ag2.grupo_id) AS grupos_count,
+      bool_or(LOWER(g2.nombre) ~ '(viol[ií]n\\s*i)(\\b|\\s|$)')                    AS en_violin_i,
+      bool_or(LOWER(g2.nombre) ~ '(viol[ií]n\\s*(ii|2))(\\b|\\s|$)')               AS en_violin_ii
+    FROM base b
+    LEFT JOIN alumno_grupo ag2 ON ag2.alumno_id = b.alumno_id
+    LEFT JOIN grupos g2        ON g2.id = ag2.grupo_id
+    GROUP BY b.alumno_id
+  ),
+  etiquetado AS (
+    SELECT
+      b.*,
+      CASE
+        WHEN b.instrumento IS NOT NULL AND b.instrumento <> '' THEN b.instrumento
+        WHEN b.has_violin_puro AND gi.grupos_count > 1 AND (gi.en_violin_i OR gi.en_violin_ii)
+             THEN CASE WHEN gi.en_violin_i THEN 'Violín I' ELSE 'Violín II' END
+        ELSE COALESCE(split_part(b.instrumentos, ', ', 1), '')
+      END AS instrumento_key
+    FROM base b
+    LEFT JOIN grupos_info gi ON gi.alumno_id = b.alumno_id
+  )
+  SELECT
+    instrumento_key,
+    COUNT(*)::int                         AS total,
+    SUM(CASE WHEN firmado THEN 1 ELSE 0 END)::int AS firmados,
+    COUNT(DISTINCT ausencia_tipo_id)::int AS ausencias_distintas,
+    COUNT(DISTINCT actividad_complementaria_id)::int AS actividades_distintas,
+    MIN(hora_inicio) AS min_inicio,
+    MAX(hora_fin)    AS max_fin
+  FROM etiquetado
+  GROUP BY instrumento_key
+  ORDER BY instrumento_key NULLS FIRST;
+  `;
+  try {
+    const { rows } = await db.query(sql, [eventoId]);
+    res.json(rows);
+  } catch (err) {
+    console.error('GET instrumentos:', err);
+    res.status(500).json({ error: 'Error obteniendo instrumentos' });
+  }
+});
+router.put('/:id/instrumentos', async (req, res) => {
+  const eventoId = Number(req.params.id);
+  const { instrumento_key, acciones } = req.body || {};
+  if (!Number.isInteger(eventoId) || typeof instrumento_key !== 'string' || !acciones) {
+    return res.status(400).json({ ok:false, error:'Petición inválida' });
+  }
+
+  const client = await db.connect();
+  try {
+    await client.query('BEGIN');
+
+    // 1) Seleccionar alumnos objetivo en _tgt (misma lógica de etiquetado que la vista)
+    await client.query(`CREATE TEMP TABLE _tgt (alumno_id int PRIMARY KEY) ON COMMIT DROP;`);
+    const selSQL = `
+      WITH base AS (
+        SELECT
+          a.id AS alumno_id,
+          ea.instrumento,
+          string_agg(DISTINCT ins.nombre, ', ' ORDER BY ins.nombre) AS instrumentos,
+          bool_or(ins.nombre ~* '^\\s*viol(í|i)n\\s*$') AS has_violin_puro
+        FROM evento_asignaciones ea
+        JOIN alumnos a ON a.id = ea.alumno_id
+        LEFT JOIN alumno_instrumento ai ON ai.alumno_id = a.id
+        LEFT JOIN instrumentos ins      ON ins.id = ai.instrumento_id
+        WHERE ea.evento_id = $1
+        GROUP BY a.id, ea.instrumento
+      ),
+      gi AS (
+        SELECT
+          b.alumno_id,
+          COUNT(DISTINCT ag2.grupo_id) AS grupos_count,
+          bool_or(LOWER(g2.nombre) ~ '(viol[ií]n\\s*i)(\\b|\\s|$)')      AS en_violin_i,
+          bool_or(LOWER(g2.nombre) ~ '(viol[ií]n\\s*(ii|2))(\\b|\\s|$)') AS en_violin_ii
+        FROM base b
+        LEFT JOIN alumno_grupo ag2 ON ag2.alumno_id = b.alumno_id
+        LEFT JOIN grupos g2        ON g2.id = ag2.grupo_id
+        GROUP BY b.alumno_id
+      ),
+      etiquetado AS (
+        SELECT
+          b.alumno_id,
+          CASE
+            WHEN b.instrumento IS NOT NULL AND b.instrumento <> '' THEN b.instrumento
+            WHEN b.has_violin_puro AND gi.grupos_count > 1 AND (gi.en_violin_i OR gi.en_violin_ii)
+                 THEN CASE WHEN gi.en_violin_i THEN 'Violín I' ELSE 'Violín II' END
+            ELSE COALESCE(split_part(b.instrumentos, ', ', 1), '')
+          END AS instrumento_key
+        FROM base b
+        LEFT JOIN gi ON gi.alumno_id = b.alumno_id
+      )
+      INSERT INTO _tgt(alumno_id)
+      SELECT e.alumno_id
+      FROM etiquetado e
+      WHERE e.instrumento_key = $2;
+    `;
+    await client.query(selSQL, [eventoId, instrumento_key]);
+
+    let afectados = 0;
+
+    // 2) Acciones
+
+    // set_time {inicio, fin} -> $2 (NO $3)
+    if (acciones.set_time) {
+      const { inicio, fin } = acciones.set_time;
+
+      if (typeof inicio === 'string' && /^\d{2}:\d{2}$/.test(inicio)) {
+        const r1 = await client.query(`
+          UPDATE evento_asignaciones ea
+          SET hora_inicio = $2::time
+          FROM _tgt t
+          WHERE ea.evento_id = $1 AND ea.alumno_id = t.alumno_id
+        `, [eventoId, inicio]);
+        afectados += r1.rowCount || 0;
+      }
+      if (typeof fin === 'string' && /^\d{2}:\d{2}$/.test(fin)) {
+        const r2 = await client.query(`
+          UPDATE evento_asignaciones ea
+          SET hora_fin = $2::time
+          FROM _tgt t
+          WHERE ea.evento_id = $1 AND ea.alumno_id = t.alumno_id
+        `, [eventoId, fin]);
+        afectados += r2.rowCount || 0;
+      }
+    }
+
+    // shift_minutes -> $2 (NO $3)
+    if (Number.isFinite(acciones.shift_minutes) && acciones.shift_minutes !== 0) {
+      const m = Number(acciones.shift_minutes);
+      const r = await client.query(`
+        UPDATE evento_asignaciones ea
+        SET hora_inicio = CASE WHEN hora_inicio IS NULL THEN NULL ELSE (hora_inicio + make_interval(mins => $2)) END,
+            hora_fin    = CASE WHEN hora_fin    IS NULL THEN NULL ELSE (hora_fin    + make_interval(mins => $2)) END
+        FROM _tgt t
+        WHERE ea.evento_id = $1 AND ea.alumno_id = t.alumno_id
+      `, [eventoId, m]);
+      afectados += r.rowCount || 0;
+    }
+
+    // set { ausencia_tipo_id, actividad_complementaria_id, instrumento, notas_mode, notas_text }
+    if (acciones.set) {
+      if ('ausencia_tipo_id' in acciones.set) {
+        const v = acciones.set.ausencia_tipo_id ?? null;
+        const r = await client.query(`
+          UPDATE evento_asignaciones ea
+          SET ausencia_tipo_id = $2
+          FROM _tgt t
+          WHERE ea.evento_id = $1 AND ea.alumno_id = t.alumno_id
+        `, [eventoId, v]);
+        afectados += r.rowCount || 0;
+      }
+      if ('actividad_complementaria_id' in acciones.set) {
+        const v = acciones.set.actividad_complementaria_id ?? null;
+        const r = await client.query(`
+          UPDATE evento_asignaciones ea
+          SET actividad_complementaria_id = $2
+          FROM _tgt t
+          WHERE ea.evento_id = $1 AND ea.alumno_id = t.alumno_id
+        `, [eventoId, v]);
+        afectados += r.rowCount || 0;
+      }
+      if (typeof acciones.set.instrumento === 'string') {
+        const v = acciones.set.instrumento || null;
+        const r = await client.query(`
+          UPDATE evento_asignaciones ea
+          SET instrumento = $2
+          FROM _tgt t
+          WHERE ea.evento_id = $1 AND ea.alumno_id = t.alumno_id
+        `, [eventoId, v]);
+        afectados += r.rowCount || 0;
+      }
+      if (typeof acciones.set.notas_mode === 'string' && typeof acciones.set.notas_text === 'string') {
+        const mode = acciones.set.notas_mode;
+        const text = acciones.set.notas_text;
+        let expr = '$2';
+        if (mode === 'append')  expr = `COALESCE(ea.notas,'') || $2`;
+        if (mode === 'prepend') expr = `$2 || COALESCE(ea.notas,'')`;
+        const r = await client.query(`
+          UPDATE evento_asignaciones ea
+          SET notas = ${expr}
+          FROM _tgt t
+          WHERE ea.evento_id = $1 AND ea.alumno_id = t.alumno_id
+        `, [eventoId, text]);
+        afectados += r.rowCount || 0;
+      }
+    }
+
+    // sign true/false
+    if ('sign' in acciones) {
+      if (acciones.sign === true) {
+        await client.query(`
+          INSERT INTO asistencias (evento_id, alumno_id)
+          SELECT $1, alumno_id FROM _tgt
+          ON CONFLICT DO NOTHING
+        `, [eventoId]);
+        await client.query(`
+          UPDATE evento_asignaciones ea
+          SET ausencia_tipo_id = NULL
+          FROM _tgt t
+          WHERE ea.evento_id = $1 AND ea.alumno_id = t.alumno_id
+        `, [eventoId]);
+      } else if (acciones.sign === false) {
+        await client.query(`
+          DELETE FROM asistencias s
+          USING _tgt t
+          WHERE s.evento_id = $1 AND s.alumno_id = t.alumno_id
+        `, [eventoId]);
+      }
+    }
+
+    await client.query('COMMIT');
+    return res.json({ ok:true, afectados });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error('PUT /:id/instrumentos', err);
+    return res.status(500).json({ ok:false, error:'Error aplicando cambios por instrumento' });
+  } finally {
+    client.release();
+  }
+});
+router.delete('/:id/instrumentos', async (req, res) => {
+  const eventoId = Number(req.params.id);
+  const { instrumento_key } = req.body || {};
+  if (!Number.isInteger(eventoId) || typeof instrumento_key !== 'string') {
+    return res.status(400).json({ ok:false, error:'Petición inválida' });
+  }
+
+  const client = await db.connect();
+  try {
+    await client.query('BEGIN');
+
+    await client.query(`CREATE TEMP TABLE _tgt (alumno_id int PRIMARY KEY) ON COMMIT DROP;`);
+    const selSQL = `
+      WITH base AS (
+        SELECT
+          a.id AS alumno_id,
+          ea.instrumento,
+          string_agg(DISTINCT ins.nombre, ', ' ORDER BY ins.nombre) AS instrumentos,
+          bool_or(ins.nombre ~* '^\\s*viol(í|i)n\\s*$') AS has_violin_puro
+        FROM evento_asignaciones ea
+        JOIN alumnos a ON a.id = ea.alumno_id
+        LEFT JOIN alumno_instrumento ai ON ai.alumno_id = a.id
+        LEFT JOIN instrumentos ins      ON ins.id = ai.instrumento_id
+        WHERE ea.evento_id = $1
+        GROUP BY a.id, ea.instrumento
+      ),
+      gi AS (
+        SELECT
+          b.alumno_id,
+          COUNT(DISTINCT ag2.grupo_id) AS grupos_count,
+          bool_or(LOWER(g2.nombre) ~ '(viol[ií]n\\s*i)(\\b|\\s|$)')      AS en_violin_i,
+          bool_or(LOWER(g2.nombre) ~ '(viol[ií]n\\s*(ii|2))(\\b|\\s|$)') AS en_violin_ii
+        FROM base b
+        LEFT JOIN alumno_grupo ag2 ON ag2.alumno_id = b.alumno_id
+        LEFT JOIN grupos g2        ON g2.id = ag2.grupo_id
+        GROUP BY b.alumno_id
+      ),
+      etiquetado AS (
+        SELECT
+          b.alumno_id,
+          CASE
+            WHEN b.instrumento IS NOT NULL AND b.instrumento <> '' THEN b.instrumento
+            WHEN b.has_violin_puro AND gi.grupos_count > 1 AND (gi.en_violin_i OR gi.en_violin_ii)
+                 THEN CASE WHEN gi.en_violin_i THEN 'Violín I' ELSE 'Violín II' END
+            ELSE COALESCE(split_part(b.instrumentos, ', ', 1), '')
+          END AS instrumento_key
+        FROM base b
+        LEFT JOIN gi ON gi.alumno_id = b.alumno_id
+      )
+      INSERT INTO _tgt(alumno_id)
+      SELECT e.alumno_id
+      FROM etiquetado e
+      WHERE e.instrumento_key = $2;
+    `;
+    await client.query(selSQL, [eventoId, instrumento_key]);
+
+    // borrar asistencias primero
+    await client.query(`
+      DELETE FROM asistencias s
+      USING _tgt t
+      WHERE s.evento_id=$1 AND s.alumno_id=t.alumno_id
+    `, [eventoId]);
+
+    // borrar asignaciones
+    const r = await client.query(`
+      DELETE FROM evento_asignaciones ea
+      USING _tgt t
+      WHERE ea.evento_id=$1 AND ea.alumno_id=t.alumno_id
+    `, [eventoId]);
+
+    await client.query('COMMIT');
+    return res.json({ ok:true, eliminados: r.rowCount || 0 });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error('DELETE /:id/instrumentos', err);
+    return res.status(500).json({ ok:false, error:'Error eliminando por instrumento' });
+  } finally {
+    client.release();
+  }
+});
+// GET /eventos/:id/familias
+router.get('/:id/familias', async (req, res) => {
+  const eventoId = Number(req.params.id);
+  if (!Number.isInteger(eventoId)) {
+    return res.status(400).json({ error: 'ID inválido' });
+  }
+
+  const sql = `
+    WITH asig AS (
+      SELECT
+        ea.alumno_id,
+        ea.hora_inicio,
+        ea.hora_fin,
+        NULLIF(ea.instrumento, '') AS instrumento_key
+      FROM evento_asignaciones ea
+      WHERE ea.evento_id = $1
+    ),
+    fam_res AS (
+      SELECT
+        a.alumno_id,
+        a.hora_inicio,
+        a.hora_fin,
+        COALESCE(ins.familia, i1.familia) AS familia_final
+      FROM asig a
+      -- 1) Si ea.instrumento tiene valor, mapeamos por nombre a instrumentos.familia
+      LEFT JOIN instrumentos ins
+             ON ins.nombre = a.instrumento_key
+      -- 2) Si no, tomamos el primer instrumento del alumno
+      LEFT JOIN LATERAL (
+        SELECT i.familia
+        FROM alumno_instrumento ai
+        JOIN instrumentos i ON i.id = ai.instrumento_id
+        WHERE ai.alumno_id = a.alumno_id
+        ORDER BY i.nombre
+        LIMIT 1
+      ) AS i1 ON TRUE
+    )
+    SELECT
+      familia_final AS familia_key,
+      MIN(hora_inicio) AS min_inicio,
+      MAX(hora_fin)    AS max_fin
+    FROM fam_res
+    WHERE NULLIF(TRIM(familia_final), '') IS NOT NULL
+    GROUP BY familia_final
+    ORDER BY familia_final;
+  `;
+
+  try {
+    const { rows } = await db.query(sql, [eventoId]);
+    return res.json(Array.isArray(rows) ? rows : []);
+  } catch (err) {
+    console.error('GET familias (por instrumentos):', err);
+    return res.status(500).json({ error: 'Error obteniendo familias' });
+  }
+});
+// PUT masivo por familias: aplica cambios a todas las asignaciones del evento cuya familia resuelta == familia_key
+router.put('/:id/familias', async (req, res) => {
+  const eventoId = Number(req.params.id);
+  if (!Number.isInteger(eventoId)) {
+    return res.status(400).json({ error: 'Evento inválido' });
+  }
+
+  const { familia_key, acciones } = req.body || {};
+  if (typeof familia_key !== 'string' || !familia_key.trim()) {
+    return res.status(400).json({ error: 'familia_key requerido' });
+  }
+
+  // Construye SET dinámico
+  const setClauses = [];
+  const params = [eventoId];
+  let i = 2;
+
+  if (acciones?.set_time) {
+    if (acciones.set_time.inicio) { setClauses.push(`hora_inicio = $${i++}`); params.push(acciones.set_time.inicio); }
+    if (acciones.set_time.fin)    { setClauses.push(`hora_fin    = $${i++}`); params.push(acciones.set_time.fin); }
+  }
+  if (acciones?.set) {
+    if (Object.prototype.hasOwnProperty.call(acciones.set, 'ausencia_tipo_id')) {
+      setClauses.push(`ausencia_tipo_id = $${i++}`); params.push(acciones.set.ausencia_tipo_id ?? null);
+    }
+    if (Object.prototype.hasOwnProperty.call(acciones.set, 'actividad_complementaria_id')) {
+      setClauses.push(`actividad_complementaria_id = $${i++}`); params.push(acciones.set.actividad_complementaria_id ?? null);
+    }
+    if (acciones.set.notas_mode === 'replace') {
+      setClauses.push(`notas = $${i++}`); params.push(acciones.set.notas_text ?? '');
+    }
+  }
+
+  if (!setClauses.length) return res.status(400).json({ error:'Nada que actualizar' });
+
+  // Familia resuelta: por ea.instrumento -> instrumentos.familia; si no hay, primer instrumento del alumno
+  const sql = `
+    WITH base AS (
+      SELECT ea.*
+      FROM evento_asignaciones ea
+      WHERE ea.evento_id = $1
+    ),
+    fam_res AS (
+      SELECT
+        b.alumno_id,
+        COALESCE(i2.familia, i1.familia) AS familia_final
+      FROM base b
+      LEFT JOIN instrumentos i2
+             ON i2.nombre = NULLIF(b.instrumento,'')
+      LEFT JOIN LATERAL (
+        SELECT i.familia
+        FROM alumno_instrumento ai
+        JOIN instrumentos i ON i.id = ai.instrumento_id
+        WHERE ai.alumno_id = b.alumno_id
+        ORDER BY i.nombre
+        LIMIT 1
+      ) AS i1 ON TRUE
+    )
+    UPDATE evento_asignaciones ea
+    SET ${setClauses.join(', ')}
+    FROM fam_res fr
+    WHERE ea.evento_id = $1
+      AND ea.alumno_id = fr.alumno_id
+      AND fr.familia_final = $${i}
+    RETURNING ea.alumno_id;
+  `;
+  params.push(familia_key);
+
+  try {
+    const { rows } = await db.query(sql, params);
+    res.json({ ok:true, updated: rows.length });
+  } catch (err) {
+    console.error('PUT familias:', err);
+    res.status(500).json({ ok:false, error:'Error actualizando por familia' });
+  }
+});
+// DELETE /eventos/:id/familias  body: { familia_key: 'Viento metal' }
+router.delete('/:id/familias', async (req, res) => {
+  const eventoId = Number(req.params.id);
+  const { familia_key } = req.body || {};
+  if (!Number.isInteger(eventoId) || !familia_key || typeof familia_key !== 'string') {
+    return res.status(400).json({ ok:false, error:'Petición inválida' });
+  }
+
+  const client = await db.connect();
+  try {
+    await client.query('BEGIN');
+
+    // 1) Alumnos objetivo:
+    //    - Coinciden por nombre de instrumento escrito en la asignación (normalizado)
+    //      con un instrumento de esa familia
+    //    - O bien, aunque la asignación no tenga nombre fiable, el alumno toca
+    //      *algún* instrumento de esa familia (alumno_instrumento → instrumentos.familia)
+    const selIdsSql = `
+      WITH cand AS (
+        SELECT DISTINCT ea.alumno_id
+        FROM evento_asignaciones ea
+        LEFT JOIN instrumentos ix
+               ON lower(btrim(ix.nombre)) = lower(btrim(ea.instrumento))
+        WHERE ea.evento_id = $1
+          AND (
+            (ix.familia = $2)
+            OR EXISTS (
+              SELECT 1
+              FROM alumno_instrumento ai
+              JOIN instrumentos i2 ON i2.id = ai.instrumento_id
+              WHERE ai.alumno_id = ea.alumno_id
+                AND i2.familia = $2
+            )
+          )
+      )
+      SELECT COALESCE(array_agg(alumno_id), '{}') AS ids
+      FROM cand;
+    `;
+    const { rows } = await client.query(selIdsSql, [eventoId, familia_key]);
+    const ids = rows[0]?.ids || [];
+
+    if (ids.length === 0) {
+      await client.query('COMMIT');
+      return res.json({ ok:true, eliminados: 0, alumnos: [] });
+    }
+
+    // 2) Borrar asistencias de esos alumnos en el evento
+    await client.query(
+      `DELETE FROM asistencias
+        WHERE evento_id = $1 AND alumno_id = ANY($2::int[])`,
+      [eventoId, ids]
+    );
+
+    // 3) Borrar asignaciones de esos alumnos en el evento
+    const delAsign = await client.query(
+      `DELETE FROM evento_asignaciones
+        WHERE evento_id = $1 AND alumno_id = ANY($2::int[])`,
+      [eventoId, ids]
+    );
+
+    await client.query('COMMIT');
+    return res.json({ ok:true, eliminados: delAsign.rowCount || 0, alumnos: ids });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error('DELETE familias (robusto+EXISTS):', err);
+    return res.status(500).json({ ok:false, error:'Error eliminando por familia' });
   } finally {
     client.release();
   }

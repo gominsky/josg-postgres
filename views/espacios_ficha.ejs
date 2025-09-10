@@ -1,0 +1,158 @@
+<% const isEdit = Boolean(espacio && espacio.id); %>
+<% title = isEdit ? 'Editar Espacio' : 'Nuevo Espacio'; %>
+<% hero = false; %>
+
+<h1 class="h1-titulo"><%= title %></h1>
+
+<form id="form-espacio"
+      method="POST"
+      action="<%= isEdit ? '/espacios/editar/' + espacio.id : '/espacios' %>"
+      class="formulario-alumno"
+      style="border:2px solid #FF9501;border-radius:.75rem;padding:1rem;">
+
+  <!-- Identificación -->
+  <div class="grupo-campos">
+    <h2>Identificación</h2>
+    <div class="form-grid-3">
+      <label>Nombre
+        <input type="text" name="nombre" required value="<%= espacio?.nombre || '' %>">
+      </label>
+      <label>Código
+        <input type="text" name="codigo" value="<%= espacio?.codigo || '' %>">
+      </label>
+      <label>Abreviatura
+        <input type="text" name="abreviatura" value="<%= espacio?.abreviatura || '' %>">
+      </label>
+    </div>
+  </div>
+
+  <!-- Clasificación -->
+  <div class="grupo-campos">
+    <h2>Clasificación</h2>
+    <div class="form-grid-3">
+      <label>Tipo
+        <input type="text" name="tipo" value="<%= espacio?.tipo || '' %>">
+      </label>
+      <label>Color
+        <input type="color" name="color" value="<%= espacio?.color || '#ff9501' %>">
+      </label>
+      <label>Activo
+        <input type="checkbox" name="activo" <%= (espacio?.activo ?? true) ? 'checked' : '' %>>
+      </label>
+    </div>
+  </div>
+
+  <!-- Ubicación -->
+  <div class="grupo-campos">
+    <h2>Ubicación</h2>
+    <div class="form-grid-3">
+      <label>Edificio
+        <input type="text" name="edificio" value="<%= espacio?.edificio || '' %>">
+      </label>
+      <label>Planta
+        <input type="text" name="planta" value="<%= espacio?.planta || '' %>">
+      </label>
+      <label>Ubicación (detalle)
+        <input type="text" name="ubicacion" value="<%= espacio?.ubicacion || '' %>">
+      </label>
+    </div>
+  </div>
+
+  <!-- Capacidades -->
+  <div class="grupo-campos">
+    <h2>Capacidades</h2>
+    <div class="form-grid-3">
+      <label>Capacidad (asientos)
+        <input type="number" min="0" name="capacidad" value="<%= espacio?.capacidad ?? '' %>">
+      </label>
+      <label>Aforo
+        <input type="number" min="0" name="aforo" value="<%= espacio?.aforo ?? '' %>">
+      </label>
+      <label>Superficie (m²)
+        <input type="number" min="0" step="0.01" name="superficie_m2" value="<%= espacio?.superficie_m2 ?? '' %>">
+      </label>
+    </div>
+  </div>
+
+  <!-- Recursos / integraciones -->
+  <div class="grupo-campos">
+    <h2>Recursos</h2>
+    <div class="form-grid-2">
+      <label>Recursos (texto libre o JSON)
+        <textarea name="recursos" rows="3" placeholder='p.ej: "pizarra, proyector" o {"pizarra":true,"proyector":true}'><%= espacio?.recursos || '' %></textarea>
+      </label>
+      <label>Calendario vinculado (ID)
+        <input type="text" name="calendar_id" value="<%= espacio?.calendar_id || '' %>">
+      </label>
+    </div>
+  </div>
+
+  <!-- Descripción / notas -->
+  <div class="grupo-campos">
+    <h2>Descripción</h2>
+    <div class="form-grid-1">
+      <label>Descripción
+        <textarea name="descripcion" rows="3"><%= espacio?.descripcion || '' %></textarea>
+      </label>
+      <label>Notas
+        <textarea name="notas" rows="3"><%= espacio?.notas || '' %></textarea>
+      </label>
+    </div>
+  </div>
+
+  <div class="acciones-finales d-flex justify-content-between align-items-center mt-4">
+    <a href="/espacios" class="enlace-final">← Volver</a>
+    <div class="d-flex align-items-center gap-2">
+      <button type="submit" class="btn-main-blanco"><%= isEdit ? 'Actualizar' : 'Registrar' %></button>
+      <% if (isEdit) { %>
+        <button
+          type="submit"
+          class="btn-main-blanco"
+          form="form-espacio"
+          formaction="/espacios/eliminar/<%= espacio.id %>"
+          formmethod="POST"
+          onclick="return confirm('¿Eliminar este espacio?');"
+        >Eliminar</button>
+      <% } %>
+    </div>
+  </div>
+</form>
+
+<style>
+  .form-grid-1 { display:grid; grid-template-columns: 1fr; gap:12px; }
+  .form-grid-2 { display:grid; grid-template-columns: 1fr 1fr; gap:12px; }
+  .form-grid-3 { display:grid; grid-template-columns: 1fr 1fr 1fr; gap:12px; }
+  .grupo-campos { border:1px solid #eee; border-radius:10px; padding:12px 12px 8px; margin:12px 0; }
+  .grupo-campos h2 { font-size:1.05rem; margin:0 0 8px; }
+  label { display:flex; flex-direction:column; gap:6px; font-weight:600; }
+  input[type="text"], input[type="number"], input[type="color"], textarea, select {
+    border-radius:8px; border:1px solid rgba(0,0,0,.2); padding:8px 10px;
+  }
+
+  /* Forzar visibilidad de las etiquetas en la ficha de espacios */
+  .formulario-alumno label {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    color: #000 !important;     /* <- clave: puede que un tema las ponga en blanco/transparente */
+    font-weight: 600;
+    line-height: 1.15;
+  }
+  .formulario-alumno label .form-label { color: #000 !important; }
+
+  /* Por si inputs heredaban color “claro” y parece que la etiqueta no está */
+  .formulario-alumno input[type="text"],
+  .formulario-alumno input[type="number"],
+  .formulario-alumno input[type="color"],
+  .formulario-alumno textarea,
+  .formulario-alumno select {
+    color: #000;
+    background: #fff;
+  }
+
+  /* Evitar que algún reset ponga font-size:0 en labels dentro de grids */
+  .form-grid-1 label,
+  .form-grid-2 label,
+  .form-grid-3 label { font-size: 0.95rem; }
+</style>
+

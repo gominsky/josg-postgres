@@ -1,0 +1,34 @@
+<% title = 'Espacios'; hero = false %>
+
+<div class="header-compact d-flex align-items-center justify-content-between" style="gap:12px;">
+  <h1 class="h1-titulo mb-0">Espacios</h1>
+  <div class="d-flex align-items-center gap-2">
+    
+    <a href="/espacios/nuevo" class="btn-main-blanco">+ Nuevo espacio</a>
+  </div>
+</div>
+
+<% if (!espacios || espacios.length === 0) { %>
+  <p class="enlace-final" style="text-align:center;margin-top:2rem;">No hay espacios registrados.</p>
+<% } else { %>
+  <div class="dashboard-grid" style="margin-top:14px;">
+    <% espacios.forEach(e => { %>
+      <a href="/espacios/editar/<%= e.id %>" class="card-oro" style="text-decoration:none;">
+        <div class="d-flex justify-content-between align-items-center">
+          <div style="font-weight:700;"><%= e.nombre %></div>
+          <% if (e.color) { %>
+            <span style="display:inline-block;width:14px;height:14px;border-radius:4px;background:<%= e.color %>;"></span>
+          <% } %>
+        </div>
+        <div class="text-muted small" style="margin-top:4px;">
+          <%= e.tipo || '—' %> · <%= e.edificio || e.ubicacion || '—' %>
+          <% if (e.aforo) { %> · aforo <%= e.aforo %> <% } %>
+        </div>
+      </a>
+    <% }) %>
+  </div>
+<% } %>
+
+<div class="volver-bloque-izquierda mt-4">
+  <a href="/configuracion" class="enlace-final">← Volver a configuración</a>
+</div>
