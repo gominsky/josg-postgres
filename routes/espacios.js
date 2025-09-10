@@ -3,52 +3,51 @@ const router = express.Router();
 const db = require('../database/db');
 
 /*
-  SUGERENCIA DE ESQUEMA (ajústalo a tu BBDD):
-  -------------------------------------------
+  Esquema objetivo (corregido):
+  -----------------------------
   CREATE TABLE IF NOT EXISTS espacios (
-    id              SERIAL PRIMARY KEY,
-    nombre          TEXT NOT NULL,
-    codigo          TEXT,
-    abreviatura     TEXT,
-    tipo            TEXT,
-    edificio        TEXT,
-    planta          TEXT,
-    ubicacion       TEXT,
-    capacidad       INTEGER,
-    aforo           INTEGER,
-    superficie_m2   NUMERIC,
-    recursos        TEXT,        -- lista simple o JSON en texto
-    color           TEXT,
-    calendar_id     TEXT,
-    activo          BOOLEAN DEFAULT TRUE,
-    descripcion     TEXT,
-    notas           TEXT,
-    created_at      TIMESTAMP DEFAULT now(),
-    updated_at      TIMESTAMP DEFAULT now()
+    id                      INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    nombre                  TEXT NOT NULL,
+    direccion               TEXT NOT NULL,
+    ubicacion               TEXT,
+    telefono                TEXT,
+    email                   TEXT,
+    sitio_web               TEXT,
+    propietario             TEXT NOT NULL,
+    tipo_espacio            TEXT
+      CHECK (tipo_espacio IN ('Auditorio','Teatro','Aire libre')),
+    aforo                   INTEGER,
+    recursos_disponibles    TEXT,
+    observaciones           TEXT,
+    created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW()
   );
 */
 
 const COLS = [
-  'nombre','codigo','abreviatura','tipo','edificio','planta','ubicacion',
-  'capacidad','aforo','superficie_m2','recursos','color','calendar_id',
-  'activo','descripcion','notas'
+  'nombre', 'direccion', 'ubicacion',
+  'telefono', 'email', 'sitio_web',
+  'propietario', 'tipo_espacio',
+  'aforo', 'recursos_disponibles', 'observaciones'
 ];
 
-// util: mapea body a columnas válidas
+// util: mapea req.body a columnas válidas del esquema
 function pickCols(body){
   const out = {};
   for (const c of COLS){
-    if (Object.prototype.hasOwnProperty.call(body, c)) out[c] = body[c];
+    if (Object.prototype.hasOwnProperty.call(body, c)) {
+      const v = body[c];
+      out[c] = (v === '' || v == null) ? null : v;
+    }
   }
-  // normaliza booleano de checkbox
-  if (Object.prototype.hasOwnProperty.call(body, 'activo')) {
-    out.activo = (body.activo === 'on' || body.activo === true || body.activo === 'true');
-  }
-  // números
-  for (const k of ['capacidad','aforo','superficie_m2']){
-    if (out[k] === '' || out[k] == null) { out[k] = null; continue; }
-    const n = Number(out[k]);
-    out[k] = Number.isFinite(n) ? n : null;
+  // numéricos
+  if (out.aforo !== undefined) {
+    if (out.aforo === null) {
+      // deja null
+    } else {
+      const n = Number(out.aforo);
+      out.aforo = Number.isFinite(n) ? n : null;
+    }
   }
   return out;
 }
@@ -63,11 +62,15 @@ router.get('/', async (req, res) => {
       SELECT * FROM espacios
       WHERE
         nombre ILIKE $1 OR
-        tipo ILIKE $1 OR
-        edificio ILIKE $1 OR
+        direccion ILIKE $1 OR
         ubicacion ILIKE $1 OR
-        descripcion ILIKE $1 OR
-        notas ILIKE $1
+        telefono ILIKE $1 OR
+        email ILIKE $1 OR
+        sitio_web ILIKE $1 OR
+        propietario ILIKE $1 OR
+        tipo_espacio ILIKE $1 OR
+        recursos_disponibles ILIKE $1 OR
+        observaciones ILIKE $1
       ${ORDER}`;
     params = [`%${q}%`];
   } else {
@@ -93,7 +96,13 @@ router.get('/nuevo', (req, res) => {
 router.post('/', async (req, res) => {
   const data = pickCols(req.body);
   if (!data.nombre || !data.nombre.trim()) {
-    return res.status(400).send('Nombre es obligatorio');
+    return res.status(400).send('El nombre es obligatorio');
+  }
+  if (!data.direccion || !data.direccion.trim()) {
+    return res.status(400).send('La dirección es obligatoria');
+  }
+  if (!data.propietario || !data.propietario.trim()) {
+    return res.status(400).send('El propietario es obligatorio');
   }
 
   const cols = Object.keys(data);

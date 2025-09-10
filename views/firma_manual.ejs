@@ -183,6 +183,15 @@
       base:   (eventoId, alumnoId) => `/eventos/${eventoId}/asignaciones/${alumnoId}`,
       refresh:(eventoId) => `/eventos/${eventoId}/asignaciones/refresh`,
       bulk:   (eventoId) => `/eventos/${eventoId}/asignaciones/bulk`
+    },
+    instrumentos: {
+      list: (eventoId) => `/eventos/${eventoId}/instrumentos`,
+      del : (eventoId) => `/eventos/${eventoId}/instrumentos`
+    },
+    familias: {
+      list: (eventoId) => `/eventos/${eventoId}/familias`,
+      put : (eventoId) => `/eventos/${eventoId}/familias`,
+      del : (eventoId) => `/eventos/${eventoId}/familias`
     }
   };
 })();
@@ -198,7 +207,10 @@
   const instWrap = document.getElementById('instWrap');
   const alumWrap = document.getElementById('alumWrap');
 
-  swFam?.addEventListener('change', ()=> famWrap.style.display = swFam.checked ? '' : 'none');
+  swFam?.addEventListener('change', () => {
+    if (swFam.checked) { window.__openFamilias?.(); }
+    else { window.__closeFamilias?.(); }
+  });
   swInst?.addEventListener('change', ()=> {
     instWrap.style.display = swInst.checked ? '' : 'none';
     if (swInst.checked) window.__loadInstrumentos?.();
@@ -664,8 +676,7 @@
   }, true);
 
   // Eliminar agrupación
-  <!-- Eliminar agrupación: borra en servidor y limpia también alumnos afectados -->
-$instBody.addEventListener('click', async ev => {
+  $instBody.addEventListener('click', async ev => {
   const btn = ev.target.closest('.btn-del'); if (!btn) return;
   const tr = btn.closest('tr'); if (!tr) return;
 
@@ -695,122 +706,7 @@ $instBody.addEventListener('click', async ev => {
 });
 
 })();
-</script>
-<!-- === Familias: carga mínima, fiable, con logs y eliminación en cadena === -->
-<script>
-  (() => {
-    const eventoId = <%= evento.id %>;
-    const $famWrap = document.getElementById('famWrap');
-    const $famBody = document.getElementById('famBody');
-    const $alumBody = document.getElementById('asigBody');
-    const $instBody = document.getElementById('instBody');
-    const swFam = document.getElementById('swFam');
-  
-    // Rutas: usa las de eventos.js si existen; si no, fallback directo
-    const ROUTES = (window.ROUTES || {});
-    const API_FAM = ROUTES.familias || {
-      list: (id)=> `/eventos/${id}/familias`,
-      put:  (id)=> `/eventos/${id}/familias`,
-      del:  (id)=> `/eventos/${id}/familias`,
-    };
-  
-    // Utils básicas
-    const hhmm = v => (v||'').slice(0,5);
-    async function fetchJSON(url, opts){
-      const r = await fetch(url, opts||{});
-      const ct = r.headers.get('content-type')||'';
-      const body = ct.includes('application/json') ? await r.json() : await r.text();
-      if (!r.ok) throw new Error(typeof body==='string' ? body : JSON.stringify(body));
-      return body;
-    }
-  
-    // Render simple
-    function renderFamilias(rows){
-      $famBody.innerHTML = '';
-      if (!Array.isArray(rows) || rows.length === 0){
-        $famBody.innerHTML = `<tr><td colspan="6" class="text-muted">(No hay familias para este evento)</td></tr>`;
-        return;
-      }
-      for (const r of rows){
-        const fam = r.familia_key;
-        const ini = hhmm(r.min_inicio);
-        const fin = hhmm(r.max_fin);
-        const tr = document.createElement('tr');
-        tr.dataset.key = fam;
-        tr.innerHTML = `
-          <td><strong>${fam}</strong></td>
-          <td class="text-center"><input type="time" class="form-control form-control-sm inp-ini" value="${ini||''}"></td>
-          <td class="text-center"><input type="time" class="form-control form-control-sm inp-fin" value="${fin||''}"></td>
-          <td><!-- actividad (opcional) --></td>
-          <td><input type="text" class="form-control form-control-sm inp-notas" value=""></td>
-          <td class="text-end"><button class="btn btn-sm btn-outline-danger btn-del">Eliminar</button></td>
-        `;
-        $famBody.appendChild(tr);
-      }
-    }
-  
-    // Carga con logs (para depurar si algo falla)
-    let _famLoadedOnce = false;
-    async function loadFamilias(force=false){
-      try{
-        if (!force && _famLoadedOnce) return;
-        console.info('[familias] GET', API_FAM.list(eventoId));
-        const rows = await fetchJSON(API_FAM.list(eventoId));
-        console.info('[familias] respuesta', rows);
-        renderFamilias(rows);
-        _famLoadedOnce = true;
-      }catch(e){
-        console.error('[familias] error cargando', e);
-        $famBody.innerHTML = `<tr><td colspan="6" class="text-danger">Error cargando familias</td></tr>`;
-      }
-    }
-    window.__loadFamilias = loadFamilias; // por si lo llamas desde otro sitio
-  
-    // Eliminar familia → borra en servidor y limpia alumnos en UI (según ids devueltos)
-    $famBody.addEventListener('click', async ev => {
-      const btn = ev.target.closest('.btn-del'); if (!btn) return;
-      const tr = btn.closest('tr'); if (!tr) return;
-      const famKey = tr.dataset.key;
-      if (!confirm(`¿Eliminar TODAS las asignaciones de la familia “${famKey}”?`)) return;
-      try{
-        console.info('[familias] DELETE', API_FAM.del(eventoId), { familia_key: famKey });
-        const res = await fetchJSON(API_FAM.del(eventoId), {
-          method:'DELETE',
-          headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({ familia_key: famKey })
-        });
-        // Quita la fila de familia
-        tr.remove();
-        // Quita alumnos afectados si backend devuelve ids
-        if (res && Array.isArray(res.alumnos)) {
-          res.alumnos.forEach(id=>{
-            const row = $alumBody?.querySelector(`tr[data-alumno="${id}"]`);
-            if (row) row.remove();
-          });
-        }
-        // (Opcional) refrescar instrumentos si los tienes visibles
-        if (document.getElementById('swInst')?.checked && typeof window.__loadInstrumentos === 'function') {
-          window.__loadInstrumentos(); // para mantener agrupaciones en sync
-        }
-      }catch(e){
-        console.error('[familias] error DELETE', e);
-        alert('No se pudo eliminar la familia');
-      }
-    });
-  
-    // Wire del switch (mostrar/ocultar y cargar una vez)
-    function openFam(){ $famWrap.style.display=''; loadFamilias(); }
-    function closeFam(){ $famWrap.style.display='none'; }
-  
-    if (swFam){
-      swFam.addEventListener('change', ()=> swFam.checked ? openFam() : closeFam());
-      if (swFam.checked) openFam(); // si llega marcado, carga ya
-    } else {
-      console.warn('[familias] no se encontró #swFam');
-    }
-  })();
-  </script>
-<script>
+
 (() => {
   const eventoId = <%= evento.id %>;
   const $tbody   = document.getElementById('asigBody');
@@ -893,242 +789,202 @@ $instBody.addEventListener('click', async ev => {
 })();
 </script>
  
-<!-- === FAMILIAS: carga, propagación (visual) y persistencia por familia === -->
+
+<!-- === Familias: carga mínima, fiable, con logs y eliminación en cadena === -->
 <script>
-(() => {
-  const eventoId = <%= evento.id %>;
-  const $famWrap = document.getElementById('famWrap');
-  const $famBody = document.getElementById('famBody');
-  const $instBody = document.getElementById('instBody');
-  const $alumBody = document.getElementById('asigBody');
-  const swFam = document.getElementById('swFam');
-
-  // Rutas existentes (usa las de window.ROUTES si están; si no, fallback)
-  const ROUTES = window.ROUTES || {};
-  const API_FAM = ROUTES.familias || {
-    list: (id)=> `/eventos/${id}/familias`,
-    put : (id)=> `/eventos/${id}/familias`,
-    del : (id)=> `/eventos/${id}/familias`
-  };
-  const API_INST = ROUTES.instrumentos || {
-    list: (id)=> `/eventos/${id}/instrumentos`
-  };
-
-  // Utils
-  const hhmm = v => (v||'').slice(0,5);
-  const norm = s => String(s||'').trim().toLowerCase();
-
-  async function fetchJSON(url, opts){
-    const r = await fetch(url, opts||{});
-    const ct = r.headers.get('content-type')||'';
-    const body = ct.includes('application/json') ? await r.json() : await r.text();
-    if (!r.ok) throw new Error(typeof body==='string' ? body : JSON.stringify(body));
-    return body;
-  }
-
-  // ====== ÍNDICE FAMILIA → { instrumentos } sacado de /instrumentos ======
-  // (Usa el campo normalizado 'familia' que viene de la tabla instrumentos)
-  let FAM2INST = new Map(); // Map(familia_normalizada -> Set(instrumento_key_norm))
-  async function buildFamIndex(){
-    FAM2INST = new Map();
-    const rows = await fetchJSON(API_INST.list(eventoId));
-    (rows||[]).forEach(r=>{
-      const fam = (r.familia ?? r.family ?? '').toString().trim();
-      const key = (r.instrumento_key ?? r.key ?? r.instrumento ?? r.nombre ?? '').toString().trim();
-      if (!fam || !key) return;
-      const set = FAM2INST.get(fam) || new Set();
-      set.add(norm(key));
-      FAM2INST.set(fam, set);
-    });
-  }
-
-  // ====== Render de filas de familias (usa tu endpoint GET familias) ======
-  function renderFamilias(rows){
-    $famBody.innerHTML = '';
-    if (!Array.isArray(rows) || rows.length===0){
-      $famBody.innerHTML = `<tr><td colspan="6" class="text-muted">(No hay familias para este evento)</td></tr>`;
-      return;
-    }
-    for (const r of rows){
-      const fam = r.familia_key;              // ← viene normalizado desde tu backend
-      const ini = hhmm(r.min_inicio);
-      const fin = hhmm(r.max_fin);
-      const tr = document.createElement('tr');
-      tr.dataset.key = fam;                   // clave de familia en la fila
-      tr.innerHTML = `
-        <td><strong>${fam}</strong></td>
-        <td class="text-center"><input type="time" class="form-control form-control-sm inp-ini" value="${ini||''}"></td>
-        <td class="text-center"><input type="time" class="form-control form-control-sm inp-fin" value="${fin||''}"></td>
-        <td><!-- actividad (no necesaria en familias) --></td>
-        <td><input type="text" class="form-control form-control-sm inp-notas" value=""></td>
-        <td class="text-end">
-          <button class="btn btn-sm btn-outline-danger btn-del">Eliminar</button>
-        </td>`;
-      $famBody.appendChild(tr);
-    }
-  }
-
-  async function loadFamilias(force=false){
-    // siempre reconstruimos el índice desde /instrumentos para asegurar mapeo correcto
-    await buildFamIndex();
-    const rows = await fetchJSON(API_FAM.list(eventoId));
-    renderFamilias(rows);
-  }
-
-  // ====== Helpers de DOM para propagar (VISUAL) ======
-  function instrumentRowsOfFamily(famKey){
-    if (!$instBody) return [];
-    const set = FAM2INST.get(famKey) || new Set();
-    if (!set.size) return [];
-    return Array.from($instBody.querySelectorAll('tr[data-key]'))
-      .filter(tr => set.has(norm(tr.dataset.key || tr.dataset.name || '')));
-  }
-
-  function studentRowsOfFamily(famKey){
-    if (!$alumBody) return [];
-    const set = FAM2INST.get(famKey) || new Set();
-    if (!set.size) return [];
-    return Array.from($alumBody.querySelectorAll('tr[data-alumno]')).filter(tr=>{
-      const vis = (tr.querySelector('.td-instrumento')?.textContent?.trim() || tr.dataset.instrumento || '').trim();
-      if (vis && set.has(norm(vis))) return true;
-      const lista = String(tr.dataset.instrumentos||'').split(/[;,|]/).map(s=>s.trim()).filter(Boolean);
-      return lista.some(n => set.has(norm(n)));
-    });
-  }
-
-  function applyTimes(tr, ini, fin){
-    const times = tr.querySelectorAll('input[type="time"]');
-    const i = tr.querySelector('.inp-ini') || times[0];
-    const f = tr.querySelector('.inp-fin') || times[1];
-    if (ini && i) { i.value = hhmm(ini); if (tr.dataset) tr.dataset.inicio = hhmm(ini); }
-    if (fin && f) { f.value = hhmm(fin);  if (tr.dataset) tr.dataset.fin    = hhmm(fin); }
-    tr.classList.add('row-dirty'); setTimeout(()=>tr.classList.remove('row-dirty'), 220);
-  }
-
-  // ====== Persistir en servidor por familia (PUT familias) ======
-  async function persistFamilyTimes(famKey, ini, fin, notas){
-    const acciones = {};
-    if (ini || fin) acciones.set_time = { ...(ini && { inicio: ini }), ...(fin && { fin }) };
-    if (notas !== undefined) acciones.set = { ...(acciones.set||{}), notas_mode:'replace', notas_text:notas||'' };
-
-    if (!Object.keys(acciones).length) return;
-
-    await fetchJSON(API_FAM.put(eventoId), {
-      method:'PUT',
-      headers:{ 'Content-Type':'application/json' },
-      body: JSON.stringify({ familia_key: famKey, acciones })
-    });
-  }
-
-  // ====== Handlers ======
-
-  // Cambios de horas en familias → propagan visualmente a instrumentos y alumnos y guardan en DB
-  const debounceTimers = new WeakMap();
-  function debounced(tr, fn, ms=300){
-    clearTimeout(debounceTimers.get(tr));
-    const t = setTimeout(fn, ms);
-    debounceTimers.set(tr, t);
-  }
-
-  $famBody.addEventListener('input', onFamTimeChange, true);
-  $famBody.addEventListener('change', onFamTimeChange, true);
-
-  function onFamTimeChange(ev){
-    if (!ev.target.matches('input[type="time"], .inp-ini, .inp-fin')) return;
-    const tr = ev.target.closest('tr'); if (!tr) return;
-
-    debounced(tr, async () => {
-      const famKey = tr.dataset.key || (tr.querySelector('td')?.textContent||'').trim();
-      if (!famKey) return;
-
-      // lee horas actuales de la fila de familia
-      const ini = tr.querySelector('.inp-ini')?.value || tr.querySelectorAll('input[type="time"]')[0]?.value || '';
-      const fin = tr.querySelector('.inp-fin')?.value || tr.querySelectorAll('input[type="time"]')[1]?.value || '';
-
-      // (re)construye índice por si la tabla de instrumentos cambió
-      await buildFamIndex();
-
-      // VISUAL: instrumentos de esa familia
-      instrumentRowsOfFamily(famKey).forEach(row => applyTimes(row, ini, fin));
-
-      // VISUAL: alumnos que tocan instrumentos de esa familia
-      studentRowsOfFamily(famKey).forEach(row => applyTimes(row, ini, fin));
-
-      // PERSISTE en DB (evento_asignaciones) con vuestra ruta PUT familias
-      try { await persistFamilyTimes(famKey, ini, fin); }
-      catch(e){ console.error('[familias] PUT falló', e); alert('No se pudo guardar los cambios de la familia'); }
-    }, 280);
-  }
-
-  // Notas en familias (si las quieres propagar y guardar): blur
-  $famBody.addEventListener('blur', ev => {
-    if (!ev.target.matches('.inp-notas')) return;
-    const tr = ev.target.closest('tr'); if (!tr) return;
-
-    debounced(tr, async () => {
-      const famKey = tr.dataset.key || (tr.querySelector('td')?.textContent||'').trim();
-      if (!famKey) return;
-      const notas = tr.querySelector('.inp-notas')?.value ?? '';
-
-      // Propagación visual: copia notas a instrumentos y alumnos
-      instrumentRowsOfFamily(famKey).forEach(row => { const i=row.querySelector('.inp-notas'); if(i){ i.value = notas; row.classList.add('row-dirty'); setTimeout(()=>row.classList.remove('row-dirty'),220);} });
-      studentRowsOfFamily(famKey).forEach(row => { const i=row.querySelector('.inp-notas'); if(i){ i.value = notas; row.dataset.notas = notas; row.classList.add('row-dirty'); setTimeout(()=>row.classList.remove('row-dirty'),220);} });
-
-      // Guarda en DB (replace de notas)
-      try { await persistFamilyTimes(famKey, null, null, notas); }
-      catch(e){ console.error('[familias] PUT notas falló', e); alert('No se pudo guardar las notas de la familia'); }
-    }, 180);
-  }, true);
-
-  // Eliminar familia (borra en servidor y quita alumnos afectados del DOM)
-  $famBody.addEventListener('click', async ev => {
-    const btn = ev.target.closest('.btn-del'); if (!btn) return;
-    const tr = btn.closest('tr'); if (!tr) return;
-    const famKey = tr.dataset.key;
-    if (!famKey) return;
-    if (!confirm(`¿Eliminar TODAS las asignaciones de la familia “${famKey}”?`)) return;
-
-    try{
-      const res = await fetchJSON(API_FAM.del(eventoId), {
-        method:'DELETE',
-        headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ familia_key: famKey })
-      });
-      tr.remove();
-
-      // si backend devuelve ids de alumnos borrados, quítalos del DOM
-      if (res && Array.isArray(res.alumnos)) {
-        res.alumnos.forEach(id=>{
-          const row = $alumBody?.querySelector(`tr[data-alumno="${id}"]`);
-          if (row) row.remove();
-        });
-      } else {
-        // si no devuelve ids, calcula por índice
-        studentRowsOfFamily(famKey).forEach(row => row.remove());
-      }
-
-      // refresca instrumentos si están visibles
-      if (document.getElementById('swInst')?.checked && typeof window.__loadInstrumentos === 'function') {
-        window.__loadInstrumentos();
-      }
-    }catch(e){
-      console.error('[familias] DELETE falló', e);
-      alert('No se pudo eliminar la familia');
-    }
-  });
-
-  // Switch de familias (mostrar/ocultar y cargar)
-  function openFam(){ $famWrap.style.display=''; loadFamilias().catch(e=>console.error(e)); }
-  function closeFam(){ $famWrap.style.display='none'; }
-
-  if (swFam){
-    swFam.addEventListener('change', ()=> swFam.checked ? openFam() : closeFam());
-    if (swFam.checked) openFam();
-  }
-})();
-</script>
-
-
-
-
+  (() => {
+    const eventoId = <%= evento.id %>;
+    const $famWrap = document.getElementById('famWrap');
+    const $famBody = document.getElementById('famBody');
+    const $instBody = document.getElementById('instBody');
+    const $alumBody = document.getElementById('asigBody');
+    const swFam = document.getElementById('swFam');
   
+    // Rutas (usa window.ROUTES si existe)
+    const ROUTES = window.ROUTES || {};
+    const API_FAM = ROUTES.familias || {
+      list: (id)=> `/eventos/${id}/familias`,
+      put : (id)=> `/eventos/${id}/familias`,
+      del : (id)=> `/eventos/${id}/familias`
+    };
+    const API_INST = ROUTES.instrumentos || {
+      list: (id)=> `/eventos/${id}/instrumentos`
+    };
+  
+    const hhmm = v => (v||'').slice(0,5);
+    const norm = s => String(s||'').trim().toLowerCase();
+  
+    async function fetchJSON(url, opts){
+      const r = await fetch(url, opts||{});
+      const ct = r.headers.get('content-type')||'';
+      const body = ct.includes('application/json') ? await r.json() : await r.text();
+      if (!r.ok) throw new Error(typeof body==='string' ? body : JSON.stringify(body));
+      return body;
+    }
+  
+    // Índice: familia -> set de instrumentos (clave normalizada) desde /instrumentos
+    let FAM2INST = new Map();
+    async function buildFamIndex(){
+      FAM2INST = new Map();
+      const rows = await fetchJSON(API_INST.list(eventoId));
+      (rows||[]).forEach(r=>{
+        const fam = (r.familia ?? r.family ?? '').toString().trim();
+        const key = (r.instrumento_key ?? r.key ?? r.instrumento ?? r.nombre ?? '').toString().trim();
+        if (!fam || !key) return;
+        const set = FAM2INST.get(fam) || new Set();
+        set.add(norm(key));
+        FAM2INST.set(fam, set);
+      });
+    }
+  
+    function renderFamilias(rows){
+      $famBody.innerHTML = '';
+      if (!Array.isArray(rows) || rows.length===0){
+        $famBody.innerHTML = `<tr><td colspan="6" class="text-muted">(No hay familias para este evento)</td></tr>`;
+        return;
+      }
+      for (const r of rows){
+        const fam = r.familia_key;
+        const ini = hhmm(r.min_inicio);
+        const fin = hhmm(r.max_fin);
+        const tr = document.createElement('tr');
+        tr.dataset.key = fam;
+        tr.innerHTML = `
+          <td><strong>${fam}</strong></td>
+          <td class="text-center"><input type="time" class="form-control form-control-sm inp-ini" value="${ini||''}"></td>
+          <td class="text-center"><input type="time" class="form-control form-control-sm inp-fin" value="${fin||''}"></td>
+          <td><!-- Actividad (lo añadimos en el siguiente paso) --></td>
+          <td><input type="text" class="form-control form-control-sm inp-notas" value=""></td>
+          <td class="text-end"><button class="btn btn-sm btn-outline-danger btn-del">Eliminar</button></td>
+        `;
+        $famBody.appendChild(tr);
+      }
+    }
+  
+    // Helpers de propagación VISUAL (no cambian tu diseño)
+    function instrumentRowsOfFamily(famKey){
+      const set = FAM2INST.get(famKey) || new Set();
+      return Array.from($instBody?.querySelectorAll('tr[data-key]') || [])
+        .filter(tr => set.has(norm(tr.dataset.key || '')));
+    }
+    function studentRowsOfFamily(famKey){
+      const set = FAM2INST.get(famKey) || new Set();
+      const rows = Array.from($alumBody?.querySelectorAll('tr[data-alumno]') || []);
+      return rows.filter(tr => {
+        const vis = (tr.querySelector('.td-instrumento')?.textContent?.trim() || tr.dataset.instrumento || '').trim();
+        if (vis && set.has(norm(vis))) return true;
+        const lista = String(tr.dataset.instrumentos||'').split(/[;,|]/).map(s=>s.trim()).filter(Boolean);
+        return lista.some(k => set.has(norm(k)));
+      });
+    }
+    function applyTimes(tr, ini, fin){
+      const i = tr.querySelector('.inp-ini') || tr.querySelectorAll('input[type="time"]')[0];
+      const f = tr.querySelector('.inp-fin') || tr.querySelectorAll('input[type="time"]')[1];
+      if (ini && i) i.value = hhmm(ini);
+      if (fin && f) f.value = hhmm(fin);
+      tr.classList.add('row-dirty'); setTimeout(()=>tr.classList.remove('row-dirty'), 220);
+    }
+    function applyNotes(tr, notas){
+      const inp = tr.querySelector('.inp-notas');
+      if (inp) inp.value = notas ?? '';
+      tr.dataset.notas = notas ?? '';
+      tr.classList.add('row-dirty'); setTimeout(()=>tr.classList.remove('row-dirty'), 220);
+    }
+  
+    // Persistencia (usa tu PUT familias que ya soporta set_time y notas)
+    async function persistFamily({ famKey, ini, fin, notas }){
+      const acciones = {};
+      if (ini || fin) acciones.set_time = { ...(ini && { inicio: ini }), ...(fin && { fin }) };
+      if (notas !== undefined) acciones.set = { ...(acciones.set||{}), notas_mode:'replace', notas_text: notas || '' };
+      if (!Object.keys(acciones).length) return;
+      await fetchJSON(API_FAM.put(eventoId), {
+        method:'PUT',
+        headers:{ 'Content-Type':'application/json' },
+        body: JSON.stringify({ familia_key: famKey, acciones })
+      });
+    }
+  
+    // Carga y switch
+    async function loadFamilias(){
+      await buildFamIndex();
+      const rows = await fetchJSON(API_FAM.list(eventoId));
+      console.debug('[familias] GET ->', rows);
+      renderFamilias(rows);
+    }
+    function openFam(){ $famWrap.style.display=''; loadFamilias().catch(e=>{ console.error(e); $famBody.innerHTML='<tr><td colspan="6" class="text-danger">Error cargando familias</td></tr>'; }); }
+    function closeFam(){ $famWrap.style.display='none'; }
+     // Exponer para que el bloque de Switches pueda invocarlas
+    window.__openFamilias = openFam;
+    window.__closeFamilias = closeFam;
+    // Si quieres mantener también el listener interno, puedes dejarlo:
+    if (swFam){ swFam.addEventListener('change', ()=> swFam.checked ? openFam() : closeFam()); }
+  
+    // Handlers (una sola vez)
+    const timers = new WeakMap();
+    const debounced = (tr, fn, ms=280) => { clearTimeout(timers.get(tr)); const t=setTimeout(fn,ms); timers.set(tr,t); };
+  
+    // Horas
+    $famBody.addEventListener('input', onFamTimes, true);
+    $famBody.addEventListener('change', onFamTimes, true);
+    function onFamTimes(ev){
+      if (!ev.target.matches('input[type="time"], .inp-ini, .inp-fin')) return;
+      const tr = ev.target.closest('tr'); if (!tr) return;
+      debounced(tr, async () => {
+        const famKey = tr.dataset.key || tr.cells[0]?.textContent?.trim(); if (!famKey) return;
+        const ini = tr.querySelector('.inp-ini')?.value || '';
+        const fin = tr.querySelector('.inp-fin')?.value || '';
+        await buildFamIndex();
+        instrumentRowsOfFamily(famKey).forEach(row => applyTimes(row, ini, fin));
+        studentRowsOfFamily(famKey).forEach(row => applyTimes(row, ini, fin));
+        try { await persistFamily({ famKey, ini, fin }); }
+        catch(e){ console.error('[familias] PUT horas', e); alert('No se pudieron guardar las horas'); }
+      });
+    }
+  
+    // Notas
+    $famBody.addEventListener('blur', ev => {
+      if (!ev.target.matches('.inp-notas')) return;
+      const tr = ev.target.closest('tr'); if (!tr) return;
+      debounced(tr, async () => {
+        const famKey = tr.dataset.key || tr.cells[0]?.textContent?.trim(); if (!famKey) return;
+        const notas = tr.querySelector('.inp-notas')?.value ?? '';
+        await buildFamIndex();
+        instrumentRowsOfFamily(famKey).forEach(row => applyNotes(row, notas));
+        studentRowsOfFamily(famKey).forEach(row => applyNotes(row, notas));
+        try { await persistFamily({ famKey, notas }); }
+        catch(e){ console.error('[familias] PUT notas', e); alert('No se pudieron guardar las notas'); }
+      }, 180);
+    }, true);
+  
+    // Eliminar
+    $famBody.addEventListener('click', async ev => {
+      const btn = ev.target.closest('.btn-del'); if (!btn) return;
+      const tr = btn.closest('tr'); if (!tr) return;
+      const famKey = tr.dataset.key;
+      if (!confirm(`¿Eliminar TODAS las asignaciones de la familia “${famKey}”?`)) return;
+      try{
+        const res = await fetchJSON(API_FAM.del(eventoId), {
+          method:'DELETE',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ familia_key: famKey })
+        });
+        tr.remove();
+        // Quitar también alumnos afectados si backend devuelve ids
+        if (res && Array.isArray(res.alumnos)) {
+          res.alumnos.forEach(id=>{
+            const row = $alumBody?.querySelector(`tr[data-alumno="${id}"]`);
+            if (row) row.remove();
+          });
+        }
+      }catch(e){
+        console.error('[familias] DELETE', e);
+        alert('No se pudo eliminar la familia');
+      }
+    });
+  
+    // Si el switch llega activo, carga ya
+    if (swFam?.checked) openFam();
+  })();
+  </script>
+  
+

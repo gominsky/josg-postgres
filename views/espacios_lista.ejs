@@ -3,7 +3,6 @@
 <div class="header-compact d-flex align-items-center justify-content-between" style="gap:12px;">
   <h1 class="h1-titulo mb-0">Espacios</h1>
   <div class="d-flex align-items-center gap-2">
-    
     <a href="/espacios/nuevo" class="btn-main-blanco">+ Nuevo espacio</a>
   </div>
 </div>
@@ -13,18 +12,21 @@
 <% } else { %>
   <div class="dashboard-grid" style="margin-top:14px;">
     <% espacios.forEach(e => { %>
-      <a href="/espacios/editar/<%= e.id %>" class="card-oro" style="text-decoration:none;">
-        <div class="d-flex justify-content-between align-items-center">
-          <div style="font-weight:700;"><%= e.nombre %></div>
-          <% if (e.color) { %>
-            <span style="display:inline-block;width:14px;height:14px;border-radius:4px;background:<%= e.color %>;"></span>
-          <% } %>
-        </div>
-        <div class="text-muted small" style="margin-top:4px;">
-          <%= e.tipo || '—' %> · <%= e.edificio || e.ubicacion || '—' %>
-          <% if (e.aforo) { %> · aforo <%= e.aforo %> <% } %>
-        </div>
-      </a>
+      <div class="card-oro d-flex justify-content-between align-items-center" style="padding:12px;gap:10px;">
+        <!-- Nombre (enlace para editar) -->
+        <a href="/espacios/editar/<%= e.id %>" style="font-weight:700;flex:1;text-decoration:none;color:inherit;">
+          <%= e.nombre %>
+        </a>
+        <!-- Icono de ubicación -->
+        <% if (e.ubicacion) { %>
+          <a href="<%= e.ubicacion %>" target="_blank" rel="noopener noreferrer" 
+             title="Ver en Google Maps" style="display:flex;align-items:center;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16">
+              <path d="M8 0a5.53 5.53 0 0 0-5.5 5.5c0 3.038 5.5 10.5 5.5 10.5s5.5-7.462 5.5-10.5A5.53 5.53 0 0 0 8 0zm0 8a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5z"/>
+            </svg>
+          </a>
+        <% } %>
+      </div>
     <% }) %>
   </div>
 <% } %>
@@ -32,3 +34,16 @@
 <div class="volver-bloque-izquierda mt-4">
   <a href="/configuracion" class="enlace-final">← Volver a configuración</a>
 </div>
+
+<style>
+  .card-oro svg {
+    color: #FF9501;
+    transition: color .2s;
+  }
+  .card-oro:hover svg {
+    color: #cc7700;
+  }
+</style>
+
+
+
