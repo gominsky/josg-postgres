@@ -387,7 +387,15 @@ const composeDT = (fecha, hora, fallbackHora='00:00') => {
           <label class="form-label">Título</label>
           <input type="text" name="titulo" class="form-control form-control-sm" required>
         </div>
-
+        <div class="mb-2">
+          <label class="form-label">Espacio</label>
+          <select name="espacio_id" class="form-select form-select-sm">
+            <option value="">— Sin espacio —</option>
+            <% (espacios || []).forEach(es => { %>
+              <option value="<%= es.id %>"><%= es.nombre %></option>
+            <% }) %>
+          </select>
+        </div>        
         <div class="mb-2">
           <label class="form-label">Descripción</label>
           <textarea name="descripcion" class="form-control form-control-sm" rows="2"></textarea>

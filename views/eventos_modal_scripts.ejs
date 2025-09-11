@@ -17,9 +17,16 @@
         <div class="mb-3">
           <label for="titulo" class="form-label">Título</label>
           <input type="text" name="titulo" id="titulo" class="form-control" placeholder="Ensayo de cuerdas…" required>
-          <div class="form-text">Un título corto y claro.</div>
         </div>
-
+        <div class="mb-3">
+          <label for="espacio_id" class="form-label">Espacio</label>
+          <select name="espacio_id" id="espacio_id" class="form-select">
+            <option value="">— Sin espacio —</option>
+            <% (espacios || []).forEach(es => { %>
+              <option value="<%= es.id %>"><%= es.nombre %></option>
+            <% }) %>
+          </select>
+        </div>        
         <div class="mb-3">
           <label for="descripcion" class="form-label">Descripción</label>
           <textarea name="descripcion" id="descripcion" class="form-control" rows="3" placeholder="Notas, repertorio, etc."></textarea>
@@ -139,6 +146,7 @@ document.addEventListener('DOMContentLoaded', () => {
         form.reset();
         inputId.value           = String(evento.id || '');
         form.titulo.value       = evento.titulo || '';
+        form.espacio_id.value = (evento.espacio_id || '');
         form.descripcion.value  = evento.descripcion || '';
         form.grupo_id.value     = evento.grupo_id || '';
         form.fecha_inicio.value = composeDTLocal(evento.fecha_inicio, evento.hora_inicio, '09:00');
@@ -190,6 +198,7 @@ document.addEventListener('DOMContentLoaded', () => {
         form.reset();
         inputId.value = '';
         form.titulo.value      = '';
+        form.espacio_id.value = '';
         form.descripcion.value = '';
         form.grupo_id.value    = '';
         form.fecha_inicio.value = `${info.dateStr}T09:00`;
@@ -206,6 +215,7 @@ document.addEventListener('DOMContentLoaded', () => {
         form.reset();
         inputId.value           = e.id;
         form.titulo.value       = e.extendedProps.titulo || '';
+        form.espacio.value       = e.extendedProps.espacio || '';
         form.descripcion.value  = e.extendedProps.descripcion || '';
         form.grupo_id.value     = e.extendedProps.grupo_id || '';
         form.fecha_inicio.value = e.startStr?.slice(0,16) || '';

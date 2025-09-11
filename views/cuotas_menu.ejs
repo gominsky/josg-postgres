@@ -1,0 +1,91 @@
+<% title = 'Cuotas'; hero = false %>
+
+<div class="ctb-head d-flex align-items-center justify-content-between" style="max-width:1200px;margin:20px auto 12px;padding:0 12px;">
+  <h1 style="margin:0;font-weight:700;font-size:clamp(1.4rem,1.1rem + 1.2vw,2rem);color:#000;">Cuotas</h1>
+  <div class="d-flex align-items-center gap-2">
+    <button id="btnLibre" class="btn btn-sm btn-outline-dark">Modo libre</button>
+    <button id="btnReset" class="btn btn-sm btn-outline-secondary">Restablecer</button>
+    <a href="/contabilidad" class="ctb-back" aria-label="Volver a contabilidad" style="color:#000;text-decoration:none;">← Volver</a>
+  </div>
+</div>
+
+<div class="container page-wrap">
+  <div id="canvas-wrap" class="canvas-wrap" data-menu="cuotas">
+    <div id="menu-config" class="sb-grid">
+      <!-- data-id único por tile -->
+      <a data-id="listado"    href="/cuotas/mostrar"      class="tile-sb is-orange h2 w2"><span>Listado de cuotas</span></a>
+      <a data-id="nueva"      href="/cuotas/nueva"        class="tile-sb is-cream  h1 w2"><span>Añadir cuota</span></a>
+      <a data-id="tipos"      href="/tipos_cuotas"        class="tile-sb is-yellow h2 w1"><span>Tipos de cuota</span></a>
+      <a data-id="tipo-nuevo" href="/tipos_cuotas/nueva"  class="tile-sb is-blue   h2 w1"><span>Nuevo tipo</span></a>
+      <a data-id="asignar"    href="/cuotas/asignar"      class="tile-sb is-rust   h2 w2"><span>Asignar por grupos</span></a>
+      <a data-id="pendientes" href="/cuotas/pendientes"   class="tile-sb is-black  h2 w1"><span>Pendientes de pago</span></a>
+      <a data-id="ayuda"      href="/cuotas/ayuda"        class="tile-sb is-cream  h1 w2"><span>Ayuda</span></a>
+    </div>
+  </div>
+</div>
+
+<style>
+  .container.page-wrap .sb-grid { margin-top: 22px; }
+
+  /* Lienzo (modo libre y “solo ver”) */
+  .canvas-wrap{ position: relative; }
+  .canvas-wrap.free,
+  .canvas-wrap.free-view{
+    height: 1200px;
+    border: 1px dashed rgba(0,0,0,.08);
+    border-radius: 12px;
+    padding: 8px;
+  }
+  .canvas-wrap.free #menu-config,
+  .canvas-wrap.free-view #menu-config{
+    display: block !important;
+    position: relative;
+    height: 100%;
+  }
+  .canvas-wrap.free #menu-config .tile-sb,
+  .canvas-wrap.free-view #menu-config .tile-sb{
+    position: absolute !important;
+    margin: 0 !important;
+    min-width: 180px; min-height: 120px;
+    box-shadow: 0 4px 18px rgba(0,0,0,.08);
+    user-select: none;
+    touch-action: none;
+  }
+
+  /* Contrastes */
+  .sb-grid .tile-sb.is-black,
+  .sb-grid .tile-sb.is-blue,
+  .sb-grid .tile-sb.is-orange,
+  .sb-grid .tile-sb.is-rust { color:#fff; }
+  .sb-grid .tile-sb.is-cream,
+  .sb-grid .tile-sb.is-yellow { color:#111; }
+
+  /* Toolbars (solo en edición) */
+  .tile-tools{ display:none; }
+  .canvas-wrap:not(.free) .tile-tools { display: none !important; }
+  .canvas-wrap.free .tile-tools{
+    position:absolute; top:6px; right:6px; display:flex; gap:6px; z-index:2;
+  }
+  .canvas-wrap.free .tile-tools button{
+    border:1px solid rgba(0,0,0,.15); background:#fff; border-radius:6px;
+    padding:4px 8px; font-size:12px; line-height:1; cursor:pointer;
+    box-shadow:0 1px 2px rgba(0,0,0,.08);
+  }
+  .canvas-wrap.free .tile-tools button:hover{ background:#f5f5f5; }
+
+  .dragging{ outline:2px dashed rgba(0,0,0,.25); outline-offset:0; }
+</style>
+
+<!-- Lógica común -->
+<script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
+<script src="/utils/layoutMenus.js"></script>
+<script>
+  LayoutMenus.init({
+    wrapSelector: '#canvas-wrap',
+    gridSelector: '#menu-config',
+    tileSelector: 'a.tile-sb',
+    btnFreeSelector: '#btnLibre',
+    btnResetSelector:'#btnReset',
+    menuSlug: 'cuotas'
+  });
+</script>

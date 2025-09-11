@@ -9,7 +9,7 @@ router.get('/ayuda', (_req, res) => {
 });
 
 router.get('/', isAdmin, (req, res) => {
-  res.render('configuracion_lista', {
+  res.render('configuracion_menu', {
     usuario: req.session.usuario
   });
 });

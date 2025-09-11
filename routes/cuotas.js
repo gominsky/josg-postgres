@@ -13,7 +13,7 @@ router.get('/', async (req, res) => {
       LEFT JOIN tipos_cuota ON cuotas.tipo_id = tipos_cuota.id
     `);
 
-    res.render('cuotas_lista', { cuotas, busqueda: '', hero: false });
+    res.render('cuotas_menu', { cuotas, busqueda: '', hero: false });
   } catch (err) {
     console.error('Error al obtener cuotas:', err);
     res.status(500).send('Error al obtener cuotas');

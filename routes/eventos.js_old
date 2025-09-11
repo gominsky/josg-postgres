@@ -17,12 +17,6 @@ function splitISODateTime(input) {
   }
   return { fechaISO: toISODate(input), horaHHMM: null };
 }
-function cleanText(str = '') {
-  return String(str)
-    .replace(/<[^>]*>/g, '') // elimina etiquetas HTML
-    .replace(/\s+/g, ' ')    // normaliza espacios
-    .trim();
-}
 function hhmmOrNull(v) {
   if (v === undefined || v === null) return null;
   if (typeof v !== 'string') return null;
@@ -169,308 +163,303 @@ router.get('/ayuda', (_req, res) => {
    LISTADO JSON (FullCalendar)
 ------------------------------------------- */
 router.get('/listado', async (_req, res) => {
-    const sql = `
-    WITH e2 AS (
-      SELECT
-        e.*,
-        CASE
-          WHEN (e.fecha_inicio::text) ~ 'T'
-            THEN to_timestamp(e.fecha_inicio::text, 'YYYY-MM-DD"T"HH24:MI')
-          ELSE to_timestamp((e.fecha_inicio::text) || ' ' || COALESCE(e.hora_inicio::text,'00:00'), 'YYYY-MM-DD HH24:MI')
-        END AS start_ts,
-        CASE
-          WHEN (e.fecha_fin::text) ~ 'T'
-            THEN to_timestamp(e.fecha_fin::text, 'YYYY-MM-DD"T"HH24:MI')
-          ELSE to_timestamp((e.fecha_fin::text) || ' ' || COALESCE(e.hora_fin::text,'00:00'), 'YYYY-MM-DD HH24:MI')
-        END AS end_ts
-      FROM eventos e
-    )
-    SELECT e2.id,
-           e2.titulo,
-           e2.descripcion,
-           e2.grupo_id,
-           e2.activo,
-           e2.espacio_id,                        -- 👈 nuevo campo
-           g.nombre  AS grupo_nombre,
-           es.nombre AS espacio_nombre,          -- 👈 opcional para mostrar
-           to_char(e2.start_ts, 'YYYY-MM-DD"T"HH24:MI') AS start_iso,
-           to_char(e2.end_ts,   'YYYY-MM-DD"T"HH24:MI') AS end_iso
-    FROM e2
-    LEFT JOIN grupos   g  ON g.id  = e2.grupo_id
-    LEFT JOIN espacios es ON es.id = e2.espacio_id
-    `;
-    try {
-      const { rows } = await db.query(sql);
-      const eventos = rows.map(r => ({
-        id: r.id,
-        title: (cleanText(r.titulo) ? `${cleanText(r.titulo)} (${cleanText(r.grupo_nombre || 'Sin grupo')})` : 'Evento sin título'),
-        start: r.start_iso,
-        end:   r.end_iso,
-        // extended props
-        titulo: cleanText(r.titulo),
-        descripcion: cleanText(r.descripcion || ''),
-        grupo_id: r.grupo_id,
-        grupo: cleanText(r.grupo_nombre || 'Sin grupo'),
-        espacio_id: r.espacio_id,                         // 👈
-        espacio: cleanText(r.espacio_nombre || ''),       // 👈
-        activo: r.activo,
-        // estilos por defecto
+  const sql = `
+  WITH e2 AS (
+    SELECT
+      e.*,
+      CASE
+        WHEN (e.fecha_inicio::text) ~ 'T'
+          THEN to_timestamp(e.fecha_inicio::text, 'YYYY-MM-DD"T"HH24:MI')
+        ELSE to_timestamp((e.fecha_inicio::text) || ' ' || COALESCE(e.hora_inicio::text,'00:00'), 'YYYY-MM-DD HH24:MI')
+      END AS start_ts,
+      CASE
+        WHEN (e.fecha_fin::text) ~ 'T'
+          THEN to_timestamp(e.fecha_fin::text, 'YYYY-MM-DD"T"HH24:MI')
+        ELSE to_timestamp((e.fecha_fin::text) || ' ' || COALESCE(e.hora_fin::text,'00:00'), 'YYYY-MM-DD HH24:MI')
+      END AS end_ts
+    FROM eventos e
+  )
+  SELECT e2.id, e2.titulo, e2.descripcion, e2.grupo_id, e2.activo,
+         g.nombre AS grupo_nombre,
+         to_char(e2.start_ts, 'YYYY-MM-DD"T"HH24:MI') AS start_iso,
+         to_char(e2.end_ts,   'YYYY-MM-DD"T"HH24:MI') AS end_iso
+  FROM e2
+  LEFT JOIN grupos g ON e2.grupo_id = g.id
+`;
+  try {
+    const { rows } = await db.query(sql);
+
+    const cleanText = (text) =>
+      (text || '').replace(/[\u0000-\u001F\u007F-\u009F\u200B]/g, '').trim();
+
+    const eventos = rows.map(row => {
+      const tituloLimpio = cleanText(row.titulo);
+      const grupoLimpio = cleanText(row.grupo_nombre || 'Sin grupo');
+      const descripcionLimpia = cleanText(row.descripcion || '');
+
+      return {
+        id: row.id,
+        title: tituloLimpio ? `${tituloLimpio} (${grupoLimpio})` : `Evento sin título`,
+        start: row.start_iso,
+        end: row.end_iso,
+        titulo: tituloLimpio,
+        descripcion: descripcionLimpia,
+        grupo_id: row.grupo_id,
+        grupo: grupoLimpio,
+        activo: row.activo,
         backgroundColor: '#2a4b7c',
         borderColor: '#2a4b7c'
-      }));
-      res.json(eventos);
-    } catch (err) {
-      console.error('[eventos] GET /listado error:', err);
-      res.status(500).json({ error: 'Error al obtener eventos' });
-    }
-  });
+      };
+    });
+
+    res.json(eventos);
+  } catch (err) {
+    console.error('Error al obtener eventos:', err);
+    res.status(500).json({ error: 'Error al obtener eventos' });
+  }
+});
 /* -------------------------------------------
    VISTA PRINCIPAL: Calendario/Lista
 ------------------------------------------- */
 router.get('/', async (req, res) => {
-    const desdeRaw = req.query.desde || '';
-    const hastaRaw = req.query.hasta || '';
-    const grupoRaw = req.query.grupo || 'todos';
-  
-    const desde = toISODate(desdeRaw);
-    const hasta = toISODate(hastaRaw);
-    const grupoId = /^\d+$/.test(String(grupoRaw)) ? Number(grupoRaw) : null;
-  
-    try {
-      const { rows: grupos }   = await db.query('SELECT id, nombre FROM grupos   ORDER BY nombre');
-      const { rows: espacios } = await db.query('SELECT id, nombre FROM espacios ORDER BY nombre');
-  
-      // Si hay rango => Vista LISTA
-      if (desde && hasta) {
-        const sql = `
-          SELECT e.*, g.nombre AS grupo_nombre, es.nombre AS espacio_nombre
+  const desdeRaw = req.query.desde || '';
+  const hastaRaw = req.query.hasta || '';
+  const grupoRaw = req.query.grupo || 'todos';
+
+  const desde = toISODate(desdeRaw);
+  const hasta = toISODate(hastaRaw);
+
+  const grupoId = /^\d+$/.test(String(grupoRaw)) ? Number(grupoRaw) : null;
+  const filtrarPorGrupo = (grupoRaw !== 'todos') && Number.isInteger(grupoId);
+
+  try {
+    const { rows: grupos } = await db.query('SELECT * FROM grupos ORDER BY nombre');
+
+    if (desde && hasta) {
+      const query = `
+        WITH e2 AS (
+          SELECT e.*,
+            CASE
+              WHEN (e.fecha_inicio::text) ~ 'T'
+                THEN to_timestamp(e.fecha_inicio::text, 'YYYY-MM-DD"T"HH24:MI')
+              ELSE to_timestamp((e.fecha_inicio::text) || ' ' || COALESCE(e.hora_inicio::text,'00:00'), 'YYYY-MM-DD HH24:MI')
+            END AS start_ts,
+            CASE
+              WHEN (e.fecha_fin::text) ~ 'T'
+                THEN to_timestamp(e.fecha_fin::text, 'YYYY-MM-DD"T"HH24:MI')
+              ELSE to_timestamp((e.fecha_fin::text) || ' ' || COALESCE(e.hora_fin::text,'00:00'), 'YYYY-MM-DD HH24:MI')
+            END AS end_ts
           FROM eventos e
-          LEFT JOIN grupos   g  ON g.id  = e.grupo_id
-          LEFT JOIN espacios es ON es.id = e.espacio_id
-          WHERE to_date(left(e.fecha_inicio::text,10), 'YYYY-MM-DD') >= $1
-            AND to_date(left(e.fecha_fin::text,10),   'YYYY-MM-DD') <= $2
-            ${grupoId ? 'AND e.grupo_id = $3' : ''}
-          ORDER BY e.fecha_inicio, e.hora_inicio NULLS FIRST
-        `;
-        const params = grupoId ? [desde, hasta, grupoId] : [desde, hasta];
-        const { rows: eventos } = await db.query(sql, params);
-  
-        return res.render('eventos_lista', {
-          title: 'Eventos',
-          eventos,
-          grupos,
-          espacios,                 // 👈 necesario para los selects de espacio
-          enLista: true,
-          filtros: { desde, hasta, grupo: grupoId ? String(grupoId) : 'todos' }
-        });
-      }
-  
-      // Sin rango => Calendario
+        )
+        SELECT e2.*, g.nombre AS grupo_nombre
+        FROM e2
+        JOIN grupos g ON e2.grupo_id = g.id
+        WHERE e2.start_ts::date >= $1::date
+          AND e2.end_ts::date   <= $2::date
+          ${filtrarPorGrupo ? 'AND e2.grupo_id = $3' : ''}
+        ORDER BY e2.start_ts
+      `;
+      const params = filtrarPorGrupo ? [desde, hasta, grupoId] : [desde, hasta];
+      const { rows: eventos } = await db.query(query, params);
+
       return res.render('eventos_lista', {
-        title: 'Eventos',
-        eventos: null,
+        eventos,
         grupos,
-        espacios,                   // 👈 necesario para los modales
-        filtros: null,
-        enLista: false
+        filtros: { desde, hasta, grupo: filtrarPorGrupo ? String(grupoId) : 'todos' }
       });
-    } catch (error) {
-      console.error('[eventos] GET / error:', error);
-      res.status(500).send('Error al obtener eventos');
     }
-  });
+
+    // Sin rango => calendario
+    res.render('eventos_lista', { eventos: null, grupos, filtros: null });
+  } catch (error) {
+    console.error('Error al obtener eventos:', error);
+    res.status(500).send('Error al obtener eventos');
+  }
+});
 
 /* -------------------------------------------
    OBTENER 1 EVENTO (JSON)
 ------------------------------------------- */
 router.get('/:id', async (req, res) => {
-    const id = parseInt(req.params.id, 10);
-    if (!Number.isInteger(id)) return res.status(400).json({ error: 'ID inválido' });
-  
-    const sql = `
-      SELECT e.*, g.nombre AS grupo_nombre, es.nombre AS espacio_nombre
-      FROM eventos e
-      LEFT JOIN grupos   g  ON g.id  = e.grupo_id
-      LEFT JOIN espacios es ON es.id = e.espacio_id
-      WHERE e.id = $1
-    `;
-    try {
-      const { rows } = await db.query(sql, [id]);
-      if (!rows.length) return res.status(404).json({ error: 'No encontrado' });
-      const e = rows[0];
-      res.json({
-        id: e.id,
-        titulo: cleanText(e.titulo),
-        descripcion: cleanText(e.descripcion || ''),
-        fecha_inicio: e.fecha_inicio,   // ya en ISO en BD
-        fecha_fin:    e.fecha_fin,
-        hora_inicio:  e.hora_inicio,
-        hora_fin:     e.hora_fin,
-        grupo_id:     e.grupo_id,
-        grupo:        cleanText(e.grupo_nombre || ''),
-        espacio_id:   e.espacio_id,     // 👈
-        espacio:      cleanText(e.espacio_nombre || ''),
-        activo:       e.activo
-      });
-    } catch (err) {
-      console.error('[eventos] GET /:id error:', err);
-      res.status(500).json({ error: 'Error al obtener evento' });
+  const id = parseInt(req.params.id, 10);
+  if (!id) return res.status(400).json({ error: 'ID inválido' });
+
+  try {
+    const result = await db.query('SELECT * FROM eventos WHERE id = $1', [id]);
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Evento no encontrado' });
     }
-  });
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error('Error al obtener el evento:', err);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
 /* -------------------------------------------
    CREAR EVENTO (con foto de asignaciones)
 ------------------------------------------- */
 router.post('/', async (req, res) => {
-    const { titulo, descripcion, fecha_inicio, fecha_fin, grupo_id, activo, espacio_id } = req.body;
-  
-    const activoValue = (String(activo) === '1' || activo === true);
-    const { fechaISO: fIniISO, horaHHMM: hiFromIni } = splitISODateTime(fecha_inicio);
-    const { fechaISO: fFinISO, horaHHMM: hfFromFin } = splitISODateTime(fecha_fin);
-    if (!fIniISO || !fFinISO) return res.status(400).json({ error: 'Fechas inválidas' });
-  
-    const hora_inicio = hhmmOrNull(hiFromIni);
-    const hora_fin    = hhmmOrNull(hfFromFin);
-    const token = Math.random().toString(36).substring(2, 10);
-  
-    const sql = `
-      INSERT INTO eventos (
-        titulo, descripcion, fecha_inicio, fecha_fin, grupo_id,
-        activo, hora_inicio, hora_fin, token, espacio_id
-      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
-      RETURNING id
-    `;
-    const params = [
-      titulo?.trim() || null,
-      descripcion?.trim() || null,
-      fIniISO,
-      fFinISO,
-      grupo_id || null,
-      activoValue,
-      hora_inicio,
-      hora_fin,
-      token,
-      (espacio_id ? Number(espacio_id) : null)
-    ];
-  
-    try {
-      await db.query('BEGIN');
-      const { rows } = await db.query(sql, params);
-      const newId = rows[0].id;
-  
-      if (grupo_id) {
-        await asignarAlumnosAEvento(db, newId, grupo_id, fIniISO);
-      }
-  
-      await db.query('COMMIT');
-      res.json({ id: newId });
-    } catch (err) {
-      await db.query('ROLLBACK');
-      console.error('[eventos] POST / error:', err);
-      res.status(500).json({ error: 'Error al guardar evento' });
+  const { titulo, descripcion, fecha_inicio, fecha_fin, grupo_id, activo } = req.body;
+
+  const activoValue = (activo === '1');
+  const { fechaISO: fIniISO, horaHHMM: hiFromIni } = splitISODateTime(fecha_inicio);
+  const { fechaISO: fFinISO, horaHHMM: hfFromFin } = splitISODateTime(fecha_fin);
+  if (!fIniISO || !fFinISO) {
+    return res.status(400).json({ error: 'Fechas inválidas' });
+  }
+
+  const hora_inicio = hhmmOrNull(hiFromIni);
+  const hora_fin    = hhmmOrNull(hfFromFin);
+  const token = Math.random().toString(36).substring(2, 10);
+
+  const sql = `
+    INSERT INTO eventos (
+      titulo, descripcion, fecha_inicio, fecha_fin, grupo_id,
+      activo, hora_inicio, hora_fin, token
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+    RETURNING id
+  `;
+
+  const params = [
+    titulo?.trim() || null,
+    descripcion?.trim() || null,
+    fIniISO,
+    fFinISO,
+    grupo_id || null,
+    activoValue,
+    hora_inicio,
+    hora_fin,
+    token
+  ];
+
+  try {
+    await db.query('BEGIN');
+    const result = await db.query(sql, params);
+    const newId = result.rows[0].id;
+
+    if (grupo_id) {
+      await asignarAlumnosAEvento(db, newId, grupo_id, fIniISO); // arg extra ignorado
     }
-  });
+
+    await db.query('COMMIT');
+    res.json({ id: newId });
+  } catch (err) {
+    await db.query('ROLLBACK');
+    console.error('Error al guardar evento:', err);
+    res.status(500).json({ error: 'Error al guardar evento' });
+  }
+});
 /* -------------------------------------------
    CREAR EVENTOS MASIVOS
 ------------------------------------------- */
-router.put('/:id', async (req, res) => {
-    const id = parseInt(req.params.id, 10);
-    if (!Number.isInteger(id)) return res.status(400).json({ error: 'ID inválido' });
-  
-    const { titulo, descripcion, fecha_inicio, fecha_fin, grupo_id, activo, espacio_id } = req.body;
-  
-    const activoValue = (String(activo) === '1' || activo === true);
-    const { fechaISO: fIniISO, horaHHMM: hiFromIni } = splitISODateTime(fecha_inicio);
-    const { fechaISO: fFinISO, horaHHMM: hfFromFin } = splitISODateTime(fecha_fin);
-    if (!fIniISO || !fFinISO) return res.status(400).json({ error: 'Fechas inválidas' });
-  
-    const hora_inicio = hhmmOrNull(hiFromIni);
-    const hora_fin    = hhmmOrNull(hfFromFin);
-  
-    const sql = `
-      UPDATE eventos
-      SET titulo       = $1,
-          descripcion  = $2,
-          fecha_inicio = $3,
-          fecha_fin    = $4,
-          grupo_id     = $5,
-          activo       = $6,
-          hora_inicio  = $7,
-          hora_fin     = $8,
-          espacio_id   = $9
-      WHERE id = $10
-    `;
-    const params = [
-      titulo?.trim() || null,
-      descripcion?.trim() || null,
-      fIniISO,
-      fFinISO,
-      grupo_id || null,
-      activoValue,
-      hora_inicio,
-      hora_fin,
-      (espacio_id ? Number(espacio_id) : null),
-      id
-    ];
-  
-    try {
-      await db.query(sql, params);
-      res.json({ updated: true });
-    } catch (err) {
-      console.error('[eventos] PUT /:id error:', err);
-      res.status(500).json({ error: 'Error al actualizar evento' });
+router.post('/masivo', async (req, res) => {
+  const {
+    titulo, descripcion, grupo_id, activo,
+    hora_inicio, hora_fin, // HH:MM
+    fechas // ['YYYY-MM-DD']
+  } = req.body;
+
+  try {
+    const activoValue = (activo === '1');
+    if (!titulo || !grupo_id || !Array.isArray(fechas) || fechas.length === 0) {
+      return res.status(400).json({ error: 'Faltan datos' });
     }
-  });
+    if (!hora_inicio || !hora_fin) {
+      return res.status(400).json({ error: 'Faltan horas de inicio/fin' });
+    }
+
+    await db.query('BEGIN');
+
+    const insertSQL = `
+      INSERT INTO eventos (
+        titulo, descripcion, fecha_inicio, fecha_fin, grupo_id,
+        activo, hora_inicio, hora_fin, token
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+      RETURNING id, fecha_inicio
+    `;
+
+    const ids = [];
+    for (const fISO of fechas) {
+      const fecha_inicio = toISODate(fISO);
+      const fecha_fin = fecha_inicio;
+      const token = Math.random().toString(36).substring(2, 10);
+
+      const params = [
+        titulo?.trim() || null,
+        descripcion?.trim() || null,
+        fecha_inicio,
+        fecha_fin,
+        Number(grupo_id),
+        activoValue,
+        hhmmOrNull(hora_inicio),
+        hhmmOrNull(hora_fin),
+        token
+      ];
+      const r = await db.query(insertSQL, params);
+      const evId = r.rows[0].id;
+      ids.push(evId);
+
+      await asignarAlumnosAEvento(db, evId, Number(grupo_id), fecha_inicio);
+    }
+
+    await db.query('COMMIT');
+    return res.json({ created: ids.length, ids });
+  } catch (err) {
+    await db.query('ROLLBACK');
+    console.error('Error en creación masiva:', err);
+    return res.status(500).json({ error: 'Error al crear eventos masivos' });
+  }
+});
 /* -------------------------------------------
    ACTUALIZAR EVENTO
 ------------------------------------------- */
 router.put('/:id', async (req, res) => {
-    const id = parseInt(req.params.id, 10);
-    if (!Number.isInteger(id)) return res.status(400).json({ error: 'ID inválido' });
-  
-    const { titulo, descripcion, fecha_inicio, fecha_fin, grupo_id, activo, espacio_id } = req.body;
-  
-    const activoValue = (String(activo) === '1' || activo === true);
-    const { fechaISO: fIniISO, horaHHMM: hiFromIni } = splitISODateTime(fecha_inicio);
-    const { fechaISO: fFinISO, horaHHMM: hfFromFin } = splitISODateTime(fecha_fin);
-    if (!fIniISO || !fFinISO) return res.status(400).json({ error: 'Fechas inválidas' });
-  
-    const hora_inicio = hhmmOrNull(hiFromIni);
-    const hora_fin    = hhmmOrNull(hfFromFin);
-  
-    const sql = `
-      UPDATE eventos
-      SET titulo       = $1,
-          descripcion  = $2,
-          fecha_inicio = $3,
-          fecha_fin    = $4,
-          grupo_id     = $5,
-          activo       = $6,
-          hora_inicio  = $7,
-          hora_fin     = $8,
-          espacio_id   = $9
-      WHERE id = $10
-    `;
-    const params = [
-      titulo?.trim() || null,
-      descripcion?.trim() || null,
-      fIniISO,
-      fFinISO,
-      grupo_id || null,
-      activoValue,
-      hora_inicio,
-      hora_fin,
-      (espacio_id ? Number(espacio_id) : null),
-      id
-    ];
-  
-    try {
-      await db.query(sql, params);
-      res.json({ updated: true });
-    } catch (err) {
-      console.error('[eventos] PUT /:id error:', err);
-      res.status(500).json({ error: 'Error al actualizar evento' });
-    }
-  });
+  const { titulo, descripcion, fecha_inicio, fecha_fin, grupo_id, activo } = req.body;
+  const id = parseInt(req.params.id, 10);
+
+  const activoValue = (activo === '1');
+  const { fechaISO: fIniISO, horaHHMM: hiFromIni } = splitISODateTime(fecha_inicio);
+  const { fechaISO: fFinISO, horaHHMM: hfFromFin } = splitISODateTime(fecha_fin);
+  if (!fIniISO || !fFinISO) {
+    return res.status(400).json({ error: 'Fechas inválidas' });
+  }
+
+  const hora_inicio = hhmmOrNull(hiFromIni);
+  const hora_fin    = hhmmOrNull(hfFromFin);
+
+  const sql = `
+    UPDATE eventos
+    SET titulo = $1,
+        descripcion = $2,
+        fecha_inicio = $3,
+        fecha_fin = $4,
+        grupo_id = $5,
+        activo = $6,
+        hora_inicio = $7,
+        hora_fin = $8
+    WHERE id = $9
+  `;
+
+  const params = [
+    titulo?.trim() || null,
+    descripcion?.trim() || null,
+    fIniISO,
+    fFinISO,
+    grupo_id || null,
+    activoValue,
+    hora_inicio,
+    hora_fin,
+    id
+  ];
+
+  try {
+    await db.query(sql, params);
+    res.json({ updated: true });
+  } catch (err) {
+    console.error('Error al actualizar evento:', err);
+    res.status(500).json({ error: 'Error al actualizar evento' });
+  }
+});
 /* -------------------------------------------
    ELIMINAR EVENTO (y dependencias)
 ------------------------------------------- */
@@ -1607,4 +1596,3 @@ router.delete('/:id/familias', async (req, res) => {
 });
 
 module.exports = router;
-
