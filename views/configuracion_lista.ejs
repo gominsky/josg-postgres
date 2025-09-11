@@ -1,46 +1,40 @@
-<% title = 'Configuración'; hero = false %>
+<% title = 'Configuración'; hero = false; %>
+
+<div class="ctb-head d-flex align-items-center justify-content-between" style="max-width:1200px;margin:20px auto 12px;padding:0 12px;">
+  <h1 style="margin:0;font-weight:700;font-size:clamp(1.4rem,1.1rem + 1.2vw,2rem);color:#000;">Configuración</h1>
+  <div class="d-flex align-items-center gap-2">
+    <button id="btnLibre" class="btn btn-sm btn-outline-dark">Modo libre</button>
+    <button id="btnReset" class="btn btn-sm btn-outline-secondary">Restablecer</button>
+    <a href="/" class="ctb-back" aria-label="Volver al inicio" style="color:#000;text-decoration:none;">← Volver</a>
+  </div>
+</div>
 
 <div class="container page-wrap">
-  <div class="ctb-head d-flex align-items-center justify-content-between" style="max-width:1200px;margin:20px auto 12px;padding:0 12px;">
-    <h1 style="margin:0;font-weight:700;font-size:clamp(1.4rem,1.1rem + 1.2vw,2rem);color:#000;">Configuración</h1>
-
-    <div class="d-flex align-items-center gap-2">
-      <button id="btnLibre"  class="btn btn-sm btn-outline-dark">Modo libre</button>
-      <button id="btnReset"  class="btn btn-sm btn-outline-secondary">Restablecer</button>
-      <a href="/" class="ctb-back" aria-label="Volver al inicio" style="color:#000;text-decoration:none;">← Volver</a>
-    </div>
-  </div>
-
-  <!-- ENVOLTURA con data-menu (clave de persistencia) -->
   <div id="canvas-wrap" class="canvas-wrap" data-menu="configuracion">
-    <!-- En modo normal: usa tu grid tal cual -->
-    <div class="sb-grid" id="menu-config">
-      <!-- ⚠️ data-id único por tile -->
-      <a data-id="usuarios"     href="/usuarios"            class="tile-sb is-black  h2 w1"><span>Usuarios</span></a>
-      <a data-id="grupos"       href="/grupos"              class="tile-sb is-white  h2 w2"><span>Grupos</span></a>
-      <a data-id="instrumentos" href="/instrumentos"        class="tile-sb is-yellow h2 w1"><span>Instrumentos</span></a>
-      <a data-id="ausencias"    href="/ausencias"           class="tile-sb is-blue h2 w1"><span>Ausencias</span></a>
-      <a data-id="actividades"  href="/actividades"         class="tile-sb is-yellow h2 w1"><span>Actividades complememt.</span></a>
-      <a data-id="espacios"     href="/espacios"            class="tile-sb is-yellow h1 w1"><span>Espacios</span></a>
-      <a data-id="categorias"   href="/categorias"          class="tile-sb is-orange h1 w2"><span>Categorías de gasto</span></a>
-      <a data-id="cuentas"      href="/cuentas"             class="tile-sb is-rust   h1 w2"><span>Cuentas contables</span></a>
-      <a data-id="ayuda"        href="/configuracion/ayuda" class="tile-sb is-cream  h1 w2"><span>Ayuda</span></a>
-      <a data-id="backups"      href="/obras"               class="tile-sb is-blue   h1 w2"><span>Copias de seguridad</span></a>
+    <div id="menu-config" class="sb-grid">
+      <!-- ⚠️ data-id único por tile; puedes añadir más sin tocar el JS -->
+      <a data-id="usuarios"       href="/usuarios"            class="tile-sb is-black  h2 w1"><span>Usuarios</span></a>
+      <a data-id="grupos"         href="/grupos"              class="tile-sb is-white  h2 w2"><span>Grupos</span></a>
+      <a data-id="instrumentos"   href="/instrumentos"        class="tile-sb is-yellow h2 w1"><span>Instrumentos</span></a>
+      <a data-id="ausencias"      href="/ausencias"           class="tile-sb is-blue   h2 w1"><span>Ausencias</span></a>
+      <a data-id="actividades"    href="/actividades"         class="tile-sb is-yellow h2 w1"><span>Actividades compl.</span></a>
+      <a data-id="espacios"       href="/espacios"            class="tile-sb is-yellow h2 w2"><span>Espacios</span></a>
+      <a data-id="categorias"     href="/categorias"          class="tile-sb is-orange h1 w2"><span>Categorías de gasto</span></a>
+      <a data-id="cuentas"        href="/cuentas"             class="tile-sb is-rust   h1 w2"><span>Cuentas contables</span></a>
+      <a data-id="ayuda"          href="/configuracion/ayuda" class="tile-sb is-cream  h1 w2"><span>Ayuda</span></a>
+      <a data-id="backups"        href="/obras"               class="tile-sb is-blue   h1 w2"><span>Copias de seguridad</span></a>
     </div>
   </div>
 </div>
 
 <style>
-  /* Aire entre título y la primera fila */
   .container.page-wrap .sb-grid { margin-top: 22px; }
 
   /* Lienzo */
   .canvas-wrap{ position: relative; }
-
-  /* Modo libre (edición) y modo libre solo ver (free-view) COMPARTEN layout */
   .canvas-wrap.free,
   .canvas-wrap.free-view{
-    height: 1200px;                 /* ajusta a gusto */
+    height: 1200px; /* ajusta si quieres */
     border: 1px dashed rgba(0,0,0,.08);
     border-radius: 12px;
     padding: 8px;
@@ -61,8 +55,20 @@
     touch-action: none;
   }
 
-  /* Herramientas sólo en EDICIÓN (free) */
-  .canvas-wrap.free .tile-tools{ position:absolute; top:6px; right:6px; display:flex; gap:6px; z-index:2; }
+  /* Contraste de texto */
+  .sb-grid .tile-sb.is-black,
+  .sb-grid .tile-sb.is-blue,
+  .sb-grid .tile-sb.is-orange,
+  .sb-grid .tile-sb.is-rust { color:#fff; }
+  .sb-grid .tile-sb.is-cream,
+  .sb-grid .tile-sb.is-yellow { color:#111; }
+
+  /* Toolbars solo en edición */
+  .tile-tools{ display:none; }
+  .canvas-wrap:not(.free) .tile-tools { display: none !important; }
+  .canvas-wrap.free .tile-tools{
+    position:absolute; top:6px; right:6px; display:flex; gap:6px; z-index:2;
+  }
   .canvas-wrap.free .tile-tools button{
     border:1px solid rgba(0,0,0,.15); background:#fff; border-radius:6px;
     padding:4px 8px; font-size:12px; line-height:1; cursor:pointer;
@@ -71,271 +77,289 @@
   .canvas-wrap.free .tile-tools button:hover{ background:#f5f5f5; }
 
   .dragging{ outline: 2px dashed rgba(0,0,0,.25); outline-offset: 0; }
-
-  /* Contraste de colores (por si no hereda) */
-  .sb-grid .tile-sb.is-black,
-  .sb-grid .tile-sb.is-blue,
-  .sb-grid .tile-sb.is-orange,
-  .sb-grid .tile-sb.is-rust { color:#fff; }
-  .sb-grid .tile-sb.is-cream,
-  .sb-grid .tile-sb.is-yellow { color:#111; }
 </style>
 
-<!-- InteractJS (drag & resize) -->
 <script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
-
 <script>
-(() => {
+(()=> {
   const wrap = document.getElementById('canvas-wrap');
   const grid = document.getElementById('menu-config');
   const btn  = document.getElementById('btnLibre');
   const btnReset = document.getElementById('btnReset');
   if (!wrap || !grid || !btn) return;
 
-  const menuKey = 'layout:' + (wrap.dataset.menu || 'configuracion');
+  const menuSlug = wrap.dataset.menu || 'configuracion';
+  const API = `/api/layout/${encodeURIComponent(menuSlug)}`;
+  const LS_KEY = 'layout:' + menuSlug;
   const COLORS = ['is-cream','is-yellow','is-blue','is-orange','is-rust','is-black'];
 
-  /* ===== Persistencia ===== */
-  const loadLayout  = () => { try{ const raw=localStorage.getItem(menuKey); return raw?JSON.parse(raw):null; }catch{ return null; } };
-  const saveLayout  = (o) => { try{ localStorage.setItem(menuKey, JSON.stringify(o)); }catch{} };
-  const clearLayout = () => { try{ localStorage.removeItem(menuKey); }catch{} };
-  const defaultLayoutObj = () => ({ mode:'grid', items:{} });
+  // -------- Bloqueo de clicks durante edición / anti-click post drag --------
+  let suppressClickUntil = 0;
+function preventWhileFree(e){
+  // Si el click viene de los botones de la toolbar, no lo bloqueamos
+  if (e.target.closest('.tile-tools')) return;
+  // Si estamos editando o justo acabamos de soltar, bloquea navegación del <a>
+  if (wrap.classList.contains('free') || Date.now() < suppressClickUntil){
+    e.preventDefault();
+    e.stopPropagation();
+    return false;
+  }
+}
+  // -------- API servidor --------
+  async function loadServer(){
+    const r = await fetch(API, { credentials:'include' });
+    if (!r.ok) throw new Error('load failed');
+    return r.json(); // { order_ids, sizes, colors, positions }
+  }
+  async function saveServer(payload){
+    const r = await fetch(API, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      credentials:'include',
+      body: JSON.stringify(payload)
+    });
+    if (!r.ok) throw new Error('save failed');
+    return r.json();
+  }
 
-  /* ===== Utilidades ===== */
+  // -------- Fallback local --------
+  const loadLocal = ()=>{ try{ return JSON.parse(localStorage.getItem(LS_KEY)||'null'); }catch{ return null; } };
+  const saveLocal = (o)=>{ try{ localStorage.setItem(LS_KEY, JSON.stringify(o)); }catch{} };
+  const clearLocal= ()=>{ try{ localStorage.removeItem(LS_KEY); }catch{} };
+  const def = ()=>({ mode:'grid', items:{} });
+
+  // -------- Utilidades layout --------
   function applyItemStyles(tile, it){
-    if (!it) return;
-    COLORS.forEach(c => tile.classList.remove(c));
-    if (it.color) tile.classList.add(it.color);
-    if (typeof it.x === 'number') tile.style.left = it.x + 'px';
-    if (typeof it.y === 'number') tile.style.top  = it.y + 'px';
-    if (typeof it.w === 'number') tile.style.width  = it.w + 'px';
-    if (typeof it.h === 'number') tile.style.height = it.h + 'px';
-    if (typeof it.z === 'number') tile.style.zIndex = String(it.z);
+    if(!it) return;
+    COLORS.forEach(c=>tile.classList.remove(c));
+    if(it.color) tile.classList.add(it.color);
+    if(typeof it.x==='number') tile.style.left=it.x+'px';
+    if(typeof it.y==='number') tile.style.top =it.y+'px';
+    if(typeof it.w==='number') tile.style.width =it.w+'px';
+    if(typeof it.h==='number') tile.style.height=it.h+'px';
+    if(typeof it.z==='number') tile.style.zIndex=String(it.z);
   }
-
-  // snapshot inicial: coords relativas al WRAP
-  function snapshotFromGrid(){
-    const rectWrap = wrap.getBoundingClientRect();
-    const items = {};
-    for (const tile of grid.querySelectorAll('.tile-sb')){
-      const id = tile.dataset.id; if (!id) continue;
-      const r = tile.getBoundingClientRect();
-      items[id] = {
-        x: Math.max(0, r.left - rectWrap.left),
-        y: Math.max(0, r.top  - rectWrap.top),
-        w: r.width, h: r.height,
-        color: COLORS.find(c => tile.classList.contains(c)) || null,
-        z: 0
-      };
+  function snapshot(){
+    const rw=wrap.getBoundingClientRect(), items={};
+    for(const t of grid.querySelectorAll('.tile-sb')){
+      const id=t.dataset.id; if(!id) continue;
+      const r=t.getBoundingClientRect();
+      items[id]={ x:Math.max(0,r.left-rw.left), y:Math.max(0,r.top-rw.top),
+                  w:r.width, h:r.height,
+                  color:COLORS.find(c=>t.classList.contains(c))||null,
+                  z:0 };
+    }
+    return items;
+  }
+  function collect(){
+    const items={};
+    for(const t of grid.querySelectorAll('.tile-sb')){
+      const id=t.dataset.id; if(!id) continue;
+      const rect=t.getBoundingClientRect();
+      items[id]={ x:parseFloat(t.style.left)||0, y:parseFloat(t.style.top)||0,
+                  w:parseFloat(t.style.width)||rect.width,
+                  h:parseFloat(t.style.height)||rect.height,
+                  color:COLORS.find(c=>t.classList.contains(c))||null,
+                  z:parseInt(t.style.zIndex||'0',10) };
     }
     return items;
   }
 
-  function cycleColor(tile){
-    const cur = COLORS.find(c => tile.classList.contains(c));
-    const idx = cur ? COLORS.indexOf(cur) : -1;
-    const next = COLORS[(idx + 1) % COLORS.length];
-    COLORS.forEach(c => tile.classList.remove(c));
-    tile.classList.add(next);
-  }
-
-  function addTools(tile){
-    if (tile.querySelector('.tile-tools')) return;
-    const tools = document.createElement('div');
-    tools.className = 'tile-tools';
-    const bColor = document.createElement('button'); bColor.type='button'; bColor.textContent='Color';
-    const bFront = document.createElement('button'); bFront.type='button'; bFront.textContent='⇪ Frente';
-    bColor.addEventListener('click', (e)=>{ e.preventDefault(); e.stopPropagation(); cycleColor(tile); persistTile(tile); });
-    bFront.addEventListener('click', (e)=>{ e.preventDefault(); e.stopPropagation(); tile.style.zIndex = String(Date.now()); persistTile(tile); });
-    tools.append(bColor,bFront);
-    tile.appendChild(tools);
-  }
-
-  function collectAll(){
-    const items = {};
-    for (const tile of grid.querySelectorAll('.tile-sb')){
-      const id = tile.dataset.id; if (!id) continue;
-      items[id] = {
-        x: parseFloat(tile.style.left)  || 0,
-        y: parseFloat(tile.style.top)   || 0,
-        w: parseFloat(tile.style.width) || tile.getBoundingClientRect().width,
-        h: parseFloat(tile.style.height)|| tile.getBoundingClientRect().height,
-        color: COLORS.find(c => tile.classList.contains(c)) || null,
-        z: parseInt(tile.style.zIndex || '0', 10)
-      };
-    }
-    return items;
+  // -------- Guardado con debounce --------
+  
+  let saveTimer=null;
+  function scheduleSave(state){
+    clearTimeout(saveTimer);
+    saveTimer=setTimeout(async()=>{
+      const order_ids = Array.from(grid.querySelectorAll('.tile-sb')).map(a => a.dataset.id);
+      const positions = {}, sizes = {}, colors = {};
+      for(const [id,it] of Object.entries(state.items||{})){
+        positions[id] = {
+          x:Math.round(it.x||0), y:Math.round(it.y||0),
+          w:Math.round(it.w||180), h:Math.round(it.h||120),
+          z:it.z||0, color:it.color||null
+        };
+        if(it.color) colors[id]=it.color;
+        sizes[id] = {
+          w:Math.max(1, Math.round((it.w||180)/180)),
+          h:Math.max(1, Math.round((it.h||120)/120))
+        };
+      }
+      try{ await saveServer({ order_ids, sizes, colors, positions }); }
+      catch{ saveLocal(state); }
+    }, 400);
   }
 
   function persistTile(tile){
-    const cur = loadLayout() || defaultLayoutObj();
-    if (cur.mode !== 'free' && cur.mode !== 'free-view') cur.mode = 'free-view';
-    const id = tile.dataset.id; if (!id) return;
+    const cur = loadLocal() || def();
+    if(cur.mode!=='free' && cur.mode!=='free-view') cur.mode='free-view';
+    const id=tile.dataset.id; if(!id) return;
+    const rect=tile.getBoundingClientRect(), rw=wrap.getBoundingClientRect();
     cur.items[id] = {
-      x: parseFloat(tile.style.left)  || 0,
-      y: parseFloat(tile.style.top)   || 0,
-      w: parseFloat(tile.style.width) || tile.getBoundingClientRect().width,
-      h: parseFloat(tile.style.height)|| tile.getBoundingClientRect().height,
-      color: COLORS.find(c => tile.classList.contains(c)) || null,
-      z: parseInt(tile.style.zIndex || '0', 10)
+      x:Math.max(0,rect.left-rw.left), y:Math.max(0,rect.top-rw.top),
+      w:rect.width, h:rect.height,
+      color:COLORS.find(c=>tile.classList.contains(c))||null,
+      z:parseInt(tile.style.zIndex||'0',10)
     };
-    saveLayout(cur);
+    saveLocal(cur);
+    scheduleSave(cur);
   }
 
-  /* ===== Modo libre (edición) ===== */
+  // -------- Herramientas --------
+  function cycleColor(tile){
+    const cur=COLORS.find(c=>tile.classList.contains(c));
+    const idx=cur?COLORS.indexOf(cur):-1;
+    const next=COLORS[(idx+1)%COLORS.length];
+    COLORS.forEach(c=>tile.classList.remove(c));
+    tile.classList.add(next);
+  }
+  function addTools(tile){
+    if (tile.querySelector('.tile-tools')) return;
+    const tools=document.createElement('div'); tools.className='tile-tools';
+    const bColor=document.createElement('button'); bColor.type='button'; bColor.textContent='Color';
+    const bFront=document.createElement('button'); bFront.type='button'; bFront.textContent='⇪ Frente';
+    bColor.addEventListener('click',e=>{ e.preventDefault(); e.stopPropagation(); cycleColor(tile); persistTile(tile); });
+    bFront.addEventListener('click',e=>{ e.preventDefault(); e.stopPropagation(); tile.style.zIndex=String(Date.now()); persistTile(tile); });
+    tools.append(bColor,bFront); tile.appendChild(tools);
+  }
+
+  // -------- Interact (drag/resize) --------
   function enableInteract(){
-    const container = wrap;
+    const c=wrap;
     interact('.canvas-wrap.free #menu-config .tile-sb')
       .draggable({
-        listeners: {
-          start (ev){ ev.target.classList.add('dragging'); },
-          move (ev){
-            const t = ev.target;
-            const x = (parseFloat(t.style.left) || 0) + ev.dx;
-            const y = (parseFloat(t.style.top)  || 0) + ev.dy;
-            const rectC = container.getBoundingClientRect();
-            const rectT = t.getBoundingClientRect();
-            const maxX = rectC.width  - rectT.width;
-            const maxY = rectC.height - rectT.height;
-            t.style.left = Math.max(0, Math.min(x, maxX)) + 'px';
-            t.style.top  = Math.max(0, Math.min(y, maxY)) + 'px';
+        listeners:{
+          start:e=>e.target.classList.add('dragging'),
+          move:e=>{
+            const t=e.target;
+            const x=(parseFloat(t.style.left)||0)+e.dx;
+            const y=(parseFloat(t.style.top)||0)+e.dy;
+            const rc=c.getBoundingClientRect(), rt=t.getBoundingClientRect();
+            t.style.left=Math.max(0,Math.min(x,rc.width-rt.width))+'px';
+            t.style.top =Math.max(0,Math.min(y,rc.height-rt.height))+'px';
           },
-          end (ev){ ev.target.classList.remove('dragging'); persistTile(ev.target); }
-        },
-        inertia: false,
-        modifiers: [ interact.modifiers.restrictRect({ restriction: container, endOnly: true }) ]
+          end:e=>{
+            e.target.classList.remove('dragging');
+            suppressClickUntil = Date.now() + 200; // anti-click tras soltar
+            persistTile(e.target);
+          }
+        }
       })
       .resizable({
-        edges: { left:true, right:true, bottom:true, top:true },
-        listeners: {
-          move (ev){
-            const t = ev.target;
-            const x = parseFloat(t.style.left)  || 0;
-            const y = parseFloat(t.style.top)   || 0;
-
-            let newW = ev.rect.width;
-            let newH = ev.rect.height;
-            newW = Math.max(newW, 180);
-            newH = Math.max(newH, 120);
-
-            t.style.width  = newW + 'px';
-            t.style.height = newH + 'px';
-
-            const tx = x + ev.deltaRect.left;
-            const ty = y + ev.deltaRect.top;
-
-            const rectC = container.getBoundingClientRect();
-            const maxX = rectC.width  - newW;
-            const maxY = rectC.height - newH;
-
-            t.style.left = Math.max(0, Math.min(tx, maxX)) + 'px';
-            t.style.top  = Math.max(0, Math.min(ty, maxY)) + 'px';
+        edges:{left:true,right:true,top:true,bottom:true},
+        listeners:{
+          move:e=>{
+            const t=e.target;
+            const ox=parseFloat(t.style.left)||0, oy=parseFloat(t.style.top)||0;
+            let w=Math.max(180,e.rect.width), h=Math.max(120,e.rect.height);
+            t.style.width=w+'px'; t.style.height=h+'px';
+            const nx=ox+e.deltaRect.left, ny=oy+e.deltaRect.top;
+            const rc=c.getBoundingClientRect();
+            t.style.left=Math.max(0,Math.min(nx,rc.width-w))+'px';
+            t.style.top =Math.max(0,Math.min(ny,rc.height-h))+'px';
           },
-          end (ev){ persistTile(ev.target); }
-        },
-        modifiers: [ interact.modifiers.restrictEdges({ outer: container, endOnly: true }) ]
+          end:e=>{
+            suppressClickUntil = Date.now() + 200;
+            persistTile(e.target);
+          }
+        }
       });
   }
 
-  function preventWhileFree(e){
-    if (wrap.classList.contains('free')){ e.preventDefault(); e.stopPropagation(); }
-  }
-
-  function enterViewMode(){
+  // -------- Modos --------
+  async function enterView(){
+    // nada de toolbars visibles en modo vista
+    grid.querySelectorAll('.tile-sb .tile-tools').forEach(t=>t.remove());
     wrap.classList.add('free-view');
-    const cur = loadLayout();
-    const items = cur?.items || {};
-    for (const tile of grid.querySelectorAll('.tile-sb')){
-      tile.style.position = 'absolute';
-      tile.style.margin   = '0';
-      applyItemStyles(tile, items[tile.dataset.id]);
+
+    let srv=null;
+    try{ srv = await loadServer(); }catch{}
+
+    const items = (srv && srv.positions && Object.keys(srv.positions).length)
+      ? Object.fromEntries(Object.entries(srv.positions).map(([id,p])=>[id,{x:p.x,y:p.y,w:p.w,h:p.h,z:p.z||0,color:p.color||null}]))
+      : snapshot(); // si no hay en servidor, parte de lo que se ve ahora
+
+    for(const a of grid.querySelectorAll('a.tile-sb')){
+      a.style.position='absolute'; a.style.margin='0';
+      applyItemStyles(a, items[a.dataset.id]);
+    }
+
+    // Si servidor estaba vacío, subimos snapshot para persistirlo
+    if(!srv || !srv.positions || !Object.keys(srv.positions).length){
+      const cur = loadLocal() || def();
+      cur.mode='free-view'; cur.items=items;
+      saveLocal(cur); scheduleSave(cur);
     }
   }
 
-  function exitViewMode(){
+  function exitView(){
     wrap.classList.remove('free-view');
-    for (const tile of grid.querySelectorAll('.tile-sb')){
-      tile.style.position = '';
-      tile.style.left = tile.style.top = tile.style.width = tile.style.height = tile.style.zIndex = '';
+    for(const a of grid.querySelectorAll('a.tile-sb')){
+      a.style.position='';
+      a.style.left=a.style.top=a.style.width=a.style.height=a.style.zIndex='';
     }
   }
 
-  function enterFreeMode(){
-    // Entramos en edición sobre la vista libre
-    if (!wrap.classList.contains('free-view')) enterViewMode();
-    wrap.classList.add('free');
-    btn.textContent = 'Guardar';
+  function enterFree(){
+    if(!wrap.classList.contains('free-view')) enterView();
+    wrap.classList.add('free'); btn.textContent='Guardar';
 
-    // Si no hay layout guardado, tomar snapshot inicial
-    const cur = loadLayout() || defaultLayoutObj();
-    if (!cur.items || !Object.keys(cur.items).length){
-      cur.items = snapshotFromGrid();
-      cur.mode  = 'free-view';
-      saveLayout(cur);
-    }
+    // bloquear navegación mientras editas
+     grid.querySelectorAll('a.tile-sb').forEach(a=>{
+    a.addEventListener('click', preventWhileFree); // (burbujeo) ✅ los botones se ejecutan primero
+  });
 
-    grid.querySelectorAll('a.tile-sb').forEach(a => a.addEventListener('click', preventWhileFree));
-    // Añade herramientas
     grid.querySelectorAll('.tile-sb').forEach(addTools);
-
     enableInteract();
   }
 
-  // Guardar PRIMERO y quedarse en free-view (no volvemos a grid)
-  function exitFreeMode(save=true){
+  function exitFree(save=true){
     if (save){
-      const cur = loadLayout() || defaultLayoutObj();
-      cur.mode  = 'free-view';      // persistir en modo libre de visualización
-      cur.items = collectAll();     // con estilos inline aún puestos
-      saveLayout(cur);
+      const cur = loadLocal() || def();
+      cur.mode = 'free-view';
+      cur.items = collect();
+      saveLocal(cur); scheduleSave(cur);
     }
+    wrap.classList.remove('free'); btn.textContent='Modo libre';
 
-    wrap.classList.remove('free');  // salimos sólo de EDICIÓN (se mantiene free-view)
+    // quitar bloqueo de navegación
+    grid.querySelectorAll('a.tile-sb').forEach(a=>{
+      a.removeEventListener('click', preventWhileFree, true);
+    });
 
-    grid.querySelectorAll('a.tile-sb').forEach(a => a.removeEventListener('click', preventWhileFree));
-    grid.querySelectorAll('.tile-sb .tile-tools').forEach(t => t.remove());
+    grid.querySelectorAll('.tile-sb .tile-tools').forEach(t=>t.remove());
     if (window.interact) interact('.tile-sb').unset();
-
-    btn.textContent = 'Modo libre';
   }
 
-  /* Guardar sin salir (Ctrl/Cmd+S) */
-  document.addEventListener('keydown', (e) => {
-    if (!wrap.classList.contains('free')) return;
-    const isMac = navigator.platform.toUpperCase().includes('MAC');
-    const mod = isMac ? e.metaKey : e.ctrlKey;
-    if (mod && e.key.toLowerCase() === 's'){
+  // Hotkey guardar
+  document.addEventListener('keydown',(e)=>{
+    if(!wrap.classList.contains('free')) return;
+    const isMac=/Mac/i.test(navigator.platform); const mod=isMac?e.metaKey:e.ctrlKey;
+    if(mod && e.key.toLowerCase()==='s'){
       e.preventDefault();
-      const cur = loadLayout() || defaultLayoutObj();
-      cur.mode  = 'free-view';
-      cur.items = collectAll();
-      saveLayout(cur);
-      // feedback rápido
-      btn.textContent = 'Guardado';
-      setTimeout(() => { btn.textContent = 'Guardar'; }, 700);
+      const cur=loadLocal()||def();
+      cur.mode='free-view'; cur.items=collect();
+      saveLocal(cur); scheduleSave(cur);
+      btn.textContent='Guardado'; setTimeout(()=>btn.textContent='Guardar',700);
     }
   });
 
-  /* Estado inicial */
-  (function initFromSaved(){
-    const cur = loadLayout();
-    if (cur?.mode === 'free' || cur?.mode === 'free-view'){
-      enterViewMode();               // aplica posiciones guardadas sin edición
-      btn.textContent = 'Modo libre';
-    }
+  // Estado inicial
+  (async()=>{
+    try{
+      const s = await loadServer();
+      if (s && s.positions && Object.keys(s.positions).length){
+        await enterView(); btn.textContent='Modo libre'; return;
+      }
+    }catch{}
+    const cur = loadLocal();
+    if(cur?.mode==='free' || cur?.mode==='free-view'){ await enterView(); btn.textContent='Modo libre'; }
   })();
 
-  /* Botones */
-  btn.addEventListener('click', () => {
-    if (wrap.classList.contains('free'))      exitFreeMode(true);  // Guardar → pasar a free-view
-    else                                       enterFreeMode();     // Entrar a editar
-  });
-
-  btnReset?.addEventListener('click', () => {
-    if (wrap.classList.contains('free')) exitFreeMode(false); // salir de edición sin guardar
-    exitViewMode();             // volver al grid normal
-    clearLayout();              // borrar posiciones guardadas
-  });
+  // Botones
+  btn.addEventListener('click', ()=>{ wrap.classList.contains('free') ? exitFree(true) : enterFree(); });
+  btnReset.addEventListener('click', ()=>{ if(wrap.classList.contains('free')) exitFree(false); exitView(); clearLocal(); });
 })();
 </script>
+
 

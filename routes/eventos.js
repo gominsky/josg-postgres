@@ -1110,17 +1110,20 @@ router.get('/:id/instrumentos', async (req, res) => {
     FROM base b
     LEFT JOIN grupos_info gi ON gi.alumno_id = b.alumno_id
   )
-  SELECT
-    instrumento_key,
+ SELECT
+    e.instrumento_key,
+    MIN(i.familia) AS familia,  -- ← añadido
     COUNT(*)::int                         AS total,
-    SUM(CASE WHEN firmado THEN 1 ELSE 0 END)::int AS firmados,
-    COUNT(DISTINCT ausencia_tipo_id)::int AS ausencias_distintas,
-    COUNT(DISTINCT actividad_complementaria_id)::int AS actividades_distintas,
-    MIN(hora_inicio) AS min_inicio,
-    MAX(hora_fin)    AS max_fin
-  FROM etiquetado
-  GROUP BY instrumento_key
-  ORDER BY instrumento_key NULLS FIRST;
+    SUM(CASE WHEN e.firmado THEN 1 ELSE 0 END)::int AS firmados,
+    COUNT(DISTINCT e.ausencia_tipo_id)::int AS ausencias_distintas,
+    COUNT(DISTINCT e.actividad_complementaria_id)::int AS actividades_distintas,
+    MIN(e.hora_inicio) AS min_inicio,
+    MAX(e.hora_fin)    AS max_fin
+    FROM etiquetado e
+    LEFT JOIN instrumentos i
+      ON lower(btrim(i.nombre)) = lower(btrim(e.instrumento_key))  -- normalizado
+    GROUP BY e.instrumento_key
+    ORDER BY e.instrumento_key NULLS FIRST;
   `;
   try {
     const { rows } = await db.query(sql, [eventoId]);
@@ -1153,7 +1156,8 @@ router.put('/:id/instrumentos', async (req, res) => {
         FROM evento_asignaciones ea
         JOIN alumnos a ON a.id = ea.alumno_id
         LEFT JOIN alumno_instrumento ai ON ai.alumno_id = a.id
-        LEFT JOIN instrumentos ins      ON ins.id = ai.instrumento_id
+        LEFT JOIN instrumentos ins
+        ON lower(btrim(ins.nombre)) = lower(btrim(a.instrumento_key))
         WHERE ea.evento_id = $1
         GROUP BY a.id, ea.instrumento
       ),

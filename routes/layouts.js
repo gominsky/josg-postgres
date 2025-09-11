@@ -14,12 +14,9 @@ function boom(res, status, msg, detail) {
 }
 
 // GET: devuelve lo guardado (o vacío)
-router.get('/api/layout/:menu', async (req, res, next) => {
-  console.log('[layouts][GET] hit menu=%s user=%s', req.params.menu, getUserId(req));
+router.get('/layout/:menu', async (req, res, next) => {
   const userId = getUserId(req);
   const menu = req.params.menu;
-  console.log(`[layouts][GET] user=${userId} menu=${menu}`);
-
   if (!userId) return res.json({ order_ids: [], sizes: {}, colors: {}, positions: {} });
 
   try {
@@ -35,12 +32,10 @@ router.get('/api/layout/:menu', async (req, res, next) => {
 });
 
 // POST: upsert completo (incluye positions)
-router.post('/api/layout/:menu', async (req, res, next) => {
-  console.log('[layouts][POST] hit menu=%s user=%s body=%o', req.params.menu, getUserId(req), req.body);
- 
-  const userId = req.session?.user?.id ?? null;
+router.post('/layout/:menu', async (req, res, next) => {
+
+  const userId = getUserId(req);
   const menu = req.params.menu;
-  console.log('[layouts][POST] user=%s menu=%s body=%o', userId, menu, req.body);
   if (!userId) return res.status(401).json({ ok:false, msg:'No autenticado' });
 
   let { order_ids = [], sizes = {}, colors = {}, positions = {} } = req.body || {};
@@ -68,10 +63,8 @@ router.post('/api/layout/:menu', async (req, res, next) => {
       RETURNING id, user_id, menu, updated_at
     `, [userId, menu, order_ids, sizes, colors, positions]);
 
-    console.log('[layouts] UPSERT OK →', saved[0]);
     res.json({ ok:true, saved: saved[0] });
   } catch (e) {
-    console.error('[layouts] DB upsert failed:', e);
     res.status(500).json({ ok:false, msg:'DB upsert failed', detail:String(e) });
   }
 });

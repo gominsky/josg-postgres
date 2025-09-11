@@ -106,7 +106,7 @@ app.use('/contabilidad', isAdmin, contabilidadRoutes);
 app.use('/proveedores', isAdmin, proveedoresRoutes);
 app.use('/categorias', isAdmin, categoriasRoutes);
 app.use('/cuentas', isAdmin, cuentasRoutes);
-app.use('/layouts', isAuthenticated, layoutsRoutes);
+app.use('/api', isAuthenticated, layoutsRoutes);
 app.use('/recuperar',recuperarRoutes);
 app.use(require('./routes/share_stateless'));
 app.use('/ausencias', isAuthenticated, ausenciasRoutes);
