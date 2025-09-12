@@ -299,7 +299,7 @@ async function init({ reset = false } = {}) {
         sitio_web               TEXT,
         propietario             TEXT NOT NULL,
         tipo_espacio            TEXT
-                CHECK (tipo_espacio IN ('Auditorio','Teatro','Aire libre','Otro')),
+                CHECK (tipo_espacio IN ('Abierto','Auditorio', 'Otro','Sala de conciertos','Teatro')),
         aforo                   INTEGER,
         recursos_disponibles    TEXT,
         observaciones           TEXT,
@@ -970,6 +970,83 @@ async function init({ reset = false } = {}) {
         END IF;
       END $$;
     `, 'seed:layout');
+        // Seeds solicitados por el usuario
+    // Espacio: Teatro Municipal "Maestro Alonso"
+    await run(`
+      INSERT INTO espacios (nombre, direccion, ubicacion, propietario, tipo_espacio)
+      SELECT
+        'Teatro Municipal "Maestro Alonso"',
+        'C. Ribera del Beiro, 34, Beiro, 18013 Granada',
+        'https://www.google.com/maps/place/Teatro+Municipal+%22Maestro+Alonso%22/@37.1922801,-3.606894,447m/data=!3m2!1e3!4b1!4m6!3m5!1s0xd71fce68e72f4fd:0x1aef10d310b9090b!8m2!3d37.1922801!4d-3.6055977!16s%2Fg%2F11cmg1bkqy?entry=ttu&g_ep=EgoyMDI1MDkwOS4wIKXMDSoASAFQAw%3D%3D',
+        'Ayuntamiento de Granada',
+        'Teatro'
+      WHERE NOT EXISTS (
+        SELECT 1 FROM espacios WHERE LOWER(nombre) = LOWER('Teatro Municipal "Maestro Alonso"')
+      );
+    `, 'seed:espacios-teatro-maestro-alonso');
+    console.log('Espacio Teatro Municipal "Maestro Alonso" verificado/creado.');
+
+    // Ausencias base
+    {
+      const tiposAusencia = ['Injustificada','Justificada','Parcial','Retraso'];
+      for (const tipo of tiposAusencia) {
+        await run(
+          `INSERT INTO ausencias (tipo)
+           SELECT '${tipo.replace(/'/g, "''")}'
+           WHERE NOT EXISTS (
+             SELECT 1 FROM ausencias WHERE LOWER(tipo) = LOWER('${tipo.replace(/'/g, "''")}')
+           )`
+        );
+      }
+      console.log('Tipos de ausencia verificados/creados.');
+    }
+
+    // Actividades complementarias base
+    {
+      const acts = [
+        { tipo: 'A', descripcion: 'Montaje y desmontaje' },
+        { tipo: 'B', descripcion: 'Montaje' },
+        { tipo: 'C', descripcion: 'Desmontaje' }
+      ];
+      for (const a of acts) {
+        await run(
+          `INSERT INTO actividades_complementarias (tipo, descripcion)
+           SELECT '${a.tipo.replace(/'/g, "''")}', '${a.descripcion.replace(/'/g, "''")}'
+           WHERE NOT EXISTS (
+             SELECT 1 FROM actividades_complementarias WHERE tipo = '${a.tipo.replace(/'/g, "''")}'
+           )`
+        );
+      }
+      console.log('Actividades complementarias verificadas/creadas.');
+    }
+    // ---- PATCH: constraints & índices extra (pegar antes del COMMIT) ----
+
+// 1) FK en eventos → espacios (idempotente: drop if exists + add)
+await run(`
+  ALTER TABLE public.eventos DROP CONSTRAINT IF EXISTS fk_eventos_espacio;
+  ALTER TABLE public.eventos
+    ADD CONSTRAINT fk_eventos_espacio
+    FOREIGN KEY (espacio_id)
+    REFERENCES public.espacios(id)
+    ON DELETE SET NULL;
+`, 'patch:eventos-fk-espacio');
+
+// 2) Check de rango de fechas en eventos (impide rangos inválidos)
+await run(`
+  ALTER TABLE public.eventos DROP CONSTRAINT IF EXISTS ck_eventos_rango_fecha;
+  ALTER TABLE public.eventos
+    ADD CONSTRAINT ck_eventos_rango_fecha
+    CHECK (fecha_fin >= fecha_inicio);
+`, 'patch:eventos-check-rango');
+
+// 3) Índices útiles para rendimiento en producción
+await run(`
+  CREATE INDEX IF NOT EXISTS idx_password_resets_usuario ON password_resets(usuario_id);
+  CREATE INDEX IF NOT EXISTS idx_categorias_gasto_padre ON categorias_gasto(padre_id);
+  CREATE INDEX IF NOT EXISTS idx_asistencias_tipo       ON asistencias(tipo);
+  CREATE INDEX IF NOT EXISTS idx_alumnos_activo         ON alumnos (activo);
+  CREATE INDEX IF NOT EXISTS idx_profesores_activo      ON profesores (activo);
+`, 'patch:indexes');
 
     await run('COMMIT', 'tx-commit');
     console.log('✅ init (producción) completado.');

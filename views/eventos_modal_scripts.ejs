@@ -193,42 +193,102 @@ document.addEventListener('DOMContentLoaded', () => {
       events: '/eventos/listado',
       views: { dayGridMonth: { displayEventTime:false } },
 
-      dateClick(info) {
-        // Nuevo desde calendario
-        form.reset();
-        inputId.value = '';
-        form.titulo.value      = '';
-        form.espacio_id.value = '';
-        form.descripcion.value = '';
-        form.grupo_id.value    = '';
-        form.fecha_inicio.value = `${info.dateStr}T09:00`;
-        form.fecha_fin.value    = `${info.dateStr}T10:00`;
-        form.activo.checked     = false;
-        ocultarBtns();
-        modalTitulo.innerText = 'Nuevo evento';
-        modal.show();
-      },
+     // ... dentro de la inicialización de FullCalendar
 
-      eventClick(info) {
-        // Editar desde calendario
-        const e = info.event;
-        form.reset();
-        inputId.value           = e.id;
-        form.titulo.value       = e.extendedProps.titulo || '';
-        form.espacio.value       = e.extendedProps.espacio || '';
-        form.descripcion.value  = e.extendedProps.descripcion || '';
-        form.grupo_id.value     = e.extendedProps.grupo_id || '';
-        form.fecha_inicio.value = e.startStr?.slice(0,16) || '';
-        form.fecha_fin.value    = e.endStr?.slice(0,16)   || '';
-        form.activo.checked     = Number(e.extendedProps.activo) === 1;
+dateClick(info) {
+  // Nuevo desde calendario
+  form.reset();
+  inputId.value = '';
+  form.titulo.value       = '';
+  form.espacio_id.value   = '';         // 👈 usar espacio_id
+  form.descripcion.value  = '';
+  form.grupo_id.value     = '';
+  form.fecha_inicio.value = `${info.dateStr}T09:00`;
+  form.fecha_fin.value    = `${info.dateStr}T10:00`;
+  form.activo.checked     = false;
+  ocultarBtns();
+  modalTitulo.innerText = 'Nuevo evento';
+  modal.show();
+},
 
-        mostrarBtns();
-        btnQR.onclick = () => window.open(`/eventos/${e.id}/qr`, '_blank');
-        btnFirmaManual.onclick = () => window.location.href = `/eventos/${e.id}/firma_manual`;
+eventClick: async function(info){
+  // 1) Evitar navegación
+  info.jsEvent?.preventDefault?.();
 
-        modalTitulo.innerText = 'Editar evento';
-        modal.show();
-      }
+  const e = info.event;
+  const x = e.extendedProps || {};
+
+  // ¿Tenemos todo ya?
+  const tieneTodo = typeof x.titulo !== 'undefined'
+                 && typeof x.descripcion !== 'undefined'
+                 && typeof x.grupo_id !== 'undefined';
+
+  let evento = null;
+  if (tieneTodo) {
+    evento = {
+      id: e.id,
+      titulo: x.titulo || e.title || '',
+      descripcion: x.descripcion || '',
+      fecha_inicio: e.startStr || '',
+      fecha_fin:    e.endStr   || '',
+      hora_inicio:  '', // si te interesa, extrae de startStr
+      hora_fin:     '',
+      grupo_id:     x.grupo_id || '',
+      activo:       x.activo,
+      espacio_id:   x.espacio_id || ''   // 👈 usar espacio_id
+    };
+  } else {
+    // Respaldo al backend si faltan props
+    try{
+      const r = await fetch(`/eventos/${encodeURIComponent(e.id)}`, { credentials:'include' });
+      if (!r.ok) throw new Error('HTTP '+r.status);
+      evento = await r.json();
+    } catch (err) {
+      console.error('[cal] fallback evento error', err);
+      // Fallback duro con lo disponible
+      evento = {
+        id: e.id,
+        titulo: e.title || '',
+        descripcion: x.descripcion || '',
+        fecha_inicio: e.startStr || '',
+        fecha_fin:    e.endStr   || '',
+        grupo_id: x.grupo_id || '',
+        activo: x.activo,
+        espacio_id: x.espacio_id || ''
+      };
+    }
+  }
+
+  // 2) Rellenar form correctamente
+  form.reset();
+  inputId.value           = String(evento.id || '');
+  form.titulo.value       = evento.titulo || '';
+  form.descripcion.value  = evento.descripcion || '';
+  form.grupo_id.value     = evento.grupo_id || '';
+  form.espacio_id.value   = evento.espacio_id || ''; // 👈 CORRECTO
+
+  // Normaliza a datetime-local (ya tienes helpers arriba)
+  form.fecha_inicio.value = composeDTLocal(evento.fecha_inicio, evento.hora_inicio, '09:00');
+  form.fecha_fin.value    = composeDTLocal(evento.fecha_fin,   evento.hora_fin,   '10:00');
+
+  form.activo.checked     = Number(evento.activo) === 1 || evento.activo === true;
+
+  mostrarBtns();
+  btnQR.onclick = () => window.open(`/eventos/${evento.id}/qr`, '_blank');
+  btnFirmaManual.onclick = () => window.location.href = `/eventos/${evento.id}/firma_manual`;
+
+  modalTitulo.innerText = 'Editar evento';
+  modal.show();
+},
+
+// Opcional: evita <a href="..."> navegables creados por FC
+eventDidMount(arg){
+  if (arg.el.tagName === 'A') {
+    arg.el.removeAttribute('href');
+    arg.el.style.cursor = 'pointer';
+  }
+},
+
     });
     calendar.render();
   }

@@ -372,54 +372,100 @@ router.post('/', async (req, res) => {
 /* -------------------------------------------
    CREAR EVENTOS MASIVOS
 ------------------------------------------- */
-router.put('/:id', async (req, res) => {
-    const id = parseInt(req.params.id, 10);
-    if (!Number.isInteger(id)) return res.status(400).json({ error: 'ID inválido' });
-  
-    const { titulo, descripcion, fecha_inicio, fecha_fin, grupo_id, activo, espacio_id } = req.body;
-  
-    const activoValue = (String(activo) === '1' || activo === true);
-    const { fechaISO: fIniISO, horaHHMM: hiFromIni } = splitISODateTime(fecha_inicio);
-    const { fechaISO: fFinISO, horaHHMM: hfFromFin } = splitISODateTime(fecha_fin);
-    if (!fIniISO || !fFinISO) return res.status(400).json({ error: 'Fechas inválidas' });
-  
-    const hora_inicio = hhmmOrNull(hiFromIni);
-    const hora_fin    = hhmmOrNull(hfFromFin);
-  
-    const sql = `
-      UPDATE eventos
-      SET titulo       = $1,
-          descripcion  = $2,
-          fecha_inicio = $3,
-          fecha_fin    = $4,
-          grupo_id     = $5,
-          activo       = $6,
-          hora_inicio  = $7,
-          hora_fin     = $8,
-          espacio_id   = $9
-      WHERE id = $10
-    `;
-    const params = [
-      titulo?.trim() || null,
-      descripcion?.trim() || null,
-      fIniISO,
-      fFinISO,
-      grupo_id || null,
-      activoValue,
-      hora_inicio,
-      hora_fin,
-      (espacio_id ? Number(espacio_id) : null),
-      id
-    ];
-  
+router.post('/masivo', async (req, res) => {
+  try {
+    const b = req.body || {};
+
+    const titulo      = (b.titulo || '').trim();
+    const descripcion = (b.descripcion || '').trim();
+    const grupo_id    = Number(b.grupo_id) || null;
+    const espacio_id  = (b.espacio_id === '' || b.espacio_id == null) ? null : Number(b.espacio_id);
+    const activoVal   = (String(b.activo) === '1' || b.activo === 1 || b.activo === true);
+
+    // Horas (formato "HH:MM")
+    const hora_inicio = (b.hora_inicio || '').trim();
+    const hora_fin    = (b.hora_fin    || '').trim();
+
+    // Días (array de 'YYYY-MM-DD')
+    const fechas = Array.isArray(b.fechas) ? b.fechas : [];
+
+    // Validaciones
+    if (!titulo)                   return res.status(400).send('Falta el título');
+    if (!grupo_id)                 return res.status(400).send('Falta grupo_id');
+    if (!/^\d{2}:\d{2}$/.test(hora_inicio)) return res.status(400).send('Hora inicio inválida (HH:MM)');
+    if (!/^\d{2}:\d{2}$/.test(hora_fin))    return res.status(400).send('Hora fin inválida (HH:MM)');
+    if (!fechas.length)            return res.status(400).send('Selecciona al menos un día');
+
+    const validDays = fechas
+      .map(d => String(d).trim())
+      .filter(d => /^\d{4}-\d{2}-\d{2}$/.test(d));
+
+    if (!validDays.length) return res.status(400).send('No hay días válidos');
+
+    // Construcción de INSERT masivo
+    // columnas: titulo, descripcion, fecha_inicio, fecha_fin, grupo_id, activo, hora_inicio, hora_fin, token, espacio_id
+    const client = await db.connect();
     try {
-      await db.query(sql, params);
-      res.json({ updated: true });
-    } catch (err) {
-      console.error('[eventos] PUT /:id error:', err);
-      res.status(500).json({ error: 'Error al actualizar evento' });
+      await client.query('BEGIN');
+
+      const rowsPlaceholders = [];
+      const params = [];
+      let i = 1;
+
+      for (const day of validDays) {
+        const token = Math.random().toString(36).slice(2, 10);
+        rowsPlaceholders.push(`($${i++}, $${i++}, $${i++}, $${i++}, $${i++}, $${i++}, $${i++}, $${i++}, $${i++}, $${i++})`);
+        params.push(
+          titulo || null,
+          descripcion || null,
+          day,                 // fecha_inicio (YYYY-MM-DD)
+          day,                 // fecha_fin    (YYYY-MM-DD) -> mismo día
+          grupo_id,
+          activoVal,
+          hora_inicio,         // TIME: lo castea PG
+          hora_fin,            // TIME
+          token,
+          espacio_id || null
+        );
+      }
+
+      const sql = `
+        INSERT INTO eventos
+          (titulo, descripcion, fecha_inicio, fecha_fin, grupo_id, activo, hora_inicio, hora_fin, token, espacio_id)
+        VALUES ${rowsPlaceholders.join(',')}
+        RETURNING id
+      `;
+
+      const inserted = await client.query(sql, params);
+
+      // Opcional: poblar asignaciones desde el grupo para cada evento creado
+      for (const r of inserted.rows) {
+        try {
+          await asignarAlumnosAEvento(db, r.id, grupo_id);
+        } catch (e) {
+          // no aborta toda la tx por un fallo de poblar asignaciones
+          console.warn('[masivo] fallo asignarAlumnosAEvento evento_id=', r.id, e);
+        }
+      }
+
+      await client.query('COMMIT');
+      return res.json({ ok: true, creados: inserted.rows.length, ids: inserted.rows.map(x => x.id) });
+    } catch (e) {
+      await client.query('ROLLBACK');
+      if (e.code === '23503') { // FK (p.ej. espacio_id inexistente)
+        return res.status(400).send('espacio_id no válido');
+      }
+      console.error('[eventos/masivo] TX error:', e);
+      return res.status(500).send('Error al crear eventos (TX)');
+    } finally {
+      client.release();
     }
-  });
+  } catch (err) {
+    console.error('[eventos] POST /masivo error:', err);
+    res.status(500).send('Error al crear eventos');
+  }
+});
+
 /* -------------------------------------------
    ACTUALIZAR EVENTO
 ------------------------------------------- */
@@ -825,7 +871,6 @@ router.post('/:id/asignaciones/refresh', async (req, res) => {
     return res.status(500).json({ error: 'Error refrescando asignaciones' });
   }
 });
-
 // PUT /eventos/:id/asignaciones/:alumnoId
 router.put('/:id/asignaciones/:alumnoId', async (req, res) => {
   const eventoId = Number(req.params.id);
@@ -1167,8 +1212,6 @@ router.put('/:id/instrumentos', async (req, res) => {
         FROM evento_asignaciones ea
         JOIN alumnos a ON a.id = ea.alumno_id
         LEFT JOIN alumno_instrumento ai ON ai.alumno_id = a.id
-        LEFT JOIN instrumentos ins
-        ON lower(btrim(ins.nombre)) = lower(btrim(a.instrumento_key))
         WHERE ea.evento_id = $1
         GROUP BY a.id, ea.instrumento
       ),
