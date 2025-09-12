@@ -1,0 +1,381 @@
+<% title = 'Partituras'; hero = false; %>
+
+<div class="container-fluid mt-4" style="max-width: 1400px;">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h1-titulo mb-0">Repositorio de partituras</h1>
+
+    <div class="d-flex align-items-center gap-2">
+      <form class="d-flex" method="GET" action="/partituras">
+        <input id="filtroQ"
+       name="q"
+       value="<%= (typeof q !== 'undefined' ? q : '') %>"
+       class="form-control me-2"
+       placeholder="Buscar por título, autor, grupo, género…"
+       autocomplete="off">
+      </form>
+      <button class="btn-main-blanco fw-bold px-3 py-2" id="btnNueva" type="button">Nueva partitura</button>
+    </div>
+  </div>
+
+  <div class="table-responsive">
+    <table class="table table-striped tabla-estilizada" id="tablaPartituras">
+      <thead>
+        <tr>
+          <th role="button" data-sort="titulo"        aria-sort="none">Título</th>
+          <th role="button" data-sort="autor"         aria-sort="none">Autor</th>
+          <th role="button" data-sort="grupo_nombre"  aria-sort="none">Grupo</th>
+          <th role="button" data-sort="duracion"      aria-sort="none">Duración</th>
+          <th role="button" data-sort="genero"        aria-sort="none">Género</th>
+          <th role="button" data-sort="activo"        aria-sort="none" class="text-center">Activa</th>
+          <th>Partitura</th>
+          <th>Audio/Vídeo</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% (partituras || []).forEach(p => { %>
+          <tr class="partitura-row fila-enlace" style="cursor:pointer"
+              data-id="<%= p.id %>"
+              data-titulo="<%- (p.titulo || '').toLowerCase() %>"
+              data-autor="<%- (p.autor || '').toLowerCase() %>"
+              data-grupo_nombre="<%- (p.grupo_nombre || '').toLowerCase() %>"
+              data-duracion="<%- (p.duracion || '').toLowerCase() %>"
+              data-genero="<%- (p.genero || '').toLowerCase() %>"
+              data-activo="<%= p.activo ? '1' : '0' %>">
+            <td><strong><%= p.titulo %></strong></td>
+            <td><%= p.autor || '—' %></td>
+            <td><%= p.grupo_nombre || '—' %></td>
+            <td><%= p.duracion || '—' %></td>
+            <td><%= p.genero || '—' %></td>
+            <td class="text-center">
+              <span class="badge <%= p.activo ? 'bg-success' : 'bg-secondary' %>">
+                <%= p.activo ? 'Sí' : 'No' %>
+              </span>
+            </td>
+            <td>
+              <% if (p.enlace_partitura) { %>
+                <a href="<%= p.enlace_partitura %>" target="_blank" rel="noopener">Descargar</a>
+              <% } else { %>—<% } %>
+            </td>
+            <td>
+              <% if (p.enlace_audio) { %>
+                <a href="<%= p.enlace_audio %>" target="_blank" rel="noopener">Abrir</a>
+              <% } else { %>—<% } %>
+            </td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<style>
+  /* Estilo tipo firma_manual */
+  .tabla-estilizada td, .tabla-estilizada th { padding: 10px 12px; vertical-align: middle; }
+  .h1-titulo, .container-fluid strong { color:#000 !important; }
+
+  /* Modal: borde negro en el formulario */
+  #partituraModal .modal-content { background: transparent; box-shadow: none; }
+  #partituraForm {
+    background:#fff; border: 2px solid #000; border-radius: 12px; padding: 12px;
+  }
+  .sheet-head {
+    display:flex; align-items:center; gap:12px;
+    padding:12px 14px; background:#111; color:#fff;
+    border-top-left-radius: 12px; border-top-right-radius: 12px;
+  }
+
+  /* Selector múltiple alto para instrumentos */
+  #selInstrumentos { min-height: 220px; }
+
+  /* Sort headers */
+  th[data-sort] { user-select:none; position: relative; padding-right: 18px; }
+  th[data-sort]::after{
+    content: '↕'; font-size: 0.8rem; opacity: .4;
+    position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+  }
+  th[aria-sort="ascending"]::after  { content: '↑'; opacity: .9; }
+  th[aria-sort="descending"]::after { content: '↓'; opacity: .9; }
+</style>
+
+<!-- ===== Modal (sin footer) ===== -->
+<div class="modal fade modal-sheet" id="partituraModal" tabindex="-1" aria-labelledby="partituraModalTitulo" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <form id="partituraForm" class="modal-content" enctype="multipart/form-data">
+      <input type="hidden" name="id">
+
+      <!-- Cabecera -->
+      <div class="sheet-head">
+        <h5 class="modal-title mb-0" id="partituraModalTitulo">Nueva partitura</h5>
+        <button type="button" class="btn-close ms-auto" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+
+      <!-- Cuerpo -->
+      <div class="modal-body" style="padding: 12px 14px;">
+        <div class="mb-2">
+          <label class="form-label">Título</label>
+          <input type="text" name="titulo" class="form-control" required>
+        </div>
+
+        <div class="row g-2">
+          <div class="col-sm-6">
+            <label class="form-label">Autor</label>
+            <input type="text" name="autor" class="form-control">
+          </div>
+          <div class="col-sm-6">
+            <label class="form-label">Arreglista</label>
+            <input type="text" name="arreglista" class="form-control">
+          </div>
+        </div>
+
+        <div class="row g-2 mt-0">
+          <div class="col-sm-6">
+            <label class="form-label">Grupo</label>
+            <select name="grupo_id" class="form-select">
+              <option value="">—</option>
+              <% (grupos || []).forEach(g => { %>
+                <option value="<%= g.id %>"><%= g.nombre %></option>
+              <% }) %>
+            </select>
+          </div>
+          <div class="col-sm-3">
+            <label class="form-label">Duración</label>
+            <input type="text" name="duracion" class="form-control" placeholder="03:45 / 3-4 min">
+          </div>
+          <div class="col-sm-3">
+            <label class="form-label">Género</label>
+            <input type="text" name="genero" class="form-control">
+          </div>
+        </div>
+
+        <div class="form-check form-switch my-2">
+          <input type="checkbox" name="activo" id="activo" class="form-check-input">
+          <label for="activo" class="form-check-label ms-2">Activa (pública)</label>
+        </div>
+
+        <div class="mb-2">
+          <label class="form-label">Archivo de partitura (PDF/ZIP)</label>
+          <input type="file" name="archivo_partitura" class="form-control" accept=".pdf,.zip,.PDF,.ZIP">
+          <div class="form-text">Si no subes fichero, puedes indicar un enlace directamente.</div>
+        </div>
+
+        <div class="row g-2">
+          <div class="col-sm-6">
+            <label class="form-label">Enlace partitura (URL)</label>
+            <input type="url" name="enlace_partitura" class="form-control" placeholder="https://…">
+          </div>
+          <div class="col-sm-6">
+            <label class="form-label">Enlace audio/vídeo (URL)</label>
+            <input type="url" name="enlace_audio" class="form-control" placeholder="https://…">
+          </div>
+        </div>
+
+        <div class="row g-2 mt-0">
+          <div class="col-sm-6">
+            <label class="form-label">Instrumentos (múltiple)</label>
+            <select name="instrumentos" id="selInstrumentos" class="form-select" multiple size="10">
+              <% (instrumentos || []).forEach(i => { %>
+                <option value="<%= i.id %>"><%= i.nombre %></option>
+              <% }) %>
+            </select>
+          </div>
+          <div class="col-sm-6">
+            <label class="form-label">Descripción</label>
+            <textarea name="descripcion" class="form-control" rows="10" placeholder="Notas, indicaciones…"></textarea>
+          </div>
+        </div>
+
+        <div class="mt-3">
+          <button type="submit" class="btn btn-dark">Guardar</button>
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" id="btnEliminar" class="btn btn-outline-danger d-none float-end">Eliminar</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  // ---------- Modal setup ----------
+  const modalEl   = document.getElementById('partituraModal');
+  if (modalEl.parentNode !== document.body) document.body.appendChild(modalEl);
+  const modal     = bootstrap.Modal.getOrCreateInstance(modalEl);
+  const form      = document.getElementById('partituraForm');
+  const btnNueva  = document.getElementById('btnNueva');
+  const btnEliminar = document.getElementById('btnEliminar');
+  const selInstruments = document.getElementById('selInstrumentos');
+    // ---------- Filtro en vivo ----------
+  const filtroQ = document.getElementById('filtroQ');
+  const rowsAll = Array.from(document.querySelectorAll('.partitura-row'));
+
+  function normalizar(s){ return (s||'').toString().toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu,''); }
+
+  function coincideRow(row, terms){
+    if (!terms.length) return true;
+    const hay = (k) => normalizar(row.dataset[k] || '');
+    const campo = [
+      hay('titulo'),
+      hay('autor'),
+      hay('grupo_nombre'),
+      hay('genero'),
+      hay('duracion')
+    ].join(' ');
+    // todas las palabras deben aparecer
+    return terms.every(t => campo.includes(t));
+  }
+
+  function aplicarFiltro(q){
+    const terms = normalizar(q).split(/\s+/).filter(Boolean);
+    let visibles = 0;
+    rowsAll.forEach(row=>{
+      const ok = coincideRow(row, terms);
+      row.style.display = ok ? '' : 'none';
+      if (ok) visibles++;
+    });
+    // opcional: si quieres, podrías mostrar un mensajito "X resultados"
+    // console.log('visibles:', visibles);
+  }
+
+  // aplica al cargar (si viene ?q=…)
+  aplicarFiltro(filtroQ?.value || '');
+
+  // en vivo (con debounce suave)
+  let tDeb = null;
+  filtroQ?.addEventListener('input', ()=>{
+    clearTimeout(tDeb);
+    tDeb = setTimeout(()=> aplicarFiltro(filtroQ.value), 80);
+  });
+
+  function clearForm(){
+    form.reset();
+    form.querySelector('input[name="id"]').value = '';
+    Array.from(selInstruments.options).forEach(o => o.selected = false);
+    btnEliminar.classList.add('d-none');
+    document.getElementById('partituraModalTitulo').textContent = 'Nueva partitura';
+  }
+
+  // NUEVA
+  btnNueva?.addEventListener('click', (e) => {
+    e.preventDefault();
+    clearForm();
+    modal.show();
+  });
+
+  // EDITAR (click fila)
+  document.querySelectorAll('.partitura-row').forEach(row => {
+    row.addEventListener('click', async () => {
+      const id = row.dataset.id;
+      try{
+        const r = await fetch(`/partituras/${id}`);
+        if (!r.ok) throw new Error(await r.text());
+        const p = await r.json();
+
+        clearForm();
+        form.querySelector('input[name="id"]').value = p.id;
+        form.titulo.value        = p.titulo || '';
+        form.autor.value         = p.autor || '';
+        form.arreglista.value    = p.arreglista || '';
+        form.grupo_id.value      = p.grupo_id || '';
+        form.duracion.value      = p.duracion || '';
+        form.genero.value        = p.genero || '';
+        form.enlace_partitura.value = p.enlace_partitura || '';
+        form.enlace_audio.value  = p.enlace_audio || '';
+        form.descripcion.value   = p.descripcion || '';
+        form.activo.checked      = !!p.activo;
+
+        if (Array.isArray(p.instrumentos)){
+          const set = new Set(p.instrumentos.map(String));
+          Array.from(selInstruments.options).forEach(o => { o.selected = set.has(String(o.value)); });
+        }
+
+        btnEliminar.classList.remove('d-none');
+        document.getElementById('partituraModalTitulo').textContent = 'Editar partitura';
+        modal.show();
+      }catch(e){
+        console.error(e);
+        alert('No se pudo cargar la partitura.');
+      }
+    });
+  });
+
+  // GUARDAR con FormData (permite archivo)
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const id = form.querySelector('input[name="id"]').value.trim();
+    const url = id ? `/partituras/${id}` : '/partituras';
+    const method = id ? 'PUT' : 'POST';
+
+    const fd = new FormData(form);
+    // instrumentos múltiples -> instrumentos[]
+    const sel = Array.from(selInstruments.selectedOptions).map(o => o.value);
+    fd.delete('instrumentos');
+    sel.forEach(v => fd.append('instrumentos[]', v));
+    // activo como '1'/'0'
+    fd.set('activo', form.activo.checked ? '1' : '0');
+
+    try{
+      const r = await fetch(url, { method, body: fd });
+      if (!r.ok) throw new Error(await r.text());
+      modal.hide();
+      location.reload();
+    }catch(err){
+      console.error(err);
+      alert('Error al guardar la partitura.');
+    }
+  });
+
+  // ELIMINAR
+  btnEliminar.addEventListener('click', async () => {
+    const id = form.querySelector('input[name="id"]').value.trim();
+    if (!id) return;
+    if (!confirm('¿Eliminar esta partitura?')) return;
+    try{
+      const r = await fetch(`/partituras/${id}`, { method: 'DELETE' });
+      if (!r.ok) throw new Error(await r.text());
+      modal.hide();
+      location.reload();
+    }catch(err){
+      console.error(err);
+      alert('No se pudo eliminar.');
+    }
+  });
+
+  // ---------- Ordenación simple de tabla ----------
+  const tabla = document.getElementById('tablaPartituras');
+  const thead = tabla.querySelector('thead');
+  const tbody = tabla.querySelector('tbody');
+
+  function compare(a, b, key, dir){
+    const av = a.dataset[key] ?? '';
+    const bv = b.dataset[key] ?? '';
+    // num para activo, texto para el resto
+    if (key === 'activo'){
+      const an = parseInt(av||'0',10), bn = parseInt(bv||'0',10);
+      return dir === 'asc' ? (an - bn) : (bn - an);
+    } else {
+      const res = av.localeCompare(bv, 'es', { sensitivity:'base' });
+      return dir === 'asc' ? res : -res;
+    }
+  }
+
+  function sortBy(key, dir){
+    const rows = Array.from(tbody.querySelectorAll('tr'));
+    rows.sort((r1, r2) => compare(r1, r2, key, dir));
+    rows.forEach(r => tbody.appendChild(r));
+  }
+
+  thead.addEventListener('click', (e) => {
+    const th = e.target.closest('th[data-sort]');
+    if (!th) return;
+    const key = th.dataset.sort;
+    const current = th.getAttribute('aria-sort') || 'none';
+    const next = current === 'ascending' ? 'descending' : 'ascending';
+    // reset resto
+    thead.querySelectorAll('th[data-sort]').forEach(h => h.setAttribute('aria-sort','none'));
+    th.setAttribute('aria-sort', next);
+    sortBy(key, next === 'ascending' ? 'asc' : 'desc');
+  });
+});
+</script>
+

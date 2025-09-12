@@ -251,9 +251,10 @@ async function init({ reset = false } = {}) {
     // 5) EVENTOS / ASISTENCIAS / GUARDIAS
     // ============================
     await run(`
-  ALTER TABLE IF EXISTS public.eventos
+    ALTER TABLE IF EXISTS public.eventos
     ADD COLUMN IF NOT EXISTS espacio_id INTEGER;
 `, 'prepatch:eventos-add-espacio_id');
+
     await run(`
       CREATE TABLE IF NOT EXISTS eventos (
         id            INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -741,9 +742,45 @@ async function init({ reset = false } = {}) {
       CREATE TRIGGER trg_chk_apl_ins BEFORE INSERT ON pagos_prov_aplicaciones FOR EACH ROW EXECUTE FUNCTION trg_chk_aplicaciones_factura();
       CREATE TRIGGER trg_chk_apl_upd BEFORE UPDATE ON pagos_prov_aplicaciones FOR EACH ROW EXECUTE FUNCTION trg_chk_aplicaciones_factura();
     `, 'triggers:contabilidad');
-
+     // ============================
+    // 11) PARTITURAS
     // ============================
-    // 11) VISTAS / ÍNDICES EXTRA
+    await run(`
+  -- 1) Tabla principal
+  CREATE TABLE IF NOT EXISTS partituras (
+  id              SERIAL PRIMARY KEY,
+  titulo          TEXT        NOT NULL,
+  autor           TEXT,
+  arreglista      TEXT,
+  grupo_id        INT REFERENCES grupos(id) ON DELETE SET NULL,
+  activo          BOOLEAN     NOT NULL DEFAULT TRUE,
+  duracion        TEXT,               -- ej. "03:45" o "3-4 min"
+  genero          TEXT,
+  enlace_partitura TEXT       NOT NULL,   -- URL (PDF/ZIP)
+  enlace_audio    TEXT,                  -- URL (YouTube/MP3…)
+  descripcion     TEXT,
+  tags            TEXT[],                -- etiquetas libres
+  created_at      TIMESTAMP   NOT NULL DEFAULT NOW(),
+  updated_at      TIMESTAMP   NOT NULL DEFAULT NOW()
+);
+
+  CREATE INDEX IF NOT EXISTS idx_partituras_activo ON partituras (activo);
+  CREATE INDEX IF NOT EXISTS idx_partituras_grupo ON partituras (grupo_id);
+  CREATE INDEX IF NOT EXISTS idx_partituras_updated_at ON partituras (updated_at DESC);
+  CREATE INDEX IF NOT EXISTS idx_partituras_tags_gin ON partituras USING GIN (tags);
+
+  -- 2) Relación N-a-N con instrumentos
+  CREATE TABLE IF NOT EXISTS partitura_instrumento (
+    partitura_id   INT NOT NULL REFERENCES partituras(id)   ON DELETE CASCADE,
+    instrumento_id INT NOT NULL REFERENCES instrumentos(id) ON DELETE RESTRICT,
+    PRIMARY KEY (partitura_id, instrumento_id)
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_partitura_instrumento_instr
+    ON partitura_instrumento (instrumento_id);
+`);
+    // ============================
+    // 12) VISTAS / ÍNDICES EXTRA
     // ============================
     // Dedup de emails (antes de índices únicos parciales)
     await run(`
