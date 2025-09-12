@@ -251,6 +251,10 @@ async function init({ reset = false } = {}) {
     // 5) EVENTOS / ASISTENCIAS / GUARDIAS
     // ============================
     await run(`
+  ALTER TABLE IF EXISTS public.eventos
+    ADD COLUMN IF NOT EXISTS espacio_id INTEGER;
+`, 'prepatch:eventos-add-espacio_id');
+    await run(`
       CREATE TABLE IF NOT EXISTS eventos (
         id            INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
         titulo        TEXT NOT NULL,
