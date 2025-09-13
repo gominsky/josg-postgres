@@ -201,4 +201,125 @@ router.post('/:id', upload.single('archivo_partitura'), async (req, res) => {
   }
 });
 
+// ====== LEER UNA (para modal edición) ======
+router.get('/:id', async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id)) return res.status(400).send('ID inválido');
+
+  try {
+    const { rows } = await db.query(
+      `SELECT p.*, g.nombre AS grupo_nombre
+         FROM partituras p
+         LEFT JOIN grupos g ON g.id = p.grupo_id
+        WHERE p.id = $1`,
+      [id]
+    );
+    if (!rows.length) return res.status(404).send('No encontrada');
+
+    const { rows: inst } = await db.query(
+      'SELECT instrumento_id FROM partitura_instrumento WHERE partitura_id = $1 ORDER BY instrumento_id',
+      [id]
+    );
+
+    const p = rows[0];
+    p.instrumentos = inst.map(r => r.instrumento_id); // array de ids para <select multiple>
+    res.json(p);
+  } catch (err) {
+    console.error('[partituras] GET /:id error:', err);
+    res.status(500).send('Error al cargar la partitura');
+  }
+});
+
+// ====== ACTUALIZAR con PUT (multipart) ======
+router.put('/:id', upload.single('archivo_partitura'), async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id)) return res.status(400).send('ID inválido');
+
+  const {
+    titulo, autor, arreglista, grupo_id,
+    activo, duracion, genero,
+    enlace_partitura: enlace_input,
+    enlace_audio, descripcion, tags
+  } = req.body;
+
+  let enlace_partitura = (enlace_input || '').trim() || null;
+  if (req.file) enlace_partitura = '/partituras/' + req.file.filename;
+
+  const tagsArr = parseTags(tags);
+  const instrumentosIds = normIds(req.body.instrumentos || req.body['instrumentos[]']);
+
+  const sql = `
+    UPDATE partituras SET
+      titulo = $1, autor = $2, arreglista = $3, grupo_id = $4, activo = $5,
+      duracion = $6, genero = $7, enlace_partitura = $8, enlace_audio = $9,
+      descripcion = $10, tags = $11, updated_at = NOW()
+    WHERE id = $12
+  `;
+  const params = [
+    titulo?.trim(),
+    autor?.trim() || null,
+    arreglista?.trim() || null,
+    toIntOrNull(grupo_id),
+    toBool(activo),
+    duracion?.trim() || null,
+    genero?.trim() || null,
+    enlace_partitura,
+    (enlace_audio || '').trim() || null,
+    (descripcion || '').trim() || null,
+    tagsArr,
+    id
+  ];
+
+  const client = await db.connect();
+  try {
+    await client.query('BEGIN');
+
+    const result = await client.query(sql, params);
+    if (result.rowCount === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).send('No encontrada');
+    }
+
+    await client.query('DELETE FROM partitura_instrumento WHERE partitura_id = $1', [id]);
+    if (instrumentosIds.length) {
+      const values = instrumentosIds.map((iid, i) => `($1, $${i+2})`).join(', ');
+      await client.query(
+        `INSERT INTO partitura_instrumento (partitura_id, instrumento_id) VALUES ${values} ON CONFLICT DO NOTHING`,
+        [id, ...instrumentosIds]
+      );
+    }
+
+    await client.query('COMMIT');
+    res.status(200).send('OK');
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error('[partituras] PUT /:id error:', err);
+    res.status(500).send('Error actualizando partitura');
+  } finally {
+    client.release();
+  }
+});
+
+// ====== ELIMINAR ======
+router.delete('/:id', async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id)) return res.status(400).send('ID inválido');
+
+  const client = await db.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query('DELETE FROM partitura_instrumento WHERE partitura_id = $1', [id]);
+    const r = await client.query('DELETE FROM partituras WHERE id = $1', [id]);
+    await client.query('COMMIT');
+    if (r.rowCount === 0) return res.status(404).send('No encontrada');
+    res.status(204).end();
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error('[partituras] DELETE /:id error:', err);
+    res.status(500).send('Error eliminando');
+  } finally {
+    client.release();
+  }
+});
+
 module.exports = router;

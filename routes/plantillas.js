@@ -1,0 +1,454 @@
+// routes/plantillas.js
+const express = require('express');
+const router = express.Router();
+const db = require('../database/db');
+
+/* ---------- Helpers SQL para leer familias/instrumentos desde un evento ---------- */
+const familiasSQL = `
+  WITH asig AS (
+    SELECT ea.alumno_id, ea.hora_inicio, ea.hora_fin, NULLIF(ea.instrumento,'') AS instrumento_key
+    FROM evento_asignaciones ea
+    WHERE ea.evento_id = $1
+  ),
+  fam_res AS (
+    SELECT
+      a.alumno_id,
+      COALESCE(ins.familia, i1.familia) AS familia_final
+    FROM asig a
+    LEFT JOIN instrumentos ins ON ins.nombre = a.instrumento_key
+    LEFT JOIN LATERAL (
+      SELECT i.familia
+      FROM alumno_instrumento ai
+      JOIN instrumentos i ON i.id = ai.instrumento_id
+      WHERE ai.alumno_id = a.alumno_id
+      ORDER BY i.nombre
+      LIMIT 1
+    ) AS i1 ON TRUE
+  )
+  SELECT DISTINCT familia_final AS familia_key
+  FROM fam_res
+  WHERE NULLIF(BTRIM(familia_final), '') IS NOT NULL
+  ORDER BY familia_key;
+`;
+
+const instrumentosSQL = `
+  WITH base AS (
+    SELECT
+      a.id AS alumno_id, ea.instrumento,
+      string_agg(DISTINCT ins.nombre, ', ' ORDER BY ins.nombre) AS instrumentos,
+      bool_or(ins.nombre ~* '^\\s*viol(í|i)n\\s*$') AS has_violin_puro
+    FROM evento_asignaciones ea
+    JOIN alumnos a ON a.id = ea.alumno_id
+    LEFT JOIN alumno_instrumento ai ON ai.alumno_id = a.id
+    LEFT JOIN instrumentos ins      ON ins.id = ai.instrumento_id
+    WHERE ea.evento_id = $1
+    GROUP BY a.id, ea.instrumento
+  ),
+  gi AS (
+    SELECT
+      b.alumno_id,
+      COUNT(DISTINCT ag2.grupo_id) AS grupos_count,
+      bool_or(LOWER(g2.nombre) ~ '(viol[ií]n\\s*i)(\\b|\\s|$)')      AS en_violin_i,
+      bool_or(LOWER(g2.nombre) ~ '(viol[ií]n\\s*(ii|2))(\\b|\\s|$)') AS en_violin_ii
+    FROM base b
+    LEFT JOIN alumno_grupo ag2 ON ag2.alumno_id = b.alumno_id
+    LEFT JOIN grupos g2        ON g2.id = ag2.grupo_id
+    GROUP BY b.alumno_id
+  ),
+  etiquetado AS (
+    SELECT
+      b.*,
+      CASE
+        WHEN b.instrumento IS NOT NULL AND b.instrumento <> '' THEN b.instrumento
+        WHEN b.has_violin_puro AND gi.grupos_count > 1 AND (gi.en_violin_i OR gi.en_violin_ii)
+             THEN CASE WHEN gi.en_violin_i THEN 'Violín I' ELSE 'Violín II' END
+        ELSE COALESCE(split_part(b.instrumentos, ', ', 1), '')
+      END AS instrumento_key
+    FROM base b
+    LEFT JOIN gi ON gi.alumno_id = b.alumno_id
+  )
+  SELECT DISTINCT instrumento_key
+  FROM etiquetado
+  WHERE NULLIF(BTRIM(instrumento_key), '') IS NOT NULL
+  ORDER BY instrumento_key;
+`;
+
+/* ---------- Crear plantilla desde evento ---------- */
+async function crearPlantillaDesdeEvento(eventoId, { nombre, descripcion }) {
+  const famRows = (await db.query(familiasSQL, [eventoId])).rows;
+  const familias_incluir = famRows.map(r => r.familia_key);
+
+  const instRows = (await db.query(instrumentosSQL, [eventoId])).rows;
+  const instrumentos_incluir = instRows.map(r => r.instrumento_key);
+
+  const insSQL = `
+    INSERT INTO plantillas_evento (nombre, descripcion, familias_incluir, instrumentos_incluir)
+    VALUES ($1, $2, $3::text[], $4::text[])
+    RETURNING id
+  `;
+  const { rows } = await db.query(insSQL, [
+    nombre.trim(),
+    descripcion || null,
+    familias_incluir,
+    instrumentos_incluir
+  ]);
+
+  return { id: rows[0].id, familias_incluir, instrumentos_incluir };
+}
+
+/* ---------- POST /  (crear plantilla manual) ---------- */
+router.post('/', async (req, res) => {
+  try {
+    const nombre = (req.body?.nombre || '').trim();
+    let familias_incluir = Array.isArray(req.body?.familias_incluir) ? req.body.familias_incluir : [];
+    let instrumentos_incluir = Array.isArray(req.body?.instrumentos_incluir) ? req.body.instrumentos_incluir : [];
+    const descripcion = req.body?.descripcion || null;
+
+    if (!nombre) return res.status(400).json({ ok:false, error:'Nombre requerido' });
+
+    const clean = arr => Array.from(new Set(arr.map(x => String(x||'').trim()).filter(Boolean)));
+    familias_incluir = clean(familias_incluir);
+    instrumentos_incluir = clean(instrumentos_incluir);
+
+    if (!familias_incluir.length && !instrumentos_incluir.length) {
+      return res.status(400).json({ ok:false, error:'Nada que guardar (familias/instrumentos vacíos)' });
+    }
+
+    const sql = `
+      INSERT INTO plantillas_evento (nombre, descripcion, familias_incluir, instrumentos_incluir)
+      VALUES ($1, $2, $3::text[], $4::text[])
+      RETURNING id
+    `;
+    const { rows } = await db.query(sql, [nombre, descripcion, familias_incluir, instrumentos_incluir]);
+    return res.json({ ok:true, id: rows[0].id });
+
+  } catch (err) {
+    // Si añades UNIQUE (lower(nombre)): captura 23505
+    if (err.code === '23505') {
+      return res.status(409).json({ ok:false, error:'Ya existe una plantilla con ese nombre' });
+    }
+    console.error('POST /plantillas error:', err);
+    return res.status(500).json({ ok:false, error:'Error guardando la plantilla' });
+  }
+});
+
+/* ---------- POST /from-event/:eventoId ---------- */
+router.post('/from-event/:eventoId', async (req, res) => {
+  const eventoId = Number(req.params.eventoId);
+  const { nombre, descripcion } = req.body || {};
+  if (!Number.isInteger(eventoId) || !nombre || !nombre.trim()) {
+    return res.status(400).json({ error: 'Parámetros inválidos' });
+  }
+  try {
+    const out = await crearPlantillaDesdeEvento(eventoId, { nombre, descripcion });
+    res.json({ ok: true, ...out });
+  } catch (err) {
+    console.error('POST /from-event/:eventoId', err);
+    res.status(500).json({ error: 'Error creando plantilla' });
+  }
+});
+
+/* ---------- GET /  (listar) ---------- */
+router.get('/', async (_req, res) => {
+  try {
+    const { rows } = await db.query(`
+      SELECT id, nombre, descripcion,
+             cardinality(familias_incluir)     AS familias,
+             cardinality(instrumentos_incluir) AS instrumentos,
+             created_at
+      FROM plantillas_evento
+      ORDER BY created_at DESC, id DESC
+    `);
+    res.json(rows);
+  } catch (err) {
+    console.error('GET /plantillas', err);
+    res.status(500).json({ error: 'Error listando plantillas' });
+  }
+});
+
+/* ---------- GET /:pid (detalle) ---------- */
+router.get('/:pid', async (req, res) => {
+  const pid = Number(req.params.pid);
+  if (!Number.isInteger(pid)) return res.status(400).json({ error: 'ID inválido' });
+  try {
+    const { rows } = await db.query(`SELECT * FROM plantillas_evento WHERE id=$1`, [pid]);
+    if (!rows.length) return res.status(404).json({ error: 'No encontrada' });
+    res.json(rows[0]);
+  } catch (err) {
+    console.error('GET /:pid', err);
+    res.status(500).json({ error: 'Error' });
+  }
+});
+
+/* ---------- GET /:pid/preview?eventoId=123 ---------- */
+router.get('/:pid/preview', async (req, res) => {
+  const pid = Number(req.params.pid);
+  const eventoId = Number(req.query.eventoId);
+  if (!Number.isInteger(pid) || !Number.isInteger(eventoId)) {
+    return res.status(400).json({ error: 'Parámetros inválidos' });
+  }
+  try {
+    const norm = s => String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLowerCase();
+    const tpl = (await db.query(`SELECT * FROM plantillas_evento WHERE id=$1`, [pid])).rows[0];
+    if (!tpl) return res.status(404).json({ error: 'Plantilla no encontrada' });
+
+    const sql = `
+      WITH ev AS (
+        SELECT e.id, e.grupo_id, left(e.fecha_inicio::text,10) AS f_iso
+        FROM eventos e WHERE e.id = $1
+      ),
+      cand AS (
+        SELECT a.id AS alumno_id, a.nombre, a.apellidos
+        FROM ev
+        JOIN alumno_grupo ag ON ag.grupo_id = ev.grupo_id
+        JOIN alumnos a      ON a.id = ag.alumno_id
+        WHERE COALESCE(a.activo, TRUE) IS TRUE
+          AND (
+            a.fecha_matriculacion IS NULL
+            OR to_date(left(a.fecha_matriculacion::text,10),'YYYY-MM-DD') <= to_date(ev.f_iso,'YYYY-MM-DD')
+          )
+          AND (
+            a.fecha_baja IS NULL
+            OR to_date(left(a.fecha_baja::text,10),'YYYY-MM-DD') >= to_date(ev.f_iso,'YYYY-MM-DD')
+          )
+      ),
+      res AS (
+        SELECT
+          c.alumno_id, c.nombre, c.apellidos,
+          COALESCE(
+            ea.instrumento,
+            CASE
+              WHEN base.has_violin_puro AND gi.grupos_count > 1 AND (gi.en_violin_i OR gi.en_violin_ii)
+                THEN CASE WHEN gi.en_violin_i THEN 'Violín I' ELSE 'Violín II' END
+              ELSE split_part(base.instrumentos, ', ', 1)
+            END
+          ) AS instrumento_key
+        FROM cand c
+        LEFT JOIN evento_asignaciones ea
+               ON ea.evento_id = $1 AND ea.alumno_id = c.alumno_id
+        LEFT JOIN LATERAL (
+          SELECT
+            string_agg(DISTINCT ins.nombre, ', ' ORDER BY ins.nombre) AS instrumentos,
+            bool_or(ins.nombre ~* '^\\s*viol(í|i)n\\s*$') AS has_violin_puro
+          FROM alumno_instrumento ai
+          JOIN instrumentos ins ON ins.id = ai.instrumento_id
+          WHERE ai.alumno_id = c.alumno_id
+        ) base ON TRUE
+        LEFT JOIN LATERAL (
+          SELECT
+            COUNT(DISTINCT ag2.grupo_id) AS grupos_count,
+            bool_or(LOWER(g2.nombre) ~ '(viol[ií]n\\s*i)(\\b|\\s|$)')      AS en_violin_i,
+            bool_or(LOWER(g2.nombre) ~ '(viol[ií]n\\s*(ii|2))(\\b|\\s|$)') AS en_violin_ii
+          FROM alumno_grupo ag2
+          JOIN grupos g2 ON g2.id = ag2.grupo_id
+          WHERE ag2.alumno_id = c.alumno_id
+        ) gi ON TRUE
+      ),
+      fam AS (
+        SELECT
+          r.alumno_id, r.nombre, r.apellidos, r.instrumento_key,
+          i.familia AS familia_key
+        FROM res r
+        LEFT JOIN instrumentos i
+               ON lower(btrim(i.nombre)) = lower(btrim(r.instrumento_key))
+      )
+      SELECT * FROM fam
+    `;
+    const { rows } = await db.query(sql, [eventoId]);
+
+    const famSet  = new Set((tpl.familias_incluir || []).map(s => norm(s)));
+    const instSet = new Set((tpl.instrumentos_incluir || []).map(s => norm(s)));
+
+    const match = rows.filter(r => {
+      const fOk = !!r.familia_key && famSet.has(norm(r.familia_key));
+      const iOk = !!r.instrumento_key && instSet.has(norm(r.instrumento_key));
+      if (instSet.size) return iOk;
+      if (famSet.size) return fOk;
+      return true;
+    });
+
+    res.json({
+      plantilla: { id: tpl.id, nombre: tpl.nombre, descripcion: tpl.descripcion },
+      eventoId,
+      total_candidatos: rows.length,
+      total_match: match.length,
+      alumnos: match.map(r => ({
+        id: r.alumno_id,
+        nombre: r.nombre,
+        apellidos: r.apellidos,
+        instrumento: r.instrumento_key,
+        familia: r.familia_key
+      }))
+    });
+  } catch (err) {
+    console.error('GET /:pid/preview', err);
+    res.status(500).json({ error: 'Error generando preview' });
+  }
+});
+
+/* ---------- PUT /:pid (editar) ---------- */
+router.put('/:pid', async (req, res) => {
+  const pid = Number(req.params.pid);
+  const { nombre, descripcion, familias_incluir, instrumentos_incluir } = req.body || {};
+  if (!Number.isInteger(pid)) return res.status(400).json({ error: 'ID inválido' });
+  try {
+    const { rows } = await db.query(
+      `UPDATE plantillas_evento
+         SET nombre                 = COALESCE($2, nombre),
+             descripcion            = COALESCE($3, descripcion),
+             familias_incluir       = COALESCE($4::text[], familias_incluir),
+             instrumentos_incluir   = COALESCE($5::text[], instrumentos_incluir)
+       WHERE id=$1
+       RETURNING *`,
+      [pid, nombre ?? null, descripcion ?? null, familias_incluir ?? null, instrumentos_incluir ?? null]
+    );
+    if (!rows.length) return res.status(404).json({ error: 'No encontrada' });
+    res.json({ ok:true, plantilla: rows[0] });
+  } catch (err) {
+    console.error('PUT /:pid', err);
+    res.status(500).json({ error: 'Error actualizando' });
+  }
+});
+
+/* ---------- DELETE /:pid ---------- */
+router.delete('/:pid', async (req, res) => {
+  const pid = Number(req.params.pid);
+  if (!Number.isInteger(pid)) return res.status(400).json({ error: 'ID inválido' });
+  try {
+    const r = await db.query(`DELETE FROM plantillas_evento WHERE id=$1`, [pid]);
+    res.json({ ok: true, deleted: r.rowCount > 0 });
+  } catch (err) {
+    console.error('DELETE /:pid', err);
+    res.status(500).json({ error: 'Error borrando' });
+  }
+});
+
+// ===============================
+// POST /plantillas/:pid/apply
+// Aplica una plantilla a un evento concreto
+// ===============================
+// ... arriba tu require('express')/db y demás rutas ...
+
+// Guarda el resultado filtrado de una plantilla en un evento:
+// BODY:
+//   {
+//     "eventoId": 123,
+//     "items": [
+//       { "alumno_id": 1, "hora_inicio": "18:00", "hora_fin": "19:00", "actividad_complementaria_id": 2, "notas": "X" },
+//       ...
+//     ]
+//   }
+router.post('/:pid/apply', async (req, res) => {
+    const pid = Number(req.params.pid);
+    const eventoId = Number(req.body?.eventoId);
+    const items = Array.isArray(req.body?.items) ? req.body.items : [];
+  
+    // Logs de entrada para depurar rápidamente
+    console.log('[tpl.apply] pid=', pid, 'eventoId=', eventoId, 'items.len=', items.length);
+  
+    if (!Number.isInteger(pid) || !Number.isInteger(eventoId)) {
+      return res.status(400).json({ ok: false, error: 'Parámetros inválidos' });
+    }
+  
+    // Validación mínima de items: alumno_id numérico
+    const saneItems = items.filter(x => Number.isInteger(Number(x.alumno_id)));
+    if (saneItems.length === 0) {
+      return res.status(400).json({ ok: false, error: 'Lista de alumnos vacía' });
+    }
+  
+    const client = await db.connect();
+    try {
+      await client.query('BEGIN');
+  
+      // Verificamos que la plantilla exista (opcional pero útil)
+      const tpl = (await client.query(
+        'SELECT id, nombre FROM plantillas_evento WHERE id=$1',
+        [pid]
+      )).rows[0];
+      if (!tpl) {
+        await client.query('ROLLBACK');
+        return res.status(404).json({ ok:false, error:'Plantilla no encontrada' });
+      }
+  
+      // Temp table para normalizar tipos, con CAST seguro a time/int
+      await client.query(`
+        CREATE TEMP TABLE _tpl_items (
+          alumno_id int PRIMARY KEY,
+          hora_inicio time,
+          hora_fin    time,
+          actividad_complementaria_id int,
+          notas text
+        ) ON COMMIT DROP;
+      `);
+  
+      // Insertamos desde JSON → CAST explícito:
+      // - NULLIF(...,'')::time evita el error “time vs text”
+      // - actividad_complementaria_id puede venir null o '' (lo tratamos)
+      await client.query(`
+        INSERT INTO _tpl_items (alumno_id, hora_inicio, hora_fin, actividad_complementaria_id, notas)
+        SELECT
+          (x->>'alumno_id')::int,
+          NULLIF(x->>'hora_inicio','')::time,
+          NULLIF(x->>'hora_fin','')::time,
+          NULLIF(x->>'actividad_complementaria_id','')::int,
+          NULLIF(x->>'notas','')::text
+        FROM jsonb_array_elements($1::jsonb) AS x
+      `, [JSON.stringify(saneItems)]);
+  
+      // 1) BORRAR lo que no está en la plantilla (asistencias y asignaciones del evento)
+      const delAsist = await client.query(`
+        DELETE FROM asistencias a
+        WHERE a.evento_id = $1
+          AND NOT EXISTS (
+            SELECT 1 FROM _tpl_items t WHERE t.alumno_id = a.alumno_id
+          )
+      `, [eventoId]);
+  
+      const delAsig = await client.query(`
+        DELETE FROM evento_asignaciones ea
+        WHERE ea.evento_id = $1
+          AND NOT EXISTS (
+            SELECT 1 FROM _tpl_items t WHERE t.alumno_id = ea.alumno_id
+          )
+      `, [eventoId]);
+  
+      // 2) UPSERT de lo que sí está en la plantilla (reemplaza horas/actividad/notas)
+      const upsert = await client.query(`
+        INSERT INTO evento_asignaciones
+          (evento_id, alumno_id, hora_inicio, hora_fin, actividad_complementaria_id, notas)
+        SELECT $1, t.alumno_id, t.hora_inicio, t.hora_fin, t.actividad_complementaria_id, t.notas
+        FROM _tpl_items t
+        ON CONFLICT (evento_id, alumno_id) DO UPDATE SET
+          hora_inicio = EXCLUDED.hora_inicio,
+          hora_fin    = EXCLUDED.hora_fin,
+          actividad_complementaria_id = EXCLUDED.actividad_complementaria_id,
+          notas       = EXCLUDED.notas
+      `, [eventoId]);
+  
+      await client.query('COMMIT');
+  
+      console.log('[tpl.apply] OK', {
+        kept: upsert.rowCount,        // upserts (insertados+actualizados)
+        removed_asist: delAsist.rowCount,
+        removed_asig: delAsig.rowCount
+      });
+  
+      return res.json({
+        ok: true,
+        kept: upsert.rowCount,
+        removed_asist: delAsist.rowCount,
+        removed_asig: delAsig.rowCount
+      });
+    } catch (err) {
+      await client.query('ROLLBACK');
+      console.error('POST /plantillas/:pid/apply ERROR:', err);
+      return res.status(500).json({ ok:false, error:'Error guardando resultado de la plantilla' });
+    } finally {
+      client.release();
+    }
+  });
+  
+  
+module.exports = router;
+
+

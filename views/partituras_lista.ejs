@@ -95,6 +95,13 @@
   }
   th[aria-sort="ascending"]::after  { content: '↑'; opacity: .9; }
   th[aria-sort="descending"]::after { content: '↓'; opacity: .9; }
+
+  /* ➕ Borde negro para el formulario de búsqueda (se aplica por JS con .borde-negro) */
+  .borde-negro {
+    border: 1px solid #000 !important;
+    border-radius: .5rem;
+    padding: .5rem;
+  }
 </style>
 
 <!-- ===== Modal (sin footer) ===== -->
@@ -194,188 +201,152 @@
   </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-  // ---------- Modal setup ----------
-  const modalEl   = document.getElementById('partituraModal');
-  if (modalEl.parentNode !== document.body) document.body.appendChild(modalEl);
-  const modal     = bootstrap.Modal.getOrCreateInstance(modalEl);
-  const form      = document.getElementById('partituraForm');
-  const btnNueva  = document.getElementById('btnNueva');
+  const modalEl     = document.getElementById('partituraModal');
+  const modal       = bootstrap.Modal.getOrCreateInstance(modalEl);
+  const form        = document.getElementById('partituraForm');
+  const selInst     = document.getElementById('selInstrumentos');
+  const btnNueva    = document.getElementById('btnNueva');
   const btnEliminar = document.getElementById('btnEliminar');
-  const selInstruments = document.getElementById('selInstrumentos');
-    // ---------- Filtro en vivo ----------
-  const filtroQ = document.getElementById('filtroQ');
-  const rowsAll = Array.from(document.querySelectorAll('.partitura-row'));
 
-  function normalizar(s){ return (s||'').toString().toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu,''); }
+  // Borde negro al form de búsqueda
+  const searchForm = document.getElementById('filtroQ')?.form;
+  if (searchForm) searchForm.classList.add('borde-negro');
 
-  function coincideRow(row, terms){
-    if (!terms.length) return true;
-    const hay = (k) => normalizar(row.dataset[k] || '');
-    const campo = [
-      hay('titulo'),
-      hay('autor'),
-      hay('grupo_nombre'),
-      hay('genero'),
-      hay('duracion')
-    ].join(' ');
-    // todas las palabras deben aparecer
-    return terms.every(t => campo.includes(t));
+  // Normaliza rutas a URL absoluta (evita error en <input type="url">)
+  function toAbsoluteUrl(v) {
+    if (!v) return '';
+    const s = String(v).trim();
+    if (/^https?:\/\//i.test(s)) return s;
+    if (s.startsWith('/')) return location.origin + s;
+    return location.origin + '/' + s;
   }
-
-  function aplicarFiltro(q){
-    const terms = normalizar(q).split(/\s+/).filter(Boolean);
-    let visibles = 0;
-    rowsAll.forEach(row=>{
-      const ok = coincideRow(row, terms);
-      row.style.display = ok ? '' : 'none';
-      if (ok) visibles++;
-    });
-    // opcional: si quieres, podrías mostrar un mensajito "X resultados"
-    // console.log('visibles:', visibles);
-  }
-
-  // aplica al cargar (si viene ?q=…)
-  aplicarFiltro(filtroQ?.value || '');
-
-  // en vivo (con debounce suave)
-  let tDeb = null;
-  filtroQ?.addEventListener('input', ()=>{
-    clearTimeout(tDeb);
-    tDeb = setTimeout(()=> aplicarFiltro(filtroQ.value), 80);
-  });
 
   function clearForm(){
     form.reset();
     form.querySelector('input[name="id"]').value = '';
-    Array.from(selInstruments.options).forEach(o => o.selected = false);
+    if (selInst) Array.from(selInst.options).forEach(o => o.selected = false);
     btnEliminar.classList.add('d-none');
-    document.getElementById('partituraModalTitulo').textContent = 'Nueva partitura';
+    const t = document.getElementById('partituraModalTitulo');
+    if (t) t.textContent = 'Nueva partitura';
   }
 
-  // NUEVA
-  btnNueva?.addEventListener('click', (e) => {
-    e.preventDefault();
-    clearForm();
-    modal.show();
-  });
+  function fillForm(p){
+    form.querySelector('input[name="id"]').value = p.id || '';
+    form.titulo.value             = p.titulo || '';
+    form.autor.value              = p.autor || '';
+    form.arreglista.value         = p.arreglista || '';
+    if (form.grupo_id) form.grupo_id.value = p.grupo_id || '';
+    form.duracion.value           = p.duracion || '';
+    form.genero.value             = p.genero || '';
+    form.enlace_partitura.value   = toAbsoluteUrl(p.enlace_partitura || '');
+    form.enlace_audio.value       = toAbsoluteUrl(p.enlace_audio || '');
+    form.descripcion.value        = p.descripcion || '';
+    if (form.activo) form.activo.checked = !!p.activo;
 
-  // EDITAR (click fila)
+    if (Array.isArray(p.instrumentos) && selInst){
+      const set = new Set(p.instrumentos.map(String));
+      Array.from(selInst.options).forEach(o => { o.selected = set.has(String(o.value)); });
+    }
+
+    btnEliminar.classList.remove('d-none');
+    const t = document.getElementById('partituraModalTitulo');
+    if (t) t.textContent = 'Editar partitura';
+  }
+
+  // Nueva
+  if (btnNueva) {
+    btnNueva.addEventListener('click', e => {
+      e.preventDefault();
+      clearForm();
+      modal.show();
+    });
+  }
+
+  // Click en filas -> editar
   document.querySelectorAll('.partitura-row').forEach(row => {
-    row.addEventListener('click', async () => {
+    row.style.cursor = 'pointer';
+    row.addEventListener('click', async ev => {
+      if (ev.target.closest('a,button')) return;
       const id = row.dataset.id;
-      try{
-        const r = await fetch(`/partituras/${id}`);
-        if (!r.ok) throw new Error(await r.text());
-        const p = await r.json();
+      if (!id) return;
 
+      try {
+        const r = await fetch(`/partituras/${id}`, {
+          headers: { 'Accept': 'application/json' },
+          credentials: 'same-origin'
+        });
+        const body = await r.text();
+        if (!r.ok) throw new Error(`${r.status} ${r.statusText}\n${body}`);
+        const p = JSON.parse(body);
         clearForm();
-        form.querySelector('input[name="id"]').value = p.id;
-        form.titulo.value        = p.titulo || '';
-        form.autor.value         = p.autor || '';
-        form.arreglista.value    = p.arreglista || '';
-        form.grupo_id.value      = p.grupo_id || '';
-        form.duracion.value      = p.duracion || '';
-        form.genero.value        = p.genero || '';
-        form.enlace_partitura.value = p.enlace_partitura || '';
-        form.enlace_audio.value  = p.enlace_audio || '';
-        form.descripcion.value   = p.descripcion || '';
-        form.activo.checked      = !!p.activo;
-
-        if (Array.isArray(p.instrumentos)){
-          const set = new Set(p.instrumentos.map(String));
-          Array.from(selInstruments.options).forEach(o => { o.selected = set.has(String(o.value)); });
-        }
-
-        btnEliminar.classList.remove('d-none');
-        document.getElementById('partituraModalTitulo').textContent = 'Editar partitura';
+        fillForm(p);
         modal.show();
-      }catch(e){
+      } catch (e) {
         console.error(e);
-        alert('No se pudo cargar la partitura.');
+        alert(`No se pudo cargar la partitura.\n\n${e.message}`);
       }
     });
   });
 
-  // GUARDAR con FormData (permite archivo)
-  form.addEventListener('submit', async (e) => {
+  // Guardar (POST nuevo, PUT edición)
+  form.addEventListener('submit', async e => {
     e.preventDefault();
 
+    // Asegura URLs absolutas
+    form.enlace_partitura.value = toAbsoluteUrl(form.enlace_partitura.value);
+    form.enlace_audio.value     = toAbsoluteUrl(form.enlace_audio.value);
+
     const id = form.querySelector('input[name="id"]').value.trim();
+    const fd = new FormData(form);
+
+    if (selInst) {
+      const sel = Array.from(selInst.selectedOptions).map(o => o.value);
+      fd.delete('instrumentos');
+      sel.forEach(v => fd.append('instrumentos', v));
+    }
+    if (form.activo) fd.set('activo', form.activo.checked ? '1' : '0');
+
     const url = id ? `/partituras/${id}` : '/partituras';
     const method = id ? 'PUT' : 'POST';
 
-    const fd = new FormData(form);
-    // instrumentos múltiples -> instrumentos[]
-    const sel = Array.from(selInstruments.selectedOptions).map(o => o.value);
-    fd.delete('instrumentos');
-    sel.forEach(v => fd.append('instrumentos[]', v));
-    // activo como '1'/'0'
-    fd.set('activo', form.activo.checked ? '1' : '0');
-
-    try{
-      const r = await fetch(url, { method, body: fd });
-      if (!r.ok) throw new Error(await r.text());
+    try {
+      const r = await fetch(url, {
+        method,
+        body: fd,
+        credentials: 'same-origin'
+      });
+      const txt = await r.text();
+      if (!r.ok) throw new Error(`${method} ${url} -> ${r.status} ${r.statusText}\n${txt}`);
       modal.hide();
       location.reload();
-    }catch(err){
+    } catch (err) {
       console.error(err);
-      alert('Error al guardar la partitura.');
+      alert(`Error al guardar la partitura.\n\n${err.message}`);
     }
   });
 
-  // ELIMINAR
+  // Eliminar
   btnEliminar.addEventListener('click', async () => {
     const id = form.querySelector('input[name="id"]').value.trim();
     if (!id) return;
     if (!confirm('¿Eliminar esta partitura?')) return;
-    try{
-      const r = await fetch(`/partituras/${id}`, { method: 'DELETE' });
-      if (!r.ok) throw new Error(await r.text());
+
+    try {
+      const r = await fetch(`/partituras/${id}`, {
+        method: 'DELETE',
+        credentials: 'same-origin'
+      });
+      const txt = await r.text();
+      if (!r.ok) throw new Error(`DELETE /partituras/${id} -> ${r.status} ${r.statusText}\n${txt}`);
       modal.hide();
       location.reload();
-    }catch(err){
+    } catch (err) {
       console.error(err);
-      alert('No se pudo eliminar.');
+      alert(`No se pudo eliminar.\n\n${err.message}`);
     }
-  });
-
-  // ---------- Ordenación simple de tabla ----------
-  const tabla = document.getElementById('tablaPartituras');
-  const thead = tabla.querySelector('thead');
-  const tbody = tabla.querySelector('tbody');
-
-  function compare(a, b, key, dir){
-    const av = a.dataset[key] ?? '';
-    const bv = b.dataset[key] ?? '';
-    // num para activo, texto para el resto
-    if (key === 'activo'){
-      const an = parseInt(av||'0',10), bn = parseInt(bv||'0',10);
-      return dir === 'asc' ? (an - bn) : (bn - an);
-    } else {
-      const res = av.localeCompare(bv, 'es', { sensitivity:'base' });
-      return dir === 'asc' ? res : -res;
-    }
-  }
-
-  function sortBy(key, dir){
-    const rows = Array.from(tbody.querySelectorAll('tr'));
-    rows.sort((r1, r2) => compare(r1, r2, key, dir));
-    rows.forEach(r => tbody.appendChild(r));
-  }
-
-  thead.addEventListener('click', (e) => {
-    const th = e.target.closest('th[data-sort]');
-    if (!th) return;
-    const key = th.dataset.sort;
-    const current = th.getAttribute('aria-sort') || 'none';
-    const next = current === 'ascending' ? 'descending' : 'ascending';
-    // reset resto
-    thead.querySelectorAll('th[data-sort]').forEach(h => h.setAttribute('aria-sort','none'));
-    th.setAttribute('aria-sort', next);
-    sortBy(key, next === 'ascending' ? 'asc' : 'desc');
   });
 });
 </script>
-

@@ -352,6 +352,15 @@ async function init({ reset = false } = {}) {
       CREATE INDEX IF NOT EXISTS idx_ea_ausencia    ON evento_asignaciones (ausencia_tipo_id);
       CREATE INDEX IF NOT EXISTS idx_ea_actividad   ON evento_asignaciones (actividad_complementaria_id);
 
+      CREATE TABLE IF NOT EXISTS plantillas_evento (
+        id SERIAL PRIMARY KEY,
+        nombre TEXT NOT NULL,
+        descripcion TEXT,
+        familias_incluir TEXT[] NOT NULL DEFAULT '{}',
+        instrumentos_incluir TEXT[] NOT NULL DEFAULT '{}',
+        created_at TIMESTAMP DEFAULT now()
+      );
+
       CREATE TABLE IF NOT EXISTS guardias (
         id          INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
         evento_id   INTEGER NOT NULL REFERENCES eventos(id) ON DELETE CASCADE,

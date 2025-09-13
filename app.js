@@ -86,7 +86,8 @@ const layoutsRoutes = require('./routes/layouts');
 const ausenciasRoutes = require('./routes/ausencias');
 const actividadesRoutes= require('./routes/actividades_complementarias');
 const espaciosRoutes = require('./routes/espacios');
-const partituraRoutes = require('./routes/partituras');
+const partiturasRoutes = require('./routes/partituras');
+const plantillasRoutes = require('./routes/plantillas');
 
 app.use('/configuracion', isAdmin, configuracionRoutes);
 app.use('/usuarios', isAuthenticated,usuariosRoutes);        
@@ -114,7 +115,8 @@ app.use('/ausencias', isAuthenticated, ausenciasRoutes);
 app.use('/actividades', isAuthenticated, actividadesRoutes);
 app.use('/espacios', isAuthenticated, espaciosRoutes);
 app.use(pdfRoutes);
-app.use('/partituras', partituraRoutes);
+app.use('/partituras', isAuthenticated, partiturasRoutes);
+app.use('/plantillas', isAuthenticated, plantillasRoutes);
 // Ruta de inicio
 app.get('/', (req, res) => {
   res.render('index', { title: 'Inicio - JOSG' });
