@@ -123,6 +123,318 @@ async function fetchLayout(client, layoutId) {
   const secciones = [...new Set(rows.map(r => r.instrumento))];
   return { posiciones: rows, secciones };
 }
+router.get('/evento/:eventoId.:ext', async (req, res) => {
+  const { eventoId } = req.params;
+  const ext = String(req.params.ext || '').toLowerCase();
+  if (!new Set(['svg','png','pdf']).has(ext)) return res.status(404).send('Extensión no soportada');
+
+  // Evita cacheos raros del navegador
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.set('Pragma', 'no-cache');
+  res.set('Expires', '0');
+
+  try {
+    // 1) Evento
+    const { rows: evRows } = await pool.query(
+      `SELECT e.id, e.titulo, e.fecha_inicio, g.nombre AS grupo_nombre
+         FROM eventos e LEFT JOIN grupos g ON g.id = e.grupo_id
+        WHERE e.id = $1`, [eventoId]
+    );
+    if (!evRows.length) {
+      const { type, buf } = await renderMsg(ext, `Evento #${eventoId}`, 'Evento no encontrado.');
+      return res.type(type).send(buf);
+    }
+    const evento = evRows[0];
+
+    // 2) Alumnos asignados al evento (NO requerimos asistencia)
+    const { rows: asignados } = await pool.query(`
+      SELECT ea.alumno_id,
+             trim(coalesce(a.nombre,'') || ' ' || coalesce(a.apellidos,'')) AS nombre,
+             nullif(trim(ea.instrumento), '') AS instrumento
+      FROM evento_asignaciones ea
+      JOIN alumnos a ON a.id = ea.alumno_id
+      WHERE ea.evento_id = $1
+    `, [eventoId]);
+
+    if (!asignados.length) {
+      const { type, buf } = await renderMsg(ext, `Evento #${eventoId}`, 'No hay asignaciones para este evento.');
+      return res.type(type).send(buf);
+    }
+
+    // 3) Ranking por instrumento usando la ÚLTIMA prueba de atril por instrumento
+  // 3) Ranking por instrumento usando la ÚLTIMA prueba de atril por instrumento,
+//    con mapeo especial de Violín → Violín I / Violín II según el instrumento del EVENTO.
+const idsAsignados = asignados.map(r => String(r.alumno_id));
+
+const { rows: ranking } = await pool.query(`
+  WITH ea_event AS (
+    SELECT ea.alumno_id,
+           NULLIF(TRIM(ea.instrumento), '') AS inst_evento
+    FROM evento_asignaciones ea
+    WHERE ea.evento_id = $1
+  ),
+  base AS (
+    SELECT instrumento, alumno_id, puntuacion, trimestre
+    FROM pruebas_atril_norm
+    WHERE TRIM(alumno_id)::text = ANY($2::text[])
+      AND trimestre ~ '^[0-9]{2}/[0-9]{2}T[1-4]$'
+  ),
+  parsed AS (
+    SELECT *,
+           (regexp_match(trimestre, '^([0-9]{2})/([0-9]{2})T([1-4])$'))[2]::int AS year_end,
+           (regexp_match(trimestre, 'T([1-4])$'))[1]::int AS t
+    FROM base
+  ),
+  latest AS (
+    SELECT DISTINCT ON (instrumento) instrumento, trimestre
+    FROM parsed
+    ORDER BY instrumento, year_end DESC, t DESC
+  )
+  SELECT
+    /* Instrumento final:
+       - Si es Violín (con o sin sufijo I/II) en las pruebas:
+           1) usa la sección del evento (Violín I/II) si existe
+           2) si no, infiere por grupo del alumno (Violín I/II)
+           3) si tampoco, deja 'Violín II' por defecto
+       - Si no es violín, usa el del evento si existe, si no el de pruebas. */
+    CASE
+      WHEN regexp_replace(p.instrumento, '\\s+I{1,2}$', '', 'i') ~* '^viol[ií]n$' THEN
+        COALESCE(
+          /* 1) del propio evento */
+          CASE
+            WHEN ea.inst_evento ~* '^viol[ií]n\\s*i$'  THEN 'Violín I'
+            WHEN ea.inst_evento ~* '^viol[ií]n\\s*ii$' THEN 'Violín II'
+            ELSE NULL
+          END,
+          /* 2) inferencia por grupos del alumno */
+          (
+            SELECT CASE
+                     WHEN g.nombre ~* '^viol[ií]n\\s*i$'  THEN 'Violín I'
+                     WHEN g.nombre ~* '^viol[ií]n\\s*ii$' THEN 'Violín II'
+                     ELSE NULL
+                   END
+            FROM alumno_grupo ag
+            JOIN grupos g ON g.id = ag.grupo_id
+            WHERE ag.alumno_id = a.id
+              AND (g.nombre ~* '^viol[ií]n\\s*i$' OR g.nombre ~* '^viol[ií]n\\s*ii$')
+            ORDER BY
+              CASE
+                WHEN g.nombre ~* '^viol[ií]n\\s*i$'  THEN 1
+                WHEN g.nombre ~* '^viol[ií]n\\s*ii$' THEN 2
+                ELSE 3
+              END
+            LIMIT 1
+          ),
+          /* 3) por defecto */
+          'Violín II'
+        )
+      ELSE
+        COALESCE(ea.inst_evento, p.instrumento)
+    END AS instrumento,
+
+    TRIM(p.alumno_id)::text AS alumno_id,
+    p.puntuacion,
+    TRIM(COALESCE(a.nombre,'') || ' ' || COALESCE(a.apellidos,'')) AS nombre
+
+  FROM parsed p
+  JOIN latest l
+    ON l.instrumento = p.instrumento AND l.trimestre = p.trimestre
+  LEFT JOIN alumnos a
+    ON a.id::text = TRIM(p.alumno_id)
+  LEFT JOIN ea_event ea
+    ON ea.alumno_id = TRIM(p.alumno_id)::int
+  ORDER BY instrumento, p.puntuacion DESC NULLS LAST, p.alumno_id ASC
+`, [eventoId, idsAsignados]);
+
+
+    if (!ranking.length) {
+      // Si no hay pruebas de atril, colocamos por nombre como fallback.
+      // Count por instrumento a partir de las asignaciones:
+      const counts = {};
+      for (const r of asignados) {
+        const inst = r.instrumento || 'Varios';
+        counts[inst] = (counts[inst] || 0) + 1;
+      }
+      const posiciones = autoLayoutFromCounts(counts);
+
+      // Agrupar asignados por instrumento y orden alfabético
+      const porInst = new Map();
+      for (const r of asignados) {
+        const inst = r.instrumento || 'Varios';
+        if (!porInst.has(inst)) porInst.set(inst, []);
+        porInst.get(inst).push({ instrumento: inst, alumno_id: String(r.alumno_id), nombre: r.nombre });
+      }
+      for (const list of porInst.values()) list.sort((a,b)=>a.nombre.localeCompare(b.nombre,'es'));
+
+      // Asignación plazas
+      const asignacion = new Map();
+      for (const inst of new Set(posiciones.map(p => p.instrumento))) {
+        const lista = porInst.get(inst) || [];
+        const plazas = posiciones.filter(p => p.instrumento === inst)
+          .sort((a,b)=> a.atril - b.atril || a.puesto - b.puesto);
+        const n = Math.min(plazas.length, lista.length);
+        for (let i=0;i<n;i++){
+          const plaza = plazas[i];
+          const cand = { ...lista[i], seat: i+1 };
+          asignacion.set(`${plaza.instrumento}|${plaza.atril}|${plaza.puesto}`, cand);
+        }
+      }
+
+      // Render
+      const W = 1400, H = 900, FONT = FONT_STACK;
+      let nodos = '';
+      for (const p of posiciones) {
+        const key = `${p.instrumento}|${p.atril}|${p.puesto}`;
+        const asig = asignacion.get(key);
+        if (!asig) continue;
+        const cx = p.x * W, cy = p.y * H;
+        const color = colorPorInstrumento(p.instrumento);
+        nodos += `
+          <g transform="translate(${cx},${cy}) rotate(${p.angulo})">
+            <circle r="30" fill="${color}" fill-opacity="0.9"></circle>
+            <circle r="31.5" fill="none" stroke="#fff" stroke-width="2"></circle>
+            <circle r="33" fill="none" stroke="#222" stroke-opacity="0.15" stroke-width="1.2"></circle>
+            <text y="6" text-anchor="middle" font-weight="800" font-size="18" fill="#fff" font-family="${FONT}">${asig.seat}</text>
+            <text y="46" text-anchor="middle" font-size="9" fill="#333" font-family="${FONT}">
+              ${esc(abbreviateName(asig.nombre || asig.alumno_id, { max: 16 }))}
+            </text>
+          </g>`;
+      }
+      const cxDir = W/2, cyDir = H - 50;
+      const svg = `
+        <svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
+          <rect width="100%" height="100%" rx="36" fill="#FAF8F5"></rect>
+          ${stageBackdropSVG(W, H)}
+          <text x="${W/2}" y="36" text-anchor="middle" font-size="24" font-weight="800" font-family="${FONT}">
+            Plano de ${esc(evento.titulo || 'Evento')} — ${esc(evento.grupo_nombre || '')}
+          </text>
+          ${buildLegendFromPositions({ posiciones, x: 16, y: 16, fontFamily: FONT })}
+          ${nodos}
+          ${directorPodiumSVG(W/2, H-50)}
+          <circle cx="${W/2}" cy="${H-50}" r="20" fill="#000"></circle>
+          <circle cx="${W/2}" cy="${H-50}" r="22" fill="none" stroke="#fff" stroke-width="2"></circle>
+          <text x="${W/2}" y="${H-16}" text-anchor="middle" font-size="12" fill="#000" font-family="${FONT}">Director</text>
+        </svg>`;
+
+      if (ext === 'svg') return res.type('image/svg+xml; charset=utf-8').send(svg);
+      if (ext === 'pdf') {
+        try {
+          const pdfBuf = await svgToPdfBuffer(svg, { W, H, title: `Plano ${evento.titulo || 'Evento'}` });
+          return res.type('application/pdf').send(pdfBuf);
+        } catch {
+          const png = await sharp(Buffer.from(svg), { density: 220 }).png({ compressionLevel: 9 }).toBuffer();
+          return res.type('image/png').send(png);
+        }
+      }
+      const png = await sharp(Buffer.from(svg), { density: 220 }).png({ compressionLevel: 9 }).toBuffer();
+      return res.type('image/png').send(png);
+    }
+
+    // 4) Hay ranking → layout por conteos del ranking
+    const counts = {};
+    for (const r of ranking) counts[r.instrumento] = (counts[r.instrumento] || 0) + 1;
+    const posiciones = autoLayoutFromCounts(counts);
+
+    // Agrupar ranking por instrumento
+    const porInstrumento = new Map();
+    for (const r of ranking) {
+      if (!porInstrumento.has(r.instrumento)) porInstrumento.set(r.instrumento, []);
+      porInstrumento.get(r.instrumento).push(r);
+    }
+
+    // Asignación a plazas según atril/puesto
+    const asignacion = new Map();
+    for (const inst of new Set(posiciones.map(p => p.instrumento))) {
+      const lista = porInstrumento.get(inst) || [];
+      const plazas = posiciones
+        .filter(p => p.instrumento === inst)
+        .sort((a,b) => a.atril - b.atril || a.puesto - b.puesto);
+      const n = Math.min(plazas.length, lista.length);
+      for (let i = 0; i < n; i++) {
+        const plaza = plazas[i];
+        const cand = { ...lista[i], seat: i + 1 };
+        asignacion.set(`${plaza.instrumento}|${plaza.atril}|${plaza.puesto}`, cand);
+      }
+    }
+
+    // 5) Render final
+    const W = 1400, H = 900, FONT = FONT_STACK;
+
+    let nodos = '';
+    for (const p of posiciones) {
+      const key = `${p.instrumento}|${p.atril}|${p.puesto}`;
+      const asig = asignacion.get(key);
+      if (!asig) continue;
+    
+      const cx = p.x * W, cy = p.y * H;
+      const color = colorPorInstrumento(p.instrumento);
+    
+      // Divide nombre y apellidos, muestra nombre + primer apellido completos
+      const fullName = asig.nombre || asig.alumno_id || '';
+      const parts = fullName.trim().split(/\s+/);
+      let displayName;
+      if (parts.length >= 3) {
+        // Si hay nombre y dos apellidos, muestra nombre + primer apellido
+        displayName = `${parts[0]} ${parts[1]}`;
+      } else {
+        // Si solo hay nombre y apellido, o menos, muéstralo tal cual
+        displayName = fullName;
+      }
+    
+      nodos += `
+        <g transform="translate(${cx},${cy}) rotate(${p.angulo})">
+          <circle r="30" fill="${color}" fill-opacity="0.9"></circle>
+          <circle r="31.5" fill="none" stroke="#fff" stroke-width="2"></circle>
+          <circle r="33" fill="none" stroke="#222" stroke-opacity="0.15" stroke-width="1.2"></circle>
+          <text y="6" text-anchor="middle" font-weight="800" font-size="18" fill="#fff" font-family="${FONT}">
+            ${asig.seat}
+          </text>
+          <text y="46" text-anchor="middle" font-size="9" fill="#333" font-family="${FONT}">
+            ${esc(displayName)}
+          </text>
+        </g>`;
+    }
+    
+
+    const cxDir = W/2, cyDirBase = H - 50;
+    const director = `
+      <g aria-label="Director">
+        ${directorPodiumSVG(W / 2, H - 50)}
+        <circle cx="${cxDir}" cy="${cyDirBase}" r="20" fill="#000"></circle>
+        <circle cx="${cxDir}" cy="${cyDirBase}" r="22" fill="none" stroke="#fff" stroke-width="2"></circle>
+        <text x="${cxDir}" y="${cyDirBase + 34}" text-anchor="middle" font-size="12" fill="#000" font-family="${FONT}">Director</text>
+      </g>`;
+
+    const svg = `
+      <svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
+        <rect width="100%" height="100%" rx="36" fill="#FAF8F5"></rect>
+        ${stageBackdropSVG(W, H)}
+        <text x="${W/2}" y="36" text-anchor="middle" font-size="24" font-weight="800" letter-spacing=".3px" font-family="${FONT}">
+          Plano de ${esc(evento.titulo || 'Evento')} — ${esc(evento.grupo_nombre || '')}
+        </text>
+        ${buildLegendFromPositions({ posiciones, x: 16, y: 16, fontFamily: FONT })}
+        ${nodos}
+        ${director}
+      </svg>`;
+
+    if (ext === 'svg') return res.type('image/svg+xml; charset=utf-8').send(svg);
+    if (ext === 'pdf') {
+      try {
+        const pdfBuf = await svgToPdfBuffer(svg, { W, H, title: `Plano ${evento.titulo || 'Evento'}` });
+        return res.type('application/pdf').send(pdfBuf);
+      } catch {
+        const png = await sharp(Buffer.from(svg), { density: 220 }).png({ compressionLevel: 9 }).toBuffer();
+        return res.type('image/png').send(png);
+      }
+    }
+    const png = await sharp(Buffer.from(svg), { density: 220 }).png({ compressionLevel: 9 }).toBuffer();
+    return res.type('image/png').send(png);
+
+  } catch (e) {
+    console.error('❌ Error plano evento:', e);
+    return res.status(500).send('Error generando el plano del evento');
+  }
+});
 
 /* ===================== /plano/latest/:grupo.:ext ===================== */
 router.get('/latest/:grupo.:ext', async (req, res) => {
@@ -239,19 +551,36 @@ router.get('/latest/:grupo.:ext', async (req, res) => {
       const key = `${p.instrumento}|${p.atril}|${p.puesto}`;
       const asig = asignacion.get(key);
       if (!asig) continue;
+    
       const cx = p.x * W, cy = p.y * H;
       const color = colorPorInstrumento(p.instrumento);
+    
+      // Divide nombre y apellidos, muestra nombre + primer apellido completos
+      const fullName = asig.nombre || asig.alumno_id || '';
+      const parts = fullName.trim().split(/\s+/);
+      let displayName;
+      if (parts.length >= 3) {
+        // Si hay nombre y dos apellidos, muestra nombre + primer apellido
+        displayName = `${parts[0]} ${parts[1]}`;
+      } else {
+        // Si solo hay nombre y apellido, o menos, muéstralo tal cual
+        displayName = fullName;
+      }
+    
       nodos += `
         <g transform="translate(${cx},${cy}) rotate(${p.angulo})">
           <circle r="30" fill="${color}" fill-opacity="0.9"></circle>
           <circle r="31.5" fill="none" stroke="#fff" stroke-width="2"></circle>
           <circle r="33" fill="none" stroke="#222" stroke-opacity="0.15" stroke-width="1.2"></circle>
-          <text y="6" text-anchor="middle" font-weight="800" font-size="18" fill="#fff" font-family="${FONT}">${asig.seat}</text>
+          <text y="6" text-anchor="middle" font-weight="800" font-size="18" fill="#fff" font-family="${FONT}">
+            ${asig.seat}
+          </text>
           <text y="46" text-anchor="middle" font-size="9" fill="#333" font-family="${FONT}">
-            ${esc(abbreviateName((asig.nombre && asig.nombre.trim().length ? asig.nombre : asig.alumno_id) || '', { max: 16 }))}
+            ${esc(displayName)}
           </text>
         </g>`;
     }
+    
 
     const cxDir = W/2, cyDirBase = H - 50;
     const director = `
@@ -410,19 +739,36 @@ router.get('/:grupo/:trimestreFriendly.:ext', async (req, res) => {
       const key = `${p.instrumento}|${p.atril}|${p.puesto}`;
       const asig = asignacion.get(key);
       if (!asig) continue;
+    
       const cx = p.x * W, cy = p.y * H;
       const color = colorPorInstrumento(p.instrumento);
+    
+      // Divide nombre y apellidos, muestra nombre + primer apellido completos
+      const fullName = asig.nombre || asig.alumno_id || '';
+      const parts = fullName.trim().split(/\s+/);
+      let displayName;
+      if (parts.length >= 3) {
+        // Si hay nombre y dos apellidos, muestra nombre + primer apellido
+        displayName = `${parts[0]} ${parts[1]}`;
+      } else {
+        // Si solo hay nombre y apellido, o menos, muéstralo tal cual
+        displayName = fullName;
+      }
+    
       nodos += `
         <g transform="translate(${cx},${cy}) rotate(${p.angulo})">
           <circle r="30" fill="${color}" fill-opacity="0.9"></circle>
           <circle r="31.5" fill="none" stroke="#fff" stroke-width="2"></circle>
           <circle r="33" fill="none" stroke="#222" stroke-opacity="0.15" stroke-width="1.2"></circle>
-          <text y="6" text-anchor="middle" font-weight="800" font-size="18" fill="#fff" font-family="${FONT_STACK}">${asig.seat}</text>
-          <text y="46" text-anchor="middle" font-size="8" fill="#333" font-family="${FONT_STACK}">
-            ${esc(abbreviateName((asig.nombre && asig.nombre.trim().length ? asig.nombre : asig.alumno_id) || '', { max: 16 }))}
+          <text y="6" text-anchor="middle" font-weight="800" font-size="18" fill="#fff" font-family="${FONT}">
+            ${asig.seat}
+          </text>
+          <text y="46" text-anchor="middle" font-size="9" fill="#333" font-family="${FONT}">
+            ${esc(displayName)}
           </text>
         </g>`;
     }
+    
 
     const cxDir = W / 2, cyDir = H - 50;
     const director = `

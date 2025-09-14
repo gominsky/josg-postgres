@@ -149,6 +149,56 @@
   .canvas-wrap.free .tile-tools button:hover{ background:#f5f5f5; }
 
   .dragging{ outline: 2px dashed rgba(0,0,0,.25); outline-offset: 0; }
+
+  /* Lienzo (modo libre y “solo ver”) */
+  .canvas-wrap{ position: relative; }
+  .canvas-wrap.free,
+  .canvas-wrap.free-view{
+    height: 1200px;
+    border: 1px dashed rgba(0,0,0,.08);
+    border-radius: 12px;
+    padding: 8px;
+  }
+  .canvas-wrap.free #menu-principal,
+  .canvas-wrap.free-view #menu-principal{
+    display: block !important;
+    position: relative;
+    height: 100%;
+  }
+  .canvas-wrap.free #menu-principal .tile-sb,
+  .canvas-wrap.free-view #menu-principal .tile-sb{
+    position: absolute !important;
+    margin: 0 !important;
+    min-width: 180px; min-height: 120px;
+    box-shadow: 0 4px 18px rgba(0,0,0,.08);
+    user-select: none;
+    touch-action: none;
+  }
+
+  /* Contrastes de color (texto según fondo) */
+  .sb-grid .tile-sb.is-black,
+  .sb-grid .tile-sb.is-blue,
+  .sb-grid .tile-sb.is-orange,
+  .sb-grid .tile-sb.is-rust { color:#fff; }
+  .sb-grid .tile-sb.is-cream,
+  .sb-grid .tile-sb.is-yellow { color:#111; }
+
+  /* Toolbars (solo en edición) */
+  .tile-tools{ display:none; }
+  .canvas-wrap:not(.free) .tile-tools { display: none !important; }
+  .canvas-wrap.free .tile-tools{
+    position:absolute; top:6px; right:6px; display:flex; gap:6px; z-index:2;
+  }
+  .canvas-wrap.free .tile-tools button{
+    border:1px solid rgba(0,0,0,.15); background:#fff; border-radius:6px;
+    padding:4px 8px; font-size:12px; line-height:1; cursor:pointer;
+    box-shadow:0 1px 2px rgba(0,0,0,.08);
+  }
+  .canvas-wrap.free .tile-tools button:hover{ background:#f5f5f5; }
+
+  .dragging{ outline: 2px dashed rgba(0,0,0,.25); outline-offset: 0; }
+</style>
+
 </style>
 
 <script>

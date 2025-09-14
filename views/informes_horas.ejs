@@ -1,18 +1,25 @@
 <% title = 'Informe: % Horas' %>
 <% hero = false %>
 <%
-  // Formatear fechas a día, mes (texto) y año en español
-  const opcionesFecha = { day: '2-digit', month: 'long', year: 'numeric' };
-  const fechaFormateada = new Date(fecha).toLocaleDateString('es-ES', opcionesFecha);
-  const fechaFinFormateada = fecha_fin ? new Date(fecha_fin).toLocaleDateString('es-ES', opcionesFecha) : null;
+  // Función para dar formato dd/mm/aa
+  function fmtFecha(f) {
+    if (!f) return '';
+    const d = new Date(f);
+    if (isNaN(d)) return f; // Fallback si no es una fecha válida
+    const dd = String(d.getDate()).padStart(2, '0');
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const yy = String(d.getFullYear()).slice(-2);
+    return `${dd}/${mm}/${yy}`;
+  }
+
+  const fechaFormateada = fmtFecha(fecha);
+  const fechaFinFormateada = fecha_fin ? fmtFecha(fecha_fin) : null;
 %>
 <h1 class="h1-titulo text-center mb-4">
   Porcentaje de horas de asistencia
   (<%= fechaFormateada %><% if (fechaFinFormateada) { %> – <%= fechaFinFormateada %><% } %>)
 </h1>
-<p class="text-center mb-4">
-  Total de horas en periodo: <strong><%= totalHoras.toFixed(2) %> h</strong>
-</p>
+
 
 <div class="text-center mb-4">
   <form action="/informes/horas/guardar" method="POST" class="d-inline-block" style="background-color: transparent;">

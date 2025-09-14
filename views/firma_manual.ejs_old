@@ -1,181 +1,76 @@
 <% title = 'Configuración de evento' %>
 <% hero = false %>
-<!-- ====== CABECERA ULTRA-COMPACTA ====== -->
-<div class="evt-bar sticky-top">
-  <div class="evt-bar__row container-fluid" style="max-width:1400px">
-    <div class="evt-left">
-      <span class="evt-title">Configuración de evento</span>
-      <span class="evt-meta">
-        <span class="mchip"><%= evento.titulo %></span>
-        <span class="mdot">•</span>
-        <span class="mchip"><%= evento.grupo_nombre %></span>
-        <span class="mdot">•</span>
-        <span class="mchip"><%= iniTxt %> · <%= hIni %>–<%= hFin %></span>
-      </span>
-    </div>
 
-    <div class="evt-right">
-      <a class="btn-xxs" href="/plano/evento/<%= evento.id %>.pdf" target="_blank" title="Plano PDF">
-        <span class="i i-pdf" aria-hidden="true"></span><span class="t">PDF</span>
-      </a>
-      <button id="btnRefreshAsign" class="btn-xxs" title="Restaurar alumnos">
-        <span class="i i-refresh"></span><span class="t">Restaurar</span>
+<div class="container-fluid mt-4" style="max-width: 1400px;">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h1-titulo mb-0">Configuración de evento</h1>
+    <div class="d-flex gap-2">
+      <button id="btnRefreshAsign" class="btn-main-blanco fw-bold px-3 py-2">
+        Restaurar alumnos
       </button>
-
-      <label class="sw-xxs" title="Familias">
-        <input class="form-check-input" type="checkbox" id="swFam"><span>Fam</span>
-      </label>
-      <label class="sw-xxs" title="Instrumentos">
-        <input class="form-check-input" type="checkbox" id="swInst"><span>Inst</span>
-      </label>
-      <label class="sw-xxs" title="Individual">
-        <input class="form-check-input" type="checkbox" id="swAlu" checked><span>Ind</span>
-      </label>
-
-      <!-- Plantillas -->
-      <a id="linkSaveTpl" href="#" class="btn-xxs btn-ghost" title="Guardar como plantilla">
-        <span class="i i-plus"></span><span class="t">Guardar</span>
-      </a>
-
-      <select id="tplSel" class="form-select tpl-sel-xxs" title="Selecciona una plantilla">
-        <option value="">Plantilla…</option>
-      </select>
-
-      <button id="tplApply"  class="btn-xxs"                  title="Vista previa">Preview</button>
-      <button id="tplClear"  class="btn-xxs btn-ghost"        title="Quitar filtro">Quitar</button>
-      <button id="tplPersist" class="btn-xxs btn-positive"    title="Aplicar y guardar">Aplicar</button>
-      <button id="tplDelete"  class="btn-xxs btn-danger-ghost" title="Eliminar plantilla" disabled>Eliminar</button>
     </div>
   </div>
 
-  <!-- Micro-popover guardar plantilla -->
-  <div id="tplPopover" class="tpl-popover tpl-hidden">
-    <form id="saveTplForm" class="tpl-form-xxs" autocomplete="off">
-      <input id="tplName" class="form-control form-xxs" type="text" placeholder="Nombre" required>
-      <input id="tplDesc" class="form-control form-xxs" type="text" placeholder="Descripción (opcional)">
-      <button class="btn-xxs btn-positive" type="submit">Guardar</button>
-      <button id="cancelSaveTpl" class="btn-xxs btn-ghost" type="button">Cancelar</button>
-      <span id="saveTplMsg" class="micro-msg"></span>
-    </form>
+  <div class="text-start mb-3">
+    <h5>Evento: <%= evento.titulo %> (<%= evento.grupo_nombre %>)</h5>
+    <div><h5>
+      <strong>Fecha:</strong> <%= iniTxt %>,
+      <strong>Hora:</strong> <%= hIni %> - <%= hFin %>
+    </h5></div>
   </div>
+<!-- Botón para generar plano del evento -->
+<div class="mb-3">
+  <a class="btn btn-outline-dark btn-sm"
+     href="/plano/evento/<%= evento.id %>.pdf"
+     target="_blank" rel="noopener">
+    Plano del evento (PDF)
+  </a>
 </div>
-
-<!-- Línea de estado del filtro (se mantiene) -->
-<div class="container-fluid" style="max-width:1400px">
-  <div class="tpl-info micro-muted" id="tplInfo"></div>
-</div>
-
-<style>
-/* ===== Escala ultra-compacta ===== */
-:root{ --h-xxs:28px; --fs-xxs:12.5px; --rad:8px; }
-.evt-bar{ background:#fff; border-bottom:1px solid #eee; box-shadow:0 1px 6px rgba(0,0,0,.04); z-index:100; }
-.evt-bar__row{ display:flex; align-items:center; justify-content:space-between; gap:8px; padding:6px 8px; }
-.evt-left{ min-width:200px; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
-.evt-title{ font-weight:800; color:#111; font-size:14px; }
-.evt-meta{ display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
-.mchip{ background:#f6f6f6; border:1px solid #e7e7e7; border-radius:7px; padding:1px 6px; font-size:11.5px; }
-.mdot{ opacity:.45; }
-
-.evt-right{ display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
-
-.btn-xxs{
-  height:var(--h-xxs); padding:0 8px; border-radius:var(--rad);
-  border:1px solid #ddd; background:#fff; font-weight:600; font-size:var(--fs-xxs); line-height:var(--h-xxs);
-  display:inline-flex; align-items:center; gap:6px; color:#222;
-}
-.btn-xxs:hover{ background:#f7f7f7; }
-.btn-ghost{ background:transparent; }
-.btn-positive{ border-color:#1e6f40; background:#1e6f40; color:#fff; }
-.btn-positive:hover{ filter:brightness(.96); }
-.btn-danger-ghost{ border-color:#c33; color:#c33; background:transparent; }
-.btn-danger-ghost:hover{ background:#fff1f1; }
-
-.i{ width:12px; height:12px; display:inline-block; }
-.i-refresh{ background:conic-gradient(from 0deg,#888 0 25%,transparent 25% 100%); border-radius:50%; }
-.i-pdf{ background:linear-gradient(#c33,#c33); border-radius:2px; }
-.i-plus{ position:relative; }
-.i-plus::before,.i-plus::after{ content:""; position:absolute; left:50%; top:50%; width:10px; height:2px; background:#222; transform:translate(-50%,-50%); }
-.i-plus::after{ transform:translate(-50%,-50%) rotate(90deg); }
-.t{ display:none; } @media (min-width:640px){ .t{ display:inline; } }
-
-.sw-xxs{ display:inline-flex; align-items:center; gap:6px; font-size:var(--fs-xxs); font-weight:600; }
-.sw-xxs .form-check-input{ width:32px; height:18px; transform:translateY(1px); }
-.sw-xxs span{ user-select:none; }
-
-.tpl-sel-xxs{
-  height:var(--h-xxs); padding:0 24px 0 8px; font-size:var(--fs-xxs); min-width:200px;
-  border-radius:var(--rad); border:1px solid #ddd; background:#fff;
-}
-
-/* Popover micro */
-.tpl-popover{ position:sticky; top:44px; display:flex; justify-content:flex-end; z-index:101; }
-.tpl-form-xxs{
-  display:flex; gap:6px; align-items:center; padding:6px; background:#fff; border:1px solid #e7e7e7;
-  border-radius:10px; box-shadow:0 10px 20px rgba(0,0,0,.08); margin-right:8px;
-}
-.form-xxs{ height:var(--h-xxs); padding:0 8px; font-size:var(--fs-xxs); border-radius:var(--rad); border:1px solid #ddd; }
-.micro-msg{ font-size:11px; color:#777; margin-left:4px; }
-.micro-muted{ font-size:12px; color:#666; margin-top:4px; }
-.tpl-hidden{ display:none !important; }
-</style>
-
-<script>
-(()=>{ // micro-popover & guardar plantilla (IDs iguales a tu JS)
-  const $link = document.getElementById('linkSaveTpl');
-  const $pop  = document.getElementById('tplPopover');
-  const $name = document.getElementById('tplName');
-  const $cancel = document.getElementById('cancelSaveTpl');
-  const $form = document.getElementById('saveTplForm');
-  const $msg  = document.getElementById('saveTplMsg');
-  const eventoId = <%= evento.id %>;
-
-  function openPop(){ $pop.classList.remove('tpl-hidden'); setTimeout(()=> $name?.focus(), 10); }
-  function closePop(){
-    $pop.classList.add('tpl-hidden');
-    const $desc=document.getElementById('tplDesc');
-    if ($name) $name.value=''; if ($desc) $desc.value=''; if ($msg) $msg.textContent='';
-  }
-  $link?.addEventListener('click', e=>{ e.preventDefault(); openPop(); });
-  $cancel?.addEventListener('click', closePop);
-  document.addEventListener('click', (ev)=>{ if(!ev.target.closest('#tplPopover, #linkSaveTpl')) closePop(); });
-
-  async function postJSON(url, body){
-    const r = await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
-    const ct=r.headers.get('content-type')||''; const data=ct.includes('application/json')?await r.json():{};
-    if(!r.ok||data?.ok===false) throw new Error(data?.error||`HTTP ${r.status}`); return data;
-  }
-  $form?.addEventListener('submit', async ev=>{
-    ev.preventDefault();
-    const nombre = ($name?.value||'').trim();
-    const descripcion = (document.getElementById('tplDesc')?.value||'').trim() || null;
-    if(!nombre){ $name?.focus(); return; }
-    $msg.textContent='Guardando…';
-    try{
-      const data = await postJSON(`/plantillas/from-event/${eventoId}`, { nombre, descripcion });
-      $msg.textContent='✓ Guardada';
-      if(window.__reloadTplSel){ await window.__reloadTplSel({ selectNewId:data.id }); }
-      setTimeout(()=>{ $msg.textContent=''; closePop(); }, 450);
-    }catch(e){ console.error(e); $msg.textContent='Error'; }
-  });
-
-  // Eliminar plantilla
-  const $sel = document.getElementById('tplSel');
-  const $btnDel = document.getElementById('tplDelete');
-  function updDel(){ $btnDel?.toggleAttribute('disabled', !($sel && $sel.value)); }
-  $sel?.addEventListener('change', updDel); updDel();
-  $btnDel?.addEventListener('click', async ()=>{
-    const id=$sel?.value; if(!id) return;
-    if(!confirm('¿Eliminar plantilla seleccionada?')) return;
-    try{
-      const r = await fetch(`/plantillas/${id}`, { method:'DELETE' });
-      if(!r.ok) throw new Error(await r.text());
-      if(window.__reloadTplSel) await window.__reloadTplSel();
-      updDel(); alert('Plantilla eliminada.');
-    }catch(e){ console.error(e); alert('No se pudo eliminar.'); }
-  });
-})();
-</script>
-
+  <!-- Switches -->
+  <div class="d-flex gap-4 mb-3">
+    <div class="form-check form-switch">
+      <input class="form-check-input" type="checkbox" id="swFam">
+      <label class="form-check-label" for="swFam">Agrupar por Familias</label>
+    </div>
+    <div class="form-check form-switch">
+      <input class="form-check-input" type="checkbox" id="swInst">
+      <label class="form-check-label" for="swInst">Instrumento</label>
+    </div>
+    <div class="form-check form-switch">
+      <input class="form-check-input" type="checkbox" id="swAlu" checked>
+      <label class="form-check-label" for="swAlu">Individual</label>
+    </div>
+    <div class="d-flex gap-3 mb-2 align-items-center">
+      <!-- Enlace (no botón) para abrir el formulario -->
+      <a id="linkSaveTpl" href="#" class="tpl-link-add">
+        <span class="tpl-link-plus">＋</span> Guardar configuración actual como plantilla
+      </a>
+  
+      <!-- Formulario inline compacto -->
+      <form id="saveTplForm" class="tpl-form-inline tpl-hidden" style="margin:0">
+        <input id="tplName" class="form-control form-control-sm" type="text"
+               placeholder="Nombre de la plantilla" required>
+        <input id="tplDesc" class="form-control form-control-sm" type="text"
+               placeholder="Descripción (opcional)">
+        <div class="d-flex gap-2">
+          <button class="btn btn-tpl-solid btn-sm" type="submit">Guardar</button>
+          <button id="cancelSaveTpl" class="btn btn-tpl-ghost btn-sm" type="button">Cancelar</button>
+        </div>
+        <span id="saveTplMsg" class="small ms-2 text-muted"></span>
+      </form>
+    </div>
+  </div>
+  <!-- === Plantillas: selector y acciones === -->
+  <div id="tplBar" class="d-flex align-items-center gap-2 mb-3">
+    <select id="tplSel" class="form-select form-select-sm" style="width:320px">
+      <option value="">— Selecciona una plantilla —</option>
+    </select>
+    <button id="tplApply"  class="btn btn-neutral btn-sm">Vista previa</button>
+    <button id="tplClear"  class="btn btn-outline-neutral btn-sm">Quitar filtro</button>
+    <button id="tplPersist" class="btn btn-positive btn-sm">Aplicar y guardar</button>
+    <button id="tplDelete" class="btn btn-outline-danger-neutral btn-sm" disabled>Eliminar</button>
+    <span id="tplInfo" class="text-muted small ms-2"></span>
+  </div>  
 
   <!-- ========= BLOQUE FAMILIAS ========= -->
   <div id="famWrap" style="display:none">

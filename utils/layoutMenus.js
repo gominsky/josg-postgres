@@ -17,16 +17,19 @@
 
   function applyItemStyles(tile, it){
     if(!it) return;
-    // fuerza color exacto
-    COLORS.forEach(c=>tile.classList.remove(c));
-    if(it.color) tile.classList.add(it.color);
-    // fuerza coordenadas
-    tile.style.left  = (typeof it.x==='number' ? it.x : 0) + 'px';
-    tile.style.top   = (typeof it.y==='number' ? it.y : 0) + 'px';
-    if(typeof it.w==='number') tile.style.width  = it.w+'px';
-    if(typeof it.h==='number') tile.style.height = it.h+'px';
-    if(typeof it.z==='number') tile.style.zIndex = String(it.z);
+    // Solo tocar color si viene definido en el item
+    if (it.color) {
+      COLORS.forEach(c=>tile.classList.remove(c));
+      tile.classList.add(it.color);
+    }
+    // Fuerza coordenadas/tamaños si vienen
+    if(typeof it.x==='number') tile.style.left  = it.x+'px';
+    if(typeof it.y==='number') tile.style.top   = it.y+'px';
+    if(typeof it.w==='number') tile.style.width = it.w+'px';
+    if(typeof it.h==='number') tile.style.height= it.h+'px';
+    if(typeof it.z==='number') tile.style.zIndex= String(it.z);
   }
+  
 
   // === SIEMPRE relativo a grid ===
   function snapshot(wrap, grid, tileSel){
@@ -160,6 +163,20 @@
   }
 
   function init(options){
+    function init(wrap, grid, tileSelector, slug){
+      // ⬇️  AQUÍ, al principio de init(), una vez que tengas grid y tileSelector
+      grid.querySelectorAll(tileSelector).forEach(t=>{
+        // Guardar el color “de fábrica” si no está guardado ya
+        if (!t.dataset.defaultColor) {
+          const cls = (['is-cream','is-yellow','is-blue','is-orange','is-rust','is-black','is-white'])
+            .find(c => t.classList.contains(c)) || '';
+          t.dataset.defaultColor = cls;
+        }
+      });
+    
+      // ... 🔽 resto de tu init original:
+      // cargar estado guardado, preparar drag & drop, listeners, etc.
+    }    
     const {
       wrapSelector = '#canvas-wrap',
       gridSelector = '#menu-config',   // o '#menu-principal'
@@ -228,16 +245,23 @@
       // 1) Intenta cargar del servidor
       let srv = null;
       try { srv = await apiLoad(slug); } catch {}
-
       const hasSrv = !!(srv && srv.positions && Object.keys(srv.positions).length);
-
-      // 2) Si no hay servidor, snapshot del GRID (sin absoluto)
+      
       let items;
       if (hasSrv) {
-        items = srv.positions;
+        // Mezcla posiciones del servidor + color del servidor o del DOM si falta
+        items = {};
+        grid.querySelectorAll(tileSelector).forEach(t => {
+          const id = t.dataset.id;
+          const pos = srv.positions?.[id] || {};
+          const col = (srv.colors && srv.colors[id]) || tileColorClass(t);
+          items[id] = { ...pos, color: col };
+        });
       } else {
+        // Primera vez: snapshot del DOM (incluye colores actuales)
         items = snapshot(wrap, grid, tileSelector);
       }
+      
 
       // 3) Activar vista absoluta y aplicar estilos
       wrap.classList.add('free-view');
@@ -258,11 +282,20 @@
       }
     }
 
+    // Sustituye exitView() por:
     function exitView(){
-      wrap.classList.remove('free-view');
+      wrap.classList.remove('free','free-view');
+      // quitar toolbars si existieran
+      grid.querySelectorAll(`${tileSelector} .tile-tools`).forEach(t=>t.remove());
+      // IMPORTANT: limpiar estilos inline para volver al flujo natural de grid
       grid.querySelectorAll(tileSelector).forEach(a=>{
-        a.style.position='';
-        a.style.left=a.style.top=a.style.width=a.style.height=a.style.zIndex='';
+        a.style.position = '';
+        a.style.margin   = '';
+        a.style.left     = '';
+        a.style.top      = '';
+        a.style.width    = '';
+        a.style.height   = '';
+        a.style.zIndex   = '';
       });
     }
 
@@ -298,26 +331,57 @@
       if (global.interact) global.interact('.tile-sb').unset?.();
     }
 
-    // Restablecer = volver al DOM original (posiciones + COLORES) y guardarlo en servidor
     async function resetAndSaveInitial(){
+      // 0) Si está en modo libre, salimos sin guardar ese estado
       if (wrap.classList.contains('free')) exitFree(false);
+    
+      // 1) Volvemos a la vista “natural”: sin estilos inline, sin toolbars
       exitView();
-
-      // layout natural del grid (incluye color DOM)
+    
+      // 2) Reaplicar color de fábrica guardado en data-default-color
+      grid.querySelectorAll(tileSelector).forEach(a=>{
+        const def = a.dataset.defaultColor || null;
+        // Limpia paleta conocida (ajusta si tienes más)
+        ['is-cream','is-yellow','is-blue','is-orange','is-rust','is-black','is-white']
+          .forEach(c => a.classList.remove(c));
+        if (def) a.classList.add(def);
+      });
+    
+      // 3) Tomar snapshot del DOM “de fábrica”
       const items = snapshot(wrap, grid, tileSelector);
-
-      // aplicarlo al instante en modo vista
+    
+      // 4) Aplicar inmediatamente en “free-view” (pintado consistente)
       wrap.classList.add('free-view');
       grid.querySelectorAll(tileSelector).forEach(a=>{
-        a.style.position='absolute'; a.style.margin='0';
+        a.style.position='absolute';
+        a.style.margin='0';
         applyItemStyles(a, items[a.dataset.id]);
       });
-
+    
+      // 5) Guardar (local + servidor)
       const state = { mode:'free-view', items };
       saveLocal(state);
-      const payload = buildPayload(grid, items, tileSelector);
-      try{ await apiSave(slug, payload); }catch{}
+      try {
+        const payload = buildPayload(grid, items, tileSelector);
+        await apiSave(slug, payload);
+      } catch(e) {
+        console.warn('[layoutMenus] PUT layout falló (se mantiene local):', e);
+      }
+    
+      // 6) 🔁 Forzar repintado suave (sin recargar toda la página)
+      try {
+        const payload = buildPayload(grid, items, tileSelector);
+        await apiSave(slug, payload);
+      } finally {
+        location.reload();
+      }
+      
+    
+      // Alternativa “dura” (por si quieres refresh completo tras guardar):
+      // location.reload();
     }
+    
+
 
     // Estado inicial — si no hay layout en servidor, arrancar en "vista" con el grid actual y guardarlo
     (async()=>{

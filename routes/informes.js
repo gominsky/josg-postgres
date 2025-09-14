@@ -788,128 +788,102 @@ router.get('/certificados', async (req, res) => {
   }
 });
 
-// === INFORME DE HORAS (construyendo start_ts / end_ts robustos) ===
+// === INFORME DE HORAS (usando evento_asignaciones para cada alumno) ===
 router.get('/horas', isAuthenticated, async (req, res) => {
-  const fechaISO = toISODate(req.query.fecha);
-  const fechaFinISO = toISODate(req.query.fecha_fin);
-  const grupo = req.query.grupo;
-  const instrumento = req.query.instrumento;
+  const fechaISO     = toISODate(req.query.fecha);
+  const fechaFinISO  = toISODate(req.query.fecha_fin);
+  const grupo        = req.query.grupo;        // '', 'todos' o id
+  const instrumento  = req.query.instrumento;  // '', 'todos' o id
 
-  const fromParam = fechaISO ? `${fechaISO} 00:00:00` : null;
-  const toParam   = fechaFinISO ? `${fechaFinISO} 23:59:59` : null;
+  // Construir rango temporal
+  const fromParam = fechaISO    ? `${fechaISO} 00:00:00`   : null;
+  const toParam   = fechaFinISO ? `${fechaFinISO} 23:59:59`: null;
 
   try {
-    // 1) Total de horas del periodo
-    const totalParams = [];
-    let totalWhere = '';
+    const params = [];
+    let where   = `WHERE asi.tipo IN ('manual','qr')`;
 
-    if (fromParam) { totalParams.push(fromParam); totalWhere += (totalWhere ? ' AND ' : ' WHERE ') + `e.start_ts >= $${totalParams.length}`; }
-    if (toParam)   { totalParams.push(toParam);   totalWhere += (totalWhere ? ' AND ' : ' WHERE ') + `e.end_ts   <= $${totalParams.length}`; }
-    if (grupo)     { totalParams.push(grupo);     totalWhere += (totalWhere ? ' AND ' : ' WHERE ') + `e.grupo_id = $${totalParams.length}`; }
-
-    const totalSQL = `
-      WITH e AS (
-        SELECT
-          ev.*,
-          (
-            (
-              CASE WHEN position('T' in ev.fecha_inicio) > 0
-                   THEN split_part(ev.fecha_inicio, 'T', 1)
-                   ELSE ev.fecha_inicio
-              END
-            ) || ' ' || COALESCE(ev.hora_inicio, '00:00') || ':00'
-          )::timestamp AS start_ts,
-          (
-            (
-              CASE WHEN position('T' in ev.fecha_fin) > 0
-                   THEN split_part(ev.fecha_fin, 'T', 1)
-                   ELSE ev.fecha_fin
-              END
-            ) || ' ' || COALESCE(ev.hora_fin, '23:59') || ':00'
-          )::timestamp AS end_ts
-        FROM eventos ev
-      )
-      SELECT SUM(EXTRACT(EPOCH FROM (e.end_ts - e.start_ts)) / 3600.0) AS total_horas
-      FROM e
-      ${totalWhere}
-    `;
-    const totalRes = await db.query(totalSQL, totalParams);
-    const totalHoras = parseFloat(totalRes.rows[0].total_horas || 0);
-
-    // 2) Horas por alumno (solo asistencias manual/qr)
-    const alumnoParams = [];
-    let alumnoWhere = `WHERE asi.tipo IN ('manual','qr')`;
-
-    // Filtros sobre timestamps calculados
-    if (fromParam) { alumnoParams.push(fromParam); alumnoWhere += ` AND e.start_ts >= $${alumnoParams.length}`; }
-    if (toParam)   { alumnoParams.push(toParam);   alumnoWhere += ` AND e.end_ts   <= $${alumnoParams.length}`; }
-    if (grupo)     { alumnoParams.push(grupo);     alumnoWhere += ` AND e.grupo_id = $${alumnoParams.length}`; }
-
-    let instrumentoJoin = '';
-    if (instrumento) {
-      alumnoParams.push(instrumento);
-      instrumentoJoin = `JOIN alumno_instrumento ai ON ai.alumno_id = a.id AND ai.instrumento_id = $${alumnoParams.length}`;
+    if (fromParam) {
+      params.push(fromParam);
+      where += ` AND ea.start_ts >= $${params.length}`;
+    }
+    if (toParam) {
+      params.push(toParam);
+      where += ` AND ea.end_ts <= $${params.length}`;
+    }
+    if (grupo && grupo !== 'todos' && grupo !== '') {
+      params.push(grupo);
+      where += ` AND ea.grupo_id = $${params.length}`;
     }
 
-    const alumnoSQL = `
-      WITH e AS (
+    let instrumentoJoin = '';
+    if (instrumento && instrumento !== 'todos' && instrumento !== '') {
+      params.push(instrumento);
+      instrumentoJoin = `
+        JOIN alumno_instrumento ai
+          ON ai.alumno_id = a.id
+         AND ai.instrumento_id = $${params.length}`;
+    }
+
+    const sql = `
+      WITH ea AS (
         SELECT
-          ev.*,
+          asig.alumno_id  AS alumno_id,
+          ev.id           AS evento_id,
+          ev.grupo_id     AS grupo_id,
           (
-            (
-              CASE WHEN position('T' in ev.fecha_inicio) > 0
-                   THEN split_part(ev.fecha_inicio, 'T', 1)
-                   ELSE ev.fecha_inicio
-              END
-            ) || ' ' || COALESCE(ev.hora_inicio, '00:00') || ':00'
+            ev.fecha_inicio::date
+            + COALESCE(
+                NULLIF(asig.hora_inicio::text,'')::time,
+                NULLIF(ev.hora_inicio::text,'')::time,
+                TIME '00:00'
+              )
           )::timestamp AS start_ts,
           (
-            (
-              CASE WHEN position('T' in ev.fecha_fin) > 0
-                   THEN split_part(ev.fecha_fin, 'T', 1)
-                   ELSE ev.fecha_fin
-              END
-            ) || ' ' || COALESCE(ev.hora_fin, '23:59') || ':00'
+            ev.fecha_fin::date
+            + COALESCE(
+                NULLIF(asig.hora_fin::text,'')::time,
+                NULLIF(ev.hora_fin::text,'')::time,
+                TIME '23:59:59'
+              )
           )::timestamp AS end_ts
-        FROM eventos ev
+        FROM evento_asignaciones asig
+        JOIN eventos ev ON ev.id = asig.evento_id
       )
-      SELECT 
+      SELECT
         a.id,
         a.nombre || ' ' || a.apellidos AS alumno,
-        SUM(EXTRACT(EPOCH FROM (e.end_ts - e.start_ts)) / 3600.0) AS horas
+        ROUND(SUM(EXTRACT(EPOCH FROM (ea.end_ts - ea.start_ts)) / 3600.0)::numeric,2) AS horas
       FROM asistencias asi
-      JOIN alumnos a ON asi.alumno_id = a.id
-      JOIN e ON asi.evento_id = e.id
+      JOIN alumnos a ON a.id = asi.alumno_id AND a.activo = TRUE
+      JOIN ea        ON ea.evento_id = asi.evento_id AND ea.alumno_id = asi.alumno_id
       ${instrumentoJoin}
-      ${alumnoWhere}
+      ${where}
       GROUP BY a.id, a.nombre, a.apellidos
-      HAVING SUM(EXTRACT(EPOCH FROM (e.end_ts - e.start_ts)) / 3600.0) > 0
-      ORDER BY alumno
+      HAVING SUM(EXTRACT(EPOCH FROM (ea.end_ts - ea.start_ts)) / 3600.0) > 0
+      ORDER BY alumno;
     `;
-    const alumnosRes = await db.query(alumnoSQL, alumnoParams);
 
-    const resultados = alumnosRes.rows.map(r => {
-      const horas = parseFloat(r.horas);
-      const porcentaje = totalHoras > 0 ? (horas / totalHoras) * 100 : 0;
-      return {
-        id: r.id,
-        alumno: r.alumno,
-        horas: horas.toFixed(2),
-        porcentaje: porcentaje.toFixed(1)
-      };
-    });
+    const result = await db.query(sql, params);
+
+    // Cada alumno usa su propio total, así que porcentaje = 100%
+    const resultados = result.rows.map(r => ({
+      id: r.id,
+      alumno: r.alumno,
+      horas: parseFloat(r.horas).toFixed(2),
+      porcentaje: '100.0'
+    }));
 
     res.render('informes_horas', {
       fecha: fechaISO || '',
       fecha_fin: fechaFinISO || '',
       grupo,
       instrumento,
-      totalHoras,
       resultados
     });
 
   } catch (err) {
-    console.error('❌ Error calculando informe de horas:', err);
+    console.error('❌ Error calculando informe de horas (asignaciones):', err);
     res.status(500).send('Error calculando informe de horas');
   }
 });
