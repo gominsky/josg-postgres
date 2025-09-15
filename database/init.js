@@ -788,8 +788,49 @@ async function init({ reset = false } = {}) {
   CREATE INDEX IF NOT EXISTS idx_partitura_instrumento_instr
     ON partitura_instrumento (instrumento_id);
 `);
+// ============================
+    // 12) MENSAJES
     // ============================
-    // 12) VISTAS / ÍNDICES EXTRA
+    await run(`
+      CREATE TABLE IF NOT EXISTS mensajes (
+        id              SERIAL PRIMARY KEY,
+        titulo          TEXT NOT NULL,
+        cuerpo          TEXT NOT NULL,
+        url             TEXT,               -- opcional: enlace o adjunto publicado
+        creado_por      INTEGER,            -- user_id del panel (si lo usas)
+        created_at      TIMESTAMP NOT NULL DEFAULT NOW()
+      );
+
+      -- A quién va dirigido (targets)
+      CREATE TABLE  IF NOT EXISTS mensaje_destino (
+        id              SERIAL PRIMARY KEY,
+        mensaje_id      INTEGER NOT NULL REFERENCES mensajes(id) ON DELETE CASCADE,
+        grupo_id        INTEGER,            -- null si es a alumno/s sueltos o a "todos"
+        alumno_id       INTEGER             -- null si es por grupo o a "todos"
+        -- (si grupo_id y alumno_id son ambos null => BROADCAST a todos)
+      );
+
+      -- Entregas/lecturas (inbox por alumno)
+      CREATE TABLE  IF NOT EXISTS mensaje_entrega (
+        id              SERIAL PRIMARY KEY,
+        mensaje_id      INTEGER NOT NULL REFERENCES mensajes(id) ON DELETE CASCADE,
+        alumno_id       INTEGER NOT NULL REFERENCES alumnos(id) ON DELETE CASCADE,
+        entregado_at    TIMESTAMP,          -- cuando lo "pusheamos" (opcional)
+        leido_at        TIMESTAMP           -- marcado como leído por el móvil
+      );
+
+      -- Suscripciones Web Push (un alumno puede tener varios dispositivos)
+      CREATE TABLE  IF NOT EXISTS push_suscripciones (
+        id              SERIAL PRIMARY KEY,
+        alumno_id       INTEGER NOT NULL REFERENCES alumnos(id) ON DELETE CASCADE,
+        endpoint        TEXT NOT NULL UNIQUE,
+        p256dh          TEXT NOT NULL,
+        auth            TEXT NOT NULL,
+        created_at      TIMESTAMP NOT NULL DEFAULT NOW()
+      );
+  `);
+    // ============================
+    // 13) VISTAS / ÍNDICES EXTRA
     // ============================
     // Dedup de emails (antes de índices únicos parciales)
     await run(`

@@ -1,0 +1,29 @@
+<h1>Nuevo mensaje</h1>
+<form action="/mensajes" method="POST">
+  <label>Título <input name="titulo" required></label>
+  <label>Mensaje <textarea name="cuerpo" rows="5" required></textarea></label>
+  <label>URL (opcional) <input name="url"></label>
+
+  <fieldset>
+    <legend>Destinatarios</legend>
+    <label><input type="checkbox" name="broadcast" value="true"> A todos</label>
+
+    <h4>Por grupos</h4>
+    <div>
+      <% grupos.forEach(g => { %>
+        <label>
+          <input type="checkbox" name="grupos" value="<%= g.id %>"> <%= g.nombre %>
+        </label>
+      <% }) %>
+    </div>
+
+    <h4>Alumnos concretos</h4>
+    <input name="alumnos_csv" placeholder="IDs separados por coma, p.e. 12,45,78">
+  </fieldset>
+
+  <button type="submit">Enviar</button>
+</form>
+
+<script>
+  // Si usas fetch + JSON en vez de form URLENCODED, transforma aquí antes de enviar.
+</script>

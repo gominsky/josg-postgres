@@ -1,177 +1,373 @@
 <% title = 'Configuración de evento' %>
 <% hero = false %>
-<!-- ====== CABECERA ULTRA-COMPACTA ====== -->
-<div class="evt-bar sticky-top">
-  <div class="evt-bar__row container-fluid" style="max-width:1400px">
+<!-- ================== TOOLBAR COMPACTA (2 FILAS) ================== -->
+<div class="evt-toolbar">
+  <!-- Fila 1: Plantillas -->
+  <div class="evt-row evt-row-top">
     <div class="evt-left">
-      <span class="evt-title">Configuración de evento</span>
-      <span class="evt-meta">
-        <span class="mchip"><%= evento.titulo %></span>
-        <span class="mdot">•</span>
-        <span class="mchip"><%= evento.grupo_nombre %></span>
-        <span class="mdot">•</span>
-        <span class="mchip"><%= iniTxt %> · <%= hIni %>–<%= hFin %></span>
-      </span>
+      <div class="tpl-group">
+        <label for="tplSel" class="tpl-label">Plantilla</label>
+        <select id="tplSel" class="form-select form-select-sm tpl-sel">
+          <option value="">Selecciona una plantilla </option>
+        </select>
+      </div>
+      <div class="btn-group gap-2">
+        <button id="tplApply"  class="btn btn-ghost-sm">Vista previa</button>
+        <button id="tplClear"  class="btn btn-ghost-sm">Quitar filtro</button>
+        <button id="tplPersist" class="btn btn-solid-sm">Aplicar y guardar</button>
+        <button id="tplDelete"  class="btn btn-outline-sm" disabled>Eliminar</button>
+      </div>
+      <span id="tplInfo" class="tpl-info small"></span>
     </div>
-
-    <div class="evt-right">
-      <a class="btn-xxs" href="/plano/evento/<%= evento.id %>.pdf" target="_blank" title="Plano PDF">
-        <span class="i i-pdf" aria-hidden="true"></span><span class="t">PDF</span>
-      </a>
-      <button id="btnRefreshAsign" class="btn-xxs" title="Restaurar alumnos">
-        <span class="i i-refresh"></span><span class="t">Restaurar</span>
-      </button>
-
-      <label class="sw-xxs" title="Familias">
-        <input class="form-check-input" type="checkbox" id="swFam"><span>Fam</span>
-      </label>
-      <label class="sw-xxs" title="Instrumentos">
-        <input class="form-check-input" type="checkbox" id="swInst"><span>Inst</span>
-      </label>
-      <label class="sw-xxs" title="Individual">
-        <input class="form-check-input" type="checkbox" id="swAlu" checked><span>Ind</span>
-      </label>
-
-      <!-- Plantillas -->
-      <a id="linkSaveTpl" href="#" class="btn-xxs btn-ghost" title="Guardar como plantilla">
-        <span class="i i-plus"></span><span class="t">Guardar</span>
-      </a>
-
-      <select id="tplSel" class="form-select tpl-sel-xxs" title="Selecciona una plantilla">
-        <option value="">Plantilla…</option>
-      </select>
-
-      <button id="tplApply"  class="btn-xxs"                  title="Vista previa">Preview</button>
-      <button id="tplClear"  class="btn-xxs btn-ghost"        title="Quitar filtro">Quitar</button>
-      <button id="tplPersist" class="btn-xxs btn-positive"    title="Aplicar y guardar">Aplicar</button>
-      <button id="tplDelete"  class="btn-xxs btn-danger-ghost" title="Eliminar plantilla" disabled>Eliminar</button>
-    </div>
+    <div class="evt-right"><!-- vacío a propósito --></div>
   </div>
 
-  <!-- Micro-popover guardar plantilla -->
-  <div id="tplPopover" class="tpl-popover tpl-hidden">
-    <form id="saveTplForm" class="tpl-form-xxs" autocomplete="off">
-      <input id="tplName" class="form-control form-xxs" type="text" placeholder="Nombre" required>
-      <input id="tplDesc" class="form-control form-xxs" type="text" placeholder="Descripción (opcional)">
-      <button class="btn-xxs btn-positive" type="submit">Guardar</button>
-      <button id="cancelSaveTpl" class="btn-xxs btn-ghost" type="button">Cancelar</button>
-      <span id="saveTplMsg" class="micro-msg"></span>
-    </form>
+  <!-- Fila 2: Configuración (switches + utilidades + guardar plantilla) -->
+  <div class="evt-row evt-row-bottom">
+    <div class="cfg-left">
+      <span class="cfg-label">Configuración:</span>
+      <label class="pill-switch">
+        <input class="form-check-input" type="checkbox" id="swFam">
+        <span>Familias</span>
+      </label>
+      <label class="pill-switch">
+        <input class="form-check-input" type="checkbox" id="swInst">
+        <span>Instrumento</span>
+      </label>
+      <label class="pill-switch">
+        <input class="form-check-input" type="checkbox" id="swAlu" checked>
+        <span>Individual</span>
+      </label>
+
+      <!-- Enlace Guardar plantilla (mismo sitio visual, pero en la fila de abajo) -->
+      <div class="tpl-popwrap">
+        <a id="linkSaveTpl" href="#" class="evt-link-add">＋ Guardar configuración actual como plantilla</a>
+        <!-- Popover guardar plantilla -->
+<form id="saveTplForm" class="evt-popover tpl-hidden form-compact" style="margin:0">
+  <div class="popover-head">
+    <strong>Guardar plantilla</strong>
+    <button type="button" class="btn-icon" id="tplCloseX" aria-label="Cerrar">✕</button>
+  </div>
+
+  <label class="fc-label" for="tplName">Nombre</label>
+  <input id="tplName" class="form-control fc-input" type="text"
+         maxlength="60" placeholder="p.ej. Concierto — Ensayo general" required>
+
+  <div class="inline-row">
+    <label class="fc-label" for="tplDesc">Descripción <span class="muted">(opcional)</span></label>
+    <span class="char-count" id="tplDescCount">0/120</span>
+  </div>
+  <textarea id="tplDesc" class="form-control fc-textarea" rows="2" maxlength="120"
+            placeholder="Notas para reconocerla rápidamente…"></textarea>
+
+  <div class="btns-row">
+    <button class="btn btn-outline-xs" type="button" id="cancelSaveTpl">Cancelar</button>
+    <button class="btn btn-solid-xs" type="submit" id="tplSubmit">Guardar</button>
+  </div>
+
+  <div class="msg-row">
+    <span id="saveTplMsg" class="small msg muted"></span>
+  </div>
+</form>
+
+      </div>
+    </div>
+
+    <div class="cfg-right">
+      <button id="btnRefreshAsign" class="btn btn-ghost-sm">Restaurar alumnos</button>
+      <a class="btn btn-outline-sm" href="/plano/evento/<%= evento.id %>.pdf" target="_blank" rel="noopener">Plano del evento (PDF)</a>
+    </div>
   </div>
 </div>
-
-<!-- Línea de estado del filtro (se mantiene) -->
-<div class="container-fluid" style="max-width:1400px">
-  <div class="tpl-info micro-muted" id="tplInfo"></div>
-</div>
-
 <style>
-/* ===== Escala ultra-compacta ===== */
-:root{ --h-xxs:28px; --fs-xxs:12.5px; --rad:8px; }
-.evt-bar{ background:#fff; border-bottom:1px solid #eee; box-shadow:0 1px 6px rgba(0,0,0,.04); z-index:100; }
-.evt-bar__row{ display:flex; align-items:center; justify-content:space-between; gap:8px; padding:6px 8px; }
-.evt-left{ min-width:200px; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
-.evt-title{ font-weight:800; color:#111; font-size:14px; }
-.evt-meta{ display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
-.mchip{ background:#f6f6f6; border:1px solid #e7e7e7; border-radius:7px; padding:1px 6px; font-size:11.5px; }
-.mdot{ opacity:.45; }
-
-.evt-right{ display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
-
-.btn-xxs{
-  height:var(--h-xxs); padding:0 8px; border-radius:var(--rad);
-  border:1px solid #ddd; background:#fff; font-weight:600; font-size:var(--fs-xxs); line-height:var(--h-xxs);
-  display:inline-flex; align-items:center; gap:6px; color:#222;
+.tpl-sel {
+  width: 50% !important;    /* antes 32%, ahora un poco más ancho */
+  max-width: 500px;         /* permite crecer un poco más en pantallas grandes */
+  min-width: 180px;         /* sigue siendo razonable en pantallas pequeñas */
+  flex: 0 0 auto;
 }
-.btn-xxs:hover{ background:#f7f7f7; }
-.btn-ghost{ background:transparent; }
-.btn-positive{ border-color:#1e6f40; background:#1e6f40; color:#fff; }
-.btn-positive:hover{ filter:brightness(.96); }
-.btn-danger-ghost{ border-color:#c33; color:#c33; background:transparent; }
-.btn-danger-ghost:hover{ background:#fff1f1; }
+/* Margen lateral suave para que la tabla no toque bordes */
+.container-fluid { padding-left: 12px; padding-right: 12px; }
 
-.i{ width:12px; height:12px; display:inline-block; }
-.i-refresh{ background:conic-gradient(from 0deg,#888 0 25%,transparent 25% 100%); border-radius:50%; }
-.i-pdf{ background:linear-gradient(#c33,#c33); border-radius:2px; }
-.i-plus{ position:relative; }
-.i-plus::before,.i-plus::after{ content:""; position:absolute; left:50%; top:50%; width:10px; height:2px; background:#222; transform:translate(-50%,-50%); }
-.i-plus::after{ transform:translate(-50%,-50%) rotate(90deg); }
-.t{ display:none; } @media (min-width:640px){ .t{ display:inline; } }
-
-.sw-xxs{ display:inline-flex; align-items:center; gap:6px; font-size:var(--fs-xxs); font-weight:600; }
-.sw-xxs .form-check-input{ width:32px; height:18px; transform:translateY(1px); }
-.sw-xxs span{ user-select:none; }
-
-.tpl-sel-xxs{
-  height:var(--h-xxs); padding:0 24px 0 8px; font-size:var(--fs-xxs); min-width:200px;
-  border-radius:var(--rad); border:1px solid #ddd; background:#fff;
+/* ===== Toolbar ===== */
+.evt-toolbar{
+  position: relative;
+  display: grid;
+  gap: 0;                    /* filas pegadas entre sí */
+  margin: 0 0 .6rem 0;       /* pegada al header */
+}
+.evt-row{
+  display: flex; align-items: center; justify-content: space-between;
+  gap: .75rem; flex-wrap: wrap;
+  background: #fff; border: 1px solid #e6e6e6; border-radius: 14px;
+  padding: .5rem .75rem; box-shadow: 0 1px 0 rgba(0,0,0,.02);
+}
+.evt-row-top{
+  border-bottom-left-radius: 0; border-bottom-right-radius: 0; border-bottom: none;
+  padding-top: .65rem; padding-bottom: .65rem;
+}
+.evt-row-bottom{
+  border-top-left-radius: 0; border-top-right-radius: 0;
+  padding-top: .5rem; padding-bottom: .5rem;
+}
+.evt-left, .evt-right, .cfg-left, .cfg-right {
+  display: flex; align-items: center; gap: .6rem; flex-wrap: nowrap;
 }
 
-/* Popover micro */
-.tpl-popover{ position:sticky; top:44px; display:flex; justify-content:flex-end; z-index:101; }
-.tpl-form-xxs{
-  display:flex; gap:6px; align-items:center; padding:6px; background:#fff; border:1px solid #e7e7e7;
-  border-radius:10px; box-shadow:0 10px 20px rgba(0,0,0,.08); margin-right:8px;
+/* Plantillas: select + etiqueta */
+.tpl-group { display: inline-flex; align-items: center; gap: .45rem; flex-wrap: nowrap; margin-right: .25rem; }
+.tpl-label { font-weight: 600; color:#222; font-size: .95rem; }
+
+/* Select un poco más grande y más pegado a los botones */
+.tpl-sel {
+  width: 32% !important;         /* un poco más grande */
+  max-width: 340px;
+  min-width: 160px;
+  flex: 0 0 auto;                /* no se expande */
+  margin-right: .25rem;          /* más cerca de los botones */
 }
-.form-xxs{ height:var(--h-xxs); padding:0 8px; font-size:var(--fs-xxs); border-radius:var(--rad); border:1px solid #ddd; }
-.micro-msg{ font-size:11px; color:#777; margin-left:4px; }
-.micro-muted{ font-size:12px; color:#666; margin-top:4px; }
+
+/* Info contador de filtro */
+.tpl-info { color:#6b7280; }
+
+/* Enlace “Guardar como plantilla” */
+.tpl-popwrap { position: relative; }
+.evt-link-add{
+  font-weight: 600; font-size: .95rem; text-decoration: none; color: #111;
+  padding: 6px 10px; border-radius: 10px; border: 1px dashed #e6e6e6;
+}
+.evt-link-add:hover{ background: #fafafa; }
+
+/* Popover justo debajo del enlace (anclado al wrap) */
+.evt-popover{
+  position: absolute; top: calc(100% + 8px); left: 0; z-index: 20;
+  display: flex; flex-direction: column; gap: 8px; width: min(440px, 85vw);
+  background: #fff; border: 1px solid #e6e6e6; border-radius: 14px; padding: 12px;
+  box-shadow: 0 12px 28px rgba(0,0,0,.08);
+}
+.evt-popover .row{ display: flex; gap: 8px; }
+.evt-popover input.form-control{ height: 34px; font-size: 14px; }
+
+/* Botones del popover más pequeños */
+.btn-solid-xs{
+  background:#222; color:#fff; border:1px solid #222;
+  border-radius: 10px; padding:.25rem .55rem; font-weight: 700; font-size: 13px;
+}
+.btn-solid-xs:hover{ filter:brightness(.95); }
+.btn-outline-xs{
+  background: transparent; color:#222; border:1px solid #cfcfcf;
+  border-radius: 10px; padding:.25rem .55rem; font-weight: 600; font-size: 13px;
+}
+.btn-outline-xs:hover{ background:#f5f5f5; }
+
+/* ===== Botones neutrales de la barra ===== */
+.btn-ghost-sm{
+  background: transparent; color:#111; border:1px solid #e1e1e1;
+  border-radius: 10px; padding:.35rem .75rem; font-weight: 600;
+}
+.btn-ghost-sm:hover{ background:#f8f8f8; }
+.btn-outline-sm{
+  background: transparent; color:#222; border:1px solid #cfcfcf;
+  border-radius: 10px; padding:.35rem .75rem; font-weight: 600;
+}
+.btn-outline-sm:hover{ background:#f5f5f5; }
+.btn-solid-sm{
+  background:#222; color:#fff; border:1px solid #222;
+  border-radius: 10px; padding:.35rem .75rem; font-weight: 700;
+}
+.btn-solid-sm:hover{ filter:brightness(.95); }
+
+/* ===== Pill switches ===== */
+.cfg-label{ font-weight:700; color:#222; margin-right:.25rem; }
+.pill-switch{
+  display:inline-flex; align-items:center; gap:.45rem;
+  background:#fafafa; border:1px solid #e6e6e6; border-radius: 999px;
+  padding: .22rem .55rem .22rem .4rem; cursor: pointer; user-select: none;
+}
+.pill-switch input{ margin:0; width:18px; height:18px; }
+.pill-switch span{ font-weight:600; color:#333; font-size:.95rem; }
+
+/* Utilidad */
 .tpl-hidden{ display:none !important; }
-</style>
 
+/* Responsivo: en móviles dejamos que la fila envuelva */
+@media (max-width: 640px){
+  .evt-left, .cfg-left { flex-wrap: wrap; }
+  .tpl-sel { width: 100% !important; max-width: 100%; }
+}
+/* ===== Popover compacto y elegante ===== */
+.evt-popover.form-compact{
+  position: absolute; top: 44px; /* se ajusta con tu barra */
+  right: 10px; z-index: 30;
+  display: grid; grid-template-columns: 1fr; gap: 8px;
+  width: min(380px, 88vw); /* más estrecho */
+  background: #fff; border: 1px solid #e9e9e9; border-radius: 12px;
+  padding: 10px 12px;
+  box-shadow: 0 12px 28px rgba(0,0,0,.08);
+}
+
+.popover-head{
+  display:flex; align-items:center; justify-content:space-between;
+  margin-bottom: 2px;
+}
+.popover-head strong{ font-size: 14px; color:#111; }
+
+.btn-icon{
+  appearance:none; border:0; background:transparent; cursor:pointer;
+  font-size: 16px; line-height: 1; padding: 2px 4px; color:#666;
+  border-radius: 6px;
+}
+.btn-icon:hover{ background:#f3f3f3; }
+
+/* Campos compactos */
+.fc-label{ font-size: 12px; font-weight: 600; color:#333; margin-bottom: 2px; }
+.muted{ color:#8a8a8a; font-weight: 500; }
+
+.fc-input, .fc-textarea{
+  height: 30px; font-size: 14px; padding: 4px 8px;
+  border: 1px solid #dcdcdc; border-radius: 8px; background:#fff;
+}
+.fc-textarea{ height:auto; resize: vertical; min-height: 62px; }
+
+/* Fila de descripción con contador */
+.inline-row{
+  display:flex; align-items: baseline; justify-content: space-between;
+  margin-top: 4px;
+}
+.char-count{ font-size: 12px; color:#9a9a9a; }
+
+/* Botones XS del popover (más pequeños que los generales) */
+.btn-solid-xs, .btn-outline-xs{
+  padding: .28rem .6rem; font-size: 13px; font-weight: 700; border-radius: 9px;
+}
+.btn-solid-xs{ background:#111; color:#fff; border:1px solid #111; }
+.btn-solid-xs:hover{ filter:brightness(.96); }
+.btn-outline-xs{ background:#fff; color:#222; border:1px solid #cfcfcf; }
+.btn-outline-xs:hover{ background:#f6f6f6; }
+
+/* Disposición botones y mensajes */
+.btns-row{
+  display:flex; gap: 8px; justify-content: flex-end; align-items:center; margin-top: 2px;
+}
+.msg-row{ min-height: 18px; }
+.msg{ font-size: 12px; }
+/* Select de plantilla: más ancho y menos alto */
+.form-select.tpl-sel{
+  min-width: 340px;         /* antes ~280-300; súbelo un poco */
+  max-width: 42vw;          /* límite en pantallas grandes */
+  height: 32px;             /* más bajo */
+  padding: .2rem .65rem;    /* compacta verticalmente */
+  font-size: .92rem;        /* un poco más pequeño para ganar altura */
+  line-height: 1.2;         /* ayuda a bajar la altura total */
+}
+
+/* En algunos Bootstrap, la altura la controlan variables: reforzamos */
+.form-select.tpl-sel{
+  --bs-form-select-padding-y: .2rem;
+  --bs-form-select-font-size: .92rem;
+}
+
+/* Acerca el select a los botones */
+.evt-left{ gap: .5rem; }    /* si quieres aún más pegado, usa .4rem */
+
+</style>
 <script>
-(()=>{ // micro-popover & guardar plantilla (IDs iguales a tu JS)
+(() => {
+  // ⛑️ Evita registrar dos veces si la vista reinyecta scripts
+  if (window.__TPL_SAVE_UI_BOUND__) return;
+  window.__TPL_SAVE_UI_BOUND__ = true;
+
   const $link = document.getElementById('linkSaveTpl');
-  const $pop  = document.getElementById('tplPopover');
-  const $name = document.getElementById('tplName');
-  const $cancel = document.getElementById('cancelSaveTpl');
   const $form = document.getElementById('saveTplForm');
+  const $name = document.getElementById('tplName');
+  const $desc = document.getElementById('tplDesc');
+  const $count= document.getElementById('tplDescCount');   // opcional: si no existe, no pasa nada
   const $msg  = document.getElementById('saveTplMsg');
+  const $btnX = document.getElementById('tplCloseX');      // opcional
+  const $btnCancel = document.getElementById('cancelSaveTpl');
+  const $btnSubmit = document.getElementById('tplSubmit'); // opcional
   const eventoId = <%= evento.id %>;
 
-  function openPop(){ $pop.classList.remove('tpl-hidden'); setTimeout(()=> $name?.focus(), 10); }
-  function closePop(){
-    $pop.classList.add('tpl-hidden');
-    const $desc=document.getElementById('tplDesc');
-    if ($name) $name.value=''; if ($desc) $desc.value=''; if ($msg) $msg.textContent='';
+  function openForm(){
+    $form.classList.remove('tpl-hidden');
+    requestAnimationFrame(()=> $name?.focus());
   }
-  $link?.addEventListener('click', e=>{ e.preventDefault(); openPop(); });
-  $cancel?.addEventListener('click', closePop);
-  document.addEventListener('click', (ev)=>{ if(!ev.target.closest('#tplPopover, #linkSaveTpl')) closePop(); });
+  function resetForm(){
+    $msg.textContent = '';
+    if ($name) $name.value = '';
+    if ($desc) $desc.value = '';
+    if ($count) $count.textContent = '0/120';
+  }
+  function closeForm(){
+    $form.classList.add('tpl-hidden');
+    resetForm();
+  }
 
-  async function postJSON(url, body){
-    const r = await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
-    const ct=r.headers.get('content-type')||''; const data=ct.includes('application/json')?await r.json():{};
-    if(!r.ok||data?.ok===false) throw new Error(data?.error||`HTTP ${r.status}`); return data;
-  }
-  $form?.addEventListener('submit', async ev=>{
-    ev.preventDefault();
-    const nombre = ($name?.value||'').trim();
-    const descripcion = (document.getElementById('tplDesc')?.value||'').trim() || null;
-    if(!nombre){ $name?.focus(); return; }
-    $msg.textContent='Guardando…';
-    try{
-      const data = await postJSON(`/plantillas/from-event/${eventoId}`, { nombre, descripcion });
-      $msg.textContent='✓ Guardada';
-      if(window.__reloadTplSel){ await window.__reloadTplSel({ selectNewId:data.id }); }
-      setTimeout(()=>{ $msg.textContent=''; closePop(); }, 450);
-    }catch(e){ console.error(e); $msg.textContent='Error'; }
+  // Abrir / cerrar
+  $link?.addEventListener('click', (e) => {
+    e.preventDefault();
+    ($form.classList.contains('tpl-hidden') ? openForm() : closeForm());
+  });
+  $btnCancel?.addEventListener('click', (e)=>{ e.preventDefault(); closeForm(); });
+  $btnX?.addEventListener('click', (e)=>{ e.preventDefault(); closeForm(); });
+
+  // Cerrar con ESC
+  document.addEventListener('keydown', (ev) => {
+    if (ev.key === 'Escape' && !$form.classList.contains('tpl-hidden')) closeForm();
   });
 
-  // Eliminar plantilla
-  const $sel = document.getElementById('tplSel');
-  const $btnDel = document.getElementById('tplDelete');
-  function updDel(){ $btnDel?.toggleAttribute('disabled', !($sel && $sel.value)); }
-  $sel?.addEventListener('change', updDel); updDel();
-  $btnDel?.addEventListener('click', async ()=>{
-    const id=$sel?.value; if(!id) return;
-    if(!confirm('¿Eliminar plantilla seleccionada?')) return;
+  // Cerrar haciendo click fuera
+  document.addEventListener('click', (ev) => {
+    if ($form.classList.contains('tpl-hidden')) return;
+    const inside = ev.target.closest('#saveTplForm') || ev.target.closest('#linkSaveTpl');
+    if (!inside) closeForm();
+  });
+
+  // Contador descripción (si existe)
+  $desc?.addEventListener('input', ()=> { if ($count) $count.textContent = `${$desc.value.length}/120`; });
+
+  // 🛡️ Mutex global para evitar doble envío
+  async function doSave(nombre, descripcion){
+    if (window.__TPL_SAVE_IN_FLIGHT__) return;  // ya se está guardando
+    window.__TPL_SAVE_IN_FLIGHT__ = true;
+    $btnSubmit?.setAttribute('disabled','disabled');
+
     try{
-      const r = await fetch(`/plantillas/${id}`, { method:'DELETE' });
-      if(!r.ok) throw new Error(await r.text());
-      if(window.__reloadTplSel) await window.__reloadTplSel();
-      updDel(); alert('Plantilla eliminada.');
-    }catch(e){ console.error(e); alert('No se pudo eliminar.'); }
+      const r = await fetch(`/plantillas/from-event/${eventoId}`, {
+        method:'POST',
+        headers:{ 'Content-Type':'application/json' },
+        body: JSON.stringify({ nombre, descripcion })
+      });
+      const ct = r.headers.get('content-type')||'';
+      const data = ct.includes('application/json') ? await r.json() : {};
+      if (!r.ok || data?.ok === false) throw new Error(data?.error || `HTTP ${r.status}`);
+
+      $msg.textContent = '✓ Guardada';
+
+      // refresca el select y selecciona la nueva si devuelves id
+      if (window.__reloadTplSel) {
+        window.__reloadTplSel({ selectNewId: data?.id }).catch(console.error);
+      }
+      setTimeout(closeForm, 400);
+    } catch (e) {
+      console.error(e);
+      $msg.textContent = 'Error guardando';
+    } finally {
+      window.__TPL_SAVE_IN_FLIGHT__ = false;
+      $btnSubmit?.removeAttribute('disabled');
+    }
+  }
+
+  // Envío del form (único)
+  $form?.addEventListener('submit', (ev) => {
+    ev.preventDefault();
+    ev.stopPropagation();
+    ev.stopImmediatePropagation(); // por si quedó algún handler viejo
+    const nombre = ($name?.value||'').trim();
+    const descripcion = ($desc?.value||'').trim() || null;
+    if (!nombre) { $name?.focus(); return; }
+    $msg.textContent = 'Guardando…';
+    doSave(nombre, descripcion);
   });
 })();
 </script>
@@ -292,53 +488,6 @@
 </div>
 
 <style>
-  /* ——— Botones neutros para la barra de plantillas ——— */
-.btn-neutral{
-  background:#222; color:#fff; border:1px solid #222; border-radius:10px; padding:.4rem .8rem;
-}
-.btn-neutral:hover{ filter:brightness(0.95); }
-
-.btn-outline-neutral{
-  background:transparent; color:#222; border:1px solid #cfcfcf; border-radius:10px; padding:.4rem .8rem;
-}
-.btn-outline-neutral:hover{ background:#f2f2f2; }
-
-.btn-positive{
-  background:#2b2b2b; color:#fff; border:1px solid #2b2b2b; border-radius:10px; padding:.4rem .8rem;
-}
-.btn-positive:hover{ filter:brightness(0.95); }
-
-  /* ——— Mini-UI Plantillas (neutro, sin naranjas ni azules) ——— */
-  .tpl-link-add{
-    color:#222; text-decoration:none; font-weight:600; display:inline-flex; align-items:center;
-  }
-  .tpl-link-add:hover{ opacity:.8; text-decoration:underline; }
-  .tpl-link-plus{
-    display:inline-block; margin-right:.35rem; font-weight:700; line-height:1;
-    border:1px solid #ccc; border-radius:6px; padding:0 .35rem; font-size:.9rem; color:#444; background:#f7f7f7;
-  }
-
-  .tpl-form-inline{
-    display:flex; gap:.5rem; align-items:center; flex-wrap:wrap;
-    padding:.5rem .75rem; border:1px solid #e3e3e3; border-radius:10px; background:#fafafa;
-    box-shadow: 0 1px 0 rgba(0,0,0,.02);
-  }
-  .tpl-form-inline input.form-control{
-    min-width: 220px; background:#fff; border-color:#ddd;
-  }
-
-  .btn-tpl-solid{
-    background:#222; color:#fff; border:1px solid #222; border-radius:8px; padding:.35rem .7rem;
-  }
-  .btn-tpl-solid:hover{ filter:brightness(0.95); }
-
-  .btn-tpl-ghost{
-    background:transparent; color:#333; border:1px solid #d0d0d0; border-radius:8px; padding:.35rem .7rem;
-  }
-  .btn-tpl-ghost:hover{ background:#eee; }
-
-  .tpl-hidden { display: none !important; }
-
   /* Estilos tabla existentes */
   .tabla-estilizada td, .tabla-estilizada th { padding: 10px 12px; vertical-align: middle; }
   .tabla-estilizada input.form-control, .tabla-estilizada select.form-select {
@@ -372,6 +521,78 @@
   border-color: #d0d0d0;
   background: #fff;
   box-shadow: inset 0 0 0 1px #d0d0d0;
+}
+/* Margen lateral para que la tabla no toque los bordes */
+.container-fluid {
+  padding-left: 16px;
+  padding-right: 16px;
+}
+
+/* Si prefieres aplicarlo solo a las tablas estilizadas */
+.tabla-estilizada {
+  margin-left: 8px;
+  margin-right: 8px;
+  width: calc(100% - 16px); /* evita que ocupe todo el ancho */
+}
+/* 🔹 Oculta elementos hasta que se activen */
+.tpl-hidden {
+  display: none !important;
+}
+
+/* 🔹 Contenedor del popover para guardar plantilla */
+.evt-popover {
+  position: absolute;
+  top: 130%;
+  right: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: min(440px, 80vw);
+  background: #fff;
+  border: 1px solid #e6e6e6;
+  border-radius: 14px;
+  padding: 12px;
+  box-shadow: 0 10px 24px rgba(0,0,0,.08);
+}
+
+/* 🔹 Fila de inputs dentro del popover */
+.evt-popover .row {
+  display: flex;
+  gap: 8px;
+}
+
+/* 🔹 Fila de botones dentro del popover */
+.evt-popover .row.btns {
+  justify-content: flex-end;
+}
+
+/* 🔹 Inputs del formulario */
+.evt-popover input.form-control {
+  height: 36px;
+  font-size: 15px;
+}
+
+/* 🔹 Enlace para abrir el formulario "Guardar como plantilla" */
+.evt-link-add {
+  font-weight: 600;
+  font-size: 15px;
+  text-decoration: none;
+  color: #111;
+  padding: 4px 10px;
+  border-radius: 8px;
+  border: 1px dashed #e6e6e6;
+  cursor: pointer;
+}
+
+.evt-link-add:hover {
+  background: #fafafa;
+}
+
+/* 🔹 Mensaje de estado debajo del popover */
+#saveTplMsg {
+  font-size: 0.85rem;
+  color: #6b7280;
 }
 
 </style>
