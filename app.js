@@ -46,7 +46,7 @@ app.use(methodOverride('_method'));
 // Static files
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/uploads', express.static('uploads'));
-app.use('/utils', express.static(path.join(__dirname, 'utils')));
+//app.use('/utils', express.static(path.join(__dirname, 'utils')));
 // Plantillas EJS
 app.use(expressLayouts);
 app.set('layout', 'layout');
@@ -117,11 +117,36 @@ app.use('/espacios', isAuthenticated, espaciosRoutes);
 app.use(pdfRoutes);
 app.use('/partituras', isAuthenticated, partiturasRoutes);
 app.use('/plantillas', isAuthenticated, plantillasRoutes);
-app.use('/mensajes', mensajesRoutes);
+app.use('/mensajes', isAdmin, isDocente, mensajesRoutes);
 // Ruta de inicio
 app.get('/', (req, res) => {
   res.render('index', { title: 'Inicio - JOSG' });
 });
+
+app.get('/mensajes/nuevo', isAuthenticated, isDocente, async (req, res) => {
+  try {
+    const { rows: grupos } = await db.query(
+      'SELECT id, nombre FROM grupos ORDER BY nombre'
+    );
+    const { rows: instrumentos } = await db.query(
+      'SELECT id, nombre FROM instrumentos ORDER BY nombre'
+    );
+
+    res.render('mensajes_nuevo', {
+      title: 'Mensajes',
+      grupos,
+      instrumentos
+    });
+  } catch (e) {
+    console.error('Error cargando datos mensajes:', e);
+    res.render('mensajes_nuevo', {
+      title: 'Mensajes',
+      grupos: [],
+      instrumentos: []   // <-- importante para que la vista no pete si hay error
+    });
+  }
+});
+
 
 // Página de mantenimiento (zona de obras)
 app.get('/obras', (req, res) => {
@@ -150,6 +175,11 @@ const initDatabase = require('./database/init'); // Ajusta el path si es necesar
   }
 })();
 
+// en app.js (o donde tengas las rutas)
+const { VAPID_PUBLIC } = require('./utils/push');
+app.get('/push/public-key', (_req, res) => {
+  res.json({ key: VAPID_PUBLIC || '' });
+});
 
 /* Iniciar servidor
 const PORT = 3001;

@@ -1,29 +1,396 @@
-<h1>Nuevo mensaje</h1>
-<form action="/mensajes" method="POST">
-  <label>Título <input name="titulo" required></label>
-  <label>Mensaje <textarea name="cuerpo" rows="5" required></textarea></label>
-  <label>URL (opcional) <input name="url"></label>
+<% title = 'Mensajes' %>
+<% hero = false %>
 
-  <fieldset>
-    <legend>Destinatarios</legend>
-    <label><input type="checkbox" name="broadcast" value="true"> A todos</label>
+<!-- Header compacto al estilo alumnos_lista -->
+<div class="header-compact">
+  <h1 class="h1-titulo">Mensajes</h1>
+  <a href="/firmas/mensajes.html" class="btn-main-blanco">Ver bandeja móvil</a>
+</div>
 
-    <h4>Por grupos</h4>
-    <div>
-      <% grupos.forEach(g => { %>
-        <label>
-          <input type="checkbox" name="grupos" value="<%= g.id %>"> <%= g.nombre %>
-        </label>
-      <% }) %>
+<style>
+  :root{
+    --accent-50:#fff6e8; --accent-100:#ffeed7; --accent-200:#ffe0b3; --accent-300:#ffd08a;
+    --accent-400:#ffb554; --accent-500:#ff9500; --accent-700:#c26c00;
+    --ok-50:#ecfdf5; --ok-200:#a7f3d0; --ok-600:#059669;
+    --err-50:#fef2f2; --err-200:#fecaca; --err-700:#b91c1c;
+    --text-main:#212529; --muted:#6c757d; --border:rgba(0,0,0,.08);
+    --shadow:0 1px 2px rgba(0,0,0,.04); --shadow-lg:0 10px 25px rgba(0,0,0,.12);
+  }
+  .grid-msg{ display:grid; gap:18px; grid-template-columns:1fr; margin-top:10px; }
+  @media (min-width: 992px){ .grid-msg{ grid-template-columns:1.15fr .85fr; } }
+
+  .panel{ background:#fff; border:1px solid var(--border); border-radius:16px; box-shadow:var(--shadow); padding:16px 18px; }
+  .hdr{ display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:6px; }
+
+  .section-title{ font-weight:700; color:var(--text-main); margin: 16px 0 8px; }
+  .help{ font-size:.9rem; color:var(--muted); margin-top:6px; }
+
+  .row{ display:grid; gap:12px; grid-template-columns:1fr; }
+  @media (min-width:768px){ .row-2{ grid-template-columns:1fr 1fr; } }
+
+  .form-label{ font-weight:600; color:var(--text-main); margin:12px 0 6px; }
+  .form-control, .form-select, textarea{
+    width:100%; border:1px solid var(--border); border-radius:12px; padding:.6rem .75rem; outline:0;
+    background:#fff;
+  }
+  .form-control:focus, .form-select:focus, textarea:focus{ border-color:var(--accent-300); box-shadow:0 0 0 3px var(--accent-50); }
+  textarea{ min-height:140px; resize:vertical; }
+  .counter{ font-size:.8rem; color:var(--muted); margin-top:4px; }
+
+  /* Chips modo */
+  .chips{ display:flex; gap:.5rem; flex-wrap:wrap; margin: 8px 0 10px; }
+  .chip{
+    background:var(--accent-100); color:#5b2b00; border:1px solid var(--accent-200);
+    border-radius:999px; padding:.35rem .7rem; font-size:.9rem; cursor:pointer; user-select:none;
+  }
+  .chip.active{ background:var(--accent-400); border-color:var(--accent-500); }
+
+  /* Selector de grupos */
+  #blk-grupos{ margin-top:10px; }
+  .group-search{ display:flex; gap:.5rem; align-items:center; margin-bottom:6px; }
+  .groups-list{
+    max-height: 240px; overflow:auto; border:1px solid var(--border); border-radius:12px; padding:8px;
+    display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:.35rem .75rem; background:#fff;
+  }
+  .groups-list label{ display:flex; align-items:center; gap:.45rem; padding:.25rem .35rem; border-radius:8px; cursor:pointer; }
+  .groups-list label:hover{ background:#fafafa; }
+  .groups-list label span{ color: var(--text-main); }
+  .groups-list input.g-check:checked + span{ font-weight:700; }
+
+  /* Instrumento */
+  #blk-instrumento, #blk-grupo-instrumento{ margin-top:10px; }
+
+  /* Previsualización */
+  .preview{ position:sticky; top:16px; }
+  .mock-card{
+    display:flex; flex-direction:column; gap:.35rem; background:linear-gradient(180deg,#ffffff,#fdfcfa);
+    border:1px solid var(--border); border-radius:16px; padding:14px; box-shadow:var(--shadow);
+  }
+  .mock-title{ font-weight:700; color:var(--text-main); }
+  .mock-url{ font-size:.9rem; color:#0d6efd; word-break:break-all; }
+
+  /* Acciones */
+  .actions{ display:flex; gap:.5rem; flex-wrap:wrap; margin-top:12px; align-items:center; }
+
+  /* Toast */
+  .toast-fixed{
+    position: fixed; top: 16px; right: 16px; z-index: 2000; min-width: 260px;
+    background: var(--ok-50); border:1px solid var(--ok-200); color: var(--ok-600);
+    border-radius: 12px; box-shadow: var(--shadow-lg); padding: .65rem .8rem; display:none;
+  }
+  .toast-fixed.error{ background: var(--err-50); border-color: var(--err-200); color: var(--err-700); }
+  .toast-fixed.show{ display:block; animation: toastIn .18s ease-out; }
+  @keyframes toastIn { from{ opacity:0; transform: translateY(-6px);} to{opacity:1; transform:none;} }
+
+  .pill{ display:inline-block; font-weight:700; font-size:.78rem; padding:.18rem .5rem; border-radius:999px;
+    background: var(--accent-100); border:1px solid var(--accent-300); color:#5b2b00; }
+</style>
+
+<div id="toast" class="toast-fixed" role="status" aria-live="polite"></div>
+
+<div class="grid-msg">
+  <!-- Compositor -->
+  <form id="msg-form" class="panel" autocomplete="off">
+    <div class="hdr">
+      <h2 class="h1-titulo" style="margin:0;">Enviar mensaje</h2>
+      <span class="pill" id="pill-count" title="Destinatarios estimados">— destinatarios</span>
     </div>
 
-    <h4>Alumnos concretos</h4>
-    <input name="alumnos_csv" placeholder="IDs separados por coma, p.e. 12,45,78">
-  </fieldset>
+    <!-- Título + URL -->
+    <div class="row row-2">
+      <div>
+        <label class="form-label" for="titulo">Título</label>
+        <input id="titulo" name="titulo" class="form-control" maxlength="80" placeholder="p. ej., Recordatorio de ensayo" required>
+        <div class="counter" id="c-titulo">0 / 80</div>
+      </div>
+      <div>
+        <label class="form-label" for="url">Enlace (opcional)</label>
+        <input id="url" name="url" class="form-control" placeholder="https://…">
+        <div class="help">Se mostrará como botón “Abrir”.</div>
+      </div>
+    </div>
 
-  <button type="submit">Enviar</button>
-</form>
+    <!-- Mensaje -->
+    <div class="row">
+      <div>
+        <label class="form-label" for="cuerpo">Mensaje</label>
+        <textarea id="cuerpo" name="cuerpo" maxlength="500" placeholder="Texto del aviso para los alumnos…" required></textarea>
+        <div class="counter" id="c-cuerpo">0 / 500</div>
+      </div>
+    </div>
+
+    <!-- Destinatarios -->
+    <div class="row">
+      <div>
+        <p class="section-title">Destinatarios</p>
+        <div class="chips" role="tablist" aria-label="Modo de selección">
+          <span class="chip active" data-mode="todos" role="tab" aria-selected="true">Todos</span>
+          <span class="chip" data-mode="grupos" role="tab" aria-selected="false">Por grupos</span>
+          <span class="chip" data-mode="instrumento" role="tab" aria-selected="false">Por instrumento</span>
+          <span class="chip" data-mode="grupo_instrumento" role="tab" aria-selected="false">Grupo + instrumento</span>
+        </div>
+        <div class="help">Elige “Todos”, o restringe por grupo, por instrumento, o por ambos a la vez.</div>
+      </div>
+
+      <!-- Selector de grupos -->
+      <div id="blk-grupos" style="display:none;">
+        <label class="form-label" for="g-buscar">Elige grupos</label>
+        <div class="group-search">
+          <input id="g-buscar" class="form-control" placeholder="Filtrar grupos por nombre…">
+          <button class="btn-main-blanco" type="button" id="g-todos">Marcar todo</button>
+          <button class="btn-main-blanco" type="button" id="g-ninguno">Quitar todo</button>
+        </div>
+        <div class="groups-list" id="groups">
+          <% (grupos || []).forEach(g => { %>
+            <label>
+              <input type="checkbox" class="g-check" value="<%= g.id %>">
+              <span><%= g.nombre %></span>
+            </label>
+          <% }) %>
+        </div>
+      </div>
+
+      <!-- Solo instrumento -->
+      <div id="blk-instrumento" style="display:none;">
+        <label class="form-label" for="instrumento_id">Elige instrumento</label>
+        <select id="instrumento_id" class="form-select">
+          <option value="">Elige un instrumento…</option>
+          <% (instrumentos || []).forEach(i => { %>
+            <option value="<%= i.id %>"><%= i.nombre %></option>
+          <% }) %>
+        </select>
+      </div>
+
+      <!-- Grupo + instrumento (ambos bloques visibles) -->
+      <div id="blk-grupo-instrumento" style="display:none;">
+        <div class="row row-2">
+          <div>
+            <label class="form-label" for="instrumento_id_2">Instrumento</label>
+            <select id="instrumento_id_2" class="form-select">
+              <option value="">Elige un instrumento…</option>
+              <% (instrumentos || []).forEach(i => { %>
+                <option value="<%= i.id %>"><%= i.nombre %></option>
+              <% }) %>
+            </select>
+          </div>
+          <div>
+            <label class="form-label">Grupos</label>
+            <div class="groups-list" id="groups2" style="max-height:200px;">
+              <% (grupos || []).forEach(g => { %>
+                <label>
+                  <input type="checkbox" class="g2-check" value="<%= g.id %>">
+                  <span><%= g.nombre %></span>
+                </label>
+              <% }) %>
+            </div>
+            <div class="help">Se enviará únicamente a alumnos del instrumento seleccionado que pertenezcan a los grupos marcados.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Acciones -->
+    <div class="actions">
+      <button type="submit" class="btn-main-blanco" id="btn-enviar">Enviar ahora</button>
+      <button type="button" class="btn-main-blanco" id="btn-reset" style="opacity:.9;">Limpiar</button>
+      <span class="help">No se recarga la página al enviar ✔️</span>
+    </div>
+  </form>
+
+  <!-- Previsualización -->
+  <aside class="panel preview">
+    <p class="section-title">Vista previa</p>
+    <div class="mock-card" aria-live="polite">
+      <div class="mock-title" id="pv-title">Título del mensaje</div>
+      <div class="mock-body" id="pv-body" style="color:#333;">El contenido aparecerá aquí mientras escribes.</div>
+      <div class="mock-url" id="pv-url" style="display:none;"></div>
+    </div>
+
+    <div class="section-title" style="margin-top:14px;">Consejos</div>
+    <ul style="margin:.25rem 0 0 1rem; color:var(--muted);">
+      <li>Títulos cortos y claros (≤ 60–80 caracteres).</li>
+      <li>Usa el enlace solo si aporta acción (documento, formulario, etc.).</li>
+      <li>“Grupo + instrumento” es ideal para avisos de clase seccional.</li>
+    </ul>
+  </aside>
+</div>
+
+<!-- Footer compacto al estilo alumnos_lista -->
+<div class="volver-bloque-izquierda">
+  <a href="/" class="enlace-final">← Volver al inicio</a>
+</div>
 
 <script>
-  // Si usas fetch + JSON en vez de form URLENCODED, transforma aquí antes de enviar.
+(function(){
+  const $ = s => document.querySelector(s);
+  const $$ = s => Array.from(document.querySelectorAll(s));
+
+  const form = $('#msg-form'), btnEnviar = $('#btn-enviar'), btnReset = $('#btn-reset');
+  const toast = $('#toast'), titulo = $('#titulo'), cuerpo = $('#cuerpo'), url = $('#url');
+  const cTitulo = $('#c-titulo'), cCuerpo = $('#c-cuerpo'), pvTitle = $('#pv-title'), pvBody = $('#pv-body'), pvUrl = $('#pv-url');
+  const pillCount = $('#pill-count');
+
+  const chipTodos = document.querySelector('.chip[data-mode="todos"]');
+  const chipGrupos = document.querySelector('.chip[data-mode="grupos"]');
+  const chipInst  = document.querySelector('.chip[data-mode="instrumento"]');
+  const chipGI    = document.querySelector('.chip[data-mode="grupo_instrumento"]');
+
+  const blkGrupos = $('#blk-grupos');
+  const blkInst   = $('#blk-instrumento');
+  const blkGI     = $('#blk-grupo-instrumento');
+
+  const gBuscar = $('#g-buscar'), gTodos = $('#g-todos'), gNinguno = $('#g-ninguno');
+
+  const instSel1 = $('#instrumento_id');
+  const instSel2 = $('#instrumento_id_2');
+
+  // Estado
+  const state = {
+    mode: 'todos',
+    groupsChecked: new Set(),
+    groupsChecked2: new Set(),
+    instrumentoId: null,
+    instrumentoId2: null
+  };
+
+  // Contadores y preview
+  function updateCounters(){
+    cTitulo.textContent = `${titulo.value.length} / ${titulo.maxLength}`;
+    cCuerpo.textContent = `${cuerpo.value.length} / ${cuerpo.maxLength}`;
+  }
+  function updatePreview(){
+    pvTitle.textContent = titulo.value.trim() || 'Título del mensaje';
+    pvBody.textContent  = cuerpo.value.trim() || 'El contenido aparecerá aquí mientras escribes.';
+    const u = url.value.trim();
+    if (u){ pvUrl.textContent = u; pvUrl.style.display='block'; } else { pvUrl.textContent=''; pvUrl.style.display='none'; }
+  }
+  titulo.addEventListener('input', ()=>{ updateCounters(); updatePreview(); });
+  cuerpo.addEventListener('input', ()=>{ updateCounters(); updatePreview(); });
+  url.addEventListener('input', updatePreview);
+  updateCounters(); updatePreview();
+
+  // Modo (chips)
+  function setMode(m){
+    state.mode = m;
+    $$('.chip').forEach(ch => ch.classList.toggle('active', ch.dataset.mode===m));
+    blkGrupos.style.display = (m==='grupos') ? 'block' : 'none';
+    blkInst.style.display   = (m==='instrumento') ? 'block' : 'none';
+    blkGI.style.display     = (m==='grupo_instrumento') ? 'block' : 'none';
+    updateDestCount();
+  }
+  $$('.chip').forEach(ch => ch.addEventListener('click', ()=> setMode(ch.dataset.mode)));
+  setMode('todos');
+
+  // Grupos (bloque principal)
+  function syncGroupsFromDOM(){
+    state.groupsChecked.clear();
+    $$('.g-check:checked').forEach(el => state.groupsChecked.add(parseInt(el.value)));
+    updateDestCount();
+  }
+  $$('.g-check').forEach(el => el.addEventListener('change', syncGroupsFromDOM));
+  gTodos?.addEventListener('click', ()=> { $$('.g-check').forEach(el=>el.checked=true); syncGroupsFromDOM(); });
+  gNinguno?.addEventListener('click', ()=> { $$('.g-check').forEach(el=>el.checked=false); syncGroupsFromDOM(); });
+  gBuscar?.addEventListener('input', ()=>{
+    const q = (gBuscar.value || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+    $$('#groups label').forEach(l=>{
+      const txt = l.textContent.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+      l.style.display = txt.includes(q) ? '' : 'none';
+    });
+  });
+
+  // Grupos (segundo bloque en Grupo+Instrumento)
+  function syncGroups2(){
+    state.groupsChecked2.clear();
+    $$('.g2-check:checked').forEach(el => state.groupsChecked2.add(parseInt(el.value)));
+    updateDestCount();
+  }
+  $$('.g2-check').forEach(el => el.addEventListener('change', syncGroups2));
+
+  // Instrumento selects
+  instSel1?.addEventListener('change', ()=> { state.instrumentoId  = parseInt(instSel1.value) || null; updateDestCount(); });
+  instSel2?.addEventListener('change', ()=> { state.instrumentoId2 = parseInt(instSel2.value) || null; updateDestCount(); });
+
+  // Contador destinatarios (estimado visual)
+  function updateDestCount(){
+    let n = '—';
+    if (state.mode==='grupos') n = state.groupsChecked.size ? state.groupsChecked.size + ' grupos' : '—';
+    if (state.mode==='instrumento') n = state.instrumentoId ? '1 instrumento' : '—';
+    if (state.mode==='grupo_instrumento'){
+      const g = state.groupsChecked2.size;
+      const i = !!state.instrumentoId2;
+      n = (g && i) ? `${g} grupo(s) + 1 instrumento` : '—';
+    }
+    pillCount.textContent = `${n} destinatarios`;
+  }
+
+  // Toast
+  function showToast(msg, ok=true){
+    toast.textContent = msg;
+    toast.classList.remove('error'); if(!ok) toast.classList.add('error');
+    toast.classList.add('show'); clearTimeout(showToast._t);
+    showToast._t = setTimeout(()=> toast.classList.remove('show'), 4000);
+  }
+
+  // Envío AJAX
+  form.addEventListener('submit', async (ev)=>{
+    ev.preventDefault();
+
+    const body = {
+      titulo: titulo.value.trim(),
+      cuerpo: cuerpo.value.trim(),
+      url: url.value.trim() || null,
+      broadcast: state.mode === 'todos',
+      grupos: [],
+      instrumento_id: null
+    };
+
+    if (!body.titulo || !body.cuerpo){
+      showToast('Completa título y mensaje', false);
+      return;
+    }
+
+    if (state.mode === 'grupos'){
+      body.grupos = Array.from(state.groupsChecked.values());
+      if (!body.grupos.length){ showToast('Selecciona al menos un grupo', false); return; }
+    }
+
+    if (state.mode === 'instrumento'){
+      body.instrumento_id = state.instrumentoId;
+      if (!body.instrumento_id){ showToast('Elige un instrumento', false); return; }
+    }
+
+    if (state.mode === 'grupo_instrumento'){
+      body.instrumento_id = state.instrumentoId2;
+      body.grupos = Array.from(state.groupsChecked2.values());
+      if (!body.instrumento_id || !body.grupos.length){
+        showToast('Elige instrumento y al menos un grupo', false); return;
+      }
+    }
+
+    btnEnviar.disabled = true; const old = btnEnviar.textContent; btnEnviar.textContent = 'Enviando…';
+    try{
+      const r = await fetch('/mensajes', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+      const j = await r.json();
+      if(!r.ok || !j.success) throw new Error(j.error || 'No se pudo enviar');
+
+      showToast(`✅ Enviado (id ${j.mensaje_id}) a ${j.enviados} alumno(s).`, true);
+      // limpiar texto; mantener selección de alcance
+      cuerpo.value=''; url.value=''; titulo.value=''; updateCounters(); updatePreview();
+    }catch(e){ showToast('❌ ' + (e.message || 'Error al enviar'), false); }
+    finally{ btnEnviar.disabled=false; btnEnviar.textContent = old; }
+  });
+
+  // Limpiar
+  btnReset.addEventListener('click', ()=>{
+    form.reset(); setMode('todos');
+    state.groupsChecked.clear(); state.groupsChecked2.clear();
+    state.instrumentoId = null; state.instrumentoId2 = null;
+    $$('.g-check').forEach(el => el.checked=false);
+    $$('.g2-check').forEach(el => el.checked=false);
+    if (instSel1) instSel1.value = '';
+    if (instSel2) instSel2.value = '';
+    updateCounters(); updatePreview(); updateDestCount();
+  });
+
+})();
 </script>

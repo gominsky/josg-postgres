@@ -1,112 +1,179 @@
+// routes/mensajes.js
 const express = require('express');
 const router = express.Router();
 const db = require('../database/db');
 const { enviarPush } = require('../utils/push');
 
 /**
- * Crear mensaje desde el panel.
- * body: { titulo, cuerpo, url?, grupos?: [id], alumnos?: [id], broadcast?: boolean }
+ * Utilidades internas
  */
+function toIntArray(x) {
+  if (!x) return [];
+  if (Array.isArray(x)) return x.map(n => parseInt(n, 10)).filter(Number.isInteger);
+  if (typeof x === 'string') return x.split(',').map(n => parseInt(n, 10)).filter(Number.isInteger);
+  return [];
+}
 
+/**
+ * Crear mensaje desde el panel.
+ * body: {
+ *   titulo: string,
+ *   cuerpo: string,
+ *   url?: string,
+ *   broadcast?: boolean,
+ *   grupos?: number[],
+ *   instrumento_id?: number  // opcional; combinado con grupos => intersección
+ * }
+ */
 router.post('/', async (req, res) => {
-  const { titulo, cuerpo, url, grupos = [], alumnos = [], broadcast = false } = req.body;
+  const titulo = (req.body.titulo || '').trim();
+  const cuerpo = (req.body.cuerpo || '').trim();
+  const url    = (req.body.url || '').trim() || null;
 
-  if (!titulo || !cuerpo) return res.status(400).json({ error: 'Faltan campos' });
+  const broadcast = !!req.body.broadcast;
+  const gruposArr = toIntArray(req.body.grupos);
+  const instrumentoId = parseInt(req.body.instrumento_id, 10) || null;
 
+  if (!titulo || !cuerpo) {
+    return res.status(400).json({ error: 'Faltan título o mensaje.' });
+  }
+
+  const client = await db.connect();
   try {
-    await db.query('BEGIN');
+    await client.query('BEGIN');
 
-    const { rows } = await db.query(
+    // 1) Crear el mensaje
+    const ins = await client.query(
       'INSERT INTO mensajes (titulo, cuerpo, url) VALUES ($1,$2,$3) RETURNING id',
-      [titulo, cuerpo, url || null]
+      [titulo, cuerpo, url]
     );
-    const mensajeId = rows[0].id;
+    const mensajeId = ins.rows[0].id;
 
-    // Guardar targets
+    // 2) Registrar destinos "declarativos" (solo broadcast y grupos; instrumento se resuelve al vuelo)
     if (broadcast) {
-      await db.query('INSERT INTO mensaje_destino (mensaje_id) VALUES ($1)', [mensajeId]);
+      await client.query('INSERT INTO mensaje_destino (mensaje_id) VALUES ($1)', [mensajeId]); // broadcast
     }
-    if (Array.isArray(grupos) && grupos.length) {
-      const vals = grupos.map((g, i) => `($1, $${i+2})`).join(',');
-      await db.query(`INSERT INTO mensaje_destino (mensaje_id, grupo_id) VALUES ${vals}`, [mensajeId, ...grupos]);
-    }
-    if (Array.isArray(alumnos) && alumnos.length) {
-      const vals = alumnos.map((a, i) => `($1, $${i+2})`).join(',');
-      await db.query(`INSERT INTO mensaje_destino (mensaje_id, alumno_id) VALUES ${vals}`, [mensajeId, ...alumnos]);
+    if (gruposArr.length) {
+      const vals = gruposArr.map((_, i) => `($1,$${i + 2})`).join(',');
+      await client.query(
+        `INSERT INTO mensaje_destino (mensaje_id, grupo_id) VALUES ${vals}`,
+        [mensajeId, ...gruposArr]
+      );
     }
 
-    // Resolver destinatarios finales (alumnos)
-    const destinatarios = await db.query(`
-      WITH base AS (
-        SELECT $1::int AS mensaje_id
-      ),
-      universo AS (
-        SELECT a.id AS alumno_id FROM alumnos a WHERE a.activo = 1
-      ),
-      t_broadcast AS (
-        SELECT TRUE AS hay FROM mensaje_destino WHERE mensaje_id = $1 AND grupo_id IS NULL AND alumno_id IS NULL
-      ),
-      por_grupo AS (
-        SELECT ag.alumno_id
-        FROM mensaje_destino md
-        JOIN alumno_grupo ag ON ag.grupo_id = md.grupo_id
-        WHERE md.mensaje_id = $1 AND md.grupo_id IS NOT NULL
-      ),
-      por_alumno AS (
-        SELECT md.alumno_id FROM mensaje_destino md WHERE md.mensaje_id = $1 AND md.alumno_id IS NOT NULL
-      )
-      SELECT DISTINCT
-        COALESCE(pg.alumno_id, pa.alumno_id, u.alumno_id) AS alumno_id
-      FROM base b
-      LEFT JOIN t_broadcast tb ON TRUE
-      LEFT JOIN por_grupo pg ON TRUE
-      LEFT JOIN por_alumno pa ON TRUE
-      LEFT JOIN universo u ON tb.hay IS TRUE
-      WHERE (pg.alumno_id IS NOT NULL) OR (pa.alumno_id IS NOT NULL) OR (tb.hay IS TRUE)
-    `, [mensajeId]);
+    // 3) Resolver destinatarios (Todos / Grupos / Instrumento / Grupo+Instrumento)
+    async function getAlumnoIdsPorGrupo(ids) {
+      if (!ids?.length) return [];
+      const q = await client.query(
+        'SELECT DISTINCT alumno_id FROM alumno_grupo WHERE grupo_id = ANY($1::int[])',
+        [ids]
+      );
+      return q.rows.map(r => r.alumno_id);
+    }
 
-    const alumnoIds = destinatarios.rows.map(r => r.alumno_id);
+    async function getAlumnoIdsPorInstrumento(insId) {
+      if (!insId) return [];
 
+      // 3.1 Puente alumno_instrumento
+      const bridgeReg = await client.query(`SELECT to_regclass('public.alumno_instrumento') AS reg`);
+      if (bridgeReg.rows[0]?.reg) {
+        const q = await client.query(
+          'SELECT DISTINCT alumno_id FROM alumno_instrumento WHERE instrumento_id = $1',
+          [insId]
+        );
+        return q.rows.map(r => r.alumno_id);
+      }
+
+      // 3.2 Columna directa en alumnos
+      const cols = await client.query(`
+        SELECT column_name
+        FROM information_schema.columns
+        WHERE table_name='alumnos'
+          AND column_name IN ('instrumento_id', 'instrumento_principal_id')
+        ORDER BY CASE column_name WHEN 'instrumento_id' THEN 0 ELSE 1 END
+        LIMIT 1
+      `);
+      const col = cols.rows[0]?.column_name;
+      if (col) {
+        const q = await client.query(`SELECT id FROM alumnos WHERE ${col} = $1`, [insId]);
+        return q.rows.map(r => r.id);
+      }
+
+      // 3.3 Fallback: sin esquema de instrumento
+      return [];
+    }
+
+    let destinatariosSet = new Set();
+
+    if (broadcast) {
+      const all = await client.query('SELECT id FROM alumnos');
+      all.rows.forEach(r => destinatariosSet.add(r.id));
+    } else if (instrumentoId && gruposArr.length) {
+      // Intersección: alumnos por grupo ∩ alumnos por instrumento
+      const porGrupo = new Set(await getAlumnoIdsPorGrupo(gruposArr));
+      const porIns   = new Set(await getAlumnoIdsPorInstrumento(instrumentoId));
+      for (const id of porGrupo) if (porIns.has(id)) destinatariosSet.add(id);
+    } else if (instrumentoId) {
+      const ids = await getAlumnoIdsPorInstrumento(instrumentoId);
+      ids.forEach(id => destinatariosSet.add(id));
+    } else if (gruposArr.length) {
+      const ids = await getAlumnoIdsPorGrupo(gruposArr);
+      ids.forEach(id => destinatariosSet.add(id));
+    } else {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: 'Debes seleccionar un alcance: Todos, Grupos, Instrumento o Grupo+Instrumento.' });
+    }
+
+    const alumnoIds = Array.from(destinatariosSet).filter(Number.isInteger);
+
+    // 4) Crear entregas
     if (alumnoIds.length) {
-      // Crear entregas
-      const vals = alumnoIds.map((_, i) => `($1, $${i+2})`).join(',');
-      await db.query(
+      const vals = alumnoIds.map((_, i) => `($1, $${i + 2})`).join(',');
+      await client.query(
         `INSERT INTO mensaje_entrega (mensaje_id, alumno_id) VALUES ${vals} ON CONFLICT DO NOTHING`,
         [mensajeId, ...alumnoIds]
       );
+    }
 
-      // Enviar push
-      const subs = await db.query(`
-        SELECT ps.endpoint, ps.p256dh, ps.auth
-        FROM push_suscripciones ps
-        WHERE ps.alumno_id = ANY($1::int[])
-      `, [alumnoIds]);
+    // 5) Enviar push (si está habilitado)
+    if (alumnoIds.length) {
+      const subs = await client.query(
+        `SELECT endpoint, p256dh, auth FROM push_suscripciones WHERE alumno_id = ANY($1::int[])`,
+        [alumnoIds]
+      );
 
       const payload = { tipo: 'mensaje', mensaje_id: mensajeId, titulo, cuerpo, url: url || null };
-      for (const s of subs.rows) {
-        const ret = await enviarPush({
-          endpoint: s.endpoint,
-          keys: { p256dh: s.p256dh, auth: s.auth }
-        }, payload);
 
-        if (ret === 'expired') {
-          await db.query('DELETE FROM push_suscripciones WHERE endpoint = $1', [s.endpoint]);
+      for (const s of subs.rows) {
+        try {
+          const ret = await enviarPush(
+            { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
+            payload
+          );
+          if (ret === 'expired') {
+            await client.query('DELETE FROM push_suscripciones WHERE endpoint = $1', [s.endpoint]);
+          }
+        } catch (e) {
+          // No detenemos el flujo por un fallo individual
+          console.warn('Aviso: fallo enviando a un endpoint:', e?.statusCode || e?.message);
         }
       }
     }
 
-    await db.query('COMMIT');
+    await client.query('COMMIT');
     res.json({ success: true, mensaje_id: mensajeId, enviados: alumnoIds.length });
   } catch (err) {
-    await db.query('ROLLBACK');
+    try { await client.query('ROLLBACK'); } catch {}
     console.error('❌ Crear/enviar mensaje:', err);
     res.status(500).json({ error: 'Error creando o enviando el mensaje' });
+  } finally {
+    client.release();
   }
 });
 
 /**
- * API app móvil: suscripción push
- * body: { endpoint, keys: {p256dh, auth}, alumno_id }
+ * Suscripción Web Push desde la app móvil
+ * body: { alumno_id, endpoint, keys: { p256dh, auth } }
  */
 router.post('/push/subscribe', async (req, res) => {
   const { alumno_id, endpoint, keys } = req.body || {};
@@ -127,14 +194,15 @@ router.post('/push/subscribe', async (req, res) => {
 });
 
 /**
- * API app móvil: inbox (paginado/simple)
- * GET /app/mensajes?desde_id=…
+ * Bandeja móvil: listar mensajes de un alumno (desde_id opcional)
+ * GET /mensajes/app/mensajes?alumno_id=123&desde_id=0
  */
 router.get('/app/mensajes', async (req, res) => {
   const alumnoId = parseInt(req.query.alumno_id, 10);
+  const desdeId  = parseInt(req.query.desde_id, 10) || 0;
+
   if (!alumnoId) return res.status(400).json({ error: 'alumno_id requerido' });
 
-  const desdeId = parseInt(req.query.desde_id, 10) || 0;
   try {
     const { rows } = await db.query(`
       SELECT m.id, m.titulo, m.cuerpo, m.url, m.created_at, me.leido_at
@@ -152,17 +220,20 @@ router.get('/app/mensajes', async (req, res) => {
   }
 });
 
-/** Marcar como leído */
+/**
+ * Marcar mensaje como leído en móvil
+ * POST /mensajes/app/mensajes/:id/leer  body: { alumno_id }
+ */
 router.post('/app/mensajes/:id/leer', async (req, res) => {
   const alumnoId = parseInt(req.body.alumno_id, 10);
   const id = parseInt(req.params.id, 10);
   if (!alumnoId || !id) return res.status(400).json({ error: 'Datos inválidos' });
 
   try {
-    await db.query(`
-      UPDATE mensaje_entrega SET leido_at = NOW()
-      WHERE mensaje_id = $1 AND alumno_id = $2
-    `, [id, alumnoId]);
+    await db.query(
+      `UPDATE mensaje_entrega SET leido_at = NOW() WHERE mensaje_id = $1 AND alumno_id = $2`,
+      [id, alumnoId]
+    );
     res.json({ success: true });
   } catch (e) {
     console.error('❌ Marcando leído', e);
@@ -171,3 +242,4 @@ router.post('/app/mensajes/:id/leer', async (req, res) => {
 });
 
 module.exports = router;
+
