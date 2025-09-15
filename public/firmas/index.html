@@ -3,20 +3,25 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Control de asitencia JOSG</title>
-  <link rel="stylesheet" href="../styles/estilos_app.css" /></head>
+  <title>Control de asistencia JOSG</title>
+  <link rel="stylesheet" href="../styles/estilos_app.css" />
+</head>
 <body>
   <div class="container" id="contenedor">
-      <img src="/../imagenes/logoJOSG.png" alt="Logo JOSG">
+    <img src="/../imagenes/logoJOSG.png" alt="Logo JOSG">
     <h2>Bienvenido</h2>
+
     <div id="desconectado">
       <p>¿Eres alumno?</p>
       <button onclick="location.href='login.html'">Iniciar sesión</button>
       <button onclick="location.href='registro.html'">Registrarse</button>
     </div>
+
     <div id="conectado" style="display: none;">
       <p>Sesión iniciada. Puedes firmar tu asistencia.</p>
       <button onclick="location.href='firma.html'">Ir a firmar</button>
+      <!-- 👇 Nuevo botón para acceder a la bandeja de mensajes -->
+      <button onclick="location.href='mensajes.html'">Ver mensajes</button>
       <button onclick="logout()">Cerrar sesión</button>
     </div>
   </div>
@@ -36,3 +41,4 @@
   <script src="push-init.js"></script>
 </body>
 </html>
+

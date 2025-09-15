@@ -31,7 +31,7 @@
 
       if (data.success) {
         localStorage.setItem('alumno_id', data.alumno_id);
-        window.location.href = 'firma.html';
+        window.location.href = 'index.html';
       } else {
         document.getElementById('mensaje').innerText = data.error || 'Credenciales incorrectas';
       }
