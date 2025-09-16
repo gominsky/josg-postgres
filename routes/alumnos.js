@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../database/db');
+const bcrypt = require('bcrypt');
 const fs = require('fs');
 const multer = require('multer');
 const path = require('path');
@@ -13,7 +14,65 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage });
 const { toISODate } = require('../utils/fechas');
+async function tableExists(name) {
+  const { rows } = await db.query('SELECT to_regclass($1) t', [`public.${name}`]);
+  return Boolean(rows[0]?.t);
+}
+async function columnExists(table, column) {
+  const { rows } = await db.query(
+    `SELECT 1 FROM information_schema.columns WHERE table_name=$1 AND column_name=$2 LIMIT 1`,
+    [table, column]
+  );
+  return rows.length > 0;
+}
+async function ensureAlumnosApp() {
+  if (!(await tableExists('alumnos_app'))) {
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS alumnos_app (
+        alumno_id  INT PRIMARY KEY REFERENCES alumnos(id) ON DELETE CASCADE,
+        email      TEXT,
+        password   TEXT,
+        registrado BOOLEAN DEFAULT FALSE,
+        updated_at TIMESTAMP DEFAULT now()
+      );
+    `);
+  }
+}
+async function upsertCreds({ alumnoId, email, registrado, plainPassword }) {
+  const hasColumnPassword = await columnExists('alumnos', 'password');
 
+  // 1) registrado siempre vive en alumnos (porque tu ficha lo lee de ahí)
+  await db.query('UPDATE alumnos SET registrado = $1 WHERE id = $2', [!!registrado, alumnoId]);
+
+  // 2) password: si existe columna en alumnos, úsala; si no, usa alumnos_app
+  if (plainPassword && plainPassword.trim() !== '') {
+    const hash = await bcrypt.hash(plainPassword, 10);
+
+    if (hasColumnPassword) {
+      await db.query('UPDATE alumnos SET password = $1 WHERE id = $2', [hash, alumnoId]);
+    } else {
+      await ensureAlumnosApp();
+      await db.query(
+        `INSERT INTO alumnos_app (alumno_id, email, password, registrado, updated_at)
+         VALUES ($1,$2,$3,$4,now())
+         ON CONFLICT (alumno_id)
+         DO UPDATE SET email=EXCLUDED.email, password=EXCLUDED.password, registrado=EXCLUDED.registrado, updated_at=now()`,
+        [alumnoId, email || null, hash, !!registrado]
+      );
+    }
+  } else {
+    // Si sólo cambia “registrado” y tienes alumnos_app, reflejamos el flag
+    if (await tableExists('alumnos_app')) {
+      await db.query(
+        `INSERT INTO alumnos_app (alumno_id, email, registrado, updated_at)
+         VALUES ($1,$2,$3,now())
+         ON CONFLICT (alumno_id)
+         DO UPDATE SET email=EXCLUDED.email, registrado=EXCLUDED.registrado, updated_at=now()`,
+        [alumnoId, email || null, !!registrado]
+      );
+    }
+  }
+}
 router.get('/nuevo', async (req, res) => {
   try {
     const instrumentos = (await db.query('SELECT * FROM instrumentos')).rows;
@@ -71,6 +130,15 @@ router.post('/', upload.single('foto'), async (req, res) => {
     for (let gid of grpArray) {
       await db.query('INSERT INTO alumno_grupo (alumno_id, grupo_id) VALUES ($1, $2)', [newId, gid]);
     }
+    // ---- NUEVO: credenciales app (opcional) ----
+    const registradoFlag = String(req.body.registrado || '0') === '1';
+    const plainPassword  = req.body.password || '';
+    await upsertCreds({
+      alumnoId: newId,
+      email: (req.body.email || '').trim(),
+      registrado: registradoFlag,
+      plainPassword
+    });
 
     res.redirect(`/alumnos/${newId}`);
   } catch (err) {
@@ -201,6 +269,15 @@ router.put('/:id', upload.single('foto'), async (req, res) => {
 
   try {
     await db.query('BEGIN');
+    // ---- NUEVO: credenciales app (opcional) ----
+const registradoFlag = String(req.body.registrado || (alumno?.registrado ? '1' : '0')) === '1';
+const plainPassword  = req.body.password || '';
+await upsertCreds({
+  alumnoId: id,
+  email: (req.body.email || '').trim(),
+  registrado: registradoFlag,
+  plainPassword
+});
 
     // Update alumno
     await db.query(sql, params);
@@ -233,7 +310,6 @@ router.put('/:id', upload.single('foto'), async (req, res) => {
     res.status(500).send('Error al actualizar alumno');
   }
 });
-
 router.get('/:id/editar', async (req, res) => {
   const id = parseInt(req.params.id, 10);
 
@@ -379,68 +455,95 @@ router.post('/generar-cuotas', async (req, res) => {
     res.status(500).send('Error generando cuotas');
   }
 });
+// LISTAR ALUMNOS (tarjetas/lista) -------------------------------------------
 router.get('/', async (req, res) => {
-  const estado = req.query.estado;
-  const busqueda = req.query.busqueda || '';
-  const grupoId = req.query.grupo_id;
-  const params = [];
-  const condiciones = [];
+  const { estado = 'todos', grupo_id = 'todos', busqueda = '', vista } = req.query;
 
-  let sql = `
-    SELECT a.*,
-           STRING_AGG(DISTINCT i.nombre, ', ') AS instrumentos
+  // Vista: 'lista' | 'tarjetas' (por defecto tarjetas)
+  const VISTA = (vista === 'lista') ? 'lista' : 'tarjetas';
+
+  // Filtros
+  const where = [];
+  const params = [];
+
+  // Estado (activo/pasivo)
+  if (estado === '1') {
+    where.push('COALESCE(a.activo, TRUE) IS TRUE');
+  } else if (estado === '0') {
+    where.push('COALESCE(a.activo, TRUE) IS FALSE');
+  }
+
+  // Grupo (EXISTS para no romper LEFT JOINs)
+  const grupoIdInt = Number.isInteger(+grupo_id) ? parseInt(grupo_id, 10) : null;
+  if (grupo_id !== 'todos' && grupoIdInt) {
+    params.push(grupoIdInt);
+    where.push(`EXISTS (
+      SELECT 1
+      FROM alumno_grupo agf
+      WHERE agf.alumno_id = a.id AND agf.grupo_id = $${params.length}
+    )`);
+  }
+
+  // Búsqueda (nombre/apellidos + instrumentos + grupos)
+  if (busqueda && busqueda.trim() !== '') {
+    params.push(`%${busqueda.trim()}%`);
+    const p = `$${params.length}`;
+    where.push(`(
+      (a.nombre || ' ' || a.apellidos) ILIKE ${p}
+      OR EXISTS (
+        SELECT 1
+        FROM alumno_instrumento ai2
+        JOIN instrumentos i2 ON i2.id = ai2.instrumento_id
+        WHERE ai2.alumno_id = a.id AND i2.nombre ILIKE ${p}
+      )
+      OR EXISTS (
+        SELECT 1
+        FROM alumno_grupo ag2
+        JOIN grupos g2 ON g2.id = ag2.grupo_id
+        WHERE ag2.alumno_id = a.id AND g2.nombre ILIKE ${p}
+      )
+    )`);
+  }
+
+  // Consulta principal con agregados (instrumentos/grupos)
+  const sql = `
+    SELECT
+      a.id,
+      a.nombre,
+      a.apellidos,
+      COALESCE(a.activo, TRUE) AS activo,
+      -- agregados ordenados y únicos
+      STRING_AGG(DISTINCT i.nombre, ', ' ORDER BY i.nombre) AS instrumentos,
+      STRING_AGG(DISTINCT g.nombre, ', ' ORDER BY g.nombre) AS grupos
     FROM alumnos a
-    LEFT JOIN alumno_instrumento ai ON a.id = ai.alumno_id
-    LEFT JOIN instrumentos i ON ai.instrumento_id = i.id
-    LEFT JOIN alumno_grupo ag ON a.id = ag.alumno_id
+    LEFT JOIN alumno_instrumento ai ON ai.alumno_id = a.id
+    LEFT JOIN instrumentos i         ON i.id = ai.instrumento_id
+    LEFT JOIN alumno_grupo ag        ON ag.alumno_id = a.id
+    LEFT JOIN grupos g               ON g.id = ag.grupo_id
+    ${where.length ? 'WHERE ' + where.join(' AND ') : ''}
+    GROUP BY a.id
+    ORDER BY a.apellidos, a.nombre;
   `;
 
-  if (estado === '0' || estado === '1') {
-    condiciones.push(`a.activo = $${params.length + 1}`);
-    params.push(parseInt(estado));
-  }
-
-  if (busqueda.trim()) {
-    condiciones.push(`(a.nombre ILIKE $${params.length + 1} OR a.apellidos ILIKE $${params.length + 2})`);
-    params.push(`%${busqueda}%`, `%${busqueda}%`);
-  }
-
-  if (grupoId && grupoId !== 'todos') {
-    condiciones.push(`ag.grupo_id = $${params.length + 1}`);
-    params.push(grupoId);
-  }
-
-  if (condiciones.length > 0) {
-    sql += ' WHERE ' + condiciones.join(' AND ');
-  }
-
-  sql += ' GROUP BY a.id';
-
   try {
-    const [gruposResult, alumnosResult] = await Promise.all([
-      db.query('SELECT * FROM grupos ORDER BY nombre'),
-      db.query(sql, params)
+    const [alumnosRS, gruposRS] = await Promise.all([
+      db.query(sql, params),
+      db.query('SELECT id, nombre FROM grupos ORDER BY nombre;')
     ]);
 
-    const alumnos = alumnosResult.rows.sort((a, b) => {
-      const nombreA = (a.apellidos + a.nombre).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-      const nombreB = (b.apellidos + b.nombre).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-      return nombreA.localeCompare(nombreB);
-    });
-
     res.render('alumnos_lista', {
-      alumnos,
-      query: estado || 'todos',
+      title: 'Listado de músicos',
+      alumnos: alumnosRS.rows,
+      grupos: gruposRS.rows,
+      estadoSeleccionado: estado,
+      grupoId: grupo_id,
       busqueda,
-      grupoId,
-      grupos: gruposResult.rows,
-      estadoSeleccionado: estado || 'todos',
-      grupoSeleccionado: grupoId || 'todos',
-      hero: false
+      vista: VISTA    // <- la vista que usará el switch en la plantilla
     });
   } catch (err) {
-    console.error('Error obteniendo alumnos:', err);
-    res.status(500).send('Error al obtener alumnos');
+    console.error('[alumnos] GET / error:', err);
+    req.session.error = 'No se pudo cargar el listado de alumnos.';
+    res.redirect('/');
   }
 });
 router.get('/:id', async (req, res) => {

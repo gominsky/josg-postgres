@@ -4,82 +4,95 @@
 <% grupos.sort((a, b) => a.nombre.localeCompare(b.nombre)); %>
 <% instrumentos.sort((a, b) => a.nombre.localeCompare(b.nombre)); %>
 <h1 class="h1-titulo"><%= title %></h1>
-<form action="<%= alumno ? '/alumnos/' + alumno.id + '?_method=PUT' : '/alumnos' %>" method="POST" enctype="multipart/form-data" class="formulario-alumno contenedor-borde">
 
+<form action="<%= alumno ? '/alumnos/' + alumno.id + '?_method=PUT' : '/alumnos' %>"
+      method="POST" enctype="multipart/form-data"
+      class="formulario-alumno contenedor-borde">
+
+  <!-- ===== Datos personales ===== -->
   <div class="grupo-campos">
     <h2>Datos personales</h2>
     <div class="form-grid-2">
       <label>Nombre:
         <input type="text" name="nombre" required value="<%= alumno?.nombre || '' %>">
       </label>
-
       <label>Apellidos:
         <input type="text" name="apellidos" required value="<%= alumno?.apellidos || '' %>">
       </label>
-
       <label>Fecha de nacimiento:
         <input type="date" name="fecha_nacimiento" value="<%= alumno?.fecha_nacimiento || '' %>">
       </label>
-
       <label>DNI:
         <input type="text" name="dni" value="<%= alumno?.dni || '' %>">
       </label>
-
       <label>Dirección:
         <input type="text" name="direccion" value="<%= alumno?.direccion || '' %>">
       </label>
-
       <label>Código Postal:
         <input type="text" name="codigo_postal" value="<%= alumno?.codigo_postal || '' %>">
       </label>
-
       <label>Municipio:
         <input type="text" name="municipio" value="<%= alumno?.municipio || '' %>">
       </label>
-
       <label>Provincia:
         <input type="text" name="provincia" value="<%= alumno?.provincia || '' %>">
       </label>
     </div>
   </div>
 
+  <!-- ===== Contacto ===== -->
   <div class="grupo-campos">
     <h2>Contacto</h2>
     <div class="form-grid-2">
       <label>Teléfono:
         <input type="text" name="telefono" value="<%= alumno?.telefono || '' %>">
       </label>
-
       <label>Email:
         <input type="email" name="email" value="<%= alumno?.email || '' %>">
       </label>
-
       <label>Tutor:
         <input type="text" name="tutor" value="<%= alumno?.tutor || '' %>">
       </label>
     </div>
   </div>
 
+  <!-- ===== Centro ===== -->
   <div class="grupo-campos">
     <h2>Centro Educativo</h2>
     <div class="form-grid-2">
       <label>Centro:
         <input type="text" name="centro" value="<%= alumno?.centro || '' %>">
       </label>
-
       <label>Profesor del centro:
         <input type="text" name="profesor_centro" value="<%= alumno?.profesor_centro || '' %>">
       </label>
     </div>
   </div>
 
+  <!-- ===== Acceso app móvil (NUEVO) ===== -->
+  <div class="grupo-campos">
+    <h2>Acceso ¡Josg en tu mano!</h2>
+    <div class="form-grid-2">
+      <label>Registrado en la app:
+        <select name="registrado" class="form-control form-control-sm" style="width:auto;">
+          <option value="1" <%= alumno?.registrado ? 'selected' : '' %>>Sí</option>
+          <option value="0" <%= alumno && !alumno.registrado ? 'selected' : '' %>>No</option>
+        </select>
+      </label>
+      <label>Nueva contraseña (opcional):
+        <input type="password" name="password" placeholder="<%= isEdicion ? 'Dejar en blanco para no cambiar' : '' %>">
+        <small class="form-text" style="color:#aaa;">Sólo para la app móvil. Se guarda cifrada.</small>
+      </label>
+    </div>
+  </div>
+
+  <!-- ===== Asignación ===== -->
   <div class="grupo-campos">
     <h2>Asignación</h2>
     <div class="form-grid-2">
       <div class="campo-label">
         <label for="grupos">Grupos:</label>
-        <select name="grupos" id="grupos" multiple size="10" 
-                class="form-control form-control-sm" 
+        <select name="grupos" id="grupos" multiple size="10" class="form-control form-control-sm"
                 style="width: 100%; height: 12rem; overflow-y: auto;">
           <% grupos.forEach(grupo => { %>
             <option value="<%= grupo.id %>" <%= gruposAlumno.includes(grupo.id) ? 'selected' : '' %>>
@@ -88,11 +101,10 @@
           <% }) %>
         </select>
       </div>
-  
+
       <div class="campo-label">
         <label for="instrumentos">Instrumentos:</label>
-        <select name="instrumentos" id="instrumentos" multiple size="10" 
-                class="form-control form-control-sm" 
+        <select name="instrumentos" id="instrumentos" multiple size="10" class="form-control form-control-sm"
                 style="width: 100%; height: 12rem; overflow-y: auto;">
           <% instrumentos.forEach(inst => { %>
             <option value="<%= inst.id %>" <%= instrumentosAlumno.includes(inst.id) ? 'selected' : '' %>>
@@ -111,12 +123,10 @@
     </div>
   </div>
 
+  <!-- ===== Foto ===== -->
   <div class="grupo-campos">
     <h2>Foto</h2>
-    <!-- File input para nueva foto -->
-    <label>Subir nueva:
-      <input type="file" name="foto" accept="image/*">
-    </label>
+    <label>Subir nueva: <input type="file" name="foto" accept="image/*"></label>
     <% if (alumno && alumno.foto) { %>
       <input type="hidden" name="fotoActual" value="<%= alumno.foto %>">
       <div class="foto-actual">
@@ -137,9 +147,12 @@
     </div>
   </div>
 </form>
+
 <% if (isEdicion) { %>
-  <form method="POST" action="/alumnos/<%= alumno.id %>/eliminar" onsubmit="return confirm('¿Estás seguro de que quieres eliminar este alumno?');" class="text-center mt-4">
-    <p style="color: white; margin-bottom: 0.5rem;">Eliminar de manera definitiva</p>
+  <form method="POST" action="/alumnos/<%= alumno.id %>/eliminar"
+        onsubmit="return confirm('¿Eliminar este alumno definitivamente?');"
+        class="text-center mt-4">
+    <p style="color: white; margin-bottom: .5rem;">Eliminar de manera definitiva</p>
     <button type="submit" class="btn-main-blanco">Eliminar</button>
   </form>
 <% } %>

@@ -1,8 +1,73 @@
-<% title = 'Listado de músicos' %>
-<% hero = false %>
+<%
+  title = 'Listado de músicos';
+  hero  = false;
+  const VISTA = (typeof vista !== 'undefined' && vista === 'lista') ? 'lista' : 'tarjetas';
+%>
+<style>
+  .header-compact{ display:flex; align-items:center; gap:12px; }
+
+  /* Empuja todo el bloque a la derecha
+     y sácalo un poco del contenedor para “pegarlo” al borde de la página */
+  .header-actions{
+    margin-left:auto;
+    display:flex; align-items:center; gap:.75rem;
+    position:relative;
+    right:-14px;          /* sobresale 14px: casi pegado al borde */
+  }
+  @media (min-width: 992px){
+    .header-actions{ right:-22px; }  /* un pelín más fuera en desktop */
+  }
+  
+  /* Tabla compacta y estrecha */
+  .tabla-compacta-wrap{
+    max-width: 980px;      /* límite de ancho total de la tabla */
+    margin: 0 auto;        /* centrada dentro del contenedor */
+  }
+  @media (min-width: 1280px){
+    .tabla-compacta-wrap{ max-width: 920px; }  /* aún más estrecha en pantallas grandes */
+  }
+
+  .tabla-compacta{
+    width: 100%;
+    table-layout: fixed;   /* evita columnas gigantes por textos largos */
+    font-size: .86rem;     /* texto más pequeño */
+  }
+  .tabla-compacta th,
+  .tabla-compacta td{
+    padding: .30rem .45rem;   /* celdas bajitas */
+    line-height: 1.15;
+    white-space: nowrap;      /* que no salte de línea (mejor densidad) */
+    overflow: hidden;
+    text-overflow: ellipsis;  /* … si se corta */
+  }
+
+  /* Reparte el ancho de columnas */
+  .tabla-compacta thead th:nth-child(1){ width: 36%; }  /* Nombre */
+  .tabla-compacta thead th:nth-child(2){ width: 28%; }  /* Instrumentos */
+  .tabla-compacta thead th:nth-child(3){ width: 26%; }  /* Grupos */
+  .tabla-compacta thead th:nth-child(4){ width: 10%; }  /* Estado */
+
+  /* Badges más pequeñas */
+  .tabla-compacta .badge{
+    font-size: .72rem;
+    padding: .12rem .35rem;
+    border-radius: 999px;
+  }
+</style>
+
 <div class="header-compact">
   <h1 class="h1-titulo">Músicos asociados</h1>
-  <a href="/alumnos/nuevo" class="btn-main-blanco">+ Añadir músico</a>
+
+  <div class="header-actions">
+    <a href="/alumnos/nuevo" class="btn-main-blanco">+ Añadir músico</a>
+
+    <div class="form-check form-switch m-0" title="Cambiar vista">
+      <input class="form-check-input" type="checkbox" id="vistaSwitch" <%= VISTA==='lista' ? 'checked' : '' %>>
+      <label class="form-check-label" for="vistaSwitch">
+        <%= VISTA==='lista' ? 'Lista' : 'Tarjetas' %>
+      </label>
+    </div>
+  </div>
 </div>
 <form method="GET" id="filtro-form" class="formulario-centrado filtro-card--shape">
   <div class="campo-filtro">
@@ -12,7 +77,7 @@
       <% const _estado = (typeof estadoSeleccionado !== 'undefined' ? String(estadoSeleccionado) : 'todos'); %>
       <option value="todos" <%= _estado === 'todos' ? 'selected' : '' %>>Todos</option>
       <option value="1"     <%= _estado === '1'     ? 'selected' : '' %>>Activos</option>
-      <option value="0"     <%= _estado === '0'     ? 'selected' : '' %>>Pasivos</option>
+      <option value="0"     <%= _estado === '0'     ? 'selected' : '' %>>No activos</option>
     </select>
   </div>
 
@@ -30,40 +95,71 @@
 
   <div class="campo-filtro">
     <label for="busqueda-alumnos">Buscar</label>
-    <input id="busqueda-alumnos"
-           name="busqueda"
-           type="text"
+    <input id="busqueda-alumnos" name="busqueda" type="text"
            class="form-centrado-select"
            placeholder="Nombre, apellidos, instrumentos..."
            value="<%= typeof busqueda !== 'undefined' ? busqueda : '' %>">
   </div>
+
+  <!-- Mantener la vista actual al cambiar filtros -->
+  <input type="hidden" name="vista" value="<%= VISTA %>">
 </form>
 
-
 <% if (alumnos.length > 0) { %>
-  <div class="dashboard-grid" id="grid-alumnos">
-    <% alumnos.forEach(alumno => { %>
-      <a href="/alumnos/<%= alumno.id %>" class="card <%= alumno.activo === false ? 'pasivo' : 'activo' %>"
-        data-fulltext="<%= (alumno.nombre + ' ' + alumno.apellidos + ' ' + (alumno.instrumentos||'')).toLowerCase() %>">
-       <div class="alumno-nombre" title="<%= alumno.nombre %> <%= alumno.apellidos %>">
-         <%= alumno.nombre %> <%= alumno.apellidos %>
-       </div>
-       <% if (alumno.instrumentos) { %>
-         <div style="font-size: 0.85rem; color: #666; margin-top: 0.2rem;">
-           <%= alumno.instrumentos %>
-         </div>
-       <% } %>
-     </a>    
-    <% }) %>
-  </div>
+
+  <% if (VISTA === 'tarjetas') { %>
+    <!-- ===== Tarjetas ===== -->
+    <div class="dashboard-grid" id="grid-alumnos">
+      <% alumnos.forEach(alumno => { %>
+        <a href="/alumnos/<%= alumno.id %>" class="card <%= alumno.activo === false ? 'pasivo' : 'activo' %>"
+           data-fulltext="<%= (alumno.nombre + ' ' + alumno.apellidos + ' ' + (alumno.instrumentos||'')).toLowerCase() %>">
+          <div class="alumno-nombre" title="<%= alumno.nombre %> <%= alumno.apellidos %>">
+            <%= alumno.nombre %> <%= alumno.apellidos %>
+          </div>
+          <% if (alumno.instrumentos) { %>
+            <div style="font-size:.85rem; color:#666; margin-top:.2rem;">
+              <%= alumno.instrumentos %>
+            </div>
+          <% } %>
+        </a>
+      <% }) %>
+    </div>
+
+  <% } else { %>
+    <!-- ===== Lista (tabla compacta) ===== -->
+<div class="table-responsive tabla-compacta-wrap" style="padding: 0;">
+  <table class="tabla-estilizada tabla-compacta">
+    <thead>
+      <tr>
+        <th>Nombre</th>
+        <th>Instrumentos</th>
+        <th>Grupos</th>
+        <th>Estado</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% alumnos.forEach(a => { %>
+        <tr class="fila-enlace" onclick="location.href='/alumnos/<%= a.id %>'" style="cursor:pointer;">
+          <td><strong><%= a.nombre %> <%= a.apellidos %></strong></td>
+          <td><%= a.instrumentos || '—' %></td>
+          <td><%= a.grupos || '—' %></td>
+          <td>
+            <span class="badge bg-<%= a.activo ? 'success' : 'danger' %>">
+              <%= a.activo ? 'Activo' : 'No activo' %>
+            </span>
+          </td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+</div>
+
+  <% } %>
+
 <% } %>
 
 <div class="volver-bloque-izquierda">
-  <% if (
-    (busqueda && busqueda.trim() !== '') ||
-    (estadoSeleccionado && estadoSeleccionado !== 'todos') ||
-    (grupoId && grupoId !== 'todos')
-  ) { %>
+  <% if ((busqueda && busqueda.trim() !== '') || (estadoSeleccionado && estadoSeleccionado !== 'todos') || (grupoId && grupoId !== 'todos')) { %>
     <a href="/alumnos" class="enlace-final">← Volver</a>
   <% } else { %>
     <a href="/" class="enlace-final">← Volver al inicio</a>
@@ -71,12 +167,24 @@
 </div>
 
 <script>
-  document.getElementById('busqueda-alumnos').addEventListener('input', function () {
+  // Filtro en vivo (sólo tarjetas)
+  document.getElementById('busqueda-alumnos')?.addEventListener('input', function () {
     const filtro = this.value.toLowerCase().trim();
-    const tarjetas = document.querySelectorAll('#grid-alumnos .card');
-    tarjetas.forEach(t => {
+    document.querySelectorAll('#grid-alumnos .card')?.forEach(t => {
       const base = t.getAttribute('data-fulltext') || t.textContent.toLowerCase();
       t.style.display = base.includes(filtro) ? '' : 'none';
     });
   });
+
+  // Switch: cambia ?vista=lista|tarjetas sin depender del form
+  (function(){
+    const sw = document.getElementById('vistaSwitch');
+    if (!sw) return;
+    sw.addEventListener('change', () => {
+      const url = new URL(location.href);
+      url.searchParams.set('vista', sw.checked ? 'lista' : 'tarjetas');
+      location.href = url.toString();
+    });
+  })();
 </script>
+
