@@ -238,7 +238,9 @@ router.get('/app/mensajes', async (req, res) => {
       ORDER BY m.id DESC
       LIMIT 50
     `, [alumnoId, desdeId]);
-
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.set('Pragma', 'no-cache');
+    res.set('Expires', '0');
     res.json(rows);
   } catch (e) {
     console.error('❌ Listando mensajes', e);

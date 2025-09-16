@@ -145,21 +145,28 @@
     }
 
     async function cargar(){
-      try{
-        const r = await fetch(`/mensajes/app/mensajes?alumno_id=${encodeURIComponent(alumno_id)}`);
-        const j = await r.json();
-        if (!r.ok || !Array.isArray(j)) throw new Error('No se pudieron cargar los mensajes');
-        DATA = j; // ya vienen ordenados DESC por id
-        cursor = 0;
-        $list.innerHTML = '';
-        renderNext();
-      }catch(e){
-        console.error(e);
-        $empty.textContent = 'No se pudieron cargar los mensajes.';
-        $empty.style.display = 'block';
-      }
-    }
+    try{
+      const url = new URL('/mensajes/app/mensajes', location.origin);
+      url.searchParams.set('alumno_id', alumno_id);
+      url.searchParams.set('t', Date.now().toString());  // ← anti-caché
 
+      const r = await fetch(url.toString(), {
+        cache: 'no-store',                                 // ← anti-caché
+        headers: { 'Cache-Control': 'no-cache' }           // ← redundante pero útil
+      });
+      const j = await r.json();
+      if (!r.ok || !Array.isArray(j)) throw new Error('No se pudieron cargar los mensajes');
+
+      DATA = j; // ya vienen ordenados DESC por id
+      cursor = 0;
+      $list.innerHTML = '';
+      renderNext();
+    }catch(e){
+      console.error(e);
+      $empty.textContent = 'No se pudieron cargar los mensajes.';
+      $empty.style.display = 'block';
+    }
+  }
     // Delegación de eventos
     $list.addEventListener('click', (ev) => {
       const card = ev.target.closest('.card');
