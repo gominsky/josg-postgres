@@ -30,8 +30,7 @@
 
   .form-label{ font-weight:600; color:var(--text-main); margin:12px 0 6px; }
   .form-control, .form-select, textarea{
-    width:100%; border:1px solid var(--border); border-radius:12px; padding:.6rem .75rem; outline:0;
-    background:#fff;
+    width:100%; border:1px solid var(--border); border-radius:12px; padding:.6rem .75rem; outline:0; background:#fff;
   }
   .form-control:focus, .form-select:focus, textarea:focus{ border-color:var(--accent-300); box-shadow:0 0 0 3px var(--accent-50); }
   textarea{ min-height:140px; resize:vertical; }
@@ -45,7 +44,7 @@
   }
   .chip.active{ background:var(--accent-400); border-color:var(--accent-500); }
 
-  /* Selector de grupos */
+  /* Listas de selección (grupos/instrumentos) */
   #blk-grupos{ margin-top:10px; }
   .group-search{ display:flex; gap:.5rem; align-items:center; margin-bottom:6px; }
   .groups-list{
@@ -55,7 +54,10 @@
   .groups-list label{ display:flex; align-items:center; gap:.45rem; padding:.25rem .35rem; border-radius:8px; cursor:pointer; }
   .groups-list label:hover{ background:#fafafa; }
   .groups-list label span{ color: var(--text-main); }
-  .groups-list input.g-check:checked + span{ font-weight:700; }
+  .groups-list input.g-check:checked + span,
+  .groups-list input.g2-check:checked + span,
+  .groups-list input.i-check:checked + span,
+  .groups-list input.i2-check:checked + span{ font-weight:700; }
 
   /* Instrumento */
   #blk-instrumento, #blk-grupo-instrumento{ margin-top:10px; }
@@ -119,6 +121,16 @@
       </div>
     </div>
 
+    <!-- Enlaces extra -->
+    <div id="links-block" class="row">
+      <div>
+        <label class="form-label">Enlaces extra (opcionales)</label>
+        <div id="links-wrap"></div>
+        <button type="button" class="btn-main-blanco" id="add-link">Añadir enlace</button>
+        <div class="help">Puedes añadir hasta 2 enlaces extra (además del campo “Enlace” de arriba).</div>
+      </div>
+    </div>
+
     <!-- Destinatarios -->
     <div class="row">
       <div>
@@ -150,28 +162,42 @@
         </div>
       </div>
 
-      <!-- Solo instrumento -->
+      <!-- Solo instrumentos (varios) -->
       <div id="blk-instrumento" style="display:none;">
-        <label class="form-label" for="instrumento_id">Elige instrumento</label>
-        <select id="instrumento_id" class="form-select">
-          <option value="">Elige un instrumento…</option>
+        <label class="form-label" for="i-buscar">Elige instrumentos</label>
+        <div class="group-search">
+          <input id="i-buscar" class="form-control" placeholder="Filtrar instrumentos…">
+          <button class="btn-main-blanco" type="button" id="i-todos">Marcar todo</button>
+          <button class="btn-main-blanco" type="button" id="i-ninguno">Quitar todo</button>
+        </div>
+        <div class="groups-list" id="instruments">
           <% (instrumentos || []).forEach(i => { %>
-            <option value="<%= i.id %>"><%= i.nombre %></option>
+            <label>
+              <input type="checkbox" class="i-check" value="<%= i.id %>">
+              <span><%= i.nombre %></span>
+            </label>
           <% }) %>
-        </select>
+        </div>
       </div>
 
-      <!-- Grupo + instrumento (ambos bloques visibles) -->
+      <!-- Grupo + Instrumento (ambos múltiples, intersección) -->
       <div id="blk-grupo-instrumento" style="display:none;">
         <div class="row row-2">
           <div>
-            <label class="form-label" for="instrumento_id_2">Instrumento</label>
-            <select id="instrumento_id_2" class="form-select">
-              <option value="">Elige un instrumento…</option>
+            <label class="form-label" for="i2-buscar">Instrumentos</label>
+            <div class="group-search">
+              <input id="i2-buscar" class="form-control" placeholder="Filtrar instrumentos…">
+              <button class="btn-main-blanco" type="button" id="i2-todos">Marcar todo</button>
+              <button class="btn-main-blanco" type="button" id="i2-ninguno">Quitar todo</button>
+            </div>
+            <div class="groups-list" id="instruments2" style="max-height:200px;">
               <% (instrumentos || []).forEach(i => { %>
-                <option value="<%= i.id %>"><%= i.nombre %></option>
+                <label>
+                  <input type="checkbox" class="i2-check" value="<%= i.id %>">
+                  <span><%= i.nombre %></span>
+                </label>
               <% }) %>
-            </select>
+            </div>
           </div>
           <div>
             <label class="form-label">Grupos</label>
@@ -183,7 +209,7 @@
                 </label>
               <% }) %>
             </div>
-            <div class="help">Se enviará únicamente a alumnos del instrumento seleccionado que pertenezcan a los grupos marcados.</div>
+            <div class="help">Se enviará a alumnos cuyo instrumento esté en la lista y pertenezcan a los grupos marcados.</div>
           </div>
         </div>
       </div>
@@ -193,7 +219,6 @@
     <div class="actions">
       <button type="submit" class="btn-main-blanco" id="btn-enviar">Enviar ahora</button>
       <button type="button" class="btn-main-blanco" id="btn-reset" style="opacity:.9;">Limpiar</button>
-      <span class="help">No se recarga la página al enviar ✔️</span>
     </div>
   </form>
 
@@ -204,6 +229,7 @@
       <div class="mock-title" id="pv-title">Título del mensaje</div>
       <div class="mock-body" id="pv-body" style="color:#333;">El contenido aparecerá aquí mientras escribes.</div>
       <div class="mock-url" id="pv-url" style="display:none;"></div>
+      <ul id="pv-links" style="margin-top:.35rem; padding-left:1rem;"></ul>
     </div>
 
     <div class="section-title" style="margin-top:14px;">Consejos</div>
@@ -230,27 +256,24 @@
   const cTitulo = $('#c-titulo'), cCuerpo = $('#c-cuerpo'), pvTitle = $('#pv-title'), pvBody = $('#pv-body'), pvUrl = $('#pv-url');
   const pillCount = $('#pill-count');
 
-  const chipTodos = document.querySelector('.chip[data-mode="todos"]');
-  const chipGrupos = document.querySelector('.chip[data-mode="grupos"]');
-  const chipInst  = document.querySelector('.chip[data-mode="instrumento"]');
-  const chipGI    = document.querySelector('.chip[data-mode="grupo_instrumento"]');
-
   const blkGrupos = $('#blk-grupos');
   const blkInst   = $('#blk-instrumento');
   const blkGI     = $('#blk-grupo-instrumento');
 
   const gBuscar = $('#g-buscar'), gTodos = $('#g-todos'), gNinguno = $('#g-ninguno');
+  const iBuscar = $('#i-buscar'), iTodos = $('#i-todos'), iNinguno = $('#i-ninguno');
+  const i2Buscar = $('#i2-buscar'), i2Todos = $('#i2-todos'), i2Ninguno = $('#i2-ninguno');
 
-  const instSel1 = $('#instrumento_id');
-  const instSel2 = $('#instrumento_id_2');
+  const linksWrap = document.getElementById('links-wrap');
+  const btnAddLink = document.getElementById('add-link');
 
   // Estado
   const state = {
     mode: 'todos',
     groupsChecked: new Set(),
     groupsChecked2: new Set(),
-    instrumentoId: null,
-    instrumentoId2: null
+    instrumentosChecked: new Set(),
+    instrumentosChecked2: new Set()
   };
 
   // Contadores y preview
@@ -262,12 +285,47 @@
     pvTitle.textContent = titulo.value.trim() || 'Título del mensaje';
     pvBody.textContent  = cuerpo.value.trim() || 'El contenido aparecerá aquí mientras escribes.';
     const u = url.value.trim();
-    if (u){ pvUrl.textContent = u; pvUrl.style.display='block'; } else { pvUrl.textContent=''; pvUrl.style.display='none'; }
+    if (u){ pvUrl.textContent = ensureProto(u); pvUrl.style.display='block'; } else { pvUrl.textContent=''; pvUrl.style.display='none'; }
+
+    const pvLinks = document.getElementById('pv-links');
+    if (pvLinks){
+      pvLinks.innerHTML = '';
+      const extras = Array.from(document.querySelectorAll('.link-input')).map(i => i.value.trim()).filter(Boolean);
+      extras.forEach((u, idx) => {
+        const li = document.createElement('li');
+        const href = ensureProto(u);
+        li.innerHTML = `<a href="${href}" target="_blank" rel="noopener">Enlace ${idx+1}</a>`;
+        pvLinks.appendChild(li);
+      });
+    }
+  }
+  function ensureProto(u){
+    return /^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//.test(u) ? u : 'https://' + u;
   }
   titulo.addEventListener('input', ()=>{ updateCounters(); updatePreview(); });
   cuerpo.addEventListener('input', ()=>{ updateCounters(); updatePreview(); });
   url.addEventListener('input', updatePreview);
   updateCounters(); updatePreview();
+
+  // Enlaces extra (máx 2 filas)
+  function addLinkRow(value=''){
+    const row = document.createElement('div');
+    row.style.display='flex'; row.style.gap='.5rem'; row.style.margin='6px 0';
+    row.innerHTML = `
+      <input class="form-control link-input" placeholder="https://…" value="${value}">
+      <button type="button" class="btn-main-blanco link-del" title="Quitar">Quitar</button>
+    `;
+    row.querySelector('.link-del').addEventListener('click', ()=> { row.remove(); updatePreview(); });
+    row.querySelector('.link-input').addEventListener('input', updatePreview);
+    linksWrap.appendChild(row);
+  }
+  if (btnAddLink) {
+    btnAddLink.addEventListener('click', ()=>{
+      const current = linksWrap.querySelectorAll('.link-input').length;
+      if (current >= 2) return;
+      addLinkRow('');
+    });
+  }
 
   // Modo (chips)
   function setMode(m){
@@ -288,9 +346,9 @@
     updateDestCount();
   }
   $$('.g-check').forEach(el => el.addEventListener('change', syncGroupsFromDOM));
-  gTodos?.addEventListener('click', ()=> { $$('.g-check').forEach(el=>el.checked=true); syncGroupsFromDOM(); });
-  gNinguno?.addEventListener('click', ()=> { $$('.g-check').forEach(el=>el.checked=false); syncGroupsFromDOM(); });
-  gBuscar?.addEventListener('input', ()=>{
+  if (gTodos) gTodos.addEventListener('click', ()=> { $$('.g-check').forEach(el=>el.checked=true); syncGroupsFromDOM(); });
+  if (gNinguno) gNinguno.addEventListener('click', ()=> { $$('.g-check').forEach(el=>el.checked=false); syncGroupsFromDOM(); });
+  if (gBuscar) gBuscar.addEventListener('input', ()=>{
     const q = (gBuscar.value || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
     $$('#groups label').forEach(l=>{
       const txt = l.textContent.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
@@ -306,21 +364,57 @@
   }
   $$('.g2-check').forEach(el => el.addEventListener('change', syncGroups2));
 
-  // Instrumento selects
-  instSel1?.addEventListener('change', ()=> { state.instrumentoId  = parseInt(instSel1.value) || null; updateDestCount(); });
-  instSel2?.addEventListener('change', ()=> { state.instrumentoId2 = parseInt(instSel2.value) || null; updateDestCount(); });
+  // Instrumentos (bloque “instrumento”)
+  function syncInstruments(){
+    state.instrumentosChecked.clear();
+    $$('.i-check:checked').forEach(el => state.instrumentosChecked.add(parseInt(el.value)));
+    updateDestCount();
+  }
+  $$('.i-check').forEach(el => el.addEventListener('change', syncInstruments));
+  if (iTodos) iTodos.addEventListener('click', ()=> { $$('.i-check').forEach(el=>el.checked=true); syncInstruments(); });
+  if (iNinguno) iNinguno.addEventListener('click', ()=> { $$('.i-check').forEach(el=>el.checked=false); syncInstruments(); });
+  if (iBuscar) iBuscar.addEventListener('input', ()=>{
+    const q = (iBuscar.value || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+    $$('#instruments label').forEach(l=>{
+      const txt = l.textContent.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+      l.style.display = txt.includes(q) ? '' : 'none';
+    });
+  });
 
-  // Contador destinatarios (estimado visual)
+  // Instrumentos (bloque “grupo + instrumento”)
+  function syncInstruments2(){
+    state.instrumentosChecked2.clear();
+    $$('.i2-check:checked').forEach(el => state.instrumentosChecked2.add(parseInt(el.value)));
+    updateDestCount();
+  }
+  $$('.i2-check').forEach(el => el.addEventListener('change', syncInstruments2));
+  if (i2Todos) i2Todos.addEventListener('click', ()=> { $$('.i2-check').forEach(el=>el.checked=true); syncInstruments2(); });
+  if (i2Ninguno) i2Ninguno.addEventListener('click', ()=> { $$('.i2-check').forEach(el=>el.checked=false); syncInstruments2(); });
+  if (i2Buscar) i2Buscar.addEventListener('input', ()=>{
+    const q = (i2Buscar.value || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+    $$('#instruments2 label').forEach(l=>{
+      const txt = l.textContent.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+      l.style.display = txt.includes(q) ? '' : 'none';
+    });
+  });
+
+  // Contador destinatarios (texto estimado)
   function updateDestCount(){
-    let n = '—';
-    if (state.mode==='grupos') n = state.groupsChecked.size ? state.groupsChecked.size + ' grupos' : '—';
-    if (state.mode==='instrumento') n = state.instrumentoId ? '1 instrumento' : '—';
-    if (state.mode==='grupo_instrumento'){
-      const g = state.groupsChecked2.size;
-      const i = !!state.instrumentoId2;
-      n = (g && i) ? `${g} grupo(s) + 1 instrumento` : '—';
+    let txt = '— destinatarios';
+    if (state.mode==='grupos') {
+      const g = state.groupsChecked.size;
+      txt = g ? `${g} grupo(s)` : '— destinatarios';
     }
-    pillCount.textContent = `${n} destinatarios`;
+    if (state.mode==='instrumento') {
+      const i = state.instrumentosChecked.size;
+      txt = i ? `${i} instrumento(s)` : '— destinatarios';
+    }
+    if (state.mode==='grupo_instrumento') {
+      const g = state.groupsChecked2.size;
+      const i = state.instrumentosChecked2.size;
+      txt = (g && i) ? `${g} grupo(s) + ${i} instrumento(s)` : '— destinatarios';
+    }
+    pillCount.textContent = txt;
   }
 
   // Toast
@@ -341,8 +435,13 @@
       url: url.value.trim() || null,
       broadcast: state.mode === 'todos',
       grupos: [],
-      instrumento_id: null
+      instrumentos: []
     };
+
+    // enlaces extra
+    body.links = Array.from(document.querySelectorAll('.link-input'))
+      .map(i => i.value.trim())
+      .filter(Boolean);
 
     if (!body.titulo || !body.cuerpo){
       showToast('Completa título y mensaje', false);
@@ -355,15 +454,15 @@
     }
 
     if (state.mode === 'instrumento'){
-      body.instrumento_id = state.instrumentoId;
-      if (!body.instrumento_id){ showToast('Elige un instrumento', false); return; }
+      body.instrumentos = Array.from(state.instrumentosChecked.values());
+      if (!body.instrumentos.length){ showToast('Elige al menos un instrumento', false); return; }
     }
 
     if (state.mode === 'grupo_instrumento'){
-      body.instrumento_id = state.instrumentoId2;
+      body.instrumentos = Array.from(state.instrumentosChecked2.values());
       body.grupos = Array.from(state.groupsChecked2.values());
-      if (!body.instrumento_id || !body.grupos.length){
-        showToast('Elige instrumento y al menos un grupo', false); return;
+      if (!body.instrumentos.length || !body.grupos.length){
+        showToast('Elige instrumentos y al menos un grupo', false); return;
       }
     }
 
@@ -375,7 +474,10 @@
 
       showToast(`✅ Enviado (id ${j.mensaje_id}) a ${j.enviados} alumno(s).`, true);
       // limpiar texto; mantener selección de alcance
-      cuerpo.value=''; url.value=''; titulo.value=''; updateCounters(); updatePreview();
+      cuerpo.value=''; url.value=''; titulo.value='';
+      // limpiar enlaces extra (pero dejamos el bloque para seguir añadiendo)
+      linksWrap.innerHTML = '';
+      updateCounters(); updatePreview();
     }catch(e){ showToast('❌ ' + (e.message || 'Error al enviar'), false); }
     finally{ btnEnviar.disabled=false; btnEnviar.textContent = old; }
   });
@@ -384,13 +486,13 @@
   btnReset.addEventListener('click', ()=>{
     form.reset(); setMode('todos');
     state.groupsChecked.clear(); state.groupsChecked2.clear();
-    state.instrumentoId = null; state.instrumentoId2 = null;
-    $$('.g-check').forEach(el => el.checked=false);
-    $$('.g2-check').forEach(el => el.checked=false);
-    if (instSel1) instSel1.value = '';
-    if (instSel2) instSel2.value = '';
+    state.instrumentosChecked.clear(); state.instrumentosChecked2.clear();
+    $$('.g-check,.g2-check,.i-check,.i2-check').forEach(el => el.checked=false);
+    linksWrap.innerHTML = '';
     updateCounters(); updatePreview(); updateDestCount();
   });
 
 })();
 </script>
+
+  

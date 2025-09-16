@@ -4,35 +4,55 @@ const router = express.Router();
 const db = require('../database/db');
 const { enviarPush } = require('../utils/push');
 
-/**
- * Utilidades internas
- */
+/* --------------------------- utilidades --------------------------- */
 function toIntArray(x) {
   if (!x) return [];
   if (Array.isArray(x)) return x.map(n => parseInt(n, 10)).filter(Number.isInteger);
   if (typeof x === 'string') return x.split(',').map(n => parseInt(n, 10)).filter(Number.isInteger);
   return [];
 }
+function sanitizeUrl(u) {
+  if (!u) return null;
+  let s = String(u).trim();
+  if (!s) return null;
+  // añade https:// si el usuario pegó "ejemplo.com"
+  if (!/^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//.test(s)) s = 'https://' + s;
+  return s;
+}
+function toUrlArray(x, max = 10) {
+  if (!x) return [];
+  const arr = Array.isArray(x) ? x : [x];
+  const out = [];
+  for (const v of arr) {
+    const u = sanitizeUrl(v);
+    if (u) out.push(u);
+    if (out.length >= max) break;
+  }
+  return out;
+}
 
+/* ------------------- crear y enviar un mensaje -------------------- */
 /**
- * Crear mensaje desde el panel.
- * body: {
+ * body:
+ * {
  *   titulo: string,
  *   cuerpo: string,
- *   url?: string,
+ *   url?: string,            // enlace principal (compatibilidad)
+ *   links?: string[],        // enlaces extra (nuevos)
  *   broadcast?: boolean,
  *   grupos?: number[],
- *   instrumento_id?: number  // opcional; combinado con grupos => intersección
+ *   instrumentos?: number[]   // múltiples
  * }
  */
 router.post('/', async (req, res) => {
   const titulo = (req.body.titulo || '').trim();
   const cuerpo = (req.body.cuerpo || '').trim();
-  const url    = (req.body.url || '').trim() || null;
+  const url    = sanitizeUrl(req.body.url || null);
+  const links  = toUrlArray(req.body.links, 10); // hasta 10 si quieres
 
   const broadcast = !!req.body.broadcast;
   const gruposArr = toIntArray(req.body.grupos);
-  const instrumentoId = parseInt(req.body.instrumento_id, 10) || null;
+  const instrArr  = toIntArray(req.body.instrumentos);
 
   if (!titulo || !cuerpo) {
     return res.status(400).json({ error: 'Faltan título o mensaje.' });
@@ -42,16 +62,16 @@ router.post('/', async (req, res) => {
   try {
     await client.query('BEGIN');
 
-    // 1) Crear el mensaje
-    const ins = await client.query(
-      'INSERT INTO mensajes (titulo, cuerpo, url) VALUES ($1,$2,$3) RETURNING id',
-      [titulo, cuerpo, url]
+    // 1) crear mensaje (ahora guarda también urls JSON)
+    const { rows } = await client.query(
+      'INSERT INTO mensajes (titulo, cuerpo, url, urls) VALUES ($1,$2,$3,$4) RETURNING id',
+      [titulo, cuerpo, url, JSON.stringify(links)]
     );
-    const mensajeId = ins.rows[0].id;
+    const mensajeId = rows[0].id;
 
-    // 2) Registrar destinos "declarativos" (solo broadcast y grupos; instrumento se resuelve al vuelo)
+    // 2) registrar destinos “declarativos” (broadcast y grupos)
     if (broadcast) {
-      await client.query('INSERT INTO mensaje_destino (mensaje_id) VALUES ($1)', [mensajeId]); // broadcast
+      await client.query('INSERT INTO mensaje_destino (mensaje_id) VALUES ($1)', [mensajeId]);
     }
     if (gruposArr.length) {
       const vals = gruposArr.map((_, i) => `($1,$${i + 2})`).join(',');
@@ -61,88 +81,96 @@ router.post('/', async (req, res) => {
       );
     }
 
-    // 3) Resolver destinatarios (Todos / Grupos / Instrumento / Grupo+Instrumento)
-    async function getAlumnoIdsPorGrupo(ids) {
-      if (!ids?.length) return [];
+    // 3) helpers de resolución
+    async function getAlumnoIdsPorGrupo(client, grupos) {
+      if (!grupos?.length) return [];
       const q = await client.query(
         'SELECT DISTINCT alumno_id FROM alumno_grupo WHERE grupo_id = ANY($1::int[])',
-        [ids]
+        [grupos]
       );
       return q.rows.map(r => r.alumno_id);
     }
 
-    async function getAlumnoIdsPorInstrumento(insId) {
-      if (!insId) return [];
+    async function getAlumnoIdsPorInstrumentos(client, instrumentos) {
+      if (!instrumentos?.length) return [];
 
-      // 3.1 Puente alumno_instrumento
-      const bridgeReg = await client.query(`SELECT to_regclass('public.alumno_instrumento') AS reg`);
-      if (bridgeReg.rows[0]?.reg) {
+      // puente alumno_instrumento
+      const bridge = await client.query(`SELECT to_regclass('public.alumno_instrumento') AS reg`);
+      if (bridge.rows[0]?.reg) {
         const q = await client.query(
-          'SELECT DISTINCT alumno_id FROM alumno_instrumento WHERE instrumento_id = $1',
-          [insId]
+          'SELECT DISTINCT alumno_id FROM alumno_instrumento WHERE instrumento_id = ANY($1::int[])',
+          [instrumentos]
         );
         return q.rows.map(r => r.alumno_id);
       }
 
-      // 3.2 Columna directa en alumnos
+      // columna directa en alumnos
       const cols = await client.query(`
         SELECT column_name
         FROM information_schema.columns
         WHERE table_name='alumnos'
-          AND column_name IN ('instrumento_id', 'instrumento_principal_id')
+          AND column_name IN ('instrumento_id','instrumento_principal_id')
         ORDER BY CASE column_name WHEN 'instrumento_id' THEN 0 ELSE 1 END
         LIMIT 1
       `);
       const col = cols.rows[0]?.column_name;
       if (col) {
-        const q = await client.query(`SELECT id FROM alumnos WHERE ${col} = $1`, [insId]);
+        const q = await client.query(
+          `SELECT id FROM alumnos WHERE ${col} = ANY($1::int[])`,
+          [instrumentos]
+        );
         return q.rows.map(r => r.id);
       }
 
-      // 3.3 Fallback: sin esquema de instrumento
       return [];
     }
 
+    // 4) calcular destinatarios
     let destinatariosSet = new Set();
+    const hasGroups = gruposArr.length > 0;
+    const hasInstr  = instrArr.length > 0;
 
     if (broadcast) {
       const all = await client.query('SELECT id FROM alumnos');
       all.rows.forEach(r => destinatariosSet.add(r.id));
-    } else if (instrumentoId && gruposArr.length) {
-      // Intersección: alumnos por grupo ∩ alumnos por instrumento
-      const porGrupo = new Set(await getAlumnoIdsPorGrupo(gruposArr));
-      const porIns   = new Set(await getAlumnoIdsPorInstrumento(instrumentoId));
+    } else if (hasGroups && hasInstr) {
+      const porGrupo = new Set(await getAlumnoIdsPorGrupo(client, gruposArr));
+      const porIns   = new Set(await getAlumnoIdsPorInstrumentos(client, instrArr));
       for (const id of porGrupo) if (porIns.has(id)) destinatariosSet.add(id);
-    } else if (instrumentoId) {
-      const ids = await getAlumnoIdsPorInstrumento(instrumentoId);
+    } else if (hasGroups) {
+      const ids = await getAlumnoIdsPorGrupo(client, gruposArr);
       ids.forEach(id => destinatariosSet.add(id));
-    } else if (gruposArr.length) {
-      const ids = await getAlumnoIdsPorGrupo(gruposArr);
+    } else if (hasInstr) {
+      const ids = await getAlumnoIdsPorInstrumentos(client, instrArr);
       ids.forEach(id => destinatariosSet.add(id));
     } else {
       await client.query('ROLLBACK');
-      return res.status(400).json({ error: 'Debes seleccionar un alcance: Todos, Grupos, Instrumento o Grupo+Instrumento.' });
+      return res.status(400).json({ error: 'Selecciona alcance: Todos, Grupos, Instrumento(s) o Grupo+Instrumento.' });
     }
 
     const alumnoIds = Array.from(destinatariosSet).filter(Number.isInteger);
 
-    // 4) Crear entregas
+    // 5) crear entregas
     if (alumnoIds.length) {
-      const vals = alumnoIds.map((_, i) => `($1, $${i + 2})`).join(',');
+      const vals = alumnoIds.map((_, i) => `($1,$${i + 2})`).join(',');
       await client.query(
-        `INSERT INTO mensaje_entrega (mensaje_id, alumno_id) VALUES ${vals} ON CONFLICT DO NOTHING`,
+        `INSERT INTO mensaje_entrega (mensaje_id, alumno_id)
+         VALUES ${vals}
+         ON CONFLICT DO NOTHING`,
         [mensajeId, ...alumnoIds]
       );
     }
 
-    // 5) Enviar push (si está habilitado)
+    // 6) enviar push
     if (alumnoIds.length) {
       const subs = await client.query(
-        `SELECT endpoint, p256dh, auth FROM push_suscripciones WHERE alumno_id = ANY($1::int[])`,
+        `SELECT endpoint, p256dh, auth
+         FROM push_suscripciones
+         WHERE alumno_id = ANY($1::int[])`,
         [alumnoIds]
       );
 
-      const payload = { tipo: 'mensaje', mensaje_id: mensajeId, titulo, cuerpo, url: url || null };
+      const payload = { tipo: 'mensaje', mensaje_id: mensajeId, titulo, cuerpo, url: url || null, urls: links };
 
       for (const s of subs.rows) {
         try {
@@ -154,7 +182,6 @@ router.post('/', async (req, res) => {
             await client.query('DELETE FROM push_suscripciones WHERE endpoint = $1', [s.endpoint]);
           }
         } catch (e) {
-          // No detenemos el flujo por un fallo individual
           console.warn('Aviso: fallo enviando a un endpoint:', e?.statusCode || e?.message);
         }
       }
@@ -171,8 +198,8 @@ router.post('/', async (req, res) => {
   }
 });
 
+/* ---------------------- suscripción web push ---------------------- */
 /**
- * Suscripción Web Push desde la app móvil
  * body: { alumno_id, endpoint, keys: { p256dh, auth } }
  */
 router.post('/push/subscribe', async (req, res) => {
@@ -183,7 +210,8 @@ router.post('/push/subscribe', async (req, res) => {
   try {
     await db.query(
       `INSERT INTO push_suscripciones (alumno_id, endpoint, p256dh, auth)
-       VALUES ($1,$2,$3,$4) ON CONFLICT (endpoint) DO NOTHING`,
+       VALUES ($1,$2,$3,$4)
+       ON CONFLICT (endpoint) DO NOTHING`,
       [alumno_id, endpoint, keys.p256dh, keys.auth]
     );
     res.json({ success: true });
@@ -193,10 +221,8 @@ router.post('/push/subscribe', async (req, res) => {
   }
 });
 
-/**
- * Bandeja móvil: listar mensajes de un alumno (desde_id opcional)
- * GET /mensajes/app/mensajes?alumno_id=123&desde_id=0
- */
+/* ------------------------- bandeja (app) -------------------------- */
+/** GET /mensajes/app/mensajes?alumno_id=123&desde_id=0 */
 router.get('/app/mensajes', async (req, res) => {
   const alumnoId = parseInt(req.query.alumno_id, 10);
   const desdeId  = parseInt(req.query.desde_id, 10) || 0;
@@ -205,7 +231,7 @@ router.get('/app/mensajes', async (req, res) => {
 
   try {
     const { rows } = await db.query(`
-      SELECT m.id, m.titulo, m.cuerpo, m.url, m.created_at, me.leido_at
+      SELECT m.id, m.titulo, m.cuerpo, m.url, m.urls, m.created_at, me.leido_at
       FROM mensaje_entrega me
       JOIN mensajes m ON m.id = me.mensaje_id
       WHERE me.alumno_id = $1 AND m.id > $2
@@ -220,10 +246,8 @@ router.get('/app/mensajes', async (req, res) => {
   }
 });
 
-/**
- * Marcar mensaje como leído en móvil
- * POST /mensajes/app/mensajes/:id/leer  body: { alumno_id }
- */
+/* ---------------------- marcar como leído (app) ------------------- */
+/** POST /mensajes/app/mensajes/:id/leer  body: { alumno_id } */
 router.post('/app/mensajes/:id/leer', async (req, res) => {
   const alumnoId = parseInt(req.body.alumno_id, 10);
   const id = parseInt(req.params.id, 10);
@@ -231,7 +255,8 @@ router.post('/app/mensajes/:id/leer', async (req, res) => {
 
   try {
     await db.query(
-      `UPDATE mensaje_entrega SET leido_at = NOW() WHERE mensaje_id = $1 AND alumno_id = $2`,
+      `UPDATE mensaje_entrega SET leido_at = NOW()
+       WHERE mensaje_id = $1 AND alumno_id = $2`,
       [id, alumnoId]
     );
     res.json({ success: true });
@@ -242,4 +267,3 @@ router.post('/app/mensajes/:id/leer', async (req, res) => {
 });
 
 module.exports = router;
-

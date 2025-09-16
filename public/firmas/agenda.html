@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Mi agenda</title>
+  <link rel="stylesheet" href="../styles/estilos_app.css" />
+  <style>.calendar-container{min-height:60vh;}</style>
+</head>
+<body data-page="agenda">
+  <div class="container">
+    <h2>Mi agenda</h2>
+    <div id="calendar" class="calendar-container"></div>
+    <div style="margin-top:1rem;">
+      <button onclick="location.href='index.html'">&larr; Inicio</button>
+      <button class="button-negro" onclick="logout()">Cerrar sesión</button>
+    </div>
+  </div>
+
+  <script src="app_alumno.js"></script>
+</body>
+</html>
+

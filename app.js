@@ -46,7 +46,7 @@ app.use(methodOverride('_method'));
 // Static files
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/uploads', express.static('uploads'));
-//app.use('/utils', express.static(path.join(__dirname, 'utils')));
+app.use('/utils', express.static(path.join(__dirname, 'utils')));
 // Plantillas EJS
 app.use(expressLayouts);
 app.set('layout', 'layout');

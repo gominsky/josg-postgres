@@ -6,7 +6,7 @@
   <title>Control de asistencia JOSG</title>
   <link rel="stylesheet" href="../styles/estilos_app.css" />
 </head>
-<body>
+<body data-page="index">
   <div class="container" id="contenedor">
     <img src="/../imagenes/logoJOSG.png" alt="Logo JOSG">
     <h2>Bienvenido</h2>
@@ -17,28 +17,20 @@
       <button onclick="location.href='registro.html'">Registrarse</button>
     </div>
 
-    <div id="conectado" style="display: none;">
-      <p>Sesión iniciada. Puedes firmar tu asistencia.</p>
+    <div id="conectado" style="display:none;">
+      <p>Sesión iniciada. Elige una opción:</p>
       <button onclick="location.href='firma.html'">Ir a firmar</button>
-      <!-- 👇 Nuevo botón para acceder a la bandeja de mensajes -->
-      <button onclick="location.href='mensajes.html'">Ver mensajes</button>
+      <button onclick="location.href='agenda.html'">Mi agenda</button>
+      <button onclick="location.href='partituras.html'">Partituras</button>
+      <button onclick="location.href='mensajes.html'">Mensajes</button>
       <button onclick="logout()">Cerrar sesión</button>
     </div>
   </div>
 
-  <script>
-    const alumno_id = localStorage.getItem('alumno_id');
-    if (alumno_id) {
-      document.getElementById('desconectado').style.display = 'none';
-      document.getElementById('conectado').style.display = 'block';
-    }
-
-    function logout() {
-      localStorage.removeItem('alumno_id');
-      location.reload();
-    }
-  </script>
+  <script src="app_alumno.js"></script>
+  <!-- si usas push para notificaciones en el móvil -->
   <script src="push-init.js"></script>
 </body>
 </html>
+
 

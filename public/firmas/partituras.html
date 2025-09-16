@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Mis partituras</title>
+  <link rel="stylesheet" href="../styles/estilos_app.css" />
+  <style>
+    .card{ border:1px solid #eee; border-radius:12px; padding:12px; margin:8px 0; }
+    .muted{ color:#6c757d; font-size:.95rem; }
+    .row{ display:grid; grid-template-columns:1fr; gap:10px; }
+    @media(min-width:720px){ .row{ grid-template-columns:1fr 1fr; } }
+    .links a{ margin-right:10px; }
+    .search{ margin:8px 0 12px; display:flex; gap:.5rem; flex-wrap:wrap; }
+    .input{ padding:.5rem .6rem; }
+  </style>
+</head>
+<body data-page="partituras">
+  <div class="container">
+    <h2>Mis partituras</h2>
+    <div class="search">
+      <input id="q" class="input" placeholder="Buscar por título/autor...">
+      <button onclick="filtrar()">Buscar</button>
+      <button class="button-negro" onclick="location.href='index.html'">Inicio</button>
+    </div>
+    <div id="list" class="row"></div>
+  </div>
+
+  <script src="app_alumno.js"></script>
+</body>
+</html>
+

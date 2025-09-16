@@ -800,6 +800,8 @@ async function init({ reset = false } = {}) {
         creado_por      INTEGER,            -- user_id del panel (si lo usas)
         created_at      TIMESTAMP NOT NULL DEFAULT NOW()
       );
+      ALTER TABLE mensajes
+      ADD COLUMN IF NOT EXISTS urls jsonb NOT NULL DEFAULT '[]'::jsonb;
 
       -- A quién va dirigido (targets)
       CREATE TABLE  IF NOT EXISTS mensaje_destino (
