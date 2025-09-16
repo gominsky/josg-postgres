@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Control de asistencia JOSG</title>
+  <link rel="stylesheet" href="../styles/estilos_app.css" />
+  <style>
+    /* Layout */
+    .topbar{ display:flex; justify-content:space-between; align-items:center; }
+    .icon-btn{
+      border:none; background:#f3f4f6; width:36px; height:36px; border-radius:10px; font-size:18px; cursor:pointer;
+      display:flex; align-items:center; justify-content:center;
+    }
+    .icon-btn:active{ transform: translateY(1px); }
+
+    .grid-actions{
+      display:grid; grid-template-columns: repeat(2, 1fr); gap:12px; margin:12px 0 18px;
+    }
+    .action{
+      display:flex; align-items:center; justify-content:center; text-align:center;
+      min-height:86px; background:#fff; border:1px solid #eee; border-radius:16px; box-shadow:0 1px 2px rgba(0,0,0,.05);
+      text-decoration:none; color:#111; font-weight:600; position:relative;
+    }
+    .badge{
+      position:absolute; top:10px; right:10px; min-width:20px; height:20px; padding:0 6px;
+      background:#e11d48; color:#fff; border-radius:999px; font-size:12px; line-height:20px; display:none;
+    }
+
+    /* Próximos eventos (cartel) */
+    .section-title{ margin:8px 0; font-weight:700; }
+    .upcoming{
+      display:flex; gap:12px; overflow-x:auto; padding-bottom:6px; scrollbar-width:thin;
+    }
+    .poster{
+      flex:0 0 220px; background:linear-gradient(180deg,#fff,#fdf8f2);
+      border:1px solid #eee; border-radius:16px; box-shadow:0 2px 8px rgba(0,0,0,.06);
+      padding:12px; display:flex; flex-direction:column; justify-content:space-between;
+    }
+    .poster .date{
+      display:flex; align-items:baseline; gap:8px;
+    }
+    .poster .num{
+      font-size:54px; font-weight:800; line-height:1; letter-spacing:-1px;
+    }
+    .poster .meta{
+      display:flex; flex-direction:column; gap:2px; text-transform:uppercase; font-weight:700; color:#b45309; font-size:12px;
+    }
+    .poster .title{
+      margin-top:8px; font-weight:700; line-height:1.2; min-height:2.4em;
+    }
+    .poster .line{ height:2px; background:repeating-linear-gradient(90deg,#000 0 8px, transparent 8px 12px); opacity:.25; margin:6px 0; }
+    .muted{ color:#6b7280; font-size:.9rem; }
+  .icon-btn{
+  border:1px solid #e5e7eb;
+  background:transparent;           /* transparente por defecto */
+  color:#111;                       /* icono oscuro */
+  width:36px; height:36px; border-radius:10px;
+  font-size:18px; cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+}
+.icon-btn:hover{ background:#ffffff; }   /* blanco al pasar */
+.icon-btn:focus{ outline:2px solid #e5e7eb; outline-offset:2px; }
+.icon-btn:active{ transform: translateY(1px); }
+
+
+  </style>
+</head>
+<body data-page="index">
+  <div class="container" id="contenedor">
+    <div class="topbar">
+      <img src="/../imagenes/logoJOSG.png" alt="Logo JOSG" style="height:46px;">
+      <!-- icono pequeño cerrar sesión -->
+      <button id="btn-logout" class="icon-btn" title="Cerrar sesión" aria-label="Cerrar sesión">⎋</button>
+    </div>
+
+    <h2 style="margin:10px 0 6px;">¡JOSG en tu mano!, bienvenido.</h2>
+
+    <!-- Vista no logeado -->
+    <div id="desconectado" style="display:none;">
+      <p class="muted">¿Eres alumno?</p>
+      <div class="grid-actions">
+        <a class="action" href="login.html">Iniciar sesión</a>
+        <a class="action" href="registro.html">Registrarse</a>
+      </div>
+    </div>
+
+    <!-- Vista logeado -->
+    <div id="conectado" style="display:none;">
+      <div class="grid-actions">
+        <a class="action" href="firma.html">Firmar asistencia</a>
+        <a class="action" href="agenda.html">Agenda</a>
+        <a class="action" href="partituras.html">Partituras</a>
+        <a class="action" href="mensajes.html" style="position:relative;">
+          Mensajes
+          <span id="badge-msg" class="badge">0</span>
+        </a>
+      </div>
+
+      <h3 class="section-title">Próximos eventos</h3>
+      <div id="upcoming" class="upcoming">
+        <!-- tarjetas de eventos por JS -->
+      </div>
+      <div id="no-events" class="muted" style="display:none;">No tienes eventos próximos.</div>
+    </div>
+  </div>
+
+  <script src="app_alumno.js"></script>
+  <script src="push-init.js"></script>
+</body>
+</html>
+
+

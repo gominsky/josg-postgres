@@ -72,7 +72,21 @@ router.get('/', async (req, res) => {
 });
 
 // ====== CREAR ======
+// ====== CREAR ======
 router.post('/', upload.single('archivo_partitura'), async (req, res) => {
+  // helpers locales
+  const normalizeUrl = (u) => {
+    let s = String(u || '').trim();
+    if (!s) return null;
+    if (!/^[a-zA-Z][\w+.-]*:\/\//.test(s)) s = 'https://' + s;
+    try { new URL(s); return s; } catch { return null; }
+  };
+  const toIntOrNull = (v) => {
+    const n = Number(v);
+    return Number.isInteger(n) ? n : null;
+  };
+  const toBool = (v) => !(v === 'false' || v === false || v === 0 || v === '0');
+
   const {
     titulo, autor, arreglista, grupo_id,
     activo, duracion, genero,
@@ -80,12 +94,39 @@ router.post('/', upload.single('archivo_partitura'), async (req, res) => {
     enlace_audio, descripcion, tags
   } = req.body;
 
-  // archivo subido tiene prioridad
-  let enlace_partitura = (enlace_input || '').trim() || null;
-  if (req.file) enlace_partitura = '/partituras/' + req.file.filename;
+  // 1) Resolver enlace_partitura (archivo tiene prioridad). OBLIGATORIO.
+  // ⚠️ Usa la ruta estática correcta para servir archivos (normalmente /uploads/partituras/)
+  let enlace_partitura = null;
+  if (req.file) {
+    enlace_partitura = '/uploads/partituras/' + req.file.filename; // <-- ajusta si tu static es otro
+  } else {
+    enlace_partitura = normalizeUrl(enlace_input);
+  }
 
-  const tagsArr = parseTags(tags);
-  const instrumentosIds = normIds(req.body.instrumentos);
+  // 2) Validaciones mínimas
+  const tituloNorm  = (titulo || '').trim();
+  const grupoIdNorm = toIntOrNull(grupo_id);
+
+  if (!tituloNorm || !grupoIdNorm || !enlace_partitura) {
+    return res
+      .status(400)
+      .send('Título, grupo y enlace de partitura son obligatorios (sube un archivo o indica una URL válida).');
+  }
+
+  // 3) Resto de campos
+  const params = [
+    tituloNorm,
+    (autor || '').trim() || null,
+    (arreglista || '').trim() || null,
+    grupoIdNorm,
+    toBool(activo),
+    (duracion || '').trim() || null,
+    (genero || '').trim() || null,
+    enlace_partitura,                               // <-- nunca null aquí
+    normalizeUrl(enlace_audio),                     // opcional
+    (descripcion || '').trim() || null,
+    parseTags?.(tags) || null
+  ];
 
   const sql = `
     INSERT INTO partituras
@@ -94,31 +135,21 @@ router.post('/', upload.single('archivo_partitura'), async (req, res) => {
     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
     RETURNING id
   `;
-  const params = [
-    titulo?.trim(),
-    autor?.trim() || null,
-    arreglista?.trim() || null,
-    toIntOrNull(grupo_id),
-    toBool(activo),
-    duracion?.trim() || null,
-    genero?.trim() || null,
-    enlace_partitura,
-    (enlace_audio || '').trim() || null,
-    (descripcion || '').trim() || null,
-    tagsArr
-  ];
 
   const client = await db.connect();
   try {
     await client.query('BEGIN');
+
     const { rows } = await client.query(sql, params);
     const newId = rows[0].id;
 
-    // instrumentos N-N
+    // N-N instrumentos (si procede)
+    const instrumentosIds = (typeof normIds === 'function') ? normIds(req.body.instrumentos) : [];
     if (instrumentosIds.length) {
       const values = instrumentosIds.map((iid, i) => `($1, $${i+2})`).join(', ');
       await client.query(
-        `INSERT INTO partitura_instrumento (partitura_id, instrumento_id) VALUES ${values} ON CONFLICT DO NOTHING`,
+        `INSERT INTO partitura_instrumento (partitura_id, instrumento_id)
+         VALUES ${values} ON CONFLICT DO NOTHING`,
         [newId, ...instrumentosIds]
       );
     }
@@ -128,11 +159,16 @@ router.post('/', upload.single('archivo_partitura'), async (req, res) => {
   } catch (err) {
     await client.query('ROLLBACK');
     console.error('[partituras] POST / error:', err);
+    if (err.code === '23502') {
+      // por si alguna mutación rara volviera a generar NULL
+      return res.status(400).send('El enlace de la partitura es obligatorio y debe ser válido.');
+    }
     res.status(500).send('Error guardando partitura');
   } finally {
     client.release();
   }
 });
+
 
 // ====== EDITAR ======
 router.post('/:id', upload.single('archivo_partitura'), async (req, res) => {

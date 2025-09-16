@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Agenda</title>
+
+  <link rel="stylesheet" href="../styles/estilos_app.css" />
+  <!-- CSS de FullCalendar (clave para que se vea) -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/main.min.css" />
+  <!-- JS de FullCalendar igual que en docentes -->
+  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/locales-all.global.min.js"></script>
+
+  <style>
+    .calendar-container{ min-height:60vh; }
+  </style>
+</head>
+<style>
+  /* Cabecera más compacta y botones pequeños */
+  .fc .fc-toolbar { flex-wrap: wrap; gap: 6px; }
+  .fc .fc-toolbar-title { font-size: 1rem; line-height: 1.2; }
+
+  .fc .fc-button {
+    padding: .28rem .55rem;      /* <- reduce tamaño general de botones */
+    font-size: .9rem;
+    border-radius: 8px;
+  }
+  .fc .fc-today-button {
+    padding: .24rem .5rem;       /* <- aún más compacto para "Hoy" */
+    font-size: .85rem;
+  }
+
+  /* Grupos de prev/next también compactos */
+  .fc .fc-button-group > .fc-button { padding: .24rem .5rem; }
+
+  /* Evita que la cabecera “pise” el contenido */
+  .fc .fc-header-toolbar { margin-bottom: 8px; }
+</style>
+
+<body>
+  <div class="container">
+    <h2>Agenda</h2>
+    <div id="calendar" class="calendar-container"></div>
+    <div style="margin-top:1rem;">
+      <button onclick="location.href='index.html'">&larr; Inicio</button>
+    </div>
+  </div>
+
+  <script>
+    const alumno_id = localStorage.getItem('alumno_id');
+    if (!alumno_id) location.href = 'index.html';
+
+    document.addEventListener('DOMContentLoaded', function () {
+      const calendarEl = document.getElementById('calendar');
+      const calendar = new FullCalendar.Calendar(calendarEl, {
+        locale: 'es',
+        initialView: 'dayGridMonth',
+        headerToolbar: {
+          left: 'prev,next today',
+          center: 'title',
+          right: 'dayGridMonth,listMonth'
+        },
+        buttonText: { today: 'Hoy', month: 'Mes', list: 'Lista' },
+        displayEventTime: false,
+        events: `/firmas/api/alumno/${alumno_id}/eventos`,
+        eventClick: function (info) {
+          const id = info.event.id;
+          location.href = `evento_alumno.html?id=${id}`;
+        }
+      });
+      calendar.render();
+    });
+  </script>
+</body>
+</html>
+

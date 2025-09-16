@@ -16,7 +16,9 @@
     <h2>Firmar Asistencia</h2>
     <div id="reader"></div>
     <p id="mensaje"></p>
-    <button onclick="logout()">Cerrar sesión</button>
+    <div style="margin-top:1rem;">
+      <button onclick="location.href='index.html'">&larr; Inicio</button>
+    </div>
   </div>
 
   <script>
@@ -24,11 +26,6 @@
     if (!alumno_id) {
       alert("No has iniciado sesión.");
       location.href = "index.html";
-    }
-
-    function logout() {
-      localStorage.removeItem('alumno_id');
-      location.href = 'index.html';
     }
 
     const mensaje = document.getElementById("mensaje");
@@ -49,7 +46,6 @@
           body: JSON.stringify(payload)
         });
 
-        // Si el servidor no responde 2xx, lo tratamos como error visible
         if (!res.ok) {
           const txt = await res.text().catch(() => "");
           throw new Error(`HTTP ${res.status} ${res.statusText} ${txt}`);
@@ -63,17 +59,16 @@
                 ? "✅ Ya estaba registrada las asistencia para este evento"
                 : "✅ Asistencia registrada correctamente");
           pintarMensaje(msg, true);
-          // Detener escáner para evitar múltiples firmas
           try { await qrScanner.stop(); } catch {}
           try { qrScanner.clear(); } catch {}
         } else {
           pintarMensaje(`❌ ${data.error || "No se pudo registrar la asistencia"}`, false);
-          sending = false; // permitir reintento
+          sending = false;
         }
       } catch (err) {
         console.error("Firma QR ->", err);
         pintarMensaje("❌ Error de red al registrar la asistencia", false);
-        sending = false; // permitir reintento
+        sending = false;
       }
     }
 
@@ -84,34 +79,29 @@
         token: String(token)
       };
 
-      // Si no hay soporte de geolocalización, firmar sin ruido
       if (!navigator.geolocation) return enviarFirma(base);
 
-      // Si podemos, miramos permiso para evitar prompts innecesarios
       try {
         if (navigator.permissions && navigator.permissions.query) {
           const st = await navigator.permissions.query({ name: "geolocation" });
           if (st.state === "denied") {
-            return enviarFirma(base); // sin avisos
+            return enviarFirma(base);
           }
         }
-      } catch { /* ignorar silenciosamente */ }
+      } catch {}
 
       navigator.geolocation.getCurrentPosition(
         (pos) => {
           const ubicacion = `${pos.coords.latitude},${pos.coords.longitude}`;
           enviarFirma({ ...base, ubicacion });
         },
-        () => {
-          // Cualquier fallo: firmar sin ubicación, sin mostrar aviso
-          enviarFirma(base);
-        },
+        () => enviarFirma(base),
         { enableHighAccuracy: false, timeout: 8000, maximumAge: 60000 }
       );
     }
 
     function onScanSuccess(decodedText) {
-      if (sending) return; // debouncing
+      if (sending) return;
       let datos;
       try {
         datos = JSON.parse(decodedText);
@@ -119,28 +109,26 @@
         pintarMensaje("❌ QR inválido", false);
         return;
       }
-
       const { evento_id, token } = datos || {};
       if (!evento_id || !token) {
         pintarMensaje("❌ QR inválido", false);
         return;
       }
-
       sending = true;
       firmarConPosibleUbicacion({ evento_id, token });
     }
 
-    // Inicializa el escáner
     (function initScanner() {
       qrScanner = new Html5Qrcode("reader");
       qrScanner.start(
         { facingMode: "environment" },
         { fps: 10, qrbox: 250 },
         onScanSuccess,
-        () => { /* errores de decode silenciosos para no saturar */ }
+        () => { /* silencioso */ }
       );
     })();
   </script>
   <script src="push-init.js"></script>
 </body>
 </html>
+

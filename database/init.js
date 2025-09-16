@@ -103,6 +103,7 @@ async function init({ reset = false } = {}) {
         repertorio_id        INTEGER,
         foto                 TEXT,
         activo               BOOLEAN     NOT NULL DEFAULT TRUE,
+        password             TEXT,
         registrado           BOOLEAN     NOT NULL DEFAULT FALSE,
         guardias_actual      INTEGER     NOT NULL DEFAULT 0,
         guardias_hist        INTEGER     NOT NULL DEFAULT 0,
@@ -147,7 +148,6 @@ async function init({ reset = false } = {}) {
       );
     `, 'tables:base');
 
-    // --- Migración segura: copiar password → password_hash y ELIMINAR columna legacy ---
     await run(`
       DO $$
       BEGIN
