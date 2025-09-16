@@ -3,83 +3,263 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Partituras</title>
+  <title>Catálogo de partituras</title>
   <link rel="stylesheet" href="../styles/estilos_app.css" />
+  <!-- Tipos clásicos y legibles -->
+  <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:wght@500;700&family=Crimson+Text:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
   <style>
     :root{
-      --ink:#111; --muted:#6b7280; --line:#e5e7eb;
-      --card-bg:#fff; --card-grad:#fafafa;
+      --paper:#f9f6ef;    /* papel suave */
+      --ink:#231f1a;      /* tinta */
+      --muted:#6e645a;    /* texto secundario */
+      --edge:#dacaa9;     /* filete */
+      --edge2:#efe6d6;    /* filete 2 */
+      --pill:#fffaf2;     /* chips/enlaces */
+      --line:#e7dcc6;     /* líneas suaves */
     }
 
-    .muted{ color:var(--muted); font-size:.95rem; }
+    body{
+      font-family: "Crimson Text", Georgia, "Times New Roman", serif;
+      -webkit-font-smoothing: antialiased;
+      color:var(--ink);
+    }
+
+    /* marco interior “edición” */
+    .folio{
+      background: var(--paper);
+      min-height:100vh;
+      padding: 10px 12px 14px;
+      border-radius: 14px;
+      box-shadow:
+        inset 0 0 0 1px var(--edge2),
+        inset 0 0 0 5px #fff,
+        inset 0 0 0 6px var(--edge);
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Cabecera */
+    .head{
+      padding: 8px 4px 2px;
+    }
+    .head h2{
+      margin:0;
+      font-family: "EB Garamond", Georgia, serif;
+      font-variant: small-caps;
+      letter-spacing: .045em;
+      font-weight: 700;
+    }
+    .filig{
+      height: 10px;
+      margin: 6px 0 10px;
+      opacity: .55;
+      background:
+        linear-gradient(var(--edge), var(--edge)) 0 50%/100% 1px no-repeat,
+        repeating-linear-gradient(90deg, transparent 0 11px, rgba(0,0,0,.08) 11px 12px);
+      border-radius: 6px;
+    }
 
     /* Buscador */
-    .search{ margin:8px 0 16px; display:flex; gap:.5rem; flex-wrap:wrap; }
+    .search{
+      display:flex; gap:.6rem; flex-wrap:wrap; margin: 0 4px 10px;
+      font-family: "EB Garamond", Georgia, serif;
+    }
     .input{
-      padding:.55rem .65rem; border:1px solid var(--line); border-radius:10px;
-      background:#fff; color:var(--ink); flex:1 1 280px;
+      flex:1 1 260px;
+      padding:.5rem .65rem;
+      border:1px solid var(--edge);
+      border-radius:10px;
+      background:#fffdf7;
+      color:var(--ink);
     }
     .search button{
-      padding:.55rem .9rem; border:1px solid var(--line); border-radius:10px;
-      background:#fff; color:#111; font-weight:700; white-space:nowrap;
-      box-shadow:0 1px 1px rgba(0,0,0,.02);
+      padding:.5rem .9rem;
+      border:1px solid var(--edge);
+      border-radius:10px;
+      background:#fffdf7;
+      color:var(--ink);
+      font-weight:700;
+      letter-spacing:.02em;
     }
-    .search button:hover{ background:#f9fafb; }
+    .search button:hover{ background:#fff7ec; }
 
-    /* Una sola fila con scroll horizontal */
+    /* Carrusel */
     .track{
-      display:flex; gap:12px; overflow-x:auto; padding-bottom:6px;
-      scrollbar-width:thin; scroll-snap-type:x proximity;
+      display:flex; gap:12px;
+      overflow-x:auto; padding: 4px 4px 10px;
+      scroll-snap-type: x proximity;
+      scrollbar-width: thin;
     }
 
-    /* Tarjeta alargada y discreta */
+    /* Tarjeta compacta con “lomo” musical */
     .card{
-      scroll-snap-align:start;
-      flex:0 0 480px;                        /* más anchas y uniformes */
-      background:linear-gradient(180deg,var(--card-bg),var(--card-grad));
+      scroll-snap-align: start;
+      flex: 0 0 340px;                    /* compacto */
+      background:#fffdf8;
+      border:1px solid var(--edge);
+      border-radius: 12px;
+      padding: 12px 14px 12px 14px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.05);
+      position:relative;
+      overflow:hidden;
+    }
+    @media (max-width:420px){ .card{ flex-basis: 88%; } }
+
+    /* Lomo con pentagrama (muy sutil) */
+    .card::before{
+      content:"";
+      position:absolute; left:0; top:0; bottom:0; width:42px;
+      background:
+        /* bandas de papel */
+        linear-gradient(180deg,#fefaf1, #f9f4e8),
+        /* pentagrama: 5 líneas finas */
+        repeating-linear-gradient(180deg, rgba(0,0,0,.18) 6px 7px, transparent 7px 13px);
+      border-right: 1px solid var(--edge);
+      opacity:.28;
+      pointer-events:none;
+    }
+    /* Troquel suave en el lomo */
+    .card::after{
+      content:"";
+      position:absolute; left: -6px; top:10px; bottom:10px; width: 12px;
+      background: radial-gradient(circle at 6px 10px, transparent 5px, rgba(0,0,0,.08) 5.2px) 0 0/12px 18px repeat-y;
+      opacity:.25; pointer-events:none;
+    }
+
+    /* Contenido con sangría por el lomo */
+    .inner{ margin-left: 48px; }
+
+    .title{
+      margin:.1rem 0 .25rem;
+      font-family: "EB Garamond", Georgia, serif;
+      font-variant: small-caps;
+      letter-spacing: .03em;
+      font-size: 1.18rem;
+      font-weight: 700;
+      line-height: 1.2;
+    }
+    .meta{
+      color:var(--muted);
+      font-style: italic;
+      font-size: .95rem;
+      margin: .1rem 0 .45rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .desc{
+      margin:.35rem 0 .5rem;
+      display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+    }
+
+    .rule{
+      height:1px; margin:.3rem 0 .5rem;
+      background: linear-gradient(90deg, transparent, rgba(0,0,0,.14), transparent);
+    }
+
+    /* Chips (Duración / Género) */
+    .chips{ display:flex; gap:.4rem; flex-wrap:wrap; margin:.1rem 0 .2rem; }
+    .chip{
+      padding:.22rem .55rem;
       border:1px solid var(--line);
-      border-radius:16px;
-      padding:14px 16px;
-      box-shadow:0 1px 2px rgba(0,0,0,.04);
+      border-radius:999px;
+      background: var(--pill);
+      font-weight:700; font-size:.85rem; letter-spacing:.01em;
     }
-    @media (max-width:420px){ .card{ flex-basis: 90%; } }
 
-    .card h3{ margin:6px 0 6px; font-size:1.14rem; line-height:1.22; color:var(--ink); font-weight:800; }
-    .card p{ margin:.35rem 0; color:var(--ink); }
-    .meta{ font-size:.9rem; color:var(--muted); }
-
-    /* Enlaces en píldora discretos */
-    .links{ display:flex; flex-wrap:wrap; gap:.5rem; margin-top:8px; }
-    .links a{
-      display:inline-flex; align-items:center; gap:.4rem;
-      text-decoration:none; background:#fff; color:#111;
-      border:1px solid var(--line); border-radius:999px;
-      padding:.38rem .65rem; font-weight:700; font-size:.9rem;
-      box-shadow:0 1px 2px rgba(0,0,0,.03);
+    /* Enlaces “grabado” clásico */
+    .links{ display:flex; gap:.45rem; flex-wrap:wrap; margin-top:.5rem; }
+    .engrave-link{
+      position:relative; text-decoration:none; color:var(--ink);
+      border:1px solid var(--edge); border-radius:999px;
+      background: var(--pill);
+      padding:.4rem .7rem; font-weight:800; font-size:.92rem; letter-spacing:.01em;
+      transition: color .12s ease, background .12s ease, box-shadow .12s ease;
     }
-    .links a:hover{ background:#fafafa; }
-  
+    .engrave-link::after{
+      content:""; position:absolute; left:12px; right:12px; bottom:6px; height:10px;
+      background: repeating-linear-gradient(180deg, rgba(0,0,0,.22) 0 1px, transparent 1px 3px);
+      opacity:0; transition: opacity .15s ease;
+      mask-image: linear-gradient(90deg, transparent, #000 25%, #000 75%, transparent);
+      pointer-events:none;
+    }
+    .engrave-link:hover{
+      background:#fff7ec; box-shadow:0 1px 0 rgba(0,0,0,.05) inset;
+    }
+    .engrave-link:hover::after{ opacity:.55; }
+
+    .back{ margin: 12px 4px 2px; }
   </style>
-  
 </head>
 <body data-page="partituras">
-  <div class="container">
-    <h2>Partituras</h2>
+  <div class="container folio">
+    <div class="head">
+      <h2>Catálogo de partituras</h2>
+      <div class="filig"></div>
+    </div>
 
     <div class="search">
-      <input id="q" class="input" placeholder="Buscar por título/autor...">
+      <input id="q" class="input" placeholder="Buscar por título o autor…">
       <button onclick="filtrar()">Buscar</button>
     </div>
 
-    <!-- ahora se renderiza en una sola línea con scroll -->
     <div id="list" class="track"></div>
 
-    <div style="margin-top:1rem;">
+    <div class="back">
       <button onclick="location.href='index.html'">&larr; Inicio</button>
     </div>
   </div>
 
   <script src="app_alumno.js"></script>
+  <script>
+  (function(){
+    const mount = document.getElementById('list');
+    if (!mount) return;
+
+    function safe(u){
+      try { if (typeof ensureProto === 'function') return ensureProto(u); } catch(_){}
+      if (!u) return '';
+      const s = String(u).trim();
+      if (!s) return '';
+      if (/^[a-zA-Z][\\w.+-]*:/.test(s) || s.startsWith('//') || s.startsWith('/')) return s;
+      return 'https://' + s;
+    }
+
+    // Plantilla: sustituimos el render sólo en esta página
+    window.render = function(list){
+      if (!Array.isArray(list) || !list.length){
+        mount.innerHTML = '<p class="meta" style="margin:6px;">No hay partituras para tus grupos.</p>';
+        return;
+      }
+      mount.innerHTML = list.map(p => {
+        const titulo = p.titulo || 'Sin título';
+        const autor  = (p.autor || '').trim();
+        const arreg  = (p.arreglista || '').trim();
+        const meta   = [autor && `<em>${autor}</em>`, arreg && `<em>arr. ${arreg}</em>`].filter(Boolean).join(' · ');
+        const dur    = (p.duracion || '').toString().trim();
+        const gen    = (p.genero || '').toString().trim();
+        const part   = p.enlace_partitura ? `<a class="engrave-link" href="${safe(p.enlace_partitura)}" target="_blank" rel="noopener">Partitura</a>` : '';
+        const aud    = p.enlace_audio ? `<a class="engrave-link" href="${safe(p.enlace_audio)}" target="_blank" rel="noopener">Audio</a>` : '';
+
+        return `
+          <article class="card">
+            <div class="inner">
+              <h3 class="title">${titulo}</h3>
+              ${meta ? `<div class="meta">${meta}</div>` : ''}
+              ${p.descripcion ? `<p class="desc">${p.descripcion}</p>` : ''}
+              <div class="rule"></div>
+              <div class="chips">
+                ${dur ? `<span class="chip">Duración: ${dur}</span>` : ''}
+                ${gen ? `<span class="chip">Género: ${gen}</span>` : ''}
+              </div>
+              <div class="links">${part}${aud}</div>
+            </div>
+          </article>`;
+      }).join('');
+    };
+  })();
+  </script>
 </body>
 </html>
 
+  
