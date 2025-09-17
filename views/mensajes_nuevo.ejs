@@ -7,87 +7,6 @@
   <a href="/josgentumano/mensajes.html" class="btn-main-blanco">Ver bandeja móvil</a>
 </div>
 
-<style>
-  :root{
-    --accent-50:#fff6e8; --accent-100:#ffeed7; --accent-200:#ffe0b3; --accent-300:#ffd08a;
-    --accent-400:#ffb554; --accent-500:#ff9500; --accent-700:#c26c00;
-    --ok-50:#ecfdf5; --ok-200:#a7f3d0; --ok-600:#059669;
-    --err-50:#fef2f2; --err-200:#fecaca; --err-700:#b91c1c;
-    --text-main:#212529; --muted:#6c757d; --border:rgba(0,0,0,.08);
-    --shadow:0 1px 2px rgba(0,0,0,.04); --shadow-lg:0 10px 25px rgba(0,0,0,.12);
-  }
-  .grid-msg{ display:grid; gap:18px; grid-template-columns:1fr; margin-top:10px; }
-  @media (min-width: 992px){ .grid-msg{ grid-template-columns:1.15fr .85fr; } }
-
-  .panel{ background:#fff; border:1px solid var(--border); border-radius:16px; box-shadow:var(--shadow); padding:16px 18px; }
-  .hdr{ display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:6px; }
-
-  .section-title{ font-weight:700; color:var(--text-main); margin: 16px 0 8px; }
-  .help{ font-size:.9rem; color:var(--muted); margin-top:6px; }
-
-  .row{ display:grid; gap:12px; grid-template-columns:1fr; }
-  @media (min-width:768px){ .row-2{ grid-template-columns:1fr 1fr; } }
-
-  .form-label{ font-weight:600; color:var(--text-main); margin:12px 0 6px; }
-  .form-control, .form-select, textarea{
-    width:100%; border:1px solid var(--border); border-radius:12px; padding:.6rem .75rem; outline:0; background:#fff;
-  }
-  .form-control:focus, .form-select:focus, textarea:focus{ border-color:var(--accent-300); box-shadow:0 0 0 3px var(--accent-50); }
-  textarea{ min-height:140px; resize:vertical; }
-  .counter{ font-size:.8rem; color:var(--muted); margin-top:4px; }
-
-  /* Chips modo */
-  .chips{ display:flex; gap:.5rem; flex-wrap:wrap; margin: 8px 0 10px; }
-  .chip{
-    background:var(--accent-100); color:#5b2b00; border:1px solid var(--accent-200);
-    border-radius:999px; padding:.35rem .7rem; font-size:.9rem; cursor:pointer; user-select:none;
-  }
-  .chip.active{ background:var(--accent-400); border-color:var(--accent-500); }
-
-  /* Listas de selección (grupos/instrumentos) */
-  #blk-grupos{ margin-top:10px; }
-  .group-search{ display:flex; gap:.5rem; align-items:center; margin-bottom:6px; }
-  .groups-list{
-    max-height: 240px; overflow:auto; border:1px solid var(--border); border-radius:12px; padding:8px;
-    display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:.35rem .75rem; background:#fff;
-  }
-  .groups-list label{ display:flex; align-items:center; gap:.45rem; padding:.25rem .35rem; border-radius:8px; cursor:pointer; }
-  .groups-list label:hover{ background:#fafafa; }
-  .groups-list label span{ color: var(--text-main); }
-  .groups-list input.g-check:checked + span,
-  .groups-list input.g2-check:checked + span,
-  .groups-list input.i-check:checked + span,
-  .groups-list input.i2-check:checked + span{ font-weight:700; }
-
-  /* Instrumento */
-  #blk-instrumento, #blk-grupo-instrumento{ margin-top:10px; }
-
-  /* Previsualización */
-  .preview{ position:sticky; top:16px; }
-  .mock-card{
-    display:flex; flex-direction:column; gap:.35rem; background:linear-gradient(180deg,#ffffff,#fdfcfa);
-    border:1px solid var(--border); border-radius:16px; padding:14px; box-shadow:var(--shadow);
-  }
-  .mock-title{ font-weight:700; color:var(--text-main); }
-  .mock-url{ font-size:.9rem; color:#0d6efd; word-break:break-all; }
-
-  /* Acciones */
-  .actions{ display:flex; gap:.5rem; flex-wrap:wrap; margin-top:12px; align-items:center; }
-
-  /* Toast */
-  .toast-fixed{
-    position: fixed; top: 16px; right: 16px; z-index: 2000; min-width: 260px;
-    background: var(--ok-50); border:1px solid var(--ok-200); color: var(--ok-600);
-    border-radius: 12px; box-shadow: var(--shadow-lg); padding: .65rem .8rem; display:none;
-  }
-  .toast-fixed.error{ background: var(--err-50); border-color: var(--err-200); color: var(--err-700); }
-  .toast-fixed.show{ display:block; animation: toastIn .18s ease-out; }
-  @keyframes toastIn { from{ opacity:0; transform: translateY(-6px);} to{opacity:1; transform:none;} }
-
-  .pill{ display:inline-block; font-weight:700; font-size:.78rem; padding:.18rem .5rem; border-radius:999px;
-    background: var(--accent-100); border:1px solid var(--accent-300); color:#5b2b00; }
-</style>
-
 <div id="toast" class="toast-fixed" role="status" aria-live="polite"></div>
 
 <div class="grid-msg">
@@ -231,20 +150,133 @@
       <div class="mock-url" id="pv-url" style="display:none;"></div>
       <ul id="pv-links" style="margin-top:.35rem; padding-left:1rem;"></ul>
     </div>
-
-    <div class="section-title" style="margin-top:14px;">Consejos</div>
-    <ul style="margin:.25rem 0 0 1rem; color:var(--muted);">
-      <li>Títulos cortos y claros (≤ 60–80 caracteres).</li>
-      <li>Usa el enlace solo si aporta acción (documento, formulario, etc.).</li>
-      <li>“Grupo + instrumento” es ideal para avisos de clase seccional.</li>
-    </ul>
-  </aside>
-</div>
+    <div>
+      <p class="section-title" style="margin-top:14px;">Últimos mensajes</p>
+    <div id="ultimos-wrap" class="panel" style="padding:12px;">
+      <div id="ultimos-list" style="display:grid; gap:10px;"></div>
+      <div id="ultimos-empty" class="help" style="display:none;">No hay mensajes aún.</div>
+      <div style="margin-top:8px; display:flex; justify-content:center;">
+        <button id="btn-ver-mas" type="button" class="btn-main-blanco" style="display:none;">Ver más</button>
+      </div>
+    </div>
+</aside>
 
 <!-- Footer compacto al estilo alumnos_lista -->
 <div class="volver-bloque-izquierda">
   <a href="/" class="enlace-final">← Volver al inicio</a>
 </div>
+<style>
+  :root{
+    --accent-50:#fff6e8; --accent-100:#ffeed7; --accent-200:#ffe0b3; --accent-300:#ffd08a;
+    --accent-400:#ffb554; --accent-500:#ff9500; --accent-700:#c26c00;
+    --ok-50:#ecfdf5; --ok-200:#a7f3d0; --ok-600:#059669;
+    --err-50:#fef2f2; --err-200:#fecaca; --err-700:#b91c1c;
+    --text-main:#212529; --muted:#6c757d; --border:rgba(0,0,0,.08);
+    --shadow:0 1px 2px rgba(0,0,0,.04); --shadow-lg:0 10px 25px rgba(0,0,0,.12);
+  }
+
+  .grid-msg{ display:grid; gap:18px; grid-template-columns:1fr; margin-top:10px; }
+  @media (min-width: 992px){ .grid-msg{ grid-template-columns:1.15fr .85fr; } }
+
+  .panel{ background:#fff; border:1px solid var(--border); border-radius:16px; box-shadow:var(--shadow); padding:16px 18px; }
+  .hdr{ display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:6px; }
+
+  .section-title{ font-weight:700; color:var(--text-main); margin: 16px 0 8px; font-size:1rem; }
+  .help{ font-size:.9rem; color:var(--muted); margin-top:6px; }
+
+  .row{ display:grid; gap:12px; grid-template-columns:1fr; }
+  @media (min-width:768px){ .row-2{ grid-template-columns:1fr 1fr; } }
+
+  .form-label{ font-weight:600; color:var(--text-main); margin:12px 0 6px; }
+  .form-control, .form-select, textarea{
+    width:100%; border:1px solid var(--border); border-radius:12px; padding:.6rem .75rem; outline:0; background:#fff;
+    font-size:.95rem;
+  }
+  .form-control:focus, .form-select:focus, textarea:focus{ border-color:var(--accent-300); box-shadow:0 0 0 3px var(--accent-50); }
+  textarea{ min-height:140px; resize:vertical; }
+  .counter{ font-size:.8rem; color:var(--muted); margin-top:4px; }
+
+  /* Chips modo */
+  .chips{ display:flex; gap:.5rem; flex-wrap:wrap; margin: 8px 0 10px; }
+  .chip{
+    background:var(--accent-100); color:#5b2b00; border:1px solid var(--accent-200);
+    border-radius:999px; padding:.35rem .7rem; font-size:.9rem; cursor:pointer; user-select:none;
+  }
+  .chip.active{ background:var(--accent-400); border-color:var(--accent-500); }
+
+  /* Listas de selección (grupos/instrumentos) */
+  #blk-grupos{ margin-top:10px; }
+  .group-search{ display:flex; gap:.5rem; align-items:center; margin-bottom:6px; }
+  .groups-list{
+    max-height: 240px; overflow:auto; border:1px solid var(--border); border-radius:12px; padding:8px;
+    display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:.35rem .75rem; background:#fff;
+  }
+  .groups-list label{ display:flex; align-items:center; gap:.45rem; padding:.25rem .35rem; border-radius:8px; cursor:pointer; }
+  .groups-list label:hover{ background:#fafafa; }
+  .groups-list label span{ color: var(--text-main); }
+  .groups-list input.g-check:checked + span,
+  .groups-list input.g2-check:checked + span,
+  .groups-list input.i-check:checked + span,
+  .groups-list input.i2-check:checked + span{ font-weight:700; }
+
+  /* Instrumento */
+  #blk-instrumento, #blk-grupo-instrumento{ margin-top:10px; }
+
+  /* Previsualización */
+  .preview{ position:sticky; top:16px; }
+  .mock-card{
+    display:flex; flex-direction:column; gap:.35rem; background:linear-gradient(180deg,#ffffff,#fdfcfa);
+    border:1px solid var(--border); border-radius:16px; padding:14px; box-shadow:var(--shadow);
+  }
+  .mock-title{ font-weight:700; color:var(--text-main); font-size:1rem; }
+  .mock-url{ font-size:.9rem; color:#0d6efd; word-break:break-all; }
+
+  /* Acciones */
+  .actions{ display:flex; gap:.5rem; flex-wrap:wrap; margin-top:12px; align-items:center; }
+
+  /* Toast */
+  .toast-fixed{
+    position: fixed; top: 16px; right: 16px; z-index: 2000; min-width: 260px;
+    background: var(--ok-50); border:1px solid var(--ok-200); color: var(--ok-600);
+    border-radius: 12px; box-shadow:var(--shadow-lg); padding: .65rem .8rem; display:none;
+    font-size:.95rem;
+  }
+  .toast-fixed.error{ background: var(--err-50); border-color: var(--err-200); color: var(--err-700); }
+  .toast-fixed.show{ display:block; animation: toastIn .18s ease-out; }
+  @keyframes toastIn { from{ opacity:0; transform: translateY(-6px);} to{opacity:1; transform:none;} }
+
+  .pill{ display:inline-block; font-weight:700; font-size:.78rem; padding:.18rem .5rem; border-radius:999px;
+    background: var(--accent-100); border:1px solid var(--accent-300); color:#5b2b00; }
+
+  /* Panel "Últimos mensajes" */
+  .last-msg{
+    display:grid; gap:6px; grid-template-columns: 1fr auto;
+    align-items:start; border:1px solid var(--border);
+    border-radius:12px; padding:10px; background:#fff;
+  }
+  .last-msg h4{ margin:0; font-size:.9rem; line-height:1.2; color:var(--text-main); }
+  .last-msg p{
+  margin:0;
+  font-size:.86rem;
+  line-height:1.25;
+  color:#333;
+  font-weight:400; /* 👈 fuerza a peso normal */
+}
+  .last-msg time{ font-size:.78rem; color:var(--muted); }
+  .last-msg .actions{ display:flex; gap:.35rem; }
+
+  .btn-linklike{
+    background:transparent; border:1px solid var(--border); border-radius:10px; padding:.2rem .5rem;
+    cursor:pointer; font-size:.82rem;
+  }
+
+  /* Scope por si algo global sube tamaños */
+  #ultimos-wrap .section-title { font-size:.95rem !important; }
+  #ultimos-wrap .last-msg h4   { font-size:.88rem !important; }
+  #ultimos-wrap .last-msg p    { font-size:.85rem !important; }
+  #ultimos-wrap .last-msg time { font-size:.78rem !important; }
+  #ultimos-wrap .btn-linklike  { font-size:.82rem !important; }
+</style>
 
 <script>
 (function(){
@@ -473,6 +505,7 @@
       if(!r.ok || !j.success) throw new Error(j.error || 'No se pudo enviar');
 
       showToast(`✅ Enviado (id ${j.mensaje_id}) a ${j.enviados} alumno(s).`, true);
+      cargarUltimos(); // refrescar el panel de últimos mensajes
       // limpiar texto; mantener selección de alcance
       cuerpo.value=''; url.value=''; titulo.value='';
       // limpiar enlaces extra (pero dejamos el bloque para seguir añadiendo)
@@ -494,5 +527,141 @@
 
 })();
 </script>
+<script>
+// === PANEL ÚLTIMOS MENSAJES (versión corregida) ===
+const ULT_LIMIT = 5;
+let isLoadingUlt = false;
+let paintedIds = new Set();        // evita duplicados
+let cursorMinId = null;            // paginación hacia atrás por id
 
-  
+const ultWrap  = document.getElementById('ultimos-wrap');
+const ultList  = document.getElementById('ultimos-list');
+const ultEmpty = document.getElementById('ultimos-empty');
+const btnVerMas = document.getElementById('btn-ver-mas');
+
+async function cargarUltimos({ append=false } = {}){
+  if (isLoadingUlt) return;
+  isLoadingUlt = true;
+  if (btnVerMas) btnVerMas.disabled = true;
+
+  try{
+    const params = new URLSearchParams({ limit: ULT_LIMIT });
+    if (append && cursorMinId) params.set('before', String(cursorMinId)); // backend: WHERE id < before
+
+    const r = await fetch('/mensajes/ultimos?' + params.toString(), { headers:{'Accept':'application/json'} });
+    const data = await r.json();
+    const items = Array.isArray(data) ? data : [];
+    renderUltimos(items, { append });
+  }catch(e){
+    if (!append) { ultList.innerHTML=''; ultEmpty.style.display='block'; if (btnVerMas) btnVerMas.style.display='none'; }
+  }finally{
+    isLoadingUlt = false;
+    if (btnVerMas) btnVerMas.disabled = false;
+  }
+}
+
+function renderUltimos(items, { append } = { append:false }){
+  if (!append){
+    // primera carga: reset
+    ultList.innerHTML = '';
+    paintedIds.clear();
+    cursorMinId = null;
+  }
+
+  // filtra los que ya están para no duplicar aunque el backend los repita
+  const nuevos = items.filter(it => it && Number.isInteger(it.id) && !paintedIds.has(it.id));
+
+  if (!append && nuevos.length === 0){
+    ultEmpty.style.display = 'block';
+    if (btnVerMas) btnVerMas.style.display = 'none';
+    return;
+  }
+  ultEmpty.style.display = 'none';
+
+  for (const it of nuevos){
+    paintedIds.add(it.id);
+    if (cursorMinId === null || it.id < cursorMinId) cursorMinId = it.id;
+
+    const card = document.createElement('div');
+    card.className = 'last-msg';
+    card.dataset.id = String(it.id);
+
+    const fecha = new Date(it.created_at);
+    card.innerHTML = `
+      <div>
+        <h4 title="ID ${it.id}">${escapeHtml(it.titulo || '(sin título)')}</h4>
+        <p>${escapeHtml((it.cuerpo || '').slice(0,140))}${(it.cuerpo && it.cuerpo.length>140)?'…':''}</p>
+        <time>${fecha.toLocaleString()}</time>
+      </div>
+      <div class="actions">
+        <button class="btn-linklike btn-del" type="button" data-del="${it.id}" title="Eliminar">Eliminar</button>
+      </div>
+    `;
+    ultList.appendChild(card);
+  }
+
+  // Mostrar "Ver más" solo si el backend devolvió un lote completo
+  if (btnVerMas) btnVerMas.style.display = (items.length === ULT_LIMIT) ? 'inline-block' : 'none';
+
+  // Bind eliminar (ver punto 3)
+  ultList.querySelectorAll('.btn-del').forEach(wireDeleteOnce);
+}
+
+function wireDeleteOnce(btn){
+  if (btn._wired) return;
+  btn._wired = true;
+  btn.addEventListener('click', onDeleteClick);
+}
+
+function escapeHtml(s){
+  return String(s || '')
+    .replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;')
+    .replaceAll('"','&quot;').replaceAll("'",'&#39;');
+}
+
+if (btnVerMas){
+  btnVerMas.addEventListener('click', ()=> cargarUltimos({ append:true }));
+}
+
+// Carga inicial SIEMPRE al abrir la vista
+cargarUltimos();
+
+async function onDeleteClick(ev){
+  ev.preventDefault();
+  ev.stopPropagation();
+
+  const btn = ev.currentTarget;
+  const id  = btn.getAttribute('data-del');
+  if (!id) return;
+
+  if (!confirm(`¿Eliminar el mensaje ${id}? Esta acción no se puede deshacer.`)) return;
+
+  btn.disabled = true;
+
+  try{
+    const r = await fetch(`/mensajes/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+      headers: { 'Accept': 'application/json' }
+    });
+
+    // Soporta 204 No Content o 200 con JSON {success:true}
+    let ok = r.ok;
+    let data = null;
+
+    if (r.status !== 204) {
+      try { data = await r.json(); } catch {}
+      if (data && data.success === false) ok = false;
+    }
+
+    if (!ok) throw new Error((data && data.error) || `HTTP ${r.status}`);
+
+    // ✅ Recarga dura para evitar caché
+    location.reload();
+  }catch(e){
+    console.error('Eliminar mensaje:', e);
+    showToast('❌ ' + (e.message || 'Error al eliminar'), false);
+    btn.disabled = false;
+  }
+}
+
+</script>

@@ -6,38 +6,43 @@
   <title>Mis mensajes</title>
   <link rel="stylesheet" href="../styles/estilos_app.css" />
   <style>
-    .muted{ color:#6c757d; }
+    :root{
+      --accent:#ea6b38;
+      --muted:#6b7280;
+      --border:#e5e7eb;
+    }
+    .muted{ color:var(--muted); }
     .list{ display:grid; gap:12px; }
-
     .card{
-      position:relative;
-      border:1px solid #e5e7eb; border-radius:14px; padding:12px;
+      border:1px solid var(--border); border-radius:14px; padding:12px;
       background:#fff; box-shadow:0 1px 2px rgba(0,0,0,.04);
     }
-    /* Resalte muy sutil de no leído */
-    .card.unread{ border-color:#f1c27d; }
+    .card h3{ margin:.1rem 0 .25rem; font-size:1.05rem; }
+    .card p{ margin:.25rem 0; }
+    .meta{ font-size:.85rem; color:var(--muted); }
 
-    .card h3{ margin:0 0 .35rem 0; font-size:1.08rem; color:#111; }
-    .card p{ margin:.35rem 0; color:#111; }
-    .meta{ font-size:.9rem; color:#475569; }
-
-    /* Botón discreto, blanco, pequeño */
-    .row-actions{ margin-top:.35rem; }
-    .btn-quiet{
-      background:#fff; color:#6c757d;
-      border:1px solid #dedede; border-radius:8px;
-      padding:.32rem .55rem; font-size:.85rem; font-weight:600;
-      cursor:pointer;
+    /* Enlaces corporativos */
+    .msg-body a,
+    .extra-list a{
+      color: var(--accent);
+      text-decoration: underline;
+      text-underline-offset: 2px;
     }
-    .btn-quiet:hover{ background:#f8f9fa; }
-    .btn-quiet:focus{ outline:2px solid #e5e7eb; outline-offset:2px; }
-    .btn-quiet:active{ transform: translateY(1px); }
-    .btn-quiet:disabled{ opacity:.6; cursor:not-allowed; }
 
-    .cta a{ display:inline-block; margin-top:.35rem; color:#0d6efd; text-decoration:underline; }
+    /* Anti-desbordamiento de URLs largas */
+    .msg-body, .msg-body p, .msg-body a,
+    .extra-list, .extra-list a{
+      overflow-wrap:anywhere;
+      word-break:break-word;
+      min-width:0;
+    }
+
+    /* Lista de enlaces extra */
+    .extra-list{ list-style:none; margin:.35rem 0 0; padding:0; }
+    .extra-list li{ margin:.1rem 0; }
 
     .more-wrap{ display:flex; justify-content:center; margin:14px 0 4px; }
-    .btn{ padding:.5rem .8rem; border:1px solid #ddd; border-radius:10px; background:#fafafa; }
+    .btn{ padding:.55rem .8rem; border:1px solid #ddd; border-radius:10px; background:#fafafa; }
     .btn:active{ transform: translateY(1px); }
   </style>
 </head>
@@ -58,22 +63,19 @@
   </div>
 
   <script>
+  (function(){
     const alumno_id = localStorage.getItem('alumno_id');
-    if (!alumno_id) location.href = 'index.html';
+    if (!alumno_id) { location.href = 'index.html'; return; }
 
     const $list = document.getElementById('list');
     const $empty = document.getElementById('empty');
     const $moreWrap = document.getElementById('more-wrap');
     const $btnMore = document.getElementById('btn-more');
 
-    let DATA = [];     // mensajes cargados del servidor (máx 50 por la API actual)
-    let cursor = 0;    // cuántos ya mostramos
-    const PAGE = 10;   // tamaño de página
+    let DATA = [];
+    let cursor = 0;
+    const PAGE = 10;
 
-    function ensureProto(u){
-      if (!u) return '';
-      return /^[a-zA-Z][\w+.-]*:\/\//.test(u) ? u : 'https://' + u;
-    }
     function fmtFecha(iso){
       if (!iso) return '';
       const d = new Date(iso);
@@ -84,49 +86,83 @@
       const mi = String(d.getMinutes()).padStart(2,'0');
       return `${dd}/${mm}/${aa} ${hh}:${mi}`;
     }
-
-    async function marcarLeido(id){
-      try{
-        const r = await fetch(`/mensajes/app/mensajes/${encodeURIComponent(id)}/leer`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ alumno_id })
-        });
-        if (!r.ok) throw new Error('No se pudo marcar como leído');
-
-        // actualiza memoria
-        const it = DATA.find(m => m.id === id);
-        if (it) it.leido_at = new Date().toISOString();
-
-        // actualiza DOM
-        const card = $list.querySelector(`.card[data-id="${id}"]`);
-        if (card){
-          card.classList.remove('unread');
-          const meta = card.querySelector('.meta');
-          if (meta && !/leído/i.test(meta.textContent)) {
-            meta.textContent = meta.textContent + ' · leído';
-          }
-          const btn = card.querySelector('[data-action="read"]');
-          if (btn) btn.remove();
-        }
-      }catch(e){
-        console.error(e);
-        alert('No se pudo marcar como leído.');
+    function esc(s){
+      return String(s)
+        .replace(/&/g,"&amp;")
+        .replace(/</g,"&lt;")
+        .replace(/>/g,"&gt;")
+        .replace(/"/g,"&quot;")
+        .replace(/'/g,"&#39;");
+    }
+    function ensureProto(u){
+      if (!u) return '';
+      const s = String(u).trim();
+      if (!s) return '';
+      if (/^[a-zA-Z][\w.+-]*:/.test(s) || s.startsWith('//') || s.startsWith('/')) return s;
+      return 'https://' + s;
+    }
+    // Linkify del cuerpo (soporta múltiples enlaces)
+    function linkify(text){
+      const URL_RE = /(https?:\/\/[^\s<>"']+|www\.[^\s<>"']+)/gi;
+      let out = '', last = 0, m;
+      while ((m = URL_RE.exec(text)) !== null) {
+        const raw = m[0];
+        out += esc(text.slice(last, m.index));
+        let url = raw.replace(/[).,;:!?]+$/,''); // recorta puntuación final
+        const trailing = raw.slice(url.length);
+        const href = ensureProto(url);
+        out += `<a href="${href}" target="_blank" rel="noopener">${esc(url)}</a>${esc(trailing)}`;
+        last = URL_RE.lastIndex;
       }
+      out += esc(text.slice(last));
+      return out.replace(/\n/g,'<br>');
+    }
+    // Extrae enlaces de m.urls (array/JSON string) o, si no hay, de m.url (separado por comas/espacios/;|)
+    function extraLinksFromMsg(m){
+      const out = [];
+      const seen = new Set();
+
+      let arr = null;
+      if (Array.isArray(m.urls)) {
+        arr = m.urls;
+      } else if (typeof m.urls === 'string' && m.urls.trim() !== '') {
+        try { arr = JSON.parse(m.urls); } catch { arr = null; }
+      }
+      if (Array.isArray(arr)) {
+        for (let raw of arr) {
+          if (!raw) continue;
+          raw = String(raw).trim().replace(/[).,;:!?]+$/,'');
+          const href = ensureProto(raw);
+          const key = href.toLowerCase();
+          if (!seen.has(key)) { seen.add(key); out.push({ href, label: raw }); }
+        }
+      }
+      if (!out.length && m.url) {
+        const parts = String(m.url).split(/[\s,;|]+/).map(s => s.trim()).filter(Boolean);
+        for (let raw of parts) {
+          raw = raw.replace(/[).,;:!?]+$/,'');
+          const href = ensureProto(raw);
+          const key = href.toLowerCase();
+          if (!seen.has(key)) { seen.add(key); out.push({ href, label: raw }); }
+        }
+      }
+      return out;
     }
 
     function tpl(m){
-      const url = ensureProto((m.url || '').trim());
-      const unread = !m.leido_at;
+      const cuerpoHTML = `<div class="msg-body">${linkify(m.cuerpo || '')}</div>`;
+      const extras = extraLinksFromMsg(m);
+      const extrasHTML = extras.length
+        ? `<ul class="extra-list">` +
+            extras.map(x => `<li><a href="${x.href}" target="_blank" rel="noopener" title="${esc(x.label)}">${esc(x.label)}</a></li>`).join('') +
+          `</ul>`
+        : '';
       return `
-        <article class="card ${unread ? 'unread':''}" data-id="${m.id}">
-          <h3>${m.titulo || 'Aviso'}</h3>
-          <p>${(m.cuerpo || '').replace(/\n/g,'<br>')}</p>
-          ${url ? `<p class="cta"><a href="${url}" target="_blank" rel="noopener" data-cta="link">Abrir enlace</a></p>` : ''}
-
+        <article class="card" data-id="${m.id}">
+          <h3>${esc(m.titulo || 'Aviso')}</h3>
+          ${cuerpoHTML}
+          ${extrasHTML}
           <p class="meta">${fmtFecha(m.created_at)}${m.leido_at ? ' · leído' : ''}</p>
-
-          ${unread ? `<div class="row-actions"><button class="btn-quiet" data-action="read">Marcar como leído</button></div>` : ``}
         </article>
       `;
     }
@@ -145,54 +181,25 @@
     }
 
     async function cargar(){
-    try{
-      const url = new URL('/mensajes/app/mensajes', location.origin);
-      url.searchParams.set('alumno_id', alumno_id);
-      url.searchParams.set('t', Date.now().toString());  // ← anti-caché
-
-      const r = await fetch(url.toString(), {
-        cache: 'no-store',                                 // ← anti-caché
-        headers: { 'Cache-Control': 'no-cache' }           // ← redundante pero útil
-      });
-      const j = await r.json();
-      if (!r.ok || !Array.isArray(j)) throw new Error('No se pudieron cargar los mensajes');
-
-      DATA = j; // ya vienen ordenados DESC por id
-      cursor = 0;
-      $list.innerHTML = '';
-      renderNext();
-    }catch(e){
-      console.error(e);
-      $empty.textContent = 'No se pudieron cargar los mensajes.';
-      $empty.style.display = 'block';
+      try{
+        const r = await fetch(`/mensajes/app/mensajes?alumno_id=${encodeURIComponent(alumno_id)}`);
+        const j = await r.json();
+        if (!r.ok || !Array.isArray(j)) throw new Error('No se pudieron cargar los mensajes');
+        DATA = j;
+        cursor = 0;
+        $list.innerHTML = '';
+        renderNext();
+      }catch(e){
+        console.error('[mensajes] fallo cargando', e);
+        $empty.textContent = 'No se pudieron cargar los mensajes.';
+        $empty.style.display = 'block';
+        $moreWrap.style.display = 'none';
+      }
     }
-  }
-    // Delegación de eventos
-    $list.addEventListener('click', (ev) => {
-      const card = ev.target.closest('.card');
-      if (!card) return;
-      const id = Number(card.dataset.id);
-
-      // Botón "Marcar como leído"
-      const btn = ev.target.closest('[data-action="read"]');
-      if (btn) {
-        btn.disabled = true;
-        marcarLeido(id).finally(() => { btn.disabled = false; });
-        return;
-      }
-
-      // Clic en "Abrir enlace" => marca leído en segundo plano
-      const a = ev.target.closest('a[data-cta="link"]');
-      if (a && card.classList.contains('unread')) {
-        marcarLeido(id); // no bloquea la navegación
-      }
-    });
 
     $btnMore.addEventListener('click', renderNext);
-
-    // carga inicial
     cargar();
+  })();
   </script>
 </body>
 </html>
-

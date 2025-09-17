@@ -31,19 +31,6 @@ function toUrlArray(x, max = 10) {
   return out;
 }
 
-/* ------------------- crear y enviar un mensaje -------------------- */
-/**
- * body:
- * {
- *   titulo: string,
- *   cuerpo: string,
- *   url?: string,            // enlace principal (compatibilidad)
- *   links?: string[],        // enlaces extra (nuevos)
- *   broadcast?: boolean,
- *   grupos?: number[],
- *   instrumentos?: number[]   // múltiples
- * }
- */
 router.post('/', async (req, res) => {
   const titulo = (req.body.titulo || '').trim();
   const cuerpo = (req.body.cuerpo || '').trim();
@@ -225,28 +212,31 @@ router.post('/push/subscribe', async (req, res) => {
 /** GET /mensajes/app/mensajes?alumno_id=123&desde_id=0 */
 router.get('/app/mensajes', async (req, res) => {
   const alumnoId = parseInt(req.query.alumno_id, 10);
-  const desdeId  = parseInt(req.query.desde_id, 10) || 0;
-
   if (!alumnoId) return res.status(400).json({ error: 'alumno_id requerido' });
+
+  const desdeId = parseInt(req.query.desde_id, 10) || 0;
 
   try {
     const { rows } = await db.query(`
-      SELECT m.id, m.titulo, m.cuerpo, m.url, m.urls, m.created_at, me.leido_at
+      SELECT
+        m.id, m.titulo, m.cuerpo, m.url,
+        -- Normaliza 'urls' a JSONB funcione siendo TEXT o JSON/JSONB
+        COALESCE(NULLIF(m.urls::text, '')::jsonb, '[]'::jsonb) AS urls,
+        m.created_at, me.leido_at
       FROM mensaje_entrega me
       JOIN mensajes m ON m.id = me.mensaje_id
       WHERE me.alumno_id = $1 AND m.id > $2
       ORDER BY m.id DESC
       LIMIT 50
     `, [alumnoId, desdeId]);
-    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
-    res.set('Pragma', 'no-cache');
-    res.set('Expires', '0');
+
     res.json(rows);
   } catch (e) {
     console.error('❌ Listando mensajes', e);
     res.status(500).json({ error: 'No se pudo obtener mensajes' });
   }
 });
+
 
 /* ---------------------- marcar como leído (app) ------------------- */
 /** POST /mensajes/app/mensajes/:id/leer  body: { alumno_id } */
@@ -265,6 +255,78 @@ router.post('/app/mensajes/:id/leer', async (req, res) => {
   } catch (e) {
     console.error('❌ Marcando leído', e);
     res.status(500).json({ error: 'No se pudo actualizar' });
+  }
+});
+/* ---------------------- últimos 5 (admin web) --------------------- */
+/** GET /mensajes/ultimos?limit=5 */
+router.get('/ultimos', async (req, res) => {
+  const limit = Math.min(parseInt(req.query.limit, 10) || 5, 20);
+  try {
+    const { rows } = await db.query(`
+      SELECT id, titulo, cuerpo, url, urls, created_at
+      FROM mensajes
+      ORDER BY id DESC
+      LIMIT $1
+    `, [limit]);
+    res.set('Cache-Control', 'no-store');
+    res.json(rows);
+  } catch (e) {
+    console.error('❌ Listando últimos mensajes', e);
+    res.status(500).json({ error: 'No se pudo obtener la lista de mensajes' });
+  }
+});
+
+/* --------------------------- eliminar msg ------------------------- */
+/** DELETE /mensajes/:id */
+router.delete('/:id', async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (!id) return res.status(400).json({ error: 'ID inválido' });
+
+  const client = await db.connect();
+  try {
+    await client.query('BEGIN');
+
+    // Si las FK no tienen ON DELETE CASCADE, limpiamos a mano:
+    await client.query('DELETE FROM mensaje_entrega WHERE mensaje_id = $1', [id]);
+    await client.query('DELETE FROM mensaje_destino WHERE mensaje_id = $1', [id]);
+
+    const del = await client.query('DELETE FROM mensajes WHERE id = $1', [id]);
+    await client.query('COMMIT');
+
+    if (del.rowCount === 0) return res.status(404).json({ error: 'Mensaje no encontrado' });
+    res.json({ success: true });
+  } catch (e) {
+    try { await client.query('ROLLBACK'); } catch {}
+    console.error('❌ Eliminando mensaje', e);
+    res.status(500).json({ error: 'No se pudo eliminar el mensaje' });
+  } finally {
+    client.release();
+  }
+});
+/* ---------------------- últimos (admin web) ----------------------- */
+/** GET /mensajes/ultimos?limit=5&before=ID */
+router.get('/ultimos', async (req, res) => {
+  const limit = Math.min(parseInt(req.query.limit, 10) || 5, 50);
+  const before = parseInt(req.query.before, 10) || null;
+
+  try {
+    const params = [limit];
+    let sql = `
+      SELECT id, titulo, cuerpo, url, urls, created_at
+      FROM mensajes
+    `;
+    if (before) {
+      sql += ` WHERE id < $2 `;
+      params.push(before);
+    }
+    sql += ` ORDER BY id DESC LIMIT $1`;
+
+    const { rows } = await db.query(sql, params);
+    res.set('Cache-Control', 'no-store');
+    res.json(rows);
+  } catch (e) {
+    console.error('❌ Listando últimos mensajes', e);
+    res.status(500).json({ error: 'No se pudo obtener la lista de mensajes' });
   }
 });
 
