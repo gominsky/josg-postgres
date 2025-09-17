@@ -6,9 +6,9 @@
   <title>Agenda</title>
 
   <link rel="stylesheet" href="../styles/estilos_app.css" />
-  <!-- CSS de FullCalendar (clave para que se vea) -->
+  <!-- CSS de FullCalendar -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/main.min.css" />
-  <!-- JS de FullCalendar igual que en docentes -->
+  <!-- JS de FullCalendar -->
   <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/locales-all.global.min.js"></script>
 
@@ -22,19 +22,16 @@
   .fc .fc-toolbar-title { font-size: 1rem; line-height: 1.2; }
 
   .fc .fc-button {
-    padding: .28rem .55rem;      /* <- reduce tamaño general de botones */
+    padding: .28rem .55rem;      /* reduce tamaño general de botones */
     font-size: .9rem;
     border-radius: 8px;
   }
   .fc .fc-today-button {
-    padding: .24rem .5rem;       /* <- aún más compacto para "Hoy" */
+    padding: .24rem .5rem;       /* aún más compacto para "Hoy" */
     font-size: .85rem;
   }
 
-  /* Grupos de prev/next también compactos */
   .fc .fc-button-group > .fc-button { padding: .24rem .5rem; }
-
-  /* Evita que la cabecera “pise” el contenido */
   .fc .fc-header-toolbar { margin-bottom: 8px; }
 </style>
 
@@ -55,6 +52,7 @@
       const calendarEl = document.getElementById('calendar');
       const calendar = new FullCalendar.Calendar(calendarEl, {
         locale: 'es',
+        firstDay: 1,                 // 👈 Semana empieza en lunes
         initialView: 'dayGridMonth',
         headerToolbar: {
           left: 'prev,next today',

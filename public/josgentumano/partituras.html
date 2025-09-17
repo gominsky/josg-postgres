@@ -5,197 +5,129 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Catálogo de partituras</title>
   <link rel="stylesheet" href="../styles/estilos_app.css" />
-  <!-- Tipos clásicos y legibles -->
-  <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:wght@500;700&family=Crimson+Text:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
   <style>
     :root{
-      --paper:#f9f6ef;    /* papel suave */
-      --ink:#231f1a;      /* tinta */
-      --muted:#6e645a;    /* texto secundario */
-      --edge:#dacaa9;     /* filete */
-      --edge2:#efe6d6;    /* filete 2 */
-      --pill:#fffaf2;     /* chips/enlaces */
-      --line:#e7dcc6;     /* líneas suaves */
+      --ink:#111827;
+      --muted:#6b7280;
+      --border:#e5e7eb;
+      --chip:#f8fafc;
+      --accentA:#ea6b38;  /* tangerine */
+      --accentB:#f59e0b;  /* naranja corporativo */
+      --accentA-30: rgba(234,107,56,.3);
+      --accentB-30: rgba(245,158,11,.3);
     }
 
-    body{
-      font-family: "Crimson Text", Georgia, "Times New Roman", serif;
-      -webkit-font-smoothing: antialiased;
-      color:var(--ink);
-    }
+    body{ color:var(--ink); background:#fff; }
 
-    /* marco interior “edición” */
-    .folio{
-      background: var(--paper);
-      min-height:100vh;
-      padding: 10px 12px 14px;
-      border-radius: 14px;
-      box-shadow:
-        inset 0 0 0 1px var(--edge2),
-        inset 0 0 0 5px #fff,
-        inset 0 0 0 6px var(--edge);
-      position: relative;
-      overflow: hidden;
-    }
+    /* Topbar con logo (igual que index) */
+    .topbar{ display:flex; align-items:center; justify-content:space-between; margin:6px 0 2px; }
+    .topbar img{ height:46px; }
+    .topbar .spacer{ width:36px; height:36px; } /* para equilibrar sin botón */
 
     /* Cabecera */
-    .head{
-      padding: 8px 4px 2px;
-    }
+    .head{ text-align:center; margin:8px 0 6px; }
     .head h2{
-      margin:0;
-      font-family: "EB Garamond", Georgia, serif;
-      font-variant: small-caps;
-      letter-spacing: .045em;
-      font-weight: 700;
-    }
-    .filig{
-      height: 10px;
-      margin: 6px 0 10px;
-      opacity: .55;
-      background:
-        linear-gradient(var(--edge), var(--edge)) 0 50%/100% 1px no-repeat,
-        repeating-linear-gradient(90deg, transparent 0 11px, rgba(0,0,0,.08) 11px 12px);
-      border-radius: 6px;
+      margin:0; font-weight:600; letter-spacing:.3px;
+      font-size: clamp(22px, 5.2vw, 32px); color:#0f172a;
     }
 
-    /* Buscador */
+    /* Buscador centrado */
     .search{
-      display:flex; gap:.6rem; flex-wrap:wrap; margin: 0 4px 10px;
-      font-family: "EB Garamond", Georgia, serif;
+      display:flex; gap:.6rem; flex-wrap:wrap; justify-content:center;
+      margin: 6px 4px 14px;
     }
     .input{
-      flex:1 1 260px;
-      padding:.5rem .65rem;
-      border:1px solid var(--edge);
-      border-radius:10px;
-      background:#fffdf7;
-      color:var(--ink);
+      flex:1 1 260px; max-width:520px;
+      padding:.6rem .75rem; border:1px solid var(--border); border-radius:12px;
+      outline:0; background:#fff; color:#111827;
+      transition: box-shadow .12s ease, border-color .12s ease;
     }
+    .input:focus{ border-color:#94a3b8; box-shadow:0 0 0 3px rgba(148,163,184,.25); }
     .search button{
-      padding:.5rem .9rem;
-      border:1px solid var(--edge);
-      border-radius:10px;
-      background:#fffdf7;
-      color:var(--ink);
-      font-weight:700;
-      letter-spacing:.02em;
+      padding:.6rem .95rem; border:1px solid #d1d5db; border-radius:12px; background:#fff; color:#111;
+      font-weight:700; letter-spacing:.02em;
     }
-    .search button:hover{ background:#fff7ec; }
+    .search button:hover{ background:#f9fafb; }
 
-    /* Carrusel */
+    /* Carrusel horizontal */
     .track{
-      display:flex; gap:12px;
-      overflow-x:auto; padding: 4px 4px 10px;
-      scroll-snap-type: x proximity;
-      scrollbar-width: thin;
+      display:flex; gap:12px; overflow-x:auto; padding: 4px 2px 10px; scrollbar-width:thin;
+      scroll-snap-type:x proximity;
     }
 
-    /* Tarjeta compacta con “lomo” musical */
+    /* ===== NUEVO DISEÑO DE FICHA (apaisada) ===== */
     .card{
-      scroll-snap-align: start;
-      flex: 0 0 340px;                    /* compacto */
-      background:#fffdf8;
-      border:1px solid var(--edge);
-      border-radius: 12px;
-      padding: 12px 14px 12px 14px;
-      box-shadow: 0 2px 8px rgba(0,0,0,.05);
-      position:relative;
+      position:relative; scroll-snap-align:start;
+      flex: 0 0 360px; background:#fff; border:1px solid var(--border); border-radius:16px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.06);
+      display:flex; gap:12px; padding:12px 14px;
       overflow:hidden;
     }
-    @media (max-width:420px){ .card{ flex-basis: 88%; } }
-
-    /* Lomo con pentagrama (muy sutil) */
+    /* barra vertical de acento (alternada) */
     .card::before{
-      content:"";
-      position:absolute; left:0; top:0; bottom:0; width:42px;
-      background:
-        /* bandas de papel */
-        linear-gradient(180deg,#fefaf1, #f9f4e8),
-        /* pentagrama: 5 líneas finas */
-        repeating-linear-gradient(180deg, rgba(0,0,0,.18) 6px 7px, transparent 7px 13px);
-      border-right: 1px solid var(--edge);
-      opacity:.28;
-      pointer-events:none;
+      content:""; position:absolute; left:0; top:0; bottom:0; width:8px;
+      background: var(--accentA);
     }
-    /* Troquel suave en el lomo */
-    .card::after{
-      content:"";
-      position:absolute; left: -6px; top:10px; bottom:10px; width: 12px;
-      background: radial-gradient(circle at 6px 10px, transparent 5px, rgba(0,0,0,.08) 5.2px) 0 0/12px 18px repeat-y;
-      opacity:.25; pointer-events:none;
-    }
+    .track .card:nth-child(even)::before{ background: var(--accentB); }
 
-    /* Contenido con sangría por el lomo */
-    .inner{ margin-left: 48px; }
+    .stack{ display:flex; flex-direction:column; gap:6px; width:100%; }
 
     .title{
-      margin:.1rem 0 .25rem;
-      font-family: "EB Garamond", Georgia, serif;
-      font-variant: small-caps;
-      letter-spacing: .03em;
-      font-size: 1.18rem;
-      font-weight: 700;
-      line-height: 1.2;
+      margin:0; font-weight:700; line-height:1.2; letter-spacing:.2px; font-size:1.05rem;
+      color:#0f172a; padding-left:4px;
     }
     .meta{
-      color:var(--muted);
-      font-style: italic;
-      font-size: .95rem;
-      margin: .1rem 0 .45rem;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
+      color:var(--muted); font-size:.92rem; padding-left:4px;
+      white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
     }
     .desc{
-      margin:.35rem 0 .5rem;
-      display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+      color:#374151; padding-left:4px; margin-top:2px;
+      display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
     }
 
-    .rule{
-      height:1px; margin:.3rem 0 .5rem;
-      background: linear-gradient(90deg, transparent, rgba(0,0,0,.14), transparent);
+    /* Fila inferior: duración + enlaces */
+    .footer{
+      margin-top:4px; display:flex; align-items:center; justify-content:space-between;
+      gap:.75rem; flex-wrap:wrap; padding-left:4px;
+    }
+    .dur{
+      color:#0f172a; background:var(--chip);
+      border:1px solid #e2e8f0; padding:.26rem .6rem; border-radius:999px; font-weight:600; font-size:.82rem;
+    }
+    /* ajustes de color según par/impar (sutil borde) */
+    .track .card:nth-child(odd) .dur{ border-color: var(--accentA-30); }
+    .track .card:nth-child(even) .dur{ border-color: var(--accentB-30); }
+
+    .links{ display:flex; gap:.45rem; flex-wrap:wrap; }
+    .btn-link{
+      text-decoration:none; font-weight:700; font-size:.92rem; letter-spacing:.01em;
+      padding:.44rem .76rem; border-radius:999px; background:#fff;
+      border:1px solid #d1d5db; color:#0f172a;
+      transition: background .12s ease, color .12s ease, transform .12s ease, box-shadow .12s ease, border-color .12s ease;
+    }
+    /* hover rellena con el color de la ficha (alternado) */
+    .track .card:nth-child(odd) .btn-link:hover{
+      color:#fff; background: var(--accentA); border-color: var(--accentA);
+      transform: translateY(-1px); box-shadow: 0 6px 18px rgba(234,107,56,.22);
+    }
+    .track .card:nth-child(even) .btn-link:hover{
+      color:#fff; background: var(--accentB); border-color: var(--accentB);
+      transform: translateY(-1px); box-shadow: 0 6px 18px rgba(245,158,11,.22);
     }
 
-    /* Chips (Duración / Género) */
-    .chips{ display:flex; gap:.4rem; flex-wrap:wrap; margin:.1rem 0 .2rem; }
-    .chip{
-      padding:.22rem .55rem;
-      border:1px solid var(--line);
-      border-radius:999px;
-      background: var(--pill);
-      font-weight:700; font-size:.85rem; letter-spacing:.01em;
-    }
-
-    /* Enlaces “grabado” clásico */
-    .links{ display:flex; gap:.45rem; flex-wrap:wrap; margin-top:.5rem; }
-    .engrave-link{
-      position:relative; text-decoration:none; color:var(--ink);
-      border:1px solid var(--edge); border-radius:999px;
-      background: var(--pill);
-      padding:.4rem .7rem; font-weight:800; font-size:.92rem; letter-spacing:.01em;
-      transition: color .12s ease, background .12s ease, box-shadow .12s ease;
-    }
-    .engrave-link::after{
-      content:""; position:absolute; left:12px; right:12px; bottom:6px; height:10px;
-      background: repeating-linear-gradient(180deg, rgba(0,0,0,.22) 0 1px, transparent 1px 3px);
-      opacity:0; transition: opacity .15s ease;
-      mask-image: linear-gradient(90deg, transparent, #000 25%, #000 75%, transparent);
-      pointer-events:none;
-    }
-    .engrave-link:hover{
-      background:#fff7ec; box-shadow:0 1px 0 rgba(0,0,0,.05) inset;
-    }
-    .engrave-link:hover::after{ opacity:.55; }
-
-    .back{ margin: 12px 4px 2px; }
+    /* Botón volver centrado */
+    .back{ margin: 12px 4px 2px; text-align:center; }
   </style>
 </head>
 <body data-page="partituras">
-  <div class="container folio">
+  <div class="container">
+    <div class="topbar">
+      <img src="/../imagenes/logoJOSG.png" alt="Logo JOSG">
+      <div class="spacer" aria-hidden="true"></div>
+    </div>
+
     <div class="head">
       <h2>Catálogo de partituras</h2>
-      <div class="filig"></div>
     </div>
 
     <div class="search">
@@ -217,7 +149,7 @@
     if (!mount) return;
 
     function safe(u){
-      try { if (typeof ensureProto === 'function') return ensureProto(u); } catch(_){}
+      try { if (typeof ensureProto === 'function') return ensureProto(u); } catch(_) {}
       if (!u) return '';
       const s = String(u).trim();
       if (!s) return '';
@@ -225,10 +157,10 @@
       return 'https://' + s;
     }
 
-    // Plantilla: sustituimos el render sólo en esta página
+    // Render sólo para esta página (nuevo diseño)
     window.render = function(list){
       if (!Array.isArray(list) || !list.length){
-        mount.innerHTML = '<p class="meta" style="margin:6px;">No hay partituras para tus grupos.</p>';
+        mount.innerHTML = '<p class="meta" style="margin:6px; color:#6b7280;">No hay partituras para tus grupos.</p>';
         return;
       }
       mount.innerHTML = list.map(p => {
@@ -237,22 +169,19 @@
         const arreg  = (p.arreglista || '').trim();
         const meta   = [autor && `<em>${autor}</em>`, arreg && `<em>arr. ${arreg}</em>`].filter(Boolean).join(' · ');
         const dur    = (p.duracion || '').toString().trim();
-        const gen    = (p.genero || '').toString().trim();
-        const part   = p.enlace_partitura ? `<a class="engrave-link" href="${safe(p.enlace_partitura)}" target="_blank" rel="noopener">Partitura</a>` : '';
-        const aud    = p.enlace_audio ? `<a class="engrave-link" href="${safe(p.enlace_audio)}" target="_blank" rel="noopener">Audio</a>` : '';
+        const part   = p.enlace_partitura ? `<a class="btn-link" href="${safe(p.enlace_partitura)}" target="_blank" rel="noopener">Partitura</a>` : '';
+        const aud    = p.enlace_audio ? `<a class="btn-link" href="${safe(p.enlace_audio)}" target="_blank" rel="noopener">Audio</a>` : '';
 
         return `
           <article class="card">
-            <div class="inner">
+            <div class="stack">
               <h3 class="title">${titulo}</h3>
               ${meta ? `<div class="meta">${meta}</div>` : ''}
               ${p.descripcion ? `<p class="desc">${p.descripcion}</p>` : ''}
-              <div class="rule"></div>
-              <div class="chips">
-                ${dur ? `<span class="chip">Duración: ${dur}</span>` : ''}
-                ${gen ? `<span class="chip">Género: ${gen}</span>` : ''}
+              <div class="footer">
+                ${dur ? `<span class="dur">Duración: ${dur}</span>` : '<span></span>'}
+                <div class="links">${part}${aud}</div>
               </div>
-              <div class="links">${part}${aud}</div>
             </div>
           </article>`;
       }).join('');
@@ -262,4 +191,3 @@
 </body>
 </html>
 
-  
