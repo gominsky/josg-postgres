@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Firmar asistencia</title>
+  <title>JOSG Maestro - Firma manual</title>
   <link rel="stylesheet" href="../styles/estilos_app.css" />
   <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
 </head>
@@ -16,6 +16,12 @@
     <button id="btn-qr" type="button" onclick="mostrarQR()">Mostrar QR</button>
     <button id="btn-toggle-qr" type="button" onclick="toggleQR()" class="button-negro" style="display:none">Activar QR</button>
     <div id="qr-container" style="margin-top: 1rem; display: none;"></div>
+    <!-- Toolbar de alumnos -->
+
+    <div class="alumnos-toolbar" style="display:flex;align-items:center;gap:.75rem;margin:.5rem 0 0.75rem;">
+      <button id="toggle-alumnos" type="button" class="button-negro">Ocultar alumnos</button>
+      <span id="alumnos-count" class="subtitulo" style="opacity:.8;"></span>
+    </div>
 
     <form id="form-asistencias">
       <div id="lista-alumnos">
@@ -30,70 +36,93 @@
         <textarea id="observaciones_generales" rows="4" style="width: 100%;"></textarea>
       </div>
 
-      <button type="submit">Guardar asistencias</button>
+      <button type="submit">Guardar cambios</button>
     </form>
 
     <p id="mensaje"></p>
-    <button onclick="verAsistencias()">Ver firmas registradas</button>
+    <button onclick="verAsistencias()">Ver registro de firmas</button>
     <button onclick="location.href='eventos.html'">← Volver</button>
   </div>
-
   <script>
     let evento_id = new URLSearchParams(location.search).get('id');
     let usuario_id = localStorage.getItem('usuario_id');
     let tokenQR = '';
     let qrActivo = false;
+  
+    // === NUEVO: estado y helpers del toggle ===
+    let alumnosOcultos = true;
 
+    function applyToggleState() {
+      const lista = document.getElementById('lista-alumnos');
+      const btn = document.getElementById('toggle-alumnos');
+      if (!lista || !btn) return;
+      lista.style.display = alumnosOcultos ? 'none' : '';
+      btn.textContent = alumnosOcultos ? 'Mostrar alumnos' : 'Ocultar alumnos';
+    }
+    // ==========================================
     document.addEventListener('DOMContentLoaded', () => {
       cargarEventoYAlumnos();
       document.getElementById('form-asistencias').addEventListener('submit', guardarAsistencias);
-    });
 
+      // Recupera preferencia si existe, pero default es oculto
+      const saved = localStorage.getItem(`ocultar_alumnos_${evento_id}`);
+      if (saved !== null) {
+        alumnosOcultos = saved === '1';
+      }
+
+      const btnToggle = document.getElementById('toggle-alumnos');
+      if (btnToggle) {
+        btnToggle.addEventListener('click', () => {
+          alumnosOcultos = !alumnosOcultos;
+          localStorage.setItem(`ocultar_alumnos_${evento_id}`, alumnosOcultos ? '1' : '0');
+          applyToggleState();
+        });
+      }
+      applyToggleState();
+    });
     function verAsistencias() {
       location.href = `asistencias_evento.html?id=${evento_id}`;
     }
-
+  
     async function cargarEventoYAlumnos() {
       try {
         const eventoRes = await fetch(`/control_firmas/api/eventos/${evento_id}`);
         const evento = await eventoRes.json();
-
+  
         document.getElementById('titulo').innerText = evento.titulo;
         const inicioLinea = `${normalizarFecha(evento.fecha_inicio)} ${normalizarHora(evento.hora_inicio)}${
-        evento.fecha_fin ? '-' + normalizarHora(evento.hora_fin) : ''
-      }`;
-
-      document.getElementById('info-evento').innerHTML = `
-        <p><strong>Grupo:</strong> ${evento.grupo_nombre}</p>
-        <p><strong>Inicio:</strong> ${inicioLinea}</p>
-      `;
-
-
-
+          evento.fecha_fin ? '-' + normalizarHora(evento.hora_fin) : ''
+        }`;
+  
+        document.getElementById('info-evento').innerHTML = `
+          <p><strong>Grupo:</strong> ${evento.grupo_nombre}</p>
+          <p><strong>Inicio:</strong> ${inicioLinea}</p>
+        `;
+  
         document.getElementById('observaciones_generales').value = evento.observaciones || '';
-
+  
         tokenQR = evento.token;
         qrActivo = Boolean(evento.activo);
-
+  
         document.getElementById('qr-estado').innerText = qrActivo ? 'QR activo' : 'QR desactivado';
         document.getElementById('btn-qr').style.display = qrActivo ? 'inline-block' : 'none';
         document.getElementById('btn-toggle-qr').style.display = 'inline-block';
         document.getElementById('btn-toggle-qr').innerText = qrActivo ? 'Desactivar QR' : 'Activar QR';
-
+  
         if (!qrActivo) {
           document.getElementById('qr-container').style.display = 'none';
         }
-
+  
         actualizarListaAlumnos();
       } catch (error) {
         console.error('Error al cargar evento o alumnos', error);
       }
     }
-
+  
     async function actualizarListaAlumnos() {
       const alumnosRes = await fetch(`/control_firmas/api/eventos/${evento_id}/alumnos`);
       const alumnos = await alumnosRes.json();
-
+  
       const lista = alumnos.map(a => `
         <div class="item-firma">
           <div class="firma-check">
@@ -102,7 +131,7 @@
           <div class="firma-nombre">${a.nombre} ${a.apellidos}</div>
         </div>
       `).join('');
-
+  
       document.getElementById('lista-alumnos').innerHTML = `
         <div class="firma-header">
           <div class="firma-check"><strong>Firma</strong></div>
@@ -110,18 +139,24 @@
         </div>
         ${lista}
       `;
+  
+      // === NUEVO: actualizar contador y respetar estado del toggle ===
+      const countEl = document.getElementById('alumnos-count');
+      if (countEl) countEl.textContent = `${alumnos.length} alumno(s)`;
+      applyToggleState();
+      // ==============================================================
     }
-
+  
     async function guardarAsistencias(e) {
       e.preventDefault();
       const mensaje = document.getElementById('mensaje');
       mensaje.innerText = '';
       mensaje.className = '';
-
+  
       const form = e.target;
       const alumnos = form.querySelectorAll('input[type=checkbox]');
       const registros = [];
-
+  
       alumnos.forEach(check => {
         registros.push({
           alumno_id: check.value,
@@ -130,13 +165,13 @@
           observaciones: ''
         });
       });
-
+  
       const res = await fetch('/control_firmas/api/firmar-alumnos', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ registros })
       });
-
+  
       const data = await res.json();
       if (data.success) {
         const observacionesGenerales = document.getElementById('observaciones_generales').value;
@@ -145,7 +180,7 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ observaciones: observacionesGenerales })
         });
-
+  
         mensaje.className = 'success';
         mensaje.innerText = 'Firmas actualizadas.';
       } else {
@@ -153,7 +188,7 @@
         mensaje.innerText = data.error || 'Error al guardar firmas.';
       }
     }
-
+  
     function formatearFecha(fechaISO) {
       const fecha = new Date(fechaISO);
       const dia = fecha.getDate().toString().padStart(2, '0');
@@ -163,18 +198,18 @@
       const minutos = fecha.getMinutes().toString().padStart(2, '0');
       return `${dia}/${mes}/${ano} ${horas}:${minutos}`;
     }
-
+  
     function mostrarQR() {
       const container = document.getElementById('qr-container');
       const boton = document.getElementById('btn-qr');
-
+  
       if (container.style.display === 'block') {
         container.style.display = 'none';
         boton.innerText = 'Mostrar QR';
       } else {
         container.innerHTML = '';
         const datosQR = { evento_id: evento_id, token: tokenQR };
-
+  
         QRCode.toCanvas(JSON.stringify(datosQR), { width: 200 }, function (err, canvas) {
           if (err) {
             container.innerText = 'Error generando QR';
@@ -182,12 +217,12 @@
             container.appendChild(canvas);
           }
         });
-
+  
         container.style.display = 'block';
         boton.innerText = 'Ocultar QR';
       }
     }
-
+  
     async function toggleQR() {
       const nuevoEstado = !qrActivo;
       const res = await fetch(`/control_firmas/api/eventos/${evento_id}/activar`, {
@@ -195,7 +230,7 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ activo: nuevoEstado })
       });
-
+  
       const data = await res.json();
       if (data.success) {
         qrActivo = nuevoEstado;
@@ -203,7 +238,7 @@
         document.getElementById('btn-qr').style.display = qrActivo ? 'inline-block' : 'none';
         document.getElementById('btn-toggle-qr').style.display = 'inline-block';
         document.getElementById('btn-toggle-qr').innerText = qrActivo ? 'Desactivar QR' : 'Activar QR';
-
+  
         if (!qrActivo) {
           document.getElementById('qr-container').style.display = 'none';
         }
@@ -211,51 +246,46 @@
         alert('Error al actualizar el estado del QR');
       }
     }
+  
     function formatearFechaDMY(fechaStr) {
-  // fechaStr = "YYYY-MM-DD"
-  const [y,m,d] = String(fechaStr).split('-');
-  return `${d}/${m}/${y}`;
-}
-function formatearHoraHM(horaStr) {
-  // horaStr = "HH:MM:SS" o "HH:MM"
-  if (!horaStr) return '';
-  const [h,min] = String(horaStr).split(':');
-  return `${h.padStart(2,'0')}:${min.padStart(2,'0')}`;
-}
-function normalizarFecha(val) {
-  if (!val) return '';
-  // Si llega como ISO (contiene 'T'), usar Date y locale ES
-  if (typeof val === 'string' && val.includes('T')) {
-    const d = new Date(val);
-    return d.toLocaleDateString('es-ES'); // dd/mm/aaaa según navegador
-  }
-  // Si llega "YYYY-MM-DD"
-  if (typeof val === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(val)) {
-    const [y, m, d] = val.split('-');
-    return `${d}/${m}/${y}`;
-  }
-  // Fallback por si llega Date u otro formato
-  const d = new Date(val);
-  return d.toLocaleDateString('es-ES');
-}
-
-function normalizarHora(val) {
-  if (!val) return '';
-  // ISO -> usar Date
-  if (typeof val === 'string' && val.includes('T')) {
-    const d = new Date(val);
-    return d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
-  }
-  // "HH:MM:SS" o "HH:MM"
-  if (typeof val === 'string') {
-    const [h = '00', m = '00'] = val.split(':');
-    return `${h.padStart(2, '0')}:${m.padStart(2, '0')}`;
-  }
-  // Fallback
-  const d = new Date(val);
-  return d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
-}
-
+      // fechaStr = "YYYY-MM-DD"
+      const [y,m,d] = String(fechaStr).split('-');
+      return `${d}/${m}/${y}`;
+    }
+    function formatearHoraHM(horaStr) {
+      // horaStr = "HH:MM:SS" o "HH:MM"
+      if (!horaStr) return '';
+      const [h,min] = String(horaStr).split(':');
+      return `${h.padStart(2,'0')}:${min.padStart(2,'0')}`;
+    }
+    function normalizarFecha(val) {
+      if (!val) return '';
+      if (typeof val === 'string' && val.includes('T')) {
+        const d = new Date(val);
+        return d.toLocaleDateString('es-ES');
+      }
+      if (typeof val === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(val)) {
+        const [y, m, d] = val.split('-');
+        return `${d}/${m}/${y}`;
+      }
+      const d = new Date(val);
+      return d.toLocaleDateString('es-ES');
+    }
+    function normalizarHora(val) {
+      if (!val) return '';
+      if (typeof val === 'string' && val.includes('T')) {
+        const d = new Date(val);
+        return d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+      }
+      if (typeof val === 'string') {
+        const [h = '00', m = '00'] = val.split(':');
+        return `${h.padStart(2, '0')}:${m.padStart(2, '0')}`;
+      }
+      const d = new Date(val);
+      return d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+    }
   </script>
+  
+ 
 </body>
 </html>

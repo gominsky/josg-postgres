@@ -73,7 +73,7 @@ const guardiasRoutes = require('./routes/guardias');
 const instrumentosRoutes = require('./routes/instrumentos');
 const tipos_cuotasRoutes = require('./routes/tipos_cuotas');
 const pagosRoutes = require('./routes/pagos');
-const control_firmasRoutes = require('./routes/control_firmas');
+const control_firmasRoutes = require('./routes/control_firmas','routes/josgmaestro');
 const configuracionRoutes = require('./routes/configuracion');
 const planoRoutes = require('./routes/plano');
 const contabilidadRoutes = require('./routes/contabilidad');
@@ -117,7 +117,7 @@ app.use('/espacios', isAuthenticated, espaciosRoutes);
 app.use(pdfRoutes);
 app.use('/partituras', isAuthenticated, partiturasRoutes);
 app.use('/plantillas', isAuthenticated, plantillasRoutes);
-app.use('/mensajes', isAdmin, isDocente, mensajesRoutes);
+app.use('/mensajes', mensajesRoutes);
 // Ruta de inicio
 app.get('/', (req, res) => {
   res.render('index', { title: 'Inicio - JOSG' });

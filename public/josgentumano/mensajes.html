@@ -21,25 +21,39 @@
     .card p{ margin:.25rem 0; }
     .meta{ font-size:.85rem; color:var(--muted); }
 
-    /* Enlaces corporativos */
-    .msg-body a,
-    .extra-list a{
-      color: var(--accent);
-      text-decoration: underline;
-      text-underline-offset: 2px;
-    }
+    /* Cuerpo: sin “linkify” para no meter <a> dentro del texto */
+    .msg-body{ white-space:pre-wrap; word-break:break-word; }
 
-    /* Anti-desbordamiento de URLs largas */
-    .msg-body, .msg-body p, .msg-body a,
-    .extra-list, .extra-list a{
-      overflow-wrap:anywhere;
-      word-break:break-word;
-      min-width:0;
+    /* Chips de enlaces (Enlace 1, 2...) */
+    .chips{
+      display:flex; justify-content:center; gap:.5rem; flex-wrap:wrap;
+      margin-top:.4rem;
     }
+    .chip{
+      display:inline-block;
+      padding:.38rem .7rem;
+      border:1px solid var(--border);
+      border-radius:999px;
+      background:#fff;
+      font-weight:700; font-size:.9rem;
+      color:var(--accent);
+      text-decoration:none;
+      white-space:nowrap;
+    }
+    .chip:active{ transform: translateY(1px); }
 
-    /* Lista de enlaces extra */
-    .extra-list{ list-style:none; margin:.35rem 0 0; padding:0; }
-    .extra-list li{ margin:.1rem 0; }
+    /* Botón “Marcar leído” sutil bajo la fecha */
+    .mark-wrap{ margin-top:.35rem; }
+    .btn-ghost{
+      padding:.4rem .6rem;
+      font-size:.85rem;
+      background:#fff;
+      border:1px solid var(--border);
+      border-radius:999px;
+      color:#374151;
+    }
+    .btn-ghost:hover{ background:#f9fafb; }
+    .btn-ghost:active{ transform: translateY(1px); }
 
     .more-wrap{ display:flex; justify-content:center; margin:14px 0 4px; }
     .btn{ padding:.55rem .8rem; border:1px solid #ddd; border-radius:10px; background:#fafafa; }
@@ -63,143 +77,158 @@
   </div>
 
   <script>
-  (function(){
-    const alumno_id = localStorage.getItem('alumno_id');
-    if (!alumno_id) { location.href = 'index.html'; return; }
-
-    const $list = document.getElementById('list');
-    const $empty = document.getElementById('empty');
-    const $moreWrap = document.getElementById('more-wrap');
-    const $btnMore = document.getElementById('btn-more');
-
-    let DATA = [];
-    let cursor = 0;
-    const PAGE = 10;
-
-    function fmtFecha(iso){
-      if (!iso) return '';
-      const d = new Date(iso);
-      const dd = String(d.getDate()).padStart(2,'0');
-      const mm = String(d.getMonth()+1).padStart(2,'0');
-      const aa = String(d.getFullYear()).slice(-2);
-      const hh = String(d.getHours()).padStart(2,'0');
-      const mi = String(d.getMinutes()).padStart(2,'0');
-      return `${dd}/${mm}/${aa} ${hh}:${mi}`;
-    }
-    function esc(s){
-      return String(s)
-        .replace(/&/g,"&amp;")
-        .replace(/</g,"&lt;")
-        .replace(/>/g,"&gt;")
-        .replace(/"/g,"&quot;")
+    (function(){
+      const alumno_id = localStorage.getItem('alumno_id');
+      if (!alumno_id) { location.href = 'index.html'; return; }
+    
+      const $list = document.getElementById('list');
+      const $empty = document.getElementById('empty');
+      const $moreWrap = document.getElementById('more-wrap');
+      const $btnMore = document.getElementById('btn-more');
+    
+      let DATA = [];
+      let cursor = 0;
+      const PAGE = 10;
+    
+      function fmtFecha(iso){
+        if (!iso) return '';
+        const d = new Date(iso);
+        const dd = String(d.getDate()).padStart(2,'0');
+        const mm = String(d.getMonth()+1).padStart(2,'0');
+        const aa = String(d.getFullYear()).slice(-2);
+        const hh = String(d.getHours()).padStart(2,'0');
+        const mi = String(d.getMinutes()).padStart(2,'0');
+        return `${dd}/${mm}/${aa} ${hh}:${mi}`;
+      }
+      const esc = s => String(s)
+        .replace(/&/g,"&amp;").replace(/</g,"&lt;")
+        .replace(/>/g,"&gt;").replace(/"/g,"&quot;")
         .replace(/'/g,"&#39;");
-    }
-    function ensureProto(u){
-      if (!u) return '';
-      const s = String(u).trim();
-      if (!s) return '';
-      if (/^[a-zA-Z][\w.+-]*:/.test(s) || s.startsWith('//') || s.startsWith('/')) return s;
-      return 'https://' + s;
-    }
-    // Linkify del cuerpo (soporta múltiples enlaces)
-    function linkify(text){
-      const URL_RE = /(https?:\/\/[^\s<>"']+|www\.[^\s<>"']+)/gi;
-      let out = '', last = 0, m;
-      while ((m = URL_RE.exec(text)) !== null) {
-        const raw = m[0];
-        out += esc(text.slice(last, m.index));
-        let url = raw.replace(/[).,;:!?]+$/,''); // recorta puntuación final
-        const trailing = raw.slice(url.length);
-        const href = ensureProto(url);
-        out += `<a href="${href}" target="_blank" rel="noopener">${esc(url)}</a>${esc(trailing)}`;
-        last = URL_RE.lastIndex;
+    
+      // ---- Normalizador robusto de URLs ----
+      function safeHref(u){
+        if (!u) return '';
+        let s = String(u).trim();
+    
+        // Arregla casos “http//” o “https//” (sin ‘:’)
+        s = s.replace(/^https?\/\//i, m => m.includes('://') ? m : m.replace('//', '://'));
+    
+        // Si ya tiene esquema (xxx:...), devolver tal cual
+        if (/^[a-zA-Z][\w.+-]*:/.test(s)) return s;
+    
+        // Si empieza por // o /, aceptar (protocolo del sitio)
+        if (s.startsWith('//') || s.startsWith('/')) return s;
+    
+        // Si viene “www.” o dominio suelto, anteponer https://
+        return 'https://' + s;
       }
-      out += esc(text.slice(last));
-      return out.replace(/\n/g,'<br>');
-    }
-    // Extrae enlaces de m.urls (array/JSON string) o, si no hay, de m.url (separado por comas/espacios/;|)
-    function extraLinksFromMsg(m){
-      const out = [];
-      const seen = new Set();
-
-      let arr = null;
-      if (Array.isArray(m.urls)) {
-        arr = m.urls;
-      } else if (typeof m.urls === 'string' && m.urls.trim() !== '') {
-        try { arr = JSON.parse(m.urls); } catch { arr = null; }
-      }
-      if (Array.isArray(arr)) {
-        for (let raw of arr) {
-          if (!raw) continue;
-          raw = String(raw).trim().replace(/[).,;:!?]+$/,'');
-          const href = ensureProto(raw);
+    
+      // Lee m.urls (array o string JSON) o cae a m.url plano separado por espacios/comas/; o |
+      function extraLinksFromMsg(m){
+        const out = [];
+        const seen = new Set();
+    
+        let arr = null;
+        if (Array.isArray(m.urls)) arr = m.urls;
+        else if (typeof m.urls === 'string' && m.urls.trim() !== '') {
+          try { arr = JSON.parse(m.urls); } catch { arr = null; }
+        }
+    
+        function pushRaw(raw){
+          if (!raw) return;
+          raw = String(raw).trim().replace(/[).,;:!?]+$/,''); // quita puntuación colgante
+          const href = safeHref(raw);
           const key = href.toLowerCase();
-          if (!seen.has(key)) { seen.add(key); out.push({ href, label: raw }); }
+          if (!seen.has(key)) { seen.add(key); out.push(href); }
+        }
+    
+        if (Array.isArray(arr)) {
+          for (const raw of arr) pushRaw(raw);
+        }
+        if (!out.length && m.url) {
+          for (const part of String(m.url).split(/[\s,;|]+/)) pushRaw(part);
+        }
+        return out.slice(0, 10);
+      }
+    
+      // Chips “Enlace 1/2/3…”, sin <a> en el cuerpo para que no tape el botón de leído
+      function tpl(m){
+        const chips = extraLinksFromMsg(m).map((href, i) =>
+          `<a class="chip" href="${href}" target="_blank" rel="noopener">Enlace ${i+1}</a>`
+        ).join('');
+    
+        return `
+          <article class="card" data-id="${m.id}">
+            <h3>${esc(m.titulo || 'Aviso')}</h3>
+            <div class="msg-body">${esc(m.cuerpo || '')}</div>
+            ${chips ? `<div class="chips">${chips}</div>` : ''}
+            <p class="meta">${fmtFecha(m.created_at)}${m.leido_at ? ' · leído' : ''}</p>
+            ${m.leido_at ? '' : `<div class="mark-wrap"><button class="btn-ghost" data-mark="${m.id}">Marcar como leído</button></div>`}
+          </article>
+        `;
+      }
+    
+      function renderNext(){
+        const next = DATA.slice(cursor, cursor + PAGE);
+        if (!next.length && cursor === 0){
+          $empty.style.display = 'block';
+          $moreWrap.style.display = 'none';
+          return;
+        }
+        $empty.style.display = 'none';
+        $list.insertAdjacentHTML('beforeend', next.map(tpl).join(''));
+        cursor += next.length;
+        $moreWrap.style.display = (cursor < DATA.length) ? 'flex' : 'none';
+      }
+    
+      async function cargar(){
+        try{
+          // Forzar no-caché + “desde_id=0” explícito
+          const url = `/mensajes/app/mensajes?alumno_id=${encodeURIComponent(alumno_id)}&desde_id=0&_ts=${Date.now()}`;
+          const r = await fetch(url, { cache: 'no-store' });
+          const j = await r.json();
+          if (!r.ok || !Array.isArray(j)) throw new Error('No se pudieron cargar los mensajes');
+          DATA = j;
+          cursor = 0;
+          $list.innerHTML = '';
+          renderNext();
+        }catch(e){
+          console.error(e);
+          $empty.textContent = 'No se pudieron cargar los mensajes.';
+          $empty.style.display = 'block';
         }
       }
-      if (!out.length && m.url) {
-        const parts = String(m.url).split(/[\s,;|]+/).map(s => s.trim()).filter(Boolean);
-        for (let raw of parts) {
-          raw = raw.replace(/[).,;:!?]+$/,'');
-          const href = ensureProto(raw);
-          const key = href.toLowerCase();
-          if (!seen.has(key)) { seen.add(key); out.push({ href, label: raw }); }
-        }
-      }
-      return out;
-    }
-
-    function tpl(m){
-      const cuerpoHTML = `<div class="msg-body">${linkify(m.cuerpo || '')}</div>`;
-      const extras = extraLinksFromMsg(m);
-      const extrasHTML = extras.length
-        ? `<ul class="extra-list">` +
-            extras.map(x => `<li><a href="${x.href}" target="_blank" rel="noopener" title="${esc(x.label)}">${esc(x.label)}</a></li>`).join('') +
-          `</ul>`
-        : '';
-      return `
-        <article class="card" data-id="${m.id}">
-          <h3>${esc(m.titulo || 'Aviso')}</h3>
-          ${cuerpoHTML}
-          ${extrasHTML}
-          <p class="meta">${fmtFecha(m.created_at)}${m.leido_at ? ' · leído' : ''}</p>
-        </article>
-      `;
-    }
-
-    function renderNext(){
-      const next = DATA.slice(cursor, cursor + PAGE);
-      if (!next.length && cursor === 0){
-        $empty.style.display = 'block';
-        $moreWrap.style.display = 'none';
-        return;
-      }
-      $empty.style.display = 'none';
-      $list.insertAdjacentHTML('beforeend', next.map(tpl).join(''));
-      cursor += next.length;
-      $moreWrap.style.display = (cursor < DATA.length) ? 'flex' : 'none';
-    }
-
-    async function cargar(){
-      try{
-        const r = await fetch(`/mensajes/app/mensajes?alumno_id=${encodeURIComponent(alumno_id)}`);
-        const j = await r.json();
-        if (!r.ok || !Array.isArray(j)) throw new Error('No se pudieron cargar los mensajes');
-        DATA = j;
-        cursor = 0;
-        $list.innerHTML = '';
-        renderNext();
-      }catch(e){
-        console.error('[mensajes] fallo cargando', e);
-        $empty.textContent = 'No se pudieron cargar los mensajes.';
-        $empty.style.display = 'block';
-        $moreWrap.style.display = 'none';
-      }
-    }
-
-    $btnMore.addEventListener('click', renderNext);
-    cargar();
-  })();
-  </script>
+    
+      // Delegación: marcar como leído
+      $list.addEventListener('click', async (ev)=>{
+        const btn = ev.target.closest('button[data-mark]');
+        if (!btn) return;
+        const id = Number(btn.getAttribute('data-mark'));
+        try{
+          const r = await fetch(`/mensajes/app/mensajes/${id}/leer`, {
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({ alumno_id })
+          });
+          if (!r.ok) throw new Error('No se pudo marcar como leído');
+          btn.remove();
+          const meta = btn.closest('.card').querySelector('.meta');
+          if (meta && !/· leído/.test(meta.textContent)) {
+            meta.textContent = meta.textContent + ' · leído';
+          }
+        }catch(e){ console.error(e); }
+      });
+    
+      $btnMore.addEventListener('click', renderNext);
+    
+      // Carga robusta al entrar / volver a la vista
+      document.addEventListener('DOMContentLoaded', cargar);
+      window.addEventListener('pageshow', cargar); // incluye bfcache
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') cargar();
+      });
+    })();
+    </script>
+    
 </body>
 </html>

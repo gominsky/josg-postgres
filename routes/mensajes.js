@@ -41,6 +41,35 @@ router.post('/', async (req, res) => {
   const gruposArr = toIntArray(req.body.grupos);
   const instrArr  = toIntArray(req.body.instrumentos);
 
+  // --- Resolver nombres de grupo -> IDs (antes de abrir transacción) ---
+  const nombresUnicos = [];
+  if (req.body?.grupo_nombre) nombresUnicos.push(String(req.body.grupo_nombre).trim());
+  if (Array.isArray(req.body?.grupos_nombres)) {
+    for (const n of req.body.grupos_nombres) {
+      const s = String(n || '').trim();
+      if (s) nombresUnicos.push(s);
+    }
+  }
+  const gruposNombres = [...new Set(nombresUnicos)]; // sin duplicados
+
+  // Si han llegado nombres y NO han llegado IDs, resolver a IDs usando db.query (pool)
+  if (!broadcast && gruposArr.length === 0 && gruposNombres.length > 0) {
+    try {
+      const rs = await db.query(
+        'SELECT id FROM grupos WHERE nombre = ANY($1::text[])',
+        [gruposNombres]
+      );
+      const ids = rs.rows.map(r => Number(r.id)).filter(Number.isInteger);
+      if (ids.length) {
+        gruposArr.push(...ids); // NOTA: gruposArr es const, pero se pueden mutar sus elementos
+      }
+    } catch (e) {
+      console.error('Error resolviendo grupos por nombre:', e.message);
+      // No rompemos: si no resolvemos, seguirá sin IDs y tu lógica de alcance actuará en consecuencia.
+    }
+  }
+  // --- fin resolución por nombres ---
+
   if (!titulo || !cuerpo) {
     return res.status(400).json({ error: 'Faltan título o mensaje.' });
   }
@@ -207,7 +236,6 @@ router.post('/push/subscribe', async (req, res) => {
     res.status(500).json({ error: 'No se pudo guardar la suscripción' });
   }
 });
-
 /* ------------------------- bandeja (app) -------------------------- */
 /** GET /mensajes/app/mensajes?alumno_id=123&desde_id=0 */
 router.get('/app/mensajes', async (req, res) => {
@@ -236,8 +264,6 @@ router.get('/app/mensajes', async (req, res) => {
     res.status(500).json({ error: 'No se pudo obtener mensajes' });
   }
 });
-
-
 /* ---------------------- marcar como leído (app) ------------------- */
 /** POST /mensajes/app/mensajes/:id/leer  body: { alumno_id } */
 router.post('/app/mensajes/:id/leer', async (req, res) => {
@@ -303,31 +329,7 @@ router.delete('/:id', async (req, res) => {
     client.release();
   }
 });
-/* ---------------------- últimos (admin web) ----------------------- */
-/** GET /mensajes/ultimos?limit=5&before=ID */
-router.get('/ultimos', async (req, res) => {
-  const limit = Math.min(parseInt(req.query.limit, 10) || 5, 50);
-  const before = parseInt(req.query.before, 10) || null;
 
-  try {
-    const params = [limit];
-    let sql = `
-      SELECT id, titulo, cuerpo, url, urls, created_at
-      FROM mensajes
-    `;
-    if (before) {
-      sql += ` WHERE id < $2 `;
-      params.push(before);
-    }
-    sql += ` ORDER BY id DESC LIMIT $1`;
 
-    const { rows } = await db.query(sql, params);
-    res.set('Cache-Control', 'no-store');
-    res.json(rows);
-  } catch (e) {
-    console.error('❌ Listando últimos mensajes', e);
-    res.status(500).json({ error: 'No se pudo obtener la lista de mensajes' });
-  }
-});
 
 module.exports = router;

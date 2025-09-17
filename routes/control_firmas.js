@@ -226,4 +226,17 @@ router.get('/api/eventos/:id/asistencias', async (req, res) => {
     res.status(500).json({ error: 'Error al obtener asistencias' });
   }
 });
+// Lista de grupos para mensajes
+// Nueva ruta: devuelve solo los nombres de los grupos
+router.get('/api/grupos', async (req, res) => {
+  try {
+    const result = await db.query('SELECT nombre FROM grupos ORDER BY nombre ASC');
+    const nombres = result.rows.map(r => r.nombre);
+    res.json(nombres); // Ejemplo: ["Cuerdas", "Metales", "Percusión"]
+  } catch (err) {
+    console.error('❌ Error en /api/grupos:', err.message);
+    res.status(500).json({ error: 'Error al obtener grupos' });
+  }
+});
+
 module.exports = router;

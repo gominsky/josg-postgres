@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>JOSG Maestro - Mensaje</title>
+  <link rel="stylesheet" href="../styles/estilos_app.css" />
+  <style>
+    .form-vertical { display:flex; flex-direction:column; gap:12px; }
+    .panel-blanco{
+      background:#fff; border:1px solid rgba(0,0,0,.08);
+      border-radius:16px; padding:16px 18px;
+    }
+    input.form-control, textarea.form-control { width:100%; box-sizing:border-box; }
+    textarea#cuerpo{ min-height:20vh; font-size:1rem; line-height:1.45; padding:.8rem 1rem; }
+
+    .chips{ display:flex; gap:.5rem; flex-wrap:wrap; }
+    .chip{
+      padding:.5rem .8rem; border:1px solid #e6e6e6; border-radius:999px;
+      background:#fafafa; cursor:pointer; user-select:none;
+    }
+    .chip.active{ background:#ffd893; border-color:#ffb84d; }
+
+    .help{ font-size:.9rem; color:#6c757d; }
+    .actions{ display:flex; gap:.6rem; flex-wrap:wrap; margin-top:10px; }
+
+    .toast-fixed{
+      position:fixed; top:16px; right:16px; z-index:2000; min-width:240px;
+      background:#ecfdf5; border:1px solid #a7f3d0; color:#065f46;
+      border-radius:12px; box-shadow:0 10px 25px rgba(0,0,0,.12);
+      padding:.65rem .8rem; display:none; font-size:.95rem;
+    }
+    .toast-fixed.error{ background:#fef2f2; border-color:#fecaca; color:#7f1d1d; }
+    .toast-fixed.show{ display:block; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>JOSG Maestro</h2>
+    <div id="toast" class="toast-fixed" role="status" aria-live="polite"></div>
+
+    <form id="msg-form" class="form-vertical panel-blanco" autocomplete="off">
+      
+
+      <label for="titulo"><strong>Título</strong></label>
+      <input id="titulo" class="form-control" maxlength="80" placeholder="p. ej., Recordatorio de ensayo" />
+
+      <label for="cuerpo"><strong>Mensaje</strong></label>
+      <textarea id="cuerpo" class="form-control" maxlength="2000" placeholder="Escribe el mensaje…" required></textarea>
+
+      <label for="url"><strong>Enlace (opcional)</strong></label>
+      <input id="url" class="form-control" placeholder="https://…" />
+      <div class="help">Se mostrará como botón “Abrir”.</div>
+      <div>
+        <p><strong>Destinatarios</strong></p>
+        <div class="chips" id="chips">
+          <span class="chip active" data-scope="todos">Todos</span>
+          <span class="chip" data-scope="JOSG">JOSG</span>
+          <span class="chip" data-scope="OEG">OEG</span>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button type="submit">Enviar</button>
+        <button type="button" class="button-negro" onclick="history.back()">Cancelar</button>
+      </div>
+    </form>
+  </div>
+
+  <script>
+    const $ = s => document.querySelector(s);
+    const $$ = s => Array.from(document.querySelectorAll(s));
+
+    // misma práctica que el resto de vistas
+    const usuario_id = localStorage.getItem('usuario_id');
+    if (!usuario_id) location.href = 'index.html';
+
+    const state = { scope: 'todos' }; // 'todos' | 'JOSG' | 'OEG'
+
+    function toast(msg, ok=true){
+      const t = $('#toast');
+      t.textContent = msg;
+      t.className = 'toast-fixed show' + (ok ? '' : ' error');
+      clearTimeout(toast._t); toast._t = setTimeout(()=> t.classList.remove('show'), 3000);
+    }
+    const ensureProto = u => /^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//.test(u) ? u : 'https://' + u;
+
+    // Chips
+    $$('#chips .chip').forEach(ch => ch.addEventListener('click', ()=>{
+      $$('#chips .chip').forEach(c => c.classList.remove('active'));
+      ch.classList.add('active');
+      state.scope = ch.getAttribute('data-scope'); // 'todos' | 'JOSG' | 'OEG'
+    }));
+
+    // Envío
+    $('#msg-form').addEventListener('submit', async ev=>{
+      ev.preventDefault();
+      const titulo = $('#titulo').value.trim();
+      const cuerpo = $('#cuerpo').value.trim();
+      const url = $('#url').value.trim();
+
+      if (!cuerpo){ toast('Escribe el mensaje', false); return; }
+
+      const isTodos = state.scope === 'todos';
+      const grupoNombre = isTodos ? null : state.scope;
+
+      // Payload compatible con tu backend: soporte por nombres + compat por IDs vacíos
+      const body = {
+        titulo: titulo || null,
+        cuerpo,
+        url: url ? ensureProto(url) : null,
+        broadcast: isTodos,
+        grupo_nombre: grupoNombre,     // nombre simple
+        grupos_nombres: grupoNombre ? [grupoNombre] : [], // array por si lo esperas así
+        grupos: []                     // compat (IDs) → vacío
+      };
+
+      const btn=ev.submitter; const old=btn.textContent; btn.disabled=true; btn.textContent='Enviando…';
+      try{
+        const r = await fetch('/mensajes', {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify(body)
+        });
+        const j = await r.json();
+        if (!r.ok || !j.success) throw new Error(j.error || 'No se pudo enviar');
+
+        toast(`✅ Enviado${j.enviados ? ' a ' + j.enviados + ' alumno(s)' : ''}.`);
+        $('#titulo').value=''; $('#cuerpo').value=''; $('#url').value='';
+        // volver a "Todos"
+        state.scope='todos';
+        $$('#chips .chip').forEach(c => c.classList.remove('active'));
+        $$('#chips .chip')[0].classList.add('active');
+      }catch(e){
+        console.error(e);
+        toast('❌ ' + e.message, false);
+      }finally{
+        btn.disabled=false; btn.textContent=old;
+      }
+    });
+  </script>
+</body>
+</html>
+

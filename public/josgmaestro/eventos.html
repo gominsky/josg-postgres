@@ -3,18 +3,35 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Eventos</title>
+  <title>JOSG Maestro - Eventos</title>
   <link rel="stylesheet" href="../styles/estilos_app.css" />
+
+  <!-- ✅ Añade el CSS de FullCalendar -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/main.min.css" />
+
+  <!-- JS de FullCalendar -->
   <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/locales-all.global.min.js"></script>
+
+  <!-- ✅ Estilo compacto para que no se solapen título y botones -->
+  <style>
+    .calendar-container{ min-height:60vh; }
+    /* Cabecera más compacta y botones pequeños (como agenda.html) */
+    .fc .fc-toolbar { flex-wrap: wrap; gap: 6px; }
+    .fc .fc-toolbar-title { font-size: 1rem; line-height: 1.2; }
+    .fc .fc-button { padding: .28rem .55rem; font-size: .9rem; border-radius: 8px; }
+    .fc .fc-today-button { padding: .24rem .5rem; font-size: .85rem; }
+    .fc .fc-button-group > .fc-button { padding: .24rem .5rem; }
+    .fc .fc-header-toolbar { margin-bottom: 8px; }
+  </style>
 </head>
 <body>
   <div class="container">
     <h2>Agenda de eventos</h2>
     <div id="calendar" class="calendar-container"></div>
-    <button onclick="logout()" class="button-negro">Cerrar sesión</button>
-  </div>
-
+    
+      <button onclick="location.href='mensajes_movil.html'" class="button-negro">✉️ Enviar mensaje</button>
+      <button onclick="logout()" class="button-negro">Cerrar sesión</button>
   <script>
     const usuario_id = localStorage.getItem('usuario_id');
     if (!usuario_id) location.href = 'index.html';
@@ -39,7 +56,15 @@
           month: 'Mes',
           list: 'Lista'
         },
-        events: `/control_firmas/api/eventos?usuario_id=${usuario_id}`,
+        firstDay: 1, 
+
+       eventSources: [{
+  url: `/control_firmas/api/eventos?usuario_id=${usuario_id}`, // o /control_firmas/api/eventos
+  failure: (error) => {
+    console.error('No se pudieron cargar eventos', error);
+    alert('No se pudieron cargar los eventos. Revisa la ruta de la API.');
+  }
+}],
         eventClick: function (info) {
           const id = info.event.id;
           location.href = `evento_detalle.html?id=${id}`;

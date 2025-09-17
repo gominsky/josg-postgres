@@ -3,180 +3,288 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Catálogo de partituras</title>
+  <title>Partituras</title>
   <link rel="stylesheet" href="../styles/estilos_app.css" />
   <style>
     :root{
-      --pcat-ink:#0f172a;
-      --pcat-border:#e5e7eb;
-      --pcat-accentA:#ea6b38;  /* tangerine corporativo */
-      --pcat-accentB:#f59e0b;  /* naranja corporativo */
-      --pcat-chip-bg:#ffffff;
-      --pcat-chip-fg:#0f172a;
-      --pcat-chip-bd:#ffffff;
+      --ink:#0f172a;
+      --muted:#6b7280;
+      --accentA:#ea6b38;   /* corporativo 1 */
+      --accentB:#f59e0b;   /* corporativo 2 */
+      --chip-bg:#ffffff;
+      --chip-brd:#ffffff;
     }
 
-    body{ color:var(--pcat-ink); background:#fff; }
+    body{ color:var(--ink); background:#fff; }
 
-    /* Topbar con logo (como index) */
-    .pcat-topbar{ display:flex; align-items:center; justify-content:space-between; margin:6px 0 2px; }
-    .pcat-topbar img{ height:46px; }
-    .pcat-topbar .pcat-spacer{ width:36px; height:36px; }
+    /* Topbar con logo */
+    .topbar{ display:flex; align-items:center; justify-content:space-between; margin:6px 0 2px; }
+    .topbar img{ height:46px; }
+    .topbar .spacer{ width:36px; height:36px; }
 
-    .pcat-head{ text-align:center; margin:8px 0 6px; }
-    .pcat-head h2{
+    .head{ text-align:center; margin:8px 0 6px; }
+    .head h2{
       margin:0; font-weight:600; letter-spacing:.3px;
       font-size: clamp(22px, 5.2vw, 32px); color:#0f172a;
     }
 
     /* Buscador centrado */
-    .pcat-search{
+    .search{
       display:flex; gap:.6rem; flex-wrap:wrap; justify-content:center;
       margin: 6px 4px 14px;
     }
-    .pcat-input{
+    .input{
       flex:1 1 260px; max-width:520px;
-      padding:.6rem .75rem; border:1px solid var(--pcat-border); border-radius:12px;
+      padding:.6rem .75rem; border:1px solid #e5e7eb; border-radius:12px;
       outline:0; background:#fff; color:#111827;
-      transition: box-shadow .12s ease, border-color .12s ease;
     }
-    .pcat-input:focus{ border-color:#94a3b8; box-shadow:0 0 0 3px rgba(148,163,184,.25); }
-    .pcat-search button{
+    .search button{
       padding:.6rem .95rem; border:1px solid #d1d5db; border-radius:12px; background:#fff; color:#111;
       font-weight:700; letter-spacing:.02em;
     }
-    .pcat-search button:hover{ background:#f9fafb; }
 
     /* Carrusel horizontal */
-    .pcat-track{
+    .row-scroll{
       display:flex; gap:12px; overflow-x:auto; padding: 4px 2px 12px; scrollbar-width:thin;
       scroll-snap-type:x proximity;
     }
 
-    /* ===== Tarjeta a TODO color, 3 FILAS (autor, título, enlaces+duración) ===== */
-    .pcat-card{
+    /* ===== Tarjeta de color completa ===== */
+    .card{
       scroll-snap-align:start;
-      flex: 0 0 360px; border-radius:16px;
+      flex: 0 0 360px;
+      border-radius:16px;
+      color:#fff;
       box-shadow: 0 6px 18px rgba(0,0,0,.12);
-      display:flex; padding:14px; color:#fff; min-height: 138px;
+      padding:14px;
+      display:flex; flex-direction:column; gap:8px;
+      min-height: 148px;
     }
-    .pcat-track .pcat-card:nth-child(odd){  background: var(--pcat-accentA); }
-    .pcat-track .pcat-card:nth-child(even){ background: var(--pcat-accentB); }
+    .card-a{ background: var(--accentA); }
+    .card-b{ background: var(--accentB); }
 
-    .pcat-stack{ display:flex; flex-direction:column; gap:8px; width:100%; }
-
-    /* Fila 1: Autor (grande) */
-    .pcat-author{
-      margin:0; font-weight:700; line-height:1.18; letter-spacing:.2px;
-      font-size:1.14rem; color:#fff; text-shadow: 0 1px 0 rgba(0,0,0,.06);
+    /* 1) Autor (arriba) */
+    .author{
+      margin:0;
+      font-weight:800;
+      letter-spacing:.2px;
+      font-size:1.1rem;
+      line-height:1.15;
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    }
-    /* Fila 2: Título (algo menor) */
-    .pcat-title{
-      margin:0; font-weight:600; line-height:1.25; letter-spacing:.12px;
-      font-size:1rem; color:#fff; opacity:.98;
-      display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
+      text-shadow: 0 1px 0 rgba(0,0,0,.06);
     }
 
-    /* Fila 3: enlaces + duración */
-    .pcat-footer{
-      display:flex; align-items:center; justify-content:space-between; gap:.6rem; flex-wrap:wrap;
+    /* 2) Título (debajo) */
+    .title{
+      margin:0;
+      font-weight:600;
+      font-size:1rem;
+      line-height:1.25;
+      opacity:.98;
+      display:-webkit-box; -webkit-box-orient:vertical; overflow:hidden;
     }
-    .pcat-chips{ display:flex; gap:.5rem; flex-wrap:wrap; }
-    .pcat-chip{
-      display:inline-block; text-decoration:none; font-weight:700; font-size:.93rem;
-      padding:.5rem .8rem; border-radius:999px;
-      background:var(--pcat-chip-bg); color:var(--pcat-chip-fg);
-      border:1px solid var(--pcat-chip-bd);
-      transition: transform .12s ease, box-shadow .12s ease, opacity .12s ease;
+    /* Ajuste de tamaños (override) */
+.author{
+  font-size: 1.28rem;     /* antes ~1.10rem */
+  line-height: 1.18;
+}
+.title{
+  font-size: 1.12rem;     /* antes ~1.00rem */
+  line-height: 1.26;
+}
+
+/* Un pelín más grande en pantallas a partir de 480px */
+@media (min-width: 480px){
+  .author{ font-size: 1.34rem; }
+  .title { font-size: 1.18rem; }
+}
+
+    /* 3) Duración (debajo del título) */
+    .dur{
+      margin:0;
+      color:#fff; opacity:.95; font-weight:700; font-size:.9rem;
       white-space: nowrap;
     }
-    .pcat-chip:hover{ transform: translateY(-1px); box-shadow:0 6px 18px rgba(0,0,0,.18); }
-    .pcat-chip:active{ opacity:.9; transform: translateY(0); }
 
-    .pcat-dur{
-      color:#fff; font-weight:700; font-size:.85rem; opacity:.95;
-      border:1px dashed rgba(255,255,255,.7); border-radius:999px; padding:.32rem .55rem;
+    /* 4) Chips centrados debajo */
+    .chips{
+      display:flex; justify-content:center; gap:.5rem; flex-wrap:wrap; margin-top:2px;
     }
+    .chip-link{
+      display:inline-block;
+      text-decoration:none;
+      font-weight:700;
+      font-size:.92rem;
+      padding:.48rem .8rem;
+      border-radius:999px;
+      background:var(--chip-bg);
+      color:#111;
+      border:1px solid var(--chip-brd);
+      transition: transform .12s ease, box-shadow .12s ease, opacity .12s ease;
+      white-space: nowrap;
+      max-width:100%; overflow-wrap:anywhere; word-break:break-word;
+    }
+    .card-a .chip-link{ color:#ad4319; } /* contraste sobre #ea6b38 */
+    .card-b .chip-link{ color:#7a4d00; } /* contraste sobre #f59e0b */
+    .chip-link:hover{ transform: translateY(-1px); box-shadow:0 6px 18px rgba(0,0,0,.18); }
+    .chip-link:active{ opacity:.9; transform: translateY(0); }
 
-    .pcat-back{ margin: 12px 4px 2px; text-align:center; }
+    .back{ margin: 12px 4px 2px; text-align:center; }
+    /* --- Motivos musicales aleatorios --- */
+.card{ position:relative; overflow:hidden; }
+.card > * { position:relative; z-index:1; }     /* el contenido por encima del motivo */
+
+/* Pentagrama muy sutil (variante de fondo) */
+.card.m-staff::before{
+  content:""; position:absolute; inset:0; pointer-events:none;
+  background:
+    repeating-linear-gradient(
+      180deg,
+      rgba(255,255,255,.22) 0 1px,
+      transparent 1px 8px
+    );
+  opacity:.18;
+  z-index:0;
+}
+
+/* Nota grande en esquina (variante de icono) */
+.card .motif{
+  position:absolute; right:-8px; bottom:-12px; pointer-events:none;
+  font-size: var(--sz, 84px); line-height:1; color:#fff;
+  opacity:.18; transform: rotate(var(--rot, -10deg));
+  filter: blur(.2px);
+  z-index:0;
+}
+/* Ajustes finos por color de tarjeta */
+.card-b .motif{ opacity:.2; }
+
   </style>
 </head>
-<body data-page="partituras">
+<body>
   <div class="container">
-    <div class="pcat-topbar">
+    <div class="topbar">
       <img src="/../imagenes/logoJOSG.png" alt="Logo JOSG">
-      <div class="pcat-spacer" aria-hidden="true"></div>
+      <div class="spacer" aria-hidden="true"></div>
     </div>
 
-    <div class="pcat-head">
-      <h2>Catálogo de partituras</h2>
+    <div class="head">
+      <h2>Partituras</h2>
     </div>
 
-    <div class="pcat-search">
-      <input id="q" class="pcat-input" placeholder="Buscar por título o autor…">
-      <button onclick="filtrar()">Buscar</button>
+    <div class="search">
+      <input id="q" class="input" placeholder="Buscar por título o autor…">
+      <button id="btn-buscar">Buscar</button>
     </div>
 
-    <div id="list" class="pcat-track"></div>
+    <div id="list" class="row-scroll"></div>
 
-    <div class="pcat-back">
+    <div class="back">
       <button onclick="location.href='index.html'">&larr; Inicio</button>
     </div>
   </div>
 
-  <!-- 1) PLANTILLA: definir window.render ANTES de app_alumno.js -->
   <script>
-  (function(){
-    const mount = document.getElementById('list');
-    if (!mount) return;
+    // API (ajusta si cambiaste la ruta del backend)
+    const API_BASE = '/firmas';
 
-    function safe(u){
-      try { if (typeof ensureProto === 'function') return ensureProto(u); } catch(_){}
+    // Utilidades
+    function ensureProto(u){
       if (!u) return '';
       const s = String(u).trim();
       if (!s) return '';
-      if (/^[a-zA-Z][\\w.+-]*:/.test(s) || s.startsWith('//') || s.startsWith('/')) return s;
+      if (/^[a-zA-Z][\w.+-]*:/.test(s) || s.startsWith('//') || s.startsWith('/')) return s;
       return 'https://' + s;
     }
+    function safeUrl(u){ try { return ensureProto(u); } catch { return ''; } }
 
-    // PLANTILLA: 1) Autor, 2) Título, 3) Chips (Vídeo / Audio / Partitura) + duración
-    window.render = function(list){
-      if (!Array.isArray(list) || !list.length){
-        mount.innerHTML = '<p style="margin:6px; color:#6b7280;">No hay partituras para tus grupos.</p>';
+    const alumno_id = localStorage.getItem('alumno_id');
+    if (!alumno_id) { location.href = 'index.html'; }
+
+    const $list = document.getElementById('list');
+    const $q = document.getElementById('q');
+    const $btnBuscar = document.getElementById('btn-buscar');
+
+    let ALL = [];
+
+
+  // --- Helpers de “azar” para los motivos ---
+  function randomSymbol(){
+    const syms = ['♩','♪','♫','♬'];
+    return syms[Math.floor(Math.random()*syms.length)];
+  }
+  function randomRot(){           // -12º .. +12º
+    return (Math.floor(Math.random()*25) - 12) + 'deg';
+  }
+  function randomSize(){          // 78px .. 96px
+    return (78 + Math.floor(Math.random()*19)) + 'px';
+  }
+  function randomMotifClass(){    // elige entre pentagrama o sin pentagrama
+    return Math.random() < 0.55 ? 'm-staff' : '';
+  }
+
+  function cardHTML(p, idx){
+    const autor  = (p.autor || '—').trim();
+    const titulo = (p.titulo || 'Sin título').trim();
+    const dur    = (p.duracion || '').toString().trim();
+
+    const linkPart  = p.enlace_partitura ? `<a class="chip-link" href="${safeUrl(p.enlace_partitura)}" target="_blank" rel="noopener">Partitura</a>` : '';
+    const linkAudio = p.enlace_audio     ? `<a class="chip-link" href="${safeUrl(p.enlace_audio)}" target="_blank" rel="noopener">Audio</a>` : '';
+    const linkVideo = p.enlace_video     ? `<a class="chip-link" href="${safeUrl(p.enlace_video)}" target="_blank" rel="noopener">Vídeo</a>` : '';
+
+    const colorCls  = (idx % 2 === 0) ? 'card-a' : 'card-b';
+    const motifCls  = randomMotifClass();
+    const motifSym  = randomSymbol();
+    const motifHTML = `<span class="motif" style="--rot:${randomRot()}; --sz:${randomSize()};">${motifSym}</span>`;
+
+    return `
+      <article class="card ${colorCls} ${motifCls}">
+        <h3 class="author">${autor}</h3>
+        <p class="title">${titulo}</p>
+        ${dur ? `<p class="dur">Duración: ${dur}</p>` : ''}
+        <div class="chips">${linkPart}${linkAudio}${linkVideo}</div>
+        ${motifHTML}
+      </article>
+    `;
+  }
+
+
+    function render(list){
+      if (!Array.isArray(list) || list.length === 0){
+        $list.innerHTML = `<p style="margin:6px; color:#6b7280;">No hay partituras para tus grupos.</p>`;
         return;
       }
-      mount.innerHTML = list.map(p => {
-        const autor  = (p.autor  || '—').trim();
-        const titulo = (p.titulo || 'Sin título').trim();
-        const dur    = (p.duracion || '').toString().trim();
-
-        const chipVid  = p.enlace_video     ? `<a class="pcat-chip" href="${safe(p.enlace_video)}" target="_blank" rel="noopener">Vídeo</a>` : '';
-        const chipAud  = p.enlace_audio     ? `<a class="pcat-chip" href="${safe(p.enlace_audio)}" target="_blank" rel="noopener">Audio</a>` : '';
-        const chipPart = p.enlace_partitura ? `<a class="pcat-chip" href="${safe(p.enlace_partitura)}" target="_blank" rel="noopener">Partitura</a>` : '';
-
-        return `
-          <article class="pcat-card">
-            <div class="pcat-stack">
-              <h3 class="pcat-author">${autor}</h3>
-              <p class="pcat-title">${titulo}</p>
-              <div class="pcat-footer">
-                <div class="pcat-chips">${chipVid}${chipAud}${chipPart}</div>
-                ${dur ? `<span class="pcat-dur">${dur}</span>` : ''}
-              </div>
-            </div>
-          </article>`;
-      }).join('');
-    };
-
-    // Si ya hay datos (cargados por app_alumno.js), repinta
-    if (Array.isArray(window.__PARTS)) {
-      window.render(window.__PARTS);
+      $list.innerHTML = list.map((p,i) => cardHTML(p,i)).join('');
     }
-  })();
-  </script>
 
-  <!-- 2) LÓGICA DE CARGA (después, para que use la plantilla nueva) -->
-  <script src="app_alumno.js"></script>
+    function filtrar(){
+      const q = ($q.value || '').toLowerCase();
+      const out = ALL.filter(p => {
+        const txt = `${p.titulo||''} ${p.autor||''}`.toLowerCase();
+        return txt.includes(q);
+      });
+      render(out);
+    }
+
+    async function cargar(){
+      try{
+        const r = await fetch(`${API_BASE}/api/alumno/${encodeURIComponent(alumno_id)}/partituras`);
+        const j = await r.json();
+        if (!r.ok || !Array.isArray(j)) throw new Error('Respuesta no válida');
+        ALL = j;
+        render(ALL);
+      }catch(e){
+        console.error('Error cargando partituras:', e);
+        $list.innerHTML = `<p style="margin:6px; color:#6b7280;">No se pudieron cargar las partituras.</p>`;
+      }
+    }
+
+    $btnBuscar.addEventListener('click', filtrar);
+    $q.addEventListener('keydown', (ev)=>{ if (ev.key === 'Enter') filtrar(); });
+
+    cargar();
+  </script>
 </body>
 </html>
+
+
+
