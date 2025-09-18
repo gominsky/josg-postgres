@@ -1,7 +1,7 @@
 <% title = 'Mensajes' %>
 <% hero = false %>
 
-<!-- Header compacto al estilo alumnos_lista -->
+<!-- Header compacto -->
 <div class="header-compact">
   <h1 class="h1-titulo">Mensajes</h1>
   <a href="/josgentumano/mensajes.html" class="btn-main-blanco">Ver bandeja móvil</a>
@@ -81,7 +81,7 @@
         </div>
       </div>
 
-      <!-- Solo instrumentos (varios) -->
+      <!-- Solo instrumentos -->
       <div id="blk-instrumento" style="display:none;">
         <label class="form-label" for="i-buscar">Elige instrumentos</label>
         <div class="group-search">
@@ -99,7 +99,7 @@
         </div>
       </div>
 
-      <!-- Grupo + Instrumento (ambos múltiples, intersección) -->
+      <!-- Grupo + Instrumento -->
       <div id="blk-grupo-instrumento" style="display:none;">
         <div class="row row-2">
           <div>
@@ -141,7 +141,7 @@
     </div>
   </form>
 
-  <!-- Previsualización -->
+  <!-- Previsualización y últimos -->
   <aside class="panel preview">
     <p class="section-title">Vista previa</p>
     <div class="mock-card" aria-live="polite">
@@ -150,21 +150,21 @@
       <div class="mock-url" id="pv-url" style="display:none;"></div>
       <ul id="pv-links" style="margin-top:.35rem; padding-left:1rem;"></ul>
     </div>
-    <div>
-      <p class="section-title" style="margin-top:14px;">Últimos mensajes</p>
+
+    <p class="section-title" style="margin-top:14px;">Últimos mensajes</p>
     <div id="ultimos-wrap" class="panel" style="padding:12px;">
       <div id="ultimos-list" style="display:grid; gap:10px;"></div>
       <div id="ultimos-empty" class="help" style="display:none;">No hay mensajes aún.</div>
-      <div style="margin-top:8px; display:flex; justify-content:center;">
-        <button id="btn-ver-mas" type="button" class="btn-main-blanco" style="display:none;">Ver más</button>
-      </div>
+      <div id="ultimos-pager" style="margin-top:10px; display:flex; flex-wrap:wrap; gap:6px; justify-content:center;"></div>
     </div>
-</aside>
+  </aside>
+</div>
 
-<!-- Footer compacto al estilo alumnos_lista -->
+<!-- Footer -->
 <div class="volver-bloque-izquierda">
   <a href="/" class="enlace-final">← Volver al inicio</a>
 </div>
+
 <style>
   :root{
     --accent-50:#fff6e8; --accent-100:#ffeed7; --accent-200:#ffe0b3; --accent-300:#ffd08a;
@@ -174,19 +174,14 @@
     --text-main:#212529; --muted:#6c757d; --border:rgba(0,0,0,.08);
     --shadow:0 1px 2px rgba(0,0,0,.04); --shadow-lg:0 10px 25px rgba(0,0,0,.12);
   }
-
   .grid-msg{ display:grid; gap:18px; grid-template-columns:1fr; margin-top:10px; }
   @media (min-width: 992px){ .grid-msg{ grid-template-columns:1.15fr .85fr; } }
-
   .panel{ background:#fff; border:1px solid var(--border); border-radius:16px; box-shadow:var(--shadow); padding:16px 18px; }
   .hdr{ display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:6px; }
-
-  .section-title{ font-weight:700; color:var(--text-main); margin: 16px 0 8px; font-size:1rem; }
+  .section-title{ font-weight:700; color:var(--text-main); margin:16px 0 8px; font-size:1rem; }
   .help{ font-size:.9rem; color:var(--muted); margin-top:6px; }
-
   .row{ display:grid; gap:12px; grid-template-columns:1fr; }
   @media (min-width:768px){ .row-2{ grid-template-columns:1fr 1fr; } }
-
   .form-label{ font-weight:600; color:var(--text-main); margin:12px 0 6px; }
   .form-control, .form-select, textarea{
     width:100%; border:1px solid var(--border); border-radius:12px; padding:.6rem .75rem; outline:0; background:#fff;
@@ -195,16 +190,10 @@
   .form-control:focus, .form-select:focus, textarea:focus{ border-color:var(--accent-300); box-shadow:0 0 0 3px var(--accent-50); }
   textarea{ min-height:140px; resize:vertical; }
   .counter{ font-size:.8rem; color:var(--muted); margin-top:4px; }
-
-  /* Chips modo */
   .chips{ display:flex; gap:.5rem; flex-wrap:wrap; margin: 8px 0 10px; }
-  .chip{
-    background:var(--accent-100); color:#5b2b00; border:1px solid var(--accent-200);
-    border-radius:999px; padding:.35rem .7rem; font-size:.9rem; cursor:pointer; user-select:none;
-  }
+  .chip{ background:var(--accent-100); color:#5b2b00; border:1px solid var(--accent-200);
+    border-radius:999px; padding:.35rem .7rem; font-size:.9rem; cursor:pointer; user-select:none; }
   .chip.active{ background:var(--accent-400); border-color:var(--accent-500); }
-
-  /* Listas de selección (grupos/instrumentos) */
   #blk-grupos{ margin-top:10px; }
   .group-search{ display:flex; gap:.5rem; align-items:center; margin-bottom:6px; }
   .groups-list{
@@ -213,38 +202,25 @@
   }
   .groups-list label{ display:flex; align-items:center; gap:.45rem; padding:.25rem .35rem; border-radius:8px; cursor:pointer; }
   .groups-list label:hover{ background:#fafafa; }
-  .groups-list label span{ color: var(--text-main); }
   .groups-list input.g-check:checked + span,
   .groups-list input.g2-check:checked + span,
   .groups-list input.i-check:checked + span,
   .groups-list input.i2-check:checked + span{ font-weight:700; }
-
-  /* Instrumento */
   #blk-instrumento, #blk-grupo-instrumento{ margin-top:10px; }
-
-  /* Previsualización */
   .preview{ position:sticky; top:16px; }
-  .mock-card{
-    display:flex; flex-direction:column; gap:.35rem; background:linear-gradient(180deg,#ffffff,#fdfcfa);
-    border:1px solid var(--border); border-radius:16px; padding:14px; box-shadow:var(--shadow);
-  }
+  .mock-card{ display:flex; flex-direction:column; gap:.35rem; background:linear-gradient(180deg,#ffffff,#fdfcfa);
+    border:1px solid var(--border); border-radius:16px; padding:14px; box-shadow:var(--shadow); }
   .mock-title{ font-weight:700; color:var(--text-main); font-size:1rem; }
   .mock-url{ font-size:.9rem; color:#0d6efd; word-break:break-all; }
-
-  /* Acciones */
   .actions{ display:flex; gap:.5rem; flex-wrap:wrap; margin-top:12px; align-items:center; }
-
-  /* Toast */
   .toast-fixed{
     position: fixed; top: 16px; right: 16px; z-index: 2000; min-width: 260px;
     background: var(--ok-50); border:1px solid var(--ok-200); color: var(--ok-600);
-    border-radius: 12px; box-shadow:var(--shadow-lg); padding: .65rem .8rem; display:none;
-    font-size:.95rem;
+    border-radius: 12px; box-shadow:var(--shadow-lg); padding:.65rem .8rem; display:none; font-size:.95rem;
   }
   .toast-fixed.error{ background: var(--err-50); border-color: var(--err-200); color: var(--err-700); }
   .toast-fixed.show{ display:block; animation: toastIn .18s ease-out; }
   @keyframes toastIn { from{ opacity:0; transform: translateY(-6px);} to{opacity:1; transform:none;} }
-
   .pill{ display:inline-block; font-weight:700; font-size:.78rem; padding:.18rem .5rem; border-radius:999px;
     background: var(--accent-100); border:1px solid var(--accent-300); color:#5b2b00; }
 
@@ -255,27 +231,50 @@
     border-radius:12px; padding:10px; background:#fff;
   }
   .last-msg h4{ margin:0; font-size:.9rem; line-height:1.2; color:var(--text-main); }
-  .last-msg p{
-  margin:0;
-  font-size:.86rem;
-  line-height:1.25;
-  color:#333;
-  font-weight:400; /* 👈 fuerza a peso normal */
-}
+  .last-msg p{ margin:0; font-size:.86rem; line-height:1.25; color:#333; font-weight:400; }
   .last-msg time{ font-size:.78rem; color:var(--muted); }
   .last-msg .actions{ display:flex; gap:.35rem; }
-
   .btn-linklike{
     background:transparent; border:1px solid var(--border); border-radius:10px; padding:.2rem .5rem;
     cursor:pointer; font-size:.82rem;
   }
-
-  /* Scope por si algo global sube tamaños */
   #ultimos-wrap .section-title { font-size:.95rem !important; }
   #ultimos-wrap .last-msg h4   { font-size:.88rem !important; }
   #ultimos-wrap .last-msg p    { font-size:.85rem !important; }
   #ultimos-wrap .last-msg time { font-size:.78rem !important; }
   #ultimos-wrap .btn-linklike  { font-size:.82rem !important; }
+
+  .pager-btn{
+    border:1px solid var(--border);
+    background:#fff;
+    padding:.25rem .6rem;
+    border-radius:8px;
+    cursor:pointer;
+    font-size:.85rem;
+  }
+  .pager-btn[disabled]{ opacity:.5; cursor:default; }
+  .pager-btn.active{
+    font-weight:700;
+    border-color: var(--accent-400);
+    box-shadow: 0 0 0 3px var(--accent-50);
+  }
+    /* Forzar color legible en los nombres de grupos e instrumentos */
+  .groups-list label,
+  #groups label span,
+  #groups2 label span,
+  #instruments label span,
+  #instruments2 label span {
+    color: var(--text-main) !important; /* #212529 por defecto */
+  }
+
+  /* Mantener solo el "negrita al seleccionar" como ya tenías */
+  .groups-list input.g-check:checked + span,
+  .groups-list input.g2-check:checked + span,
+  .groups-list input.i-check:checked + span,
+  .groups-list input.i2-check:checked + span{
+    font-weight:700;
+  }
+
 </style>
 
 <script>
@@ -288,14 +287,10 @@
   const cTitulo = $('#c-titulo'), cCuerpo = $('#c-cuerpo'), pvTitle = $('#pv-title'), pvBody = $('#pv-body'), pvUrl = $('#pv-url');
   const pillCount = $('#pill-count');
 
-  const blkGrupos = $('#blk-grupos');
-  const blkInst   = $('#blk-instrumento');
-  const blkGI     = $('#blk-grupo-instrumento');
-
+  const blkGrupos = $('#blk-grupos'), blkInst = $('#blk-instrumento'), blkGI = $('#blk-grupo-instrumento');
   const gBuscar = $('#g-buscar'), gTodos = $('#g-todos'), gNinguno = $('#g-ninguno');
   const iBuscar = $('#i-buscar'), iTodos = $('#i-todos'), iNinguno = $('#i-ninguno');
   const i2Buscar = $('#i2-buscar'), i2Todos = $('#i2-todos'), i2Ninguno = $('#i2-ninguno');
-
   const linksWrap = document.getElementById('links-wrap');
   const btnAddLink = document.getElementById('add-link');
 
@@ -331,15 +326,13 @@
       });
     }
   }
-  function ensureProto(u){
-    return /^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//.test(u) ? u : 'https://' + u;
-  }
+  function ensureProto(u){ return /^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//.test(u) ? u : 'https://' + u; }
   titulo.addEventListener('input', ()=>{ updateCounters(); updatePreview(); });
   cuerpo.addEventListener('input', ()=>{ updateCounters(); updatePreview(); });
   url.addEventListener('input', updatePreview);
   updateCounters(); updatePreview();
 
-  // Enlaces extra (máx 2 filas)
+  // Enlaces extra
   function addLinkRow(value=''){
     const row = document.createElement('div');
     row.style.display='flex'; row.style.gap='.5rem'; row.style.margin='6px 0';
@@ -396,7 +389,7 @@
   }
   $$('.g2-check').forEach(el => el.addEventListener('change', syncGroups2));
 
-  // Instrumentos (bloque “instrumento”)
+  // Instrumentos
   function syncInstruments(){
     state.instrumentosChecked.clear();
     $$('.i-check:checked').forEach(el => state.instrumentosChecked.add(parseInt(el.value)));
@@ -413,7 +406,7 @@
     });
   });
 
-  // Instrumentos (bloque “grupo + instrumento”)
+  // Instrumentos (G+I)
   function syncInstruments2(){
     state.instrumentosChecked2.clear();
     $$('.i2-check:checked').forEach(el => state.instrumentosChecked2.add(parseInt(el.value)));
@@ -430,20 +423,17 @@
     });
   });
 
-  // Contador destinatarios (texto estimado)
+  // Contador destinatarios
   function updateDestCount(){
     let txt = '— destinatarios';
     if (state.mode==='grupos') {
-      const g = state.groupsChecked.size;
-      txt = g ? `${g} grupo(s)` : '— destinatarios';
+      const g = state.groupsChecked.size; txt = g ? `${g} grupo(s)` : '— destinatarios';
     }
     if (state.mode==='instrumento') {
-      const i = state.instrumentosChecked.size;
-      txt = i ? `${i} instrumento(s)` : '— destinatarios';
+      const i = state.instrumentosChecked.size; txt = i ? `${i} instrumento(s)` : '— destinatarios';
     }
     if (state.mode==='grupo_instrumento') {
-      const g = state.groupsChecked2.size;
-      const i = state.instrumentosChecked2.size;
+      const g = state.groupsChecked2.size, i = state.instrumentosChecked2.size;
       txt = (g && i) ? `${g} grupo(s) + ${i} instrumento(s)` : '— destinatarios';
     }
     pillCount.textContent = txt;
@@ -467,29 +457,20 @@
       url: url.value.trim() || null,
       broadcast: state.mode === 'todos',
       grupos: [],
-      instrumentos: []
+      instrumentos: [],
+      links: Array.from(document.querySelectorAll('.link-input')).map(i => i.value.trim()).filter(Boolean)
     };
 
-    // enlaces extra
-    body.links = Array.from(document.querySelectorAll('.link-input'))
-      .map(i => i.value.trim())
-      .filter(Boolean);
-
-    if (!body.titulo || !body.cuerpo){
-      showToast('Completa título y mensaje', false);
-      return;
-    }
+    if (!body.titulo || !body.cuerpo){ showToast('Completa título y mensaje', false); return; }
 
     if (state.mode === 'grupos'){
       body.grupos = Array.from(state.groupsChecked.values());
       if (!body.grupos.length){ showToast('Selecciona al menos un grupo', false); return; }
     }
-
     if (state.mode === 'instrumento'){
       body.instrumentos = Array.from(state.instrumentosChecked.values());
       if (!body.instrumentos.length){ showToast('Elige al menos un instrumento', false); return; }
     }
-
     if (state.mode === 'grupo_instrumento'){
       body.instrumentos = Array.from(state.instrumentosChecked2.values());
       body.grupos = Array.from(state.groupsChecked2.values());
@@ -505,11 +486,12 @@
       if(!r.ok || !j.success) throw new Error(j.error || 'No se pudo enviar');
 
       showToast(`✅ Enviado (id ${j.mensaje_id}) a ${j.enviados} alumno(s).`, true);
-      cargarUltimos(); // refrescar el panel de últimos mensajes
-      // limpiar texto; mantener selección de alcance
-      cuerpo.value=''; url.value=''; titulo.value='';
-      // limpiar enlaces extra (pero dejamos el bloque para seguir añadiendo)
-      linksWrap.innerHTML = '';
+
+      // refrescar panel (página 1)
+      fetchPage(1);
+
+      // limpiar campos
+      cuerpo.value=''; url.value=''; titulo.value=''; linksWrap.innerHTML = '';
       updateCounters(); updatePreview();
     }catch(e){ showToast('❌ ' + (e.message || 'Error al enviar'), false); }
     finally{ btnEnviar.disabled=false; btnEnviar.textContent = old; }
@@ -527,90 +509,129 @@
 
 })();
 </script>
+
 <script>
-// === PANEL ÚLTIMOS MENSAJES (versión corregida) ===
-const ULT_LIMIT = 5;
+// ==== PANEL ÚLTIMOS: paginación tipo Google ====
+const PAGE_SIZE = 5;
+
+const ultList   = document.getElementById('ultimos-list');
+const ultEmpty  = document.getElementById('ultimos-empty');
+const pager     = document.getElementById('ultimos-pager');
+
+let currentPage = 1;
+let totalPages  = 1;
 let isLoadingUlt = false;
-let paintedIds = new Set();        // evita duplicados
-let cursorMinId = null;            // paginación hacia atrás por id
 
-const ultWrap  = document.getElementById('ultimos-wrap');
-const ultList  = document.getElementById('ultimos-list');
-const ultEmpty = document.getElementById('ultimos-empty');
-const btnVerMas = document.getElementById('btn-ver-mas');
-
-async function cargarUltimos({ append=false } = {}){
+async function fetchPage(page = 1){
   if (isLoadingUlt) return;
   isLoadingUlt = true;
-  if (btnVerMas) btnVerMas.disabled = true;
 
   try{
-    const params = new URLSearchParams({ limit: ULT_LIMIT });
-    if (append && cursorMinId) params.set('before', String(cursorMinId)); // backend: WHERE id < before
-
-    const r = await fetch('/mensajes/ultimos?' + params.toString(), { headers:{'Accept':'application/json'} });
+    const qs = new URLSearchParams({ page: String(page), limit: String(PAGE_SIZE), _t: Date.now() });
+    const r = await fetch('/mensajes/ultimos?' + qs.toString(), { headers:{ 'Accept':'application/json' } });
     const data = await r.json();
-    const items = Array.isArray(data) ? data : [];
-    renderUltimos(items, { append });
+
+    if (!r.ok || !data?.success) throw new Error(data?.error || 'No se pudo cargar');
+
+    currentPage = data.page;
+    totalPages  = data.pages;
+    renderList(data.items || []);
+    renderPager(currentPage, totalPages);
   }catch(e){
-    if (!append) { ultList.innerHTML=''; ultEmpty.style.display='block'; if (btnVerMas) btnVerMas.style.display='none'; }
+    console.error('ultimos error', e);
+    ultList.innerHTML = '';
+    ultEmpty.style.display = 'block';
+    if (pager) pager.innerHTML = '';
   }finally{
     isLoadingUlt = false;
-    if (btnVerMas) btnVerMas.disabled = false;
   }
 }
 
-function renderUltimos(items, { append } = { append:false }){
-  if (!append){
-    // primera carga: reset
-    ultList.innerHTML = '';
-    paintedIds.clear();
-    cursorMinId = null;
-  }
+function renderList(items){
+  ultList.innerHTML = '';
 
-  // filtra los que ya están para no duplicar aunque el backend los repita
-  const nuevos = items.filter(it => it && Number.isInteger(it.id) && !paintedIds.has(it.id));
-
-  if (!append && nuevos.length === 0){
+  if (!items.length){
     ultEmpty.style.display = 'block';
-    if (btnVerMas) btnVerMas.style.display = 'none';
     return;
   }
   ultEmpty.style.display = 'none';
 
-  for (const it of nuevos){
-    paintedIds.add(it.id);
-    if (cursorMinId === null || it.id < cursorMinId) cursorMinId = it.id;
-
+  for (const it of items){
+    const id = Number(it.id);
     const card = document.createElement('div');
     card.className = 'last-msg';
-    card.dataset.id = String(it.id);
+    card.dataset.id = String(id);
 
     const fecha = new Date(it.created_at);
+    const fechaTxt = isNaN(fecha.getTime()) ? '' : fecha.toLocaleString();
+
     card.innerHTML = `
       <div>
-        <h4 title="ID ${it.id}">${escapeHtml(it.titulo || '(sin título)')}</h4>
-        <p>${escapeHtml((it.cuerpo || '').slice(0,140))}${(it.cuerpo && it.cuerpo.length>140)?'…':''}</p>
-        <time>${fecha.toLocaleString()}</time>
+        <h4 title="ID ${id}">${escapeHtml(it.titulo || '(sin título)')}</h4>
+        <p style="font-weight:400;">${escapeHtml((it.cuerpo || '').slice(0,140))}${(it.cuerpo && it.cuerpo.length>140)?'…':''}</p>
+        <time>${fechaTxt}</time>
       </div>
       <div class="actions">
-        <button class="btn-linklike btn-del" type="button" data-del="${it.id}" title="Eliminar">Eliminar</button>
+        <button class="btn-linklike btn-del" type="button" data-del="${id}" title="Eliminar">Eliminar</button>
       </div>
     `;
     ultList.appendChild(card);
   }
 
-  // Mostrar "Ver más" solo si el backend devolvió un lote completo
-  if (btnVerMas) btnVerMas.style.display = (items.length === ULT_LIMIT) ? 'inline-block' : 'none';
-
-  // Bind eliminar (ver punto 3)
-  ultList.querySelectorAll('.btn-del').forEach(wireDeleteOnce);
+  // Bind eliminar
+  ultList.querySelectorAll('.btn-del').forEach(btn=>{
+    if (!btn._wired) { btn._wired = true; btn.addEventListener('click', onDeleteClick); }
+  });
 }
 
-function wireDeleteOnce(btn){
-  if (btn._wired) return;
-  btn._wired = true;
-  btn.addEventListener('click', onDeleteClick);
+function renderPager(page, pages){
+  if (!pager) return;
+  pager.innerHTML = '';
+  if (pages <= 1) return;
+
+  const addBtn = (label, p, { disabled=false, active=false } = {})=>{
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'pager-btn' + (active ? ' active' : '');
+    b.textContent = label;
+    if (disabled) b.disabled = true;
+    b.addEventListener('click', ()=>{
+      if (disabled || p === currentPage) return;
+      fetchPage(p);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+    pager.appendChild(b);
+  };
+
+  // «Anterior»
+  addBtn('‹', Math.max(1, page - 1), { disabled: page === 1 });
+
+  // Ventana de números
+  const windowSize = 2;
+  let start = Math.max(1, page - windowSize);
+  let end   = Math.min(pages, page + windowSize);
+
+  if (start > 1){
+    addBtn('1', 1, { active: page === 1 });
+    if (start > 2) addEllipsis();
+  }
+  for (let p = start; p <= end; p++){
+    addBtn(String(p), p, { active: p === page });
+  }
+  if (end < pages){
+    if (end < pages - 1) addEllipsis();
+    addBtn(String(pages), pages, { active: page === pages });
+  }
+
+  // «Siguiente»
+  addBtn('›', Math.min(pages, page + 1), { disabled: page === pages });
+
+  function addEllipsis(){
+    const span = document.createElement('span');
+    span.textContent = '…';
+    span.style.cssText = 'padding:0 .25rem; color: var(--muted); align-self:center;';
+    pager.appendChild(span);
+  }
 }
 
 function escapeHtml(s){
@@ -619,49 +640,27 @@ function escapeHtml(s){
     .replaceAll('"','&quot;').replaceAll("'",'&#39;');
 }
 
-if (btnVerMas){
-  btnVerMas.addEventListener('click', ()=> cargarUltimos({ append:true }));
-}
-
-// Carga inicial SIEMPRE al abrir la vista
-cargarUltimos();
-
+// Eliminar con recarga de página
 async function onDeleteClick(ev){
-  ev.preventDefault();
-  ev.stopPropagation();
-
   const btn = ev.currentTarget;
-  const id  = btn.getAttribute('data-del');
+  const id = btn?.dataset?.del;
   if (!id) return;
-
-  if (!confirm(`¿Eliminar el mensaje ${id}? Esta acción no se puede deshacer.`)) return;
-
-  btn.disabled = true;
+  if (!confirm('¿Eliminar este mensaje?')) return;
 
   try{
-    const r = await fetch(`/mensajes/${encodeURIComponent(id)}`, {
-      method: 'DELETE',
-      headers: { 'Accept': 'application/json' }
-    });
+    const r = await fetch(`/mensajes/${id}`, { method: 'DELETE' });
+    const j = await r.json().catch(()=> ({}));
+    if (!r.ok || j?.success === false) throw new Error(j?.error || 'No se pudo eliminar');
 
-    // Soporta 204 No Content o 200 con JSON {success:true}
-    let ok = r.ok;
-    let data = null;
-
-    if (r.status !== 204) {
-      try { data = await r.json(); } catch {}
-      if (data && data.success === false) ok = false;
-    }
-
-    if (!ok) throw new Error((data && data.error) || `HTTP ${r.status}`);
-
-    // ✅ Recarga dura para evitar caché
+    // recargar toda la página (como pediste)
     location.reload();
   }catch(e){
-    console.error('Eliminar mensaje:', e);
-    showToast('❌ ' + (e.message || 'Error al eliminar'), false);
-    btn.disabled = false;
+    console.error(e);
+    alert('No se pudo eliminar el mensaje.');
   }
 }
 
+// Carga inicial
+fetchPage(1);
 </script>
+

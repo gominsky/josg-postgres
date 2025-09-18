@@ -91,10 +91,12 @@ async function initIndex(){
   if (!alumno_id){
     if ($desco) $desco.style.display = 'block';
     if ($con)   $con.style.display   = 'none';
+    if (btnLogout) btnLogout.style.display = 'none'; 
     return;
   } else {
     if ($desco) $desco.style.display = 'none';
     if ($con)   $con.style.display   = 'block';
+    if (btnLogout) btnLogout.style.display = 'flex'; 
   }
 
   // 1) Badge de mensajes no leídos (hasta 50 más recientes)

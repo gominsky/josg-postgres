@@ -168,8 +168,10 @@ router.get('/ayuda', (_req, res) => {
 /* -------------------------------------------
    LISTADO JSON (FullCalendar)
 ------------------------------------------- */
+// LISTADO JSON (FullCalendar)
+// LISTADO JSON (FullCalendar)
 router.get('/listado', async (_req, res) => {
-    const sql = `
+  const sql = `
     WITH e2 AS (
       SELECT
         e.*,
@@ -182,48 +184,91 @@ router.get('/listado', async (_req, res) => {
           WHEN (e.fecha_fin::text) ~ 'T'
             THEN to_timestamp(e.fecha_fin::text, 'YYYY-MM-DD"T"HH24:MI')
           ELSE to_timestamp((e.fecha_fin::text) || ' ' || COALESCE(e.hora_fin::text,'00:00'), 'YYYY-MM-DD HH24:MI')
-        END AS end_ts
+        END AS end_ts,
+        NOT EXISTS (
+          SELECT 1
+          FROM evento_asignaciones ea
+          WHERE ea.evento_id = e.id
+        ) AS sin_configurar
       FROM eventos e
     )
-    SELECT e2.id,
-           e2.titulo,
-           e2.descripcion,
-           e2.grupo_id,
-           e2.activo,
-           e2.espacio_id,                        -- 👈 nuevo campo
-           g.nombre  AS grupo_nombre,
-           es.nombre AS espacio_nombre,          -- 👈 opcional para mostrar
-           to_char(e2.start_ts, 'YYYY-MM-DD"T"HH24:MI') AS start_iso,
-           to_char(e2.end_ts,   'YYYY-MM-DD"T"HH24:MI') AS end_iso
+    SELECT
+      e2.id,
+      e2.titulo,
+      e2.descripcion,
+      e2.grupo_id,
+      e2.activo,
+      e2.espacio_id,
+      e2.sin_configurar,
+      g.nombre  AS grupo_nombre,
+      es.nombre AS espacio_nombre,
+      to_char(e2.start_ts, 'YYYY-MM-DD"T"HH24:MI') AS start_iso,
+      to_char(e2.end_ts,   'YYYY-MM-DD"T"HH24:MI') AS end_iso
     FROM e2
     LEFT JOIN grupos   g  ON g.id  = e2.grupo_id
     LEFT JOIN espacios es ON es.id = e2.espacio_id
-    `;
-    try {
-      const { rows } = await db.query(sql);
-      const eventos = rows.map(r => ({
+  `;
+
+  const cleanText = (s) => (s || '').toString().replace(/\s+/g,' ').trim();
+
+  try {
+    const { rows } = await db.query(sql);
+
+    // Colores
+    const NORMAL_BG = '#2a4b7c';
+    const NORMAL_BR = '#2a4b7c';
+    const NORMAL_TX = '#ffffff';
+
+    const MUTED_BG  = '#cbd5e1';  // slate-300
+    const MUTED_BR  = '#94a3b8';  // slate-400
+    const MUTED_TX  = '#111827';  // gris oscuro p/contraste
+
+    const eventos = rows.map(r => {
+      const titulo = cleanText(r.titulo) || 'Evento sin título';
+      const grupo  = cleanText(r.grupo_nombre || 'Sin grupo');
+
+      const muted  = !!r.sin_configurar;
+
+      // usa "color" que FullCalendar respeta en todas las vistas como bg+border
+      const color  = muted ? MUTED_BG : NORMAL_BG;
+      const bColor = muted ? MUTED_BR : NORMAL_BR;
+      const tColor = muted ? MUTED_TX : NORMAL_TX;
+
+      return {
         id: r.id,
-        title: (cleanText(r.titulo) ? `${cleanText(r.titulo)} (${cleanText(r.grupo_nombre || 'Sin grupo')})` : 'Evento sin título'),
+        title: `${titulo} (${grupo})`,
         start: r.start_iso,
         end:   r.end_iso,
-        // extended props
-        titulo: cleanText(r.titulo),
+        allDay: false,                 // explícito por claridad
+
+        // Props extra por si las necesitas en click/info
+        titulo: titulo,
         descripcion: cleanText(r.descripcion || ''),
         grupo_id: r.grupo_id,
-        grupo: cleanText(r.grupo_nombre || 'Sin grupo'),
-        espacio_id: r.espacio_id,                         // 👈
-        espacio: cleanText(r.espacio_nombre || ''),       // 👈
+        grupo: grupo,
+        espacio_id: r.espacio_id,
+        espacio: cleanText(r.espacio_nombre || ''),
         activo: r.activo,
-        // estilos por defecto
-        backgroundColor: '#2a4b7c',
-        borderColor: '#2a4b7c'
-      }));
-      res.json(eventos);
-    } catch (err) {
-      console.error('[eventos] GET /listado error:', err);
-      res.status(500).json({ error: 'Error al obtener eventos' });
-    }
-  });
+        sin_configurar: muted,
+
+        // 🎨 Colores para FC
+        color,                         // <- aplica fondo + borde
+        textColor: tColor,
+        backgroundColor: color,        // compat
+        borderColor: bColor,           // compat
+
+        // clase por si quieres añadir opacidad via CSS (opcional)
+        classNames: muted ? ['sin-configurar'] : []
+      };
+    });
+
+    res.json(eventos);
+  } catch (err) {
+    console.error('[eventos] GET /listado error:', err);
+    res.status(500).json({ error: 'Error al obtener eventos' });
+  }
+});
+
 /* -------------------------------------------
    VISTA PRINCIPAL: Calendario/Lista
 ------------------------------------------- */

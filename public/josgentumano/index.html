@@ -76,19 +76,22 @@
     .poster .title{ margin-top:8px; font-weight:700; line-height:1.2; min-height:2.4em; }
     .poster .line{ height:2px; background:repeating-linear-gradient(90deg,#000 0 8px, transparent 8px 12px); opacity:.25; margin:6px 0; }
     .muted{ color:#6b7280; font-size:.9rem; }
+    #btn-logout {
+  display: none; /* oculto hasta login */
+}
   </style>
 </head>
 <body data-page="index">
   <div class="container" id="contenedor">
     <div class="topbar">
-      <img src="/../imagenes/logoJOSG.png" alt="Logo JOSG" style="height:46px;">
+     <img src="/../imagenes/logoJOSG.png" alt="Logo JOSG" style="max-width:140px; margin-bottom:10px;">
       <!-- icono pequeño cerrar sesión -->
       <button id="btn-logout" class="icon-btn" title="Cerrar sesión" aria-label="Cerrar sesión">⎋</button>
     </div>
 
     <!-- HERO -->
     <div class="hero">
-      <h1>¡JOSG en tu mano!</h1>
+      <h1>¡En tu mano!</h1>
     </div>
 
     <!-- Vista no logeado -->

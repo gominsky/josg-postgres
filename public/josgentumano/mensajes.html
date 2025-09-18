@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Mis mensajes</title>
+  <title>JOSG en tu mano - Mensajes</title>
   <link rel="stylesheet" href="../styles/estilos_app.css" />
   <style>
     :root{
@@ -58,6 +58,73 @@
     .more-wrap{ display:flex; justify-content:center; margin:14px 0 4px; }
     .btn{ padding:.55rem .8rem; border:1px solid #ddd; border-radius:10px; background:#fafafa; }
     .btn:active{ transform: translateY(1px); }
+    .pager{
+      display:flex; justify-content:center; gap:6px; margin:14px 0 4px; flex-wrap:wrap;
+    }
+    .pager-btn{
+      border:1px solid var(--border);
+      background:#fff;
+      padding:.35rem .65rem;
+      border-radius:8px;
+      font-size:.9rem; min-width:2.25rem; text-align:center;
+    }
+    .pager-btn.active{
+      font-weight:700; border-color:#ffb554; box-shadow:0 0 0 3px #fff6e8;
+    }
+    .pager-btn[disabled]{ opacity:.5; }
+    /* Pager tipo Google: botones en línea, compactos */
+.pager{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:6px;
+  flex-wrap:wrap;
+  margin:14px 0 4px;
+}
+
+.pager-btn{
+  /* anula estilos globales que hacen los botones de ancho completo */
+  display:inline-flex !important;
+  align-items:center;
+  justify-content:center;
+  flex:0 0 auto !important;
+  width:auto !important;
+  min-width:2.25rem;
+  padding:.35rem .65rem;
+  border:1px solid var(--border);
+  background:#fff;
+  border-radius:8px;
+  font-size:.9rem;
+  line-height:1;
+  white-space:nowrap;
+}
+
+.pager-btn.active{
+  font-weight:700;
+  border-color:#ffb554;
+  box-shadow:0 0 0 3px #fff6e8;
+}
+
+.pager-btn[disabled]{ opacity:.5; cursor:default; }
+
+/* elipsis centrada y compacta */
+.pager span{
+  padding:0 .25rem;
+  color:var(--muted);
+  align-self:center;
+}
+.pager-btn {
+  color: #212529 !important;       /* gris oscuro legible */
+  font-weight: 500;                /* un poco más grueso */
+}
+
+/* Color de la elipsis “…” */
+.pager span {
+  color: #6c757d !important;       /* gris medio */
+}
+.pager-btn.active {
+  color: #ea6b38 !important;       /* tu color de acento */
+}
   </style>
 </head>
 <body>
@@ -67,168 +134,206 @@
     <div id="empty" class="muted" style="display:none;">No tienes mensajes aún.</div>
     <div id="list" class="list"></div>
 
-    <div class="more-wrap" id="more-wrap" style="display:none;">
-      <button id="btn-more" class="btn">Ver más</button>
-    </div>
+    <div id="pager" class="pager"></div>
 
     <div style="margin-top:1rem;">
       <button onclick="location.href='index.html'">&larr; Inicio</button>
     </div>
   </div>
+<script>
+(function(){
+  const alumno_id = localStorage.getItem('alumno_id');
+  if (!alumno_id) { location.href = 'index.html'; return; }
 
-  <script>
-    (function(){
-      const alumno_id = localStorage.getItem('alumno_id');
-      if (!alumno_id) { location.href = 'index.html'; return; }
-    
-      const $list = document.getElementById('list');
-      const $empty = document.getElementById('empty');
-      const $moreWrap = document.getElementById('more-wrap');
-      const $btnMore = document.getElementById('btn-more');
-    
-      let DATA = [];
-      let cursor = 0;
-      const PAGE = 10;
-    
-      function fmtFecha(iso){
-        if (!iso) return '';
-        const d = new Date(iso);
-        const dd = String(d.getDate()).padStart(2,'0');
-        const mm = String(d.getMonth()+1).padStart(2,'0');
-        const aa = String(d.getFullYear()).slice(-2);
-        const hh = String(d.getHours()).padStart(2,'0');
-        const mi = String(d.getMinutes()).padStart(2,'0');
-        return `${dd}/${mm}/${aa} ${hh}:${mi}`;
-      }
-      const esc = s => String(s)
-        .replace(/&/g,"&amp;").replace(/</g,"&lt;")
-        .replace(/>/g,"&gt;").replace(/"/g,"&quot;")
-        .replace(/'/g,"&#39;");
-    
-      // ---- Normalizador robusto de URLs ----
-      function safeHref(u){
-        if (!u) return '';
-        let s = String(u).trim();
-    
-        // Arregla casos “http//” o “https//” (sin ‘:’)
-        s = s.replace(/^https?\/\//i, m => m.includes('://') ? m : m.replace('//', '://'));
-    
-        // Si ya tiene esquema (xxx:...), devolver tal cual
-        if (/^[a-zA-Z][\w.+-]*:/.test(s)) return s;
-    
-        // Si empieza por // o /, aceptar (protocolo del sitio)
-        if (s.startsWith('//') || s.startsWith('/')) return s;
-    
-        // Si viene “www.” o dominio suelto, anteponer https://
-        return 'https://' + s;
-      }
-    
-      // Lee m.urls (array o string JSON) o cae a m.url plano separado por espacios/comas/; o |
-      function extraLinksFromMsg(m){
-        const out = [];
-        const seen = new Set();
-    
-        let arr = null;
-        if (Array.isArray(m.urls)) arr = m.urls;
-        else if (typeof m.urls === 'string' && m.urls.trim() !== '') {
-          try { arr = JSON.parse(m.urls); } catch { arr = null; }
-        }
-    
-        function pushRaw(raw){
-          if (!raw) return;
-          raw = String(raw).trim().replace(/[).,;:!?]+$/,''); // quita puntuación colgante
-          const href = safeHref(raw);
-          const key = href.toLowerCase();
-          if (!seen.has(key)) { seen.add(key); out.push(href); }
-        }
-    
-        if (Array.isArray(arr)) {
-          for (const raw of arr) pushRaw(raw);
-        }
-        if (!out.length && m.url) {
-          for (const part of String(m.url).split(/[\s,;|]+/)) pushRaw(part);
-        }
-        return out.slice(0, 10);
-      }
-    
-      // Chips “Enlace 1/2/3…”, sin <a> en el cuerpo para que no tape el botón de leído
-      function tpl(m){
-        const chips = extraLinksFromMsg(m).map((href, i) =>
-          `<a class="chip" href="${href}" target="_blank" rel="noopener">Enlace ${i+1}</a>`
-        ).join('');
-    
-        return `
-          <article class="card" data-id="${m.id}">
-            <h3>${esc(m.titulo || 'Aviso')}</h3>
-            <div class="msg-body">${esc(m.cuerpo || '')}</div>
-            ${chips ? `<div class="chips">${chips}</div>` : ''}
-            <p class="meta">${fmtFecha(m.created_at)}${m.leido_at ? ' · leído' : ''}</p>
-            ${m.leido_at ? '' : `<div class="mark-wrap"><button class="btn-ghost" data-mark="${m.id}">Marcar como leído</button></div>`}
-          </article>
-        `;
-      }
-    
-      function renderNext(){
-        const next = DATA.slice(cursor, cursor + PAGE);
-        if (!next.length && cursor === 0){
-          $empty.style.display = 'block';
-          $moreWrap.style.display = 'none';
-          return;
-        }
-        $empty.style.display = 'none';
-        $list.insertAdjacentHTML('beforeend', next.map(tpl).join(''));
-        cursor += next.length;
-        $moreWrap.style.display = (cursor < DATA.length) ? 'flex' : 'none';
-      }
-    
-      async function cargar(){
-        try{
-          // Forzar no-caché + “desde_id=0” explícito
-          const url = `/mensajes/app/mensajes?alumno_id=${encodeURIComponent(alumno_id)}&desde_id=0&_ts=${Date.now()}`;
-          const r = await fetch(url, { cache: 'no-store' });
-          const j = await r.json();
-          if (!r.ok || !Array.isArray(j)) throw new Error('No se pudieron cargar los mensajes');
-          DATA = j;
-          cursor = 0;
-          $list.innerHTML = '';
-          renderNext();
-        }catch(e){
-          console.error(e);
-          $empty.textContent = 'No se pudieron cargar los mensajes.';
-          $empty.style.display = 'block';
-        }
-      }
-    
-      // Delegación: marcar como leído
-      $list.addEventListener('click', async (ev)=>{
-        const btn = ev.target.closest('button[data-mark]');
-        if (!btn) return;
-        const id = Number(btn.getAttribute('data-mark'));
-        try{
-          const r = await fetch(`/mensajes/app/mensajes/${id}/leer`, {
-            method:'POST',
-            headers:{'Content-Type':'application/json'},
-            body: JSON.stringify({ alumno_id })
-          });
-          if (!r.ok) throw new Error('No se pudo marcar como leído');
-          btn.remove();
-          const meta = btn.closest('.card').querySelector('.meta');
-          if (meta && !/· leído/.test(meta.textContent)) {
-            meta.textContent = meta.textContent + ' · leído';
-          }
-        }catch(e){ console.error(e); }
+  const $list  = document.getElementById('list');
+  const $empty = document.getElementById('empty');
+  const $pager = document.getElementById('pager');
+
+  const PAGE_SIZE = 5;
+  let DATA = [];         // cache de todos los mensajes (ordenados desc)
+  let currentPage = 1;   // página actual (1-based)
+  let totalPages  = 1;
+
+  function fmtFecha(iso){
+    if (!iso) return '';
+    const d = new Date(iso);
+    const dd = String(d.getDate()).padStart(2,'0');
+    const mm = String(d.getMonth()+1).padStart(2,'0');
+    const aa = String(d.getFullYear()).slice(-2);
+    const hh = String(d.getHours()).padStart(2,'0');
+    const mi = String(d.getMinutes()).padStart(2,'0');
+    return `${dd}/${mm}/${aa} ${hh}:${mi}`;
+  }
+  const esc = s => String(s)
+    .replace(/&/g,"&amp;").replace(/</g,"&lt;")
+    .replace(/>/g,"&gt;").replace(/"/g,"&quot;")
+    .replace(/'/g,"&#39;");
+
+  // ---- Normalizador robusto de URLs ----
+  function safeHref(u){
+    if (!u) return '';
+    let s = String(u).trim();
+    // Corrige casos 'http//' o 'https//' (sin ':')
+    s = s.replace(/^https?\/\//i, m => m.includes('://') ? m : m.replace('//', '://'));
+    if (/^[a-zA-Z][\w.+-]*:/.test(s)) return s;       // ya tiene esquema
+    if (s.startsWith('//') || s.startsWith('/')) return s; // relativo/protocolo
+    return 'https://' + s;                             // dominio suelto
+  }
+
+  // Lee m.urls (array o string JSON) o cae a m.url plano con separadores
+  function extraLinksFromMsg(m){
+    const out = [];
+    const seen = new Set();
+    let arr = null;
+
+    if (Array.isArray(m.urls)) arr = m.urls;
+    else if (typeof m.urls === 'string' && m.urls.trim() !== '') {
+      try { arr = JSON.parse(m.urls); } catch { arr = null; }
+    }
+
+    function pushRaw(raw){
+      if (!raw) return;
+      raw = String(raw).trim().replace(/[).,;:!?]+$/,'');
+      const href = safeHref(raw);
+      const key  = href.toLowerCase();
+      if (!seen.has(key)) { seen.add(key); out.push(href); }
+    }
+
+    if (Array.isArray(arr)) for (const raw of arr) pushRaw(raw);
+    if (!out.length && m.url) for (const part of String(m.url).split(/[\s,;|]+/)) pushRaw(part);
+    return out.slice(0, 10);
+  }
+
+  // Tarjeta de mensaje
+  function tpl(m){
+    const chips = extraLinksFromMsg(m).map((href, i) =>
+      `<a class="chip" href="${href}" target="_blank" rel="noopener">Enlace ${i+1}</a>`
+    ).join('');
+
+    return `
+      <article class="card" data-id="${m.id}">
+        <h3>${esc(m.titulo || 'Aviso')}</h3>
+        <div class="msg-body">${esc(m.cuerpo || '')}</div>
+        ${chips ? `<div class="chips">${chips}</div>` : ''}
+        <p class="meta">${fmtFecha(m.created_at)}${m.leido_at ? ' · leído' : ''}</p>
+        ${m.leido_at ? '' : `<div class="mark-wrap"><button class="btn-ghost" data-mark="${m.id}">Marcar como leído</button></div>`}
+      </article>
+    `;
+  }
+
+  // Render de una página concreta
+  function renderPage(page=1){
+    currentPage = Math.max(1, Math.min(page, totalPages));
+    const start = (currentPage - 1) * PAGE_SIZE;
+    const items = DATA.slice(start, start + PAGE_SIZE);
+
+    $list.innerHTML = '';
+    if (!items.length){
+      $empty.style.display = 'block';
+    } else {
+      $empty.style.display = 'none';
+      $list.insertAdjacentHTML('beforeend', items.map(tpl).join(''));
+    }
+    renderPager();
+  }
+
+  function renderPager(){
+    $pager.innerHTML = '';
+    if (totalPages <= 1) return;
+
+    const addBtn = (label, page, {disabled=false, active=false}={})=>{
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'pager-btn' + (active ? ' active' : '');
+      b.textContent = label;
+      if (disabled) b.disabled = true;
+      b.addEventListener('click', ()=>{
+        if (disabled || page === currentPage) return;
+        renderPage(page);
+        // subir un poco al inicio de la lista
+        const top = document.querySelector('.container').offsetTop + document.querySelector('h2').offsetTop;
+        window.scrollTo({ top, behavior:'smooth' });
       });
-    
-      $btnMore.addEventListener('click', renderNext);
-    
-      // Carga robusta al entrar / volver a la vista
-      document.addEventListener('DOMContentLoaded', cargar);
-      window.addEventListener('pageshow', cargar); // incluye bfcache
-      document.addEventListener('visibilitychange', () => {
-        if (document.visibilityState === 'visible') cargar();
+      $pager.appendChild(b);
+    };
+
+    // anterior
+    addBtn('‹', Math.max(1, currentPage - 1), { disabled: currentPage === 1 });
+
+    // ventana compacta (1 a cada lado)
+    const win = 1;
+    let start = Math.max(1, currentPage - win);
+    let end   = Math.min(totalPages, currentPage + win);
+
+    if (start > 1){
+      addBtn('1', 1, { active: currentPage === 1 });
+      if (start > 2) addEllipsis();
+    }
+    for (let p = start; p <= end; p++) addBtn(String(p), p, { active: p === currentPage });
+    if (end < totalPages){
+      if (end < totalPages - 1) addEllipsis();
+      addBtn(String(totalPages), totalPages, { active: currentPage === totalPages });
+    }
+
+    // siguiente
+    addBtn('›', Math.min(totalPages, currentPage + 1), { disabled: currentPage === totalPages });
+
+    function addEllipsis(){
+      const s = document.createElement('span');
+      s.textContent = '…';
+      s.style.cssText = 'padding:0 .25rem; color:var(--muted); align-self:center;';
+      $pager.appendChild(s);
+    }
+  }
+
+  // Carga datos (no paginados) y pinta la primera página
+  async function cargar(){
+    try{
+      const url = `/mensajes/app/mensajes?alumno_id=${encodeURIComponent(alumno_id)}&_ts=${Date.now()}`;
+      const r = await fetch(url, { cache: 'no-store' });
+      const j = await r.json();
+      if (!r.ok || !Array.isArray(j)) throw new Error('No se pudieron cargar los mensajes');
+      // Orden descendente por id o fecha (según lo que te llegue más estable)
+      DATA = j.slice().sort((a,b)=> Number(b.id||0) - Number(a.id||0));
+      totalPages  = Math.max(1, Math.ceil(DATA.length / PAGE_SIZE));
+      renderPage(1);
+    }catch(e){
+      console.error(e);
+      $list.innerHTML = '';
+      $pager.innerHTML = '';
+      $empty.textContent = 'No se pudieron cargar los mensajes.';
+      $empty.style.display = 'block';
+    }
+  }
+
+  // Delegación: marcar como leído
+  $list.addEventListener('click', async (ev)=>{
+    const btn = ev.target.closest('button[data-mark]');
+    if (!btn) return;
+    const id = Number(btn.getAttribute('data-mark'));
+    try{
+      const r = await fetch(`/mensajes/app/mensajes/${id}/leer`, {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ alumno_id })
       });
-    })();
-    </script>
-    
+      if (!r.ok) throw new Error('No se pudo marcar como leído');
+      btn.remove();
+      const meta = btn.closest('.card').querySelector('.meta');
+      if (meta && !/· leído/.test(meta.textContent)) {
+        meta.textContent = meta.textContent + ' · leído';
+      }
+    }catch(e){ console.error(e); }
+  });
+
+  // Carga inicial / al volver a la vista
+  document.addEventListener('DOMContentLoaded', cargar);
+  window.addEventListener('pageshow', cargar);           // incluye bfcache
+  document.addEventListener('visibilitychange', ()=>{    // refresco al volver a foco
+    if (document.visibilityState === 'visible') cargar();
+  });
+})();
+</script>
+
 </body>
 </html>

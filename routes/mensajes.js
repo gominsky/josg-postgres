@@ -285,23 +285,39 @@ router.post('/app/mensajes/:id/leer', async (req, res) => {
 });
 /* ---------------------- últimos 5 (admin web) --------------------- */
 /** GET /mensajes/ultimos?limit=5 */
+// Nueva versión con paginación estilo Google
 router.get('/ultimos', async (req, res) => {
-  const limit = Math.min(parseInt(req.query.limit, 10) || 5, 20);
+  const limit = Math.min(parseInt(req.query.limit, 10) || 5, 50); // tamaño de página
+  const page  = Math.max(parseInt(req.query.page, 10) || 1, 1);    // página actual
+  const offset = (page - 1) * limit;
+
   try {
-    const { rows } = await db.query(`
+    // Total de mensajes
+    const { rows: countRows } = await db.query('SELECT COUNT(*)::int AS total FROM mensajes');
+    const total = countRows[0]?.total || 0;
+
+    // Mensajes de la página solicitada
+    const { rows: items } = await db.query(`
       SELECT id, titulo, cuerpo, url, urls, created_at
       FROM mensajes
       ORDER BY id DESC
-      LIMIT $1
-    `, [limit]);
+      LIMIT $1 OFFSET $2
+    `, [limit, offset]);
+
     res.set('Cache-Control', 'no-store');
-    res.json(rows);
+    res.json({
+      success: true,
+      items,
+      total,
+      page,
+      limit,
+      pages: Math.max(Math.ceil(total / limit), 1),
+    });
   } catch (e) {
     console.error('❌ Listando últimos mensajes', e);
-    res.status(500).json({ error: 'No se pudo obtener la lista de mensajes' });
+    res.status(500).json({ success: false, error: 'No se pudo obtener la lista de mensajes' });
   }
 });
-
 /* --------------------------- eliminar msg ------------------------- */
 /** DELETE /mensajes/:id */
 router.delete('/:id', async (req, res) => {

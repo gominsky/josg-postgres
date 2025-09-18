@@ -136,6 +136,12 @@ const composeDT = (fecha, hora, fallbackHora='00:00') => {
 #eventoMasivoModal .flatpickr-day.start:hover,
 #eventoMasivoModal .flatpickr-day.end:hover { background:#e56700!important; border-color:#e56700!important; }
 #eventoMasivoModal .flatpickr-day.inRange { background: rgba(255,122,24,.15)!important; border-color:#ff7a18!important; }
+.fc-event.sin-configurar, 
+.fc .sin-configurar .fc-event-main {
+  opacity: 0.8;
+  filter: saturate(0.6);
+}
+
 </style>
 
 <!-- Barra superior -->

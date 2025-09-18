@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Partituras</title>
+  <title>Josg en tu mano - Partituras</title>
   <link rel="stylesheet" href="../styles/estilos_app.css" />
   <style>
     :root{
@@ -162,18 +162,12 @@
 </head>
 <body>
   <div class="container">
-    <div class="topbar">
-      <img src="/../imagenes/logoJOSG.png" alt="Logo JOSG">
-      <div class="spacer" aria-hidden="true"></div>
-    </div>
-
     <div class="head">
       <h2>Partituras</h2>
     </div>
 
     <div class="search">
       <input id="q" class="input" placeholder="Buscar por título o autor…">
-      <button id="btn-buscar">Buscar</button>
     </div>
 
     <div id="list" class="row-scroll"></div>
@@ -182,45 +176,31 @@
       <button onclick="location.href='index.html'">&larr; Inicio</button>
     </div>
   </div>
-
   <script>
-    // API (ajusta si cambiaste la ruta del backend)
-    const API_BASE = '/firmas';
+  const API_BASE = '/firmas';
 
-    // Utilidades
-    function ensureProto(u){
-      if (!u) return '';
-      const s = String(u).trim();
-      if (!s) return '';
-      if (/^[a-zA-Z][\w.+-]*:/.test(s) || s.startsWith('//') || s.startsWith('/')) return s;
-      return 'https://' + s;
-    }
-    function safeUrl(u){ try { return ensureProto(u); } catch { return ''; } }
-
-    const alumno_id = localStorage.getItem('alumno_id');
-    if (!alumno_id) { location.href = 'index.html'; }
-
-    const $list = document.getElementById('list');
-    const $q = document.getElementById('q');
-    const $btnBuscar = document.getElementById('btn-buscar');
-
-    let ALL = [];
-
-
-  // --- Helpers de “azar” para los motivos ---
-  function randomSymbol(){
-    const syms = ['♩','♪','♫','♬'];
-    return syms[Math.floor(Math.random()*syms.length)];
+  function ensureProto(u){
+    if (!u) return '';
+    const s = String(u).trim();
+    if (!s) return '';
+    if (/^[a-zA-Z][\w.+-]*:/.test(s) || s.startsWith('//') || s.startsWith('/')) return s;
+    return 'https://' + s;
   }
-  function randomRot(){           // -12º .. +12º
-    return (Math.floor(Math.random()*25) - 12) + 'deg';
-  }
-  function randomSize(){          // 78px .. 96px
-    return (78 + Math.floor(Math.random()*19)) + 'px';
-  }
-  function randomMotifClass(){    // elige entre pentagrama o sin pentagrama
-    return Math.random() < 0.55 ? 'm-staff' : '';
-  }
+  const safeUrl = u => { try { return ensureProto(u); } catch { return ''; } };
+
+  const alumno_id = localStorage.getItem('alumno_id');
+  if (!alumno_id) { location.href = 'index.html'; }
+
+  const $list = document.getElementById('list');
+  const $q    = document.getElementById('q');
+
+  let ALL = [];
+
+  // --- helpers “motivo” ---
+  const randomSymbol = () => ['♩','♪','♫','♬'][Math.floor(Math.random()*4)];
+  const randomRot  = () => (Math.floor(Math.random()*25) - 12) + 'deg';
+  const randomSize = () => (78 + Math.floor(Math.random()*19)) + 'px';
+  const randomMotifClass = () => (Math.random() < 0.55 ? 'm-staff' : '');
 
   function cardHTML(p, idx){
     const autor  = (p.autor || '—').trim();
@@ -228,8 +208,8 @@
     const dur    = (p.duracion || '').toString().trim();
 
     const linkPart  = p.enlace_partitura ? `<a class="chip-link" href="${safeUrl(p.enlace_partitura)}" target="_blank" rel="noopener">Partitura</a>` : '';
-    const linkAudio = p.enlace_audio     ? `<a class="chip-link" href="${safeUrl(p.enlace_audio)}" target="_blank" rel="noopener">Audio</a>` : '';
-    const linkVideo = p.enlace_video     ? `<a class="chip-link" href="${safeUrl(p.enlace_video)}" target="_blank" rel="noopener">Vídeo</a>` : '';
+    const linkAudio = p.enlace_audio     ? `<a class="chip-link" href="${safeUrl(p.enlace_audio)}"     target="_blank" rel="noopener">Audio</a>` : '';
+    const linkVideo = p.enlace_video     ? `<a class="chip-link" href="${safeUrl(p.enlace_video)}"     target="_blank" rel="noopener">Vídeo</a>` : '';
 
     const colorCls  = (idx % 2 === 0) ? 'card-a' : 'card-b';
     const motifCls  = randomMotifClass();
@@ -247,42 +227,45 @@
     `;
   }
 
-
-    function render(list){
-      if (!Array.isArray(list) || list.length === 0){
-        $list.innerHTML = `<p style="margin:6px; color:#6b7280;">No hay partituras para tus grupos.</p>`;
-        return;
-      }
-      $list.innerHTML = list.map((p,i) => cardHTML(p,i)).join('');
+  function render(list){
+    if (!Array.isArray(list) || list.length === 0){
+      $list.innerHTML = `<p style="margin:6px; color:#6b7280;">No hay partituras para tus grupos.</p>`;
+      return;
     }
+    $list.innerHTML = list.map((p,i) => cardHTML(p,i)).join('');
+  }
 
-    function filtrar(){
-      const q = ($q.value || '').toLowerCase();
-      const out = ALL.filter(p => {
-        const txt = `${p.titulo||''} ${p.autor||''}`.toLowerCase();
-        return txt.includes(q);
-      });
-      render(out);
+  function filtrar(){
+    const q = ($q.value || '').toLowerCase();
+    const out = ALL.filter(p => {
+      const txt = `${p.titulo||''} ${p.autor||''}`.toLowerCase();
+      return txt.includes(q);
+    });
+    render(out);
+  }
+
+  // --- debounce y binding (¡fuera de filtrar!) ---
+  function debounce(fn, wait = 160){
+    let t; return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), wait); };
+  }
+  $q.addEventListener('input', debounce(filtrar, 160));
+
+  async function cargar(){
+    try{
+      const r = await fetch(`${API_BASE}/api/alumno/${encodeURIComponent(alumno_id)}/partituras`, { cache:'no-store' });
+      const j = await r.json();
+      if (!r.ok || !Array.isArray(j)) throw new Error('Respuesta no válida');
+      ALL = j;
+      render(ALL);                    // pinta todo
+      if ($q.value) filtrar();        // si hubiese texto precargado, filtra
+    }catch(e){
+      console.error('Error cargando partituras:', e);
+      $list.innerHTML = `<p style="margin:6px; color:#6b7280;">No se pudieron cargar las partituras.</p>`;
     }
+  }
 
-    async function cargar(){
-      try{
-        const r = await fetch(`${API_BASE}/api/alumno/${encodeURIComponent(alumno_id)}/partituras`);
-        const j = await r.json();
-        if (!r.ok || !Array.isArray(j)) throw new Error('Respuesta no válida');
-        ALL = j;
-        render(ALL);
-      }catch(e){
-        console.error('Error cargando partituras:', e);
-        $list.innerHTML = `<p style="margin:6px; color:#6b7280;">No se pudieron cargar las partituras.</p>`;
-      }
-    }
-
-    $btnBuscar.addEventListener('click', filtrar);
-    $q.addEventListener('keydown', (ev)=>{ if (ev.key === 'Enter') filtrar(); });
-
-    cargar();
-  </script>
+  cargar();
+</script>
 </body>
 </html>
 
