@@ -568,6 +568,7 @@ function renderList(items){
     card.innerHTML = `
       <div>
         <h4 title="ID ${id}">${escapeHtml(it.titulo || '(sin título)')}</h4>
+        <div class="help">Por ${escapeHtml(it.autor || '—')}</div>
         <p style="font-weight:400;">${escapeHtml((it.cuerpo || '').slice(0,140))}${(it.cuerpo && it.cuerpo.length>140)?'…':''}</p>
         <time>${fechaTxt}</time>
       </div>

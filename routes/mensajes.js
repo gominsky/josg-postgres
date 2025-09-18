@@ -3,7 +3,7 @@ const express = require('express');
 const router = express.Router();
 const db = require('../database/db');
 const { enviarPush } = require('../utils/push');
-
+const { isAuthenticatedApi: isAuthenticated, isDocenteApi: isDocente, requireAlumno } = require('../middleware/auth');
 /* --------------------------- utilidades --------------------------- */
 function toIntArray(x) {
   if (!x) return [];
@@ -31,7 +31,7 @@ function toUrlArray(x, max = 10) {
   return out;
 }
 
-router.post('/', async (req, res) => {
+router.post('/', isAuthenticated, isDocente, async (req, res) => {
   const titulo = (req.body.titulo || '').trim();
   const cuerpo = (req.body.cuerpo || '').trim();
   const url    = sanitizeUrl(req.body.url || null);
@@ -78,10 +78,13 @@ router.post('/', async (req, res) => {
   try {
     await client.query('BEGIN');
 
-    // 1) crear mensaje (ahora guarda también urls JSON)
+       // (… tu código actual para calcular destinos …)
+    const userId = req.session.usuario.id; // autor del mensaje
     const { rows } = await client.query(
-      'INSERT INTO mensajes (titulo, cuerpo, url, urls) VALUES ($1,$2,$3,$4) RETURNING id',
-      [titulo, cuerpo, url, JSON.stringify(links)]
+      `INSERT INTO mensajes (titulo, cuerpo, url, urls, creado_por)
+       VALUES ($1,$2,$3,$4,$5)
+       RETURNING id`,
+      [titulo, cuerpo, url || null, JSON.stringify(links), userId]
     );
     const mensajeId = rows[0].id;
 
@@ -215,21 +218,20 @@ router.post('/', async (req, res) => {
 });
 
 /* ---------------------- suscripción web push ---------------------- */
-/**
- * body: { alumno_id, endpoint, keys: { p256dh, auth } }
- */
-router.post('/push/subscribe', async (req, res) => {
-  const { alumno_id, endpoint, keys } = req.body || {};
-  if (!alumno_id || !endpoint || !keys?.p256dh || !keys?.auth) {
+/** body: { endpoint, keys: { p256dh, auth } } */
+router.post('/push/subscribe', requireAlumno, async (req, res) => {
+    const alumno_id = req.alumno_id;
+    const { endpoint, keys } = req.body || {};
+    if (!endpoint || !keys?.p256dh || !keys?.auth) {
     return res.status(400).json({ error: 'Suscripción inválida' });
   }
   try {
-    await db.query(
-      `INSERT INTO push_suscripciones (alumno_id, endpoint, p256dh, auth)
-       VALUES ($1,$2,$3,$4)
-       ON CONFLICT (endpoint) DO NOTHING`,
-      [alumno_id, endpoint, keys.p256dh, keys.auth]
-    );
+    await db.query(`
+           INSERT INTO push_suscripciones (alumno_id, endpoint, p256dh, auth)
+           VALUES ($1,$2,$3,$4)
+           ON CONFLICT (endpoint) DO UPDATE
+             SET alumno_id = EXCLUDED.alumno_id, p256dh = EXCLUDED.p256dh, auth = EXCLUDED.auth
+         `, [alumno_id, endpoint, keys.p256dh, keys.auth]);
     res.json({ success: true });
   } catch (e) {
     console.error('❌ Guardando suscripción', e);
@@ -237,11 +239,10 @@ router.post('/push/subscribe', async (req, res) => {
   }
 });
 /* ------------------------- bandeja (app) -------------------------- */
-/** GET /mensajes/app/mensajes?alumno_id=123&desde_id=0 */
-router.get('/app/mensajes', async (req, res) => {
-  const alumnoId = parseInt(req.query.alumno_id, 10);
+/** GET /mensajes/app/mensajes?desde_id=0 */
+router.get('/app/mensajes', requireAlumno, async (req, res) => {
+  const alumnoId = req.alumno_id;
   if (!alumnoId) return res.status(400).json({ error: 'alumno_id requerido' });
-
   const desdeId = parseInt(req.query.desde_id, 10) || 0;
 
   try {
@@ -250,9 +251,14 @@ router.get('/app/mensajes', async (req, res) => {
         m.id, m.titulo, m.cuerpo, m.url,
         -- Normaliza 'urls' a JSONB funcione siendo TEXT o JSON/JSONB
         COALESCE(NULLIF(m.urls::text, '')::jsonb, '[]'::jsonb) AS urls,
-        m.created_at, me.leido_at
+        m.created_at, me.leido_at,
+       m.creado_por,
+       COALESCE(NULLIF(TRIM(COALESCE(u.nombre,'') || ' ' || COALESCE(u.apellidos,'')), ''),
+                u.email,
+                'Sistema') AS autor
       FROM mensaje_entrega me
       JOIN mensajes m ON m.id = me.mensaje_id
+      LEFT JOIN usuarios u ON u.id = m.creado_por
       WHERE me.alumno_id = $1 AND m.id > $2
       ORDER BY m.id DESC
       LIMIT 50
@@ -265,9 +271,9 @@ router.get('/app/mensajes', async (req, res) => {
   }
 });
 /* ---------------------- marcar como leído (app) ------------------- */
-/** POST /mensajes/app/mensajes/:id/leer  body: { alumno_id } */
-router.post('/app/mensajes/:id/leer', async (req, res) => {
-  const alumnoId = parseInt(req.body.alumno_id, 10);
+/** POST /mensajes/app/mensajes/:id/leer */
+router.post('/app/mensajes/:id/leer', requireAlumno, async (req, res) => {
+  const alumnoId = req.alumno_id;
   const id = parseInt(req.params.id, 10);
   if (!alumnoId || !id) return res.status(400).json({ error: 'Datos inválidos' });
 
@@ -284,9 +290,7 @@ router.post('/app/mensajes/:id/leer', async (req, res) => {
   }
 });
 /* ---------------------- últimos 5 (admin web) --------------------- */
-/** GET /mensajes/ultimos?limit=5 */
-// Nueva versión con paginación estilo Google
-router.get('/ultimos', async (req, res) => {
+router.get('/ultimos', isAuthenticated, isDocente, async (req, res) => {
   const limit = Math.min(parseInt(req.query.limit, 10) || 5, 50); // tamaño de página
   const page  = Math.max(parseInt(req.query.page, 10) || 1, 1);    // página actual
   const offset = (page - 1) * limit;
@@ -298,8 +302,11 @@ router.get('/ultimos', async (req, res) => {
 
     // Mensajes de la página solicitada
     const { rows: items } = await db.query(`
-      SELECT id, titulo, cuerpo, url, urls, created_at
-      FROM mensajes
+            SELECT m.id, m.titulo, m.cuerpo, m.url, m.urls, m.created_at,
+          m.creado_por,
+          (u.nombre || ' ' || u.apellidos) AS autor
+   FROM mensajes m
+   LEFT JOIN usuarios u ON u.id = m.creado_por
       ORDER BY id DESC
       LIMIT $1 OFFSET $2
     `, [limit, offset]);
@@ -320,7 +327,7 @@ router.get('/ultimos', async (req, res) => {
 });
 /* --------------------------- eliminar msg ------------------------- */
 /** DELETE /mensajes/:id */
-router.delete('/:id', async (req, res) => {
+  router.delete('/:id', isAuthenticated, isDocente, async (req, res) => {
   const id = parseInt(req.params.id, 10);
   if (!id) return res.status(400).json({ error: 'ID inválido' });
 
@@ -345,7 +352,4 @@ router.delete('/:id', async (req, res) => {
     client.release();
   }
 });
-
-
-
 module.exports = router;

@@ -3,7 +3,14 @@ const express = require('express');
 const router  = express.Router();
 const db      = require('../database/db');
 const bcrypt  = require('bcrypt');
-
+const { isAuthenticated, isDocente } = require('../middleware/auth');
+// ---- App (alumno) autenticado por sesión ----
+function requireAlumno(req, res, next){
+    const id = Number(req.session?.alumno_id || 0);
+    if (!id) return res.status(401).json({ error: 'No autenticado' });
+    req.alumno_id = id; // fuente de verdad para rutas /app
+    next();
+  }
 /* -------------------------------- PÁGINAS -------------------------------- */
 router.get('/ayuda', (_req, res) => {
   res.render('ayuda_firmas', { title: 'Ayuda · Alumnos', hero: false });
@@ -38,6 +45,7 @@ router.post('/login', async (req, res) => {
     const ok = await bcrypt.compare(password, alumno.password);
     if (!ok) return res.status(401).json({ error: 'Contraseña incorrecta' });
 
+    req.session.alumno_id = alumno.id;           // <<--- sesión para rutas /mensajes/app/*
     res.json({ success: true, alumno_id: alumno.id });
   } catch (err) {
     console.error('login:', err);

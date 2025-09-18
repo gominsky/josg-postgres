@@ -215,7 +215,11 @@
         <h3>${esc(m.titulo || 'Aviso')}</h3>
         <div class="msg-body">${esc(m.cuerpo || '')}</div>
         ${chips ? `<div class="chips">${chips}</div>` : ''}
-        <p class="meta">${fmtFecha(m.created_at)}${m.leido_at ? ' · leído' : ''}</p>
+        <p class="meta">
+       ${fmtFecha(m.created_at)}
+       ${m.autor ? ' · ' + esc(m.autor) : ''}
+       ${m.leido_at ? ' · leído' : ''}
+     </p>
         ${m.leido_at ? '' : `<div class="mark-wrap"><button class="btn-ghost" data-mark="${m.id}">Marcar como leído</button></div>`}
       </article>
     `;
