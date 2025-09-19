@@ -108,7 +108,11 @@ app.use('/contabilidad', isAdmin, contabilidadRoutes);
 app.use('/proveedores', isAdmin, proveedoresRoutes);
 app.use('/categorias', isAdmin, categoriasRoutes);
 app.use('/cuentas', isAdmin, cuentasRoutes);
-app.use('/api', isAuthenticated, layoutsRoutes);
+//app.use('/api', isAuthenticated, layoutsRoutes);
+ // APIs disponibles tanto en /api como en /control_firmas/api
+ app.use('/api', isAuthenticated, layoutsRoutes);
+ app.use('/control_firmas/api', isAuthenticated, layoutsRoutes);
+
 app.use('/recuperar',recuperarRoutes);
 app.use(require('./routes/share_stateless'));
 app.use('/ausencias', isAuthenticated, ausenciasRoutes);
@@ -147,6 +151,10 @@ app.get('/mensajes/nuevo', isAuthenticated, isDocente, async (req, res) => {
   }
 });
 
+// endpoint de salud para comprobar el prefijo desde el front
+app.get(['/api/health','/control_firmas/api/health'], (_req, res) => {
+    res.json({ ok: true, ts: Date.now() });
+  });
 
 // Página de mantenimiento (zona de obras)
 app.get('/obras', (req, res) => {
