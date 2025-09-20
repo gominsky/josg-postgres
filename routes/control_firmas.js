@@ -267,5 +267,15 @@ router.get('/api/grupos', async (req, res) => {
     res.status(500).json({ error: 'Error al obtener grupos' });
   }
 });
+// routes/control_firmas.js
+router.get('/api/_diag', async (req, res) => {
+  try {
+    const u = await db.query('SELECT COUNT(*)::int n FROM usuarios');
+    const e = await db.query('SELECT COUNT(*)::int n FROM eventos');
+    res.json({ ok:true, usuarios:u.rows[0].n, eventos:e.rows[0].n, ts:Date.now() });
+  } catch (err) {
+    res.status(500).json({ ok:false, error:String(err) });
+  }
+});
 
 module.exports = router;
