@@ -32,7 +32,6 @@
     }
     .toast-fixed.error{ background:#fef2f2; border-color:#fecaca; color:#7f1d1d; }
     .toast-fixed.show{ display:block; }
-    
   </style>
 </head>
 <body>
@@ -41,8 +40,6 @@
     <div id="toast" class="toast-fixed" role="status" aria-live="polite"></div>
 
     <form id="msg-form" class="form-vertical panel-blanco" autocomplete="off">
-      
-
       <label for="titulo"><strong>Título</strong></label>
       <input id="titulo" class="form-control" maxlength="80" placeholder="p. ej., Recordatorio de ensayo" />
 
@@ -52,32 +49,36 @@
       <label for="url"><strong>Enlace (opcional)</strong></label>
       <input id="url" class="form-control" placeholder="https://…" />
       <div class="help">Se mostrará como botón “Abrir”.</div>
+
       <div>
         <p><strong>Destinatarios</strong></p>
-        <div class="chips" id="chips">
-          <span class="chip active" data-scope="todos">Todos</span>
-          <span class="chip" data-scope="JOSG">JOSG</span>
-          <span class="chip" data-scope="OEG">OEG</span>
-        </div>
+        <div class="chips" id="chips"><!-- chips dinámicos --></div>
+        <div id="chips-help" class="help"></div>
       </div>
 
       <div class="actions">
         <button type="submit">Enviar</button>
         <button type="button" class="button-cancel" onclick="history.back()">Cancelar</button>
-
       </div>
     </form>
   </div>
 
   <script>
-    const $ = s => document.querySelector(s);
+    const $  = s => document.querySelector(s);
     const $$ = s => Array.from(document.querySelectorAll(s));
 
-    // misma práctica que el resto de vistas
+    // Prefijo de API según ubicación (móvil bajo /josgmaestro/)
+    const API_BASE = location.pathname.startsWith('/josgmaestro/')
+      ? '/josgmaestro/api'
+      : '/control_firmas/api';
+
+    // Sesión
     const usuario_id = localStorage.getItem('usuario_id');
+    const rol        = localStorage.getItem('rol') || '';
     if (!usuario_id) location.href = 'index.html';
 
-    const state = { scope: 'todos' }; // 'todos' | 'JOSG' | 'OEG'
+    // Estado UI
+    const state = { scope: null, grupos: [] }; // scope: 'todos' | nombreGrupo
 
     function toast(msg, ok=true){
       const t = $('#toast');
@@ -87,39 +88,88 @@
     }
     const ensureProto = u => /^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//.test(u) ? u : 'https://' + u;
 
-    // Chips
-    $$('#chips .chip').forEach(ch => ch.addEventListener('click', ()=>{
-      $$('#chips .chip').forEach(c => c.classList.remove('active'));
-      ch.classList.add('active');
-      state.scope = ch.getAttribute('data-scope'); // 'todos' | 'JOSG' | 'OEG'
-    }));
+    function bindChips(){
+      $$('#chips .chip').forEach(ch => ch.addEventListener('click', ()=>{
+        $$('#chips .chip').forEach(c => c.classList.remove('active'));
+        ch.classList.add('active');
+        state.scope = ch.getAttribute('data-scope'); // 'todos' | nombre del grupo
+      }));
+    }
+
+    async function cargarChips(){
+      const cont = $('#chips');
+      const help = $('#chips-help');
+      cont.innerHTML = ''; help.textContent = '';
+      try{
+        if (rol === 'admin') {
+          // Admin: "Todos" + todos los grupos existentes
+          cont.insertAdjacentHTML('beforeend', `<span class="chip active" data-scope="todos">Todos</span>`);
+          const r = await fetch(`${API_BASE}/grupos`, { cache:'no-store' });
+          const nombres = await r.json(); // ["JOSG","OEG",...]
+          state.scope = 'todos';
+          state.grupos = nombres;
+          for (const nombre of nombres) {
+            cont.insertAdjacentHTML('beforeend', `<span class="chip" data-scope="${nombre}">${nombre}</span>`);
+          }
+          help.textContent = 'Selecciona “Todos” o un grupo concreto.';
+        } else if (rol === 'docente') {
+          // Docente: solo sus grupos
+          const r = await fetch(`${API_BASE}/mis-grupos?usuario_id=${encodeURIComponent(usuario_id)}`, { cache:'no-store' });
+          const grupos = await r.json(); // [{id,nombre}]
+          state.scope = grupos[0]?.nombre || null;
+          state.grupos = grupos.map(g => g.nombre);
+          for (const g of grupos) {
+            cont.insertAdjacentHTML('beforeend', `<span class="chip${state.scope===g.nombre?' active':''}" data-scope="${g.nombre}">${g.nombre}</span>`);
+          }
+          if (!grupos.length) {
+            help.textContent = 'No tienes grupos asignados.';
+          } else {
+            help.textContent = 'Solo puedes enviar a tus grupos.';
+          }
+        } else {
+          help.textContent = 'Tu rol no permite enviar mensajes.';
+        }
+      }catch(e){
+        console.error(e);
+        help.textContent = 'No se pudieron cargar los grupos.';
+      } finally {
+        bindChips();
+      }
+    }
+    cargarChips();
 
     // Envío
     $('#msg-form').addEventListener('submit', async ev=>{
       ev.preventDefault();
       const titulo = $('#titulo').value.trim();
       const cuerpo = $('#cuerpo').value.trim();
-      const url = $('#url').value.trim();
+      const url    = $('#url').value.trim();
 
       if (!cuerpo){ toast('Escribe el mensaje', false); return; }
+      if (!state.scope){
+        toast('Selecciona un grupo de destinatarios', false); return;
+      }
 
-      const isTodos = state.scope === 'todos';
+      const isTodos = (rol === 'admin') && state.scope === 'todos';
       const grupoNombre = isTodos ? null : state.scope;
 
-      // Payload compatible con tu backend: soporte por nombres + compat por IDs vacíos
       const body = {
+        usuario_id,
         titulo: titulo || null,
         cuerpo,
         url: url ? ensureProto(url) : null,
         broadcast: isTodos,
-        grupo_nombre: grupoNombre,     // nombre simple
-        grupos_nombres: grupoNombre ? [grupoNombre] : [], // array por si lo esperas así
-        grupos: []                     // compat (IDs) → vacío
+        grupo_nombre: grupoNombre,
+        grupos_nombres: isTodos ? [] : (grupoNombre ? [grupoNombre] : []),
+        grupos: [] // compat por IDs si alguna vez lo usas
       };
 
-      const btn=ev.submitter; const old=btn.textContent; btn.disabled=true; btn.textContent='Enviando…';
+      const btn = ev.submitter;
+      const old = btn.textContent;
+      btn.disabled = true; btn.textContent = 'Enviando…';
+
       try{
-        const r = await fetch('/mensajes', {
+        const r = await fetch(`${API_BASE}/mensajes`, {
           method:'POST',
           headers:{'Content-Type':'application/json'},
           body: JSON.stringify(body)
@@ -129,15 +179,25 @@
 
         toast(`✅ Enviado${j.enviados ? ' a ' + j.enviados + ' alumno(s)' : ''}.`);
         $('#titulo').value=''; $('#cuerpo').value=''; $('#url').value='';
-        // volver a "Todos"
-        state.scope='todos';
-        $$('#chips .chip').forEach(c => c.classList.remove('active'));
-        $$('#chips .chip')[0].classList.add('active');
+
+        // Reset selección
+        if (rol === 'admin') {
+          state.scope = 'todos';
+          $$('#chips .chip').forEach(c => c.classList.remove('active'));
+          const chipTodos = $$('#chips .chip').find(c => c.getAttribute('data-scope')==='todos');
+          chipTodos && chipTodos.classList.add('active');
+        } else if (rol === 'docente') {
+          // deja la selección actual (o la primera)
+          if (!state.scope && state.grupos.length){
+            state.scope = state.grupos[0];
+            $$('#chips .chip').forEach(c => c.classList.toggle('active', c.getAttribute('data-scope')===state.scope));
+          }
+        }
       }catch(e){
         console.error(e);
         toast('❌ ' + e.message, false);
       }finally{
-        btn.disabled=false; btn.textContent=old;
+        btn.disabled = false; btn.textContent = old;
       }
     });
   </script>

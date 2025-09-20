@@ -30,7 +30,8 @@
     <h2>Agenda de eventos</h2>
     <div id="user-box" class="muted" style="margin:4px 0 10px; font-weight:600;"></div>
     <div id="calendar" class="calendar-container"></div>
-      <button onclick="logout()" >Cerrar sesión</button>
+    <button onclick="location.href='portal_maestro.html'">&larr; Inicio</button>
+  </div>
   <script>
     const API_BASE   = location.pathname.startsWith('/josgmaestro/') ? '/josgmaestro/api' : '/control_firmas/api';
     const usuario_id = localStorage.getItem('usuario_id');

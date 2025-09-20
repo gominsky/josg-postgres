@@ -58,11 +58,10 @@
     return horaStr; // fallback
   }
 
-      const API_BASE = location.pathname.startsWith('/josgmaestro/') ? '/josgmaestro/api' : '/control_firmas/api';
-      async function cargarAsistencias() {
+    async function cargarAsistencias() {
       try {
         // 🚫 Evita caché agregando parámetro único y opción no-store
-        const url = `${API_BASE}/eventos/${evento_id}/asistencias?ts=${Date.now()}`;
+        const url = `/control_firmas/api/eventos/${evento_id}/asistencias?ts=${Date.now()}`;
         const res = await fetch(url, { cache: 'no-store' });
 
         if (!res.ok) {

@@ -44,7 +44,6 @@
     <button onclick="location.href='eventos.html'">← Volver</button>
   </div>
   <script>
-    const API_BASE = location.pathname.startsWith('/josgmaestro/') ? '/josgmaestro/api' : '/control_firmas/api';
     let evento_id = new URLSearchParams(location.search).get('id');
     let usuario_id = localStorage.getItem('usuario_id');
     let tokenQR = '';
@@ -87,7 +86,7 @@
   
     async function cargarEventoYAlumnos() {
       try {
-        const eventoRes = await fetch(`${API_BASE}/eventos/${evento_id}`);
+        const eventoRes = await fetch(`/control_firmas/api/eventos/${evento_id}`);
         const evento = await eventoRes.json();
   
         document.getElementById('titulo').innerText = evento.titulo;
@@ -121,7 +120,7 @@
     }
   
     async function actualizarListaAlumnos() {
-      const alumnosRes = await fetch(`${API_BASE}/eventos/${evento_id}/alumnos`);
+      const alumnosRes = await fetch(`/control_firmas/api/eventos/${evento_id}/alumnos`);
       const alumnos = await alumnosRes.json();
   
       const lista = alumnos.map(a => `
@@ -167,7 +166,7 @@
         });
       });
   
-      const res = await fetch(`${API_BASE}/firmar-alumnos`, {
+      const res = await fetch('/control_firmas/api/firmar-alumnos', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ registros })
@@ -176,7 +175,7 @@
       const data = await res.json();
       if (data.success) {
         const observacionesGenerales = document.getElementById('observaciones_generales').value;
-        await fetch(`${API_BASE}/eventos/${evento_id}/observaciones-generales`, {
+        await fetch(`/control_firmas/api/eventos/${evento_id}/observaciones-generales`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ observaciones: observacionesGenerales })
@@ -226,7 +225,7 @@
   
     async function toggleQR() {
       const nuevoEstado = !qrActivo;
-      const res = await fetch(`${API_BASE}/eventos/${evento_id}/activar`, {
+      const res = await fetch(`/control_firmas/api/eventos/${evento_id}/activar`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ activo: nuevoEstado })
