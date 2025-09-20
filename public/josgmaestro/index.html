@@ -24,10 +24,13 @@
   </div>
 
   <script>
+     const API_BASE = location.pathname.startsWith('/josgmaestro/')
+      ? '/josgmaestro/api'
+      : '/control_firmas/api'; // compat
     async function login() {
       const email = document.getElementById('email').value.trim();
       const password = document.getElementById('password').value;
-      const res = await fetch('/control_firmas/api/login', {
+      const res = await fetch(`${API_BASE}/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password })
@@ -35,7 +38,9 @@
       const data = await res.json();
 
       if (data.success) {
-        localStorage.setItem('usuario_id', data.usuario.id);
+        localStorage.setItem('usuario_id', String(data.usuario?.id ?? ''));
+        if (data.usuario?.nombre) localStorage.setItem('usuario_nombre', data.usuario.nombre);
+        if (data.usuario?.rol)    localStorage.setItem('rol', data.usuario.rol);
         location.href = 'portal_maestro.html';
       } else {
         document.getElementById('mensaje').innerText = data.error || 'Credenciales incorrectas';

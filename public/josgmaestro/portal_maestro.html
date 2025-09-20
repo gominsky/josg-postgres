@@ -60,10 +60,12 @@
 <body>
   <div class="container">
     <div class="topbar">
-      <img src="/../imagenes/logoJOSG.png" alt="Logo JOSG" style="max-width:140px; margin-bottom:10px;">
-      <button id="btn-logout" class="icon-btn" title="Cerrar sesión" aria-label="Cerrar sesión">⎋</button>
-    </div>
-
+            <img src="/../imagenes/logoJOSG.png" alt="Logo JOSG" style="max-width:140px; margin-bottom:10px;">
+            <div style="display:flex; flex-direction:column; align-items:flex-end;">
+              <div id="user-box" class="muted" style="margin-bottom:4px; font-weight:600;"></div>
+              <button id="btn-logout" class="icon-btn" title="Cerrar sesión" aria-label="Cerrar sesión">⎋</button>
+            </div>
+          </div>
     <div class="hero">
       <h1>Maestro</h1>
     </div>
@@ -79,15 +81,22 @@
   </div>
 
   <script>
+    const API_BASE   = location.pathname.startsWith('/josgmaestro/') ? '/josgmaestro/api' : '/control_firmas/api';
     const usuario_id = localStorage.getItem('usuario_id');
     if (!usuario_id) location.href = 'index.html';
 
     document.getElementById('btn-logout').addEventListener('click', () => {
-      localStorage.removeItem('usuario_id');
+      localStorage.clear();
       location.href = 'index.html';
     });
 
-    const API_EVENTOS = '/control_firmas/api/eventos';
+    (function(){
+      const nombre = localStorage.getItem('usuario_nombre');
+      const box = document.getElementById('user-box');
+      if (box) box.textContent = nombre ? `Usuario: ${nombre}` : `Usuario #${usuario_id}`;
+    })();
+
+    const API_EVENTOS = `${API_BASE}/eventos`;
     const meses = ['ENE','FEB','MAR','ABR','MAY','JUN','JUL','AGO','SEP','OCT','NOV','DIC'];
     const dias  = ['dom','lun','mar','mié','jue','vie','sáb'];
 
@@ -128,14 +137,24 @@
       }).filter(ev=>ev.id!=null&&ev.start);
     }
 
-    function filtrarProximos(eventos){
-      const hoy=new Date();
-      const hoy0=new Date(hoy.getFullYear(),hoy.getMonth(),hoy.getDate());
-      return eventos.filter(ev=>new Date(ev.start).getTime()>=hoy0.getTime())
-                    .sort((a,b)=>new Date(a.start)-new Date(b.start))
-                    .slice(0,8);
-    }
-
+     function filtrarProximos(eventos){
+   const hoy = new Date();
+   const hoy0 = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
+   // 1) Próximos (>= hoy)
+   const futuros = eventos
+     .filter(ev => new Date(ev.start).getTime() >= hoy0.getTime())
+     .sort((a,b) => new Date(a.start) - new Date(b.start));
+   if (futuros.length) return futuros.slice(0,8);
+   // 2) Fallback: últimos recientes (p.ej. 14 días hacia atrás)
+   const desde = new Date(hoy0); desde.setDate(desde.getDate() - 14);
+   const recientes = eventos
+     .filter(ev => {
+       const t = new Date(ev.start).getTime();
+       return t >= desde.getTime() && t < hoy0.getTime();
+     })
+     .sort((a,b) => new Date(b.start) - new Date(a.start));
+   return recientes.slice(0,8);
+ }
     async function cargarProximos(){
       const wrap=document.getElementById('upcoming');
       const empty=document.getElementById('no-events');

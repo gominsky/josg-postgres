@@ -28,17 +28,23 @@
 <body>
   <div class="container">
     <h2>Agenda de eventos</h2>
+    <div id="user-box" class="muted" style="margin:4px 0 10px; font-weight:600;"></div>
     <div id="calendar" class="calendar-container"></div>
       <button onclick="logout()" >Cerrar sesión</button>
   <script>
+    const API_BASE   = location.pathname.startsWith('/josgmaestro/') ? '/josgmaestro/api' : '/control_firmas/api';
     const usuario_id = localStorage.getItem('usuario_id');
     if (!usuario_id) location.href = 'index.html';
 
     function logout() {
-      localStorage.removeItem('usuario_id');
+      localStorage.clear();
       location.href = 'index.html';
     }
-
+    (function(){
+      const nombre = localStorage.getItem('usuario_nombre');
+      const box = document.getElementById('user-box');
+      if (box) box.textContent = nombre ? `Usuario: ${nombre}` : `Usuario #${usuario_id}`;
+    })();
     document.addEventListener('DOMContentLoaded', function () {
       const calendarEl = document.getElementById('calendar');
       const calendar = new FullCalendar.Calendar(calendarEl, {
@@ -55,14 +61,13 @@
           list: 'Lista'
         },
         firstDay: 1, 
-
-       eventSources: [{
-  url: `/control_firmas/api/eventos?usuario_id=${usuario_id}`, // o /control_firmas/api/eventos
-  failure: (error) => {
-    console.error('No se pudieron cargar eventos', error);
-    alert('No se pudieron cargar los eventos. Revisa la ruta de la API.');
-  }
-}],
+        eventSources: [{
+        url: `${API_BASE}/eventos?usuario_id=${usuario_id}`,
+        failure: (error) => {
+          console.error('No se pudieron cargar eventos', error);
+          alert('No se pudieron cargar los eventos. Revisa la ruta de la API.');
+        }
+      }],
         eventClick: function (info) {
           const id = info.event.id;
           location.href = `evento_detalle.html?id=${id}`;
