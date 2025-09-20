@@ -108,10 +108,12 @@ app.use('/contabilidad', isAdmin, contabilidadRoutes);
 app.use('/proveedores', isAdmin, proveedoresRoutes);
 app.use('/categorias', isAdmin, categoriasRoutes);
 app.use('/cuentas', isAdmin, cuentasRoutes);
-//app.use('/api', isAuthenticated, layoutsRoutes);
+app.use('/josgmaestro', control_firmasRoutes);
  // APIs disponibles tanto en /api como en /control_firmas/api
- app.use('/api', isAuthenticated, layoutsRoutes);
- app.use('/control_firmas/api', isAuthenticated, layoutsRoutes);
+app.use('/api', isAuthenticated, layoutsRoutes);
+app.use('/control_firmas/api', isAuthenticated, layoutsRoutes);
+app.use('/josgmaestro/api', isAuthenticated, layoutsRoutes);
+app.use('/josgmaestro/api', isAuthenticated, control_firmasRoutes);
 
 app.use('/recuperar',recuperarRoutes);
 app.use(require('./routes/share_stateless'));
@@ -151,11 +153,6 @@ app.get('/mensajes/nuevo', isAuthenticated, isDocente, async (req, res) => {
   }
 });
 
-// endpoint de salud para comprobar el prefijo desde el front
-app.get(['/api/health','/control_firmas/api/health'], (_req, res) => {
-    res.json({ ok: true, ts: Date.now() });
-  });
-
 // Página de mantenimiento (zona de obras)
 app.get('/obras', (req, res) => {
   res.status(503);                 // 503 = Service Unavailable
@@ -187,6 +184,17 @@ const initDatabase = require('./database/init'); // Ajusta el path si es necesar
 const { VAPID_PUBLIC } = require('./utils/push');
 app.get('/push/public-key', (_req, res) => {
   res.json({ key: VAPID_PUBLIC || '' });
+});
+
+// 🔎 1) ver si existen ambos prefijos
+app.get(['/api/health','/control_firmas/api/health','/josgmaestro/api/health'], (_req, res) => {
+  res.json({ ok: true, ts: Date.now() });
+});
+
+// 🔎 2) log sencillo de cada petición a la API
+app.use(['/api','/control_firmas/api','/josgmaestro/api'], (req, _res, next) => {
+  console.log('[API]', req.method, req.originalUrl);
+  next();
 });
 
 /* Iniciar servidor
