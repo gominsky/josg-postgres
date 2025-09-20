@@ -38,79 +38,58 @@ router.post('/api/login', async (req, res) => {
 });
 
 // GET /api/eventos → feed común para calendario y carteles
+// GET /api/eventos  (soporta con y sin ?usuario_id=)
 router.get('/api/eventos', async (req, res) => {
-  const usuarioId = parseInt(req.query.usuario_id, 10);
-  if (isNaN(usuarioId) || !usuarioId) return res.status(400).json([]);
+  const usuarioId = Number(req.query.usuario_id) || null;
 
   try {
-    // 1) Rol del usuario
-    const rolRes = await db.query('SELECT rol FROM usuarios WHERE id = $1', [usuarioId]);
-    if (rolRes.rowCount === 0) return res.json([]);
-    const rol = rolRes.rows[0].rol;
+    let result;
 
-    // 2) SQL según rol (con JOIN a espacios)
-    let sql, params = [];
-    if (rol === 'admin') {
-      sql = `
-        SELECT e.id,
-               e.titulo,
-               e.fecha_inicio, e.hora_inicio,
-               e.fecha_fin,    e.hora_fin,
-               g.nombre AS grupo_nombre,
-               COALESCE(s.nombre, '') AS espacio
-        FROM eventos e
-        JOIN grupos   g ON g.id = e.grupo_id
-        LEFT JOIN espacios s ON s.id = e.espacio_id
-        ORDER BY e.fecha_inicio ASC, e.hora_inicio NULLS FIRST, e.id ASC
-      `;
+    if (usuarioId) {
+      // Si viene usuario → versión filtrada por usuario/rol
+      // Ajusta la vista/joins según tu esquema real
+      result = await db.query(`
+        SELECT
+          e.id,
+          e.titulo        AS title,
+          e.fecha_inicio  AS start,
+          e.fecha_fin     AS "end"
+        FROM vw_eventos_por_usuario e
+        WHERE e.usuario_id = $1
+        ORDER BY e.fecha_inicio ASC
+        LIMIT 200
+      `, [usuarioId]);
     } else {
-      sql = `
-        SELECT e.id,
-               e.titulo,
-               e.fecha_inicio, e.hora_inicio,
-               e.fecha_fin,    e.hora_fin,
-               g.nombre AS grupo_nombre,
-               COALESCE(s.nombre, '') AS espacio
-        FROM eventos e
-        JOIN grupos   g ON g.id = e.grupo_id
-        LEFT JOIN espacios s ON s.id = e.espacio_id
-        JOIN profesor_grupo pg ON pg.grupo_id = g.id
-        JOIN profesores p      ON p.id        = pg.profesor_id
-        JOIN usuarios   u      ON u.email     = p.email
-        WHERE u.id = $1
-        ORDER BY e.fecha_inicio ASC, e.hora_inicio NULLS FIRST, e.id ASC
-      `;
-      params = [usuarioId];
+      // Sin usuario → versión general (próximos 90 días)
+      // ATENCIÓN: usa tu tabla real. Si tu /_diag contó en "eventos", este SELECT debería pegar ahí.
+      result = await db.query(`
+        SELECT
+          id,
+          titulo        AS title,
+          fecha_inicio  AS start,
+          fecha_fin     AS "end"
+        FROM eventos
+        WHERE fecha_inicio >= NOW() - INTERVAL '7 days'
+          AND fecha_inicio  < NOW() + INTERVAL '90 days'
+        ORDER BY fecha_inicio ASC
+        LIMIT 200
+      `);
     }
 
-    const rs = await db.query(sql, params);
+    // Normaliza a ISO "YYYY-MM-DDTHH:mm:ss" por si el driver devuelve Date
+    const rows = (result.rows || []).map(ev => ({
+      id: ev.id,
+      title: ev.title,
+      start: new Date(ev.start).toISOString().slice(0,19),
+      end:   new Date(ev.end).toISOString().slice(0,19),
+    }));
 
-    // 3) Adaptación: ISO start/end + espacio y grupo
-    const eventos = rs.rows.map(e => {
-      // fecha a 'YYYY-MM-DD'
-      const fIni = e.fecha_inicio; // Date en PG → node-pg lo da como string 'YYYY-MM-DD'
-      const fFin = e.fecha_fin;
-      const hIni = e.hora_inicio ? String(e.hora_inicio).slice(0,5) : '00:00';
-      const hFin = e.hora_fin    ? String(e.hora_fin).slice(0,5)    : '00:00';
-
-      // ISO local naive (sin TZ): FullCalendar y tus carteles lo aceptan bien
-      const start = `${fIni}T${hIni}:00`;
-      const end   = `${fFin}T${hFin}:00`;
-
-      return {
-        id: e.id,
-        title: `${e.titulo} (${e.grupo_nombre})`,
-        start,
-        end,
-        grupo_nombre: e.grupo_nombre,
-        espacio: e.espacio || ''   // ← nombre del lugar desde tabla espacios
-      };
-    });
-
-    res.json(eventos);
+    // Log útil en Render para confirmar cuántos salen
+    console.log('[API] /api/eventos ->', rows.length, 'eventos');
+    return res.json(rows);
   } catch (err) {
-    console.error('❌ /api/eventos:', err.message);
-    res.status(500).json([]);
+    console.error('GET /api/eventos error:', err);
+    return res.status(500).json([]);
   }
 });
 
