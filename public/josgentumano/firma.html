@@ -13,7 +13,15 @@
 </head>
 <body>
   <div class="container">
+    <div class="topbar" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+      <div class="brand" style="display:flex;align-items:center;gap:10px;">
+        <img src="../imagenes/logoJOSG.png" alt="JOSG" style="max-height:44px;">
+        <div id="user-name" class="muted" style="font-weight:600;"></div>
+      </div>
+    </div>
+    
     <h2>Firmar Asistencia</h2>
+    <div id="user-name" class="muted"></div>
     <div id="reader"></div>
     <p id="mensaje"></p>
     <div style="margin-top:1rem;">
@@ -129,6 +137,7 @@
     })();
   </script>
   <script src="push-init.js"></script>
+  <script src="app_alumno.js"></script>
 </body>
 </html>
 

@@ -22,31 +22,50 @@
     <button onclick="login()">Entrar</button>
     <p id="mensaje"></p>
   </div>
-
   <script>
-     const API_BASE = location.pathname.startsWith('/josgmaestro/')
-      ? '/josgmaestro/api'
-      : '/control_firmas/api'; // compat
     async function login() {
       const email = document.getElementById('email').value.trim();
       const password = document.getElementById('password').value;
-      const res = await fetch(`${API_BASE}/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
-      });
-      const data = await res.json();
-
-      if (data.success) {
-        localStorage.setItem('usuario_id', String(data.usuario?.id ?? ''));
-        if (data.usuario?.nombre) localStorage.setItem('usuario_nombre', data.usuario.nombre);
-        if (data.usuario?.rol)    localStorage.setItem('rol', data.usuario.rol);
-        location.href = 'portal_maestro.html';
-      } else {
-        document.getElementById('mensaje').innerText = data.error || 'Credenciales incorrectas';
+  
+      const msg = document.getElementById('mensaje');
+      msg.textContent = '';
+  
+      if (!email || !password) {
+        msg.textContent = 'Introduce email y contraseña.';
+        return;
+      }
+  
+      const btn = document.querySelector('button[onclick="login()"]');
+      if (btn) { btn.disabled = true; btn.textContent = 'Entrando…'; }
+  
+      try {
+        // ⬇⬇⬇  RUTA CORRECTA PARA MAESTRO
+        const res = await fetch('/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'same-origin',          // 👈 guarda cookie de sesión
+          body: JSON.stringify({ email, password })
+        });
+  
+        const data = await res.json().catch(()=> ({}));
+        if (res.ok && data.success && data.usuario?.id) {
+          localStorage.setItem('usuario_id', String(data.usuario.id));
+          localStorage.setItem('usuario_nombre', data.usuario.nombre || '');
+          if (data.usuario.rol) localStorage.setItem('rol', data.usuario.rol);
+          location.href = 'portal_maestro.html';
+        } else {
+          msg.textContent = data.error || 'Credenciales incorrectas';
+        }
+      } catch (e) {
+        console.error('[login] net err', e);
+        msg.textContent = 'No se pudo conectar con el servidor.';
+      } finally {
+        if (btn) { btn.disabled = false; btn.textContent = 'Entrar'; }
       }
     }
   </script>
+  
+  
 </body>
 </html>
 

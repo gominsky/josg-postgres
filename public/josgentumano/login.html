@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Josg en tu mano -</title>
+  <title>Josg en tu mano </title>
   <link rel="stylesheet" href="../styles/estilos_app.css" /></head>
 <body>
   <div class="container">
@@ -30,8 +30,10 @@
       const data = await res.json();
 
       if (data.success) {
-        localStorage.setItem('alumno_id', data.alumno_id);
-        window.location.href = 'index.html';
+  localStorage.setItem('alumno_id', data.alumno_id);
+  localStorage.setItem('alumno_nombre', data.nombre || '');
+  window.location.href = 'index.html';
+
       } else {
         document.getElementById('mensaje').innerText = data.error || 'Credenciales incorrectas';
       }

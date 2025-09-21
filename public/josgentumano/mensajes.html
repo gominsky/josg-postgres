@@ -129,11 +129,15 @@
 </head>
 <body>
   <div class="container">
+    <div class="topbar" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+      <div class="brand" style="display:flex;align-items:center;gap:10px;">
+        <img src="../imagenes/logoJOSG.png" alt="JOSG" style="max-height:44px;">
+        <div id="user-name" class="muted" style="font-weight:600;"></div>
+      </div>
+    </div>
     <h2>Mensajes</h2>
-
     <div id="empty" class="muted" style="display:none;">No tienes mensajes aún.</div>
     <div id="list" class="list"></div>
-
     <div id="pager" class="pager"></div>
 
     <div style="margin-top:1rem;">
@@ -338,6 +342,6 @@
   });
 })();
 </script>
-
+<script src="app_alumno.js"></script>
 </body>
 </html>

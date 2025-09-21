@@ -402,9 +402,9 @@ router.post('/', async (req, res) => {
       const { rows } = await db.query(sql, params);
       const newId = rows[0].id;
   
-      if (grupo_id) {
+      /*if (grupo_id) {
         await asignarAlumnosAEvento(db, newId, grupo_id, fIniISO);
-      }
+      }*/
   
       await db.query('COMMIT');
       res.json({ id: newId });

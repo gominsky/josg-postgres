@@ -98,6 +98,52 @@ router.post('/api/login', express.json(), async (req, res) => {
     return res.status(500).json({ success: false, error: 'Error interno' });
   }
 });
+// ====== LOGIN PORTAL MAESTRO (bcrypt puro) ======
+
+router.post('/login', express.json(), async (req, res) => {
+  const email = String(req.body?.email || '').trim();
+  const password = String(req.body?.password || '');
+
+  if (!email || !password) {
+    return res.status(400).json({ success:false, error:'Faltan credenciales' });
+  }
+
+  try {
+    // busca por email insensible a may/min
+    const rs = await db.query(
+      `SELECT id, nombre, email, rol, password
+         FROM usuarios
+        WHERE lower(email) = lower($1)
+        LIMIT 1`,
+      [email]
+    );
+    const u = rs.rows[0];
+    if (!u) {
+      return res.status(401).json({ success:false, error:'Credenciales incorrectas' });
+    }
+
+    // SOLO bcrypt (como antes)
+    const ok = await bcrypt.compare(password, u.password);
+    if (!ok) {
+      return res.status(401).json({ success:false, error:'Credenciales incorrectas' });
+    }
+
+    // (opcional) deja sesión para el portal si la usas
+    if (req.session) {
+      req.session.usuario_id  = u.id;
+      req.session.usuario_rol = u.rol;
+    }
+
+    // mismo shape que tu front espera
+    return res.json({
+      success: true,
+      usuario: { id: u.id, nombre: u.nombre || '', rol: u.rol || '' }
+    });
+  } catch (err) {
+    console.error('POST /login error:', err);
+    return res.status(500).json({ success:false, error:'Error en la base de datos' });
+  }
+});
 
 /* ───────────────────── salud/diag ───────────────────── */
 
@@ -261,20 +307,15 @@ router.get('/api/eventos/:id/asistencias', async (req, res) => {
   const id = Number(req.params.id);
   if (!id) return res.status(400).json({ error: 'id inválido' });
 
-  // helpers de formateo robustos (no dependen del tipo en BD)
   const fmtFecha = v => {
     if (!v && v !== 0) return '';
     const s = String(v);
-    // intenta YYYY-MM-DD
     const m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
-    if (m) return `${m[3]}/${m[2]}/${m[1]}`;
-    // intenta DD/MM/YYYY ya formateado o cualquier otra cosa → lo devolvemos tal cual
-    return s;
+    return m ? `${m[3]}/${m[2]}/${m[1]}` : s;
   };
   const fmtHora = v => {
     if (!v && v !== 0) return '';
     const s = String(v);
-    // toma HH:MM al inicio y descarta microsegundos/zonas
     const m = s.match(/^(\d{2}):(\d{2})/);
     return m ? `${m[1]}:${m[2]}` : s;
   };
@@ -284,8 +325,8 @@ router.get('/api/eventos/:id/asistencias', async (req, res) => {
       SELECT
         a.nombre,
         a.apellidos,
-        asi.fecha,         -- crudo (puede ser date, timestamp o text)
-        asi.hora,          -- crudo (puede traer microsegundos)
+        asi.fecha,
+        asi.hora,
         asi.tipo,
         asi.ubicacion,
         COALESCE(asi.observaciones, '') AS observaciones
@@ -296,6 +337,7 @@ router.get('/api/eventos/:id/asistencias', async (req, res) => {
       JOIN alumnos a
         ON a.id = asi.alumno_id
       WHERE asi.evento_id = $1
+        AND (asi.tipo IS DISTINCT FROM 'ausente')  -- oculta antiguos "ausente"
       ORDER BY asi.fecha DESC NULLS LAST,
                asi.hora  DESC NULLS LAST,
                a.apellidos, a.nombre
@@ -305,8 +347,8 @@ router.get('/api/eventos/:id/asistencias', async (req, res) => {
     const data = (rs.rows || []).map(r => ({
       nombre: r.nombre,
       apellidos: r.apellidos,
-      fecha: fmtFecha(r.fecha),   // p.ej. "20/09/2025"
-      hora:  fmtHora(r.hora),     // p.ej. "20:09"
+      fecha: fmtFecha(r.fecha),
+      hora:  fmtHora(r.hora),
       tipo:  r.tipo || '',
       ubicacion: r.ubicacion || '',
       observaciones: r.observaciones || ''
@@ -320,9 +362,7 @@ router.get('/api/eventos/:id/asistencias', async (req, res) => {
 });
 
 // ─────────────────────── firmar/guardar asistencias (solo asignados) ────────────
-// Body: { registros: [ { evento_id, alumno_id, asistio, observaciones, tipo? } ] }
-// ─────────────────────── firmar/guardar asistencias (solo asignados) ────────────
-// Body: { registros: [ { evento_id, alumno_id, asistio, observaciones } ] }
+
 router.post('/api/firmar-alumnos', express.json(), async (req, res) => {
   const registros = Array.isArray(req.body?.registros) ? req.body.registros : [];
   if (!registros.length) return res.status(400).json({ success: false, ok: false, error: 'registros requeridos' });

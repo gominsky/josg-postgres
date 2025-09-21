@@ -11,11 +11,15 @@ function requireAlumno(req, res, next){
     req.alumno_id = id; // fuente de verdad para rutas /app
     next();
   }
+// En routes/firmas.js:
+router.use('/api', (req, res, next) => {
+  if (req.session && req.session.alumno_id) return next();
+  return res.status(401).json({ success:false, error:'auth_required' });
+});
 /* -------------------------------- PÁGINAS -------------------------------- */
 router.get('/ayuda', (_req, res) => {
   res.render('ayuda_firmas', { title: 'Ayuda · Alumnos', hero: false });
 });
-
 /* ------------------------------- REGISTRO APP ---------------------------- */
 router.post('/registro-app', async (req, res) => {
   const { email, dni, password } = req.body;
@@ -26,8 +30,13 @@ router.post('/registro-app', async (req, res) => {
     if (alumno.registrado) return res.status(400).json({ error: 'Este alumno ya está registrado' });
 
     const hash = await bcrypt.hash(password, 10);
-    await db.query('UPDATE alumnos SET password = $1, registrado = $2 WHERE id = $3', [hash, true, alumno.id]);
-    res.json({ success: true, alumno_id: alumno.id });
+    await db.query(
+      'UPDATE alumnos SET password = $1, registrado = $2 WHERE id = $3',
+      [hash, true, alumno.id]
+    );
+    // Ahora devuelve el nombre
+    res.json({ success: true, alumno_id: alumno.id, nombre: alumno.nombre });
+    
   } catch (err) {
     console.error('registro-app:', err);
     res.status(500).json({ error: 'Error al registrar al alumno' });
@@ -35,23 +44,37 @@ router.post('/registro-app', async (req, res) => {
 });
 
 /* ---------------------------------- LOGIN -------------------------------- */
+// Login alumno (JOSG en tu mano)
 router.post('/login', async (req, res) => {
-  const { email, password } = req.body;
+  const { email, password } = req.body || {};
   try {
-    const r = await db.query('SELECT * FROM alumnos WHERE email = $1 AND registrado = true', [email]);
+    // normaliza el email por si viene con mayúsculas/espacios
+    const r = await db.query(
+      'SELECT * FROM alumnos WHERE lower(email) = lower($1) AND registrado = true LIMIT 1',
+      [String(email || '').trim()]
+    );
     const alumno = r.rows[0];
-    if (!alumno) return res.status(404).json({ error: 'Alumno no encontrado o no registrado' });
+    if (!alumno) return res.status(404).json({ success:false, error: 'Alumno no encontrado o no registrado' });
 
-    const ok = await bcrypt.compare(password, alumno.password);
-    if (!ok) return res.status(401).json({ error: 'Contraseña incorrecta' });
+    const ok = await bcrypt.compare(password || '', alumno.password);
+    if (!ok) return res.status(401).json({ success:false, error: 'Contraseña incorrecta' });
 
-    req.session.alumno_id = alumno.id;           // <<--- sesión para rutas /mensajes/app/*
-    res.json({ success: true, alumno_id: alumno.id });
+    // sesión para rutas /mensajes/app/* si las usas
+    req.session.alumno_id = alumno.id;
+
+    // devuelve también el nombre (y, si te sirve, el email)
+    return res.json({
+      success: true,
+      alumno_id: alumno.id,
+      nombre: alumno.nombre || '',
+      email: alumno.email || null
+    });
   } catch (err) {
     console.error('login:', err);
-    res.status(500).json({ error: 'Error en la base de datos' });
+    return res.status(500).json({ success:false, error: 'Error en la base de datos' });
   }
 });
+
 
 /* ------------------------------ FIRMA POR QR ----------------------------- */
 async function handleFirmarQR(req, res) {
@@ -240,6 +263,18 @@ router.get('/api/alumno/:alumnoId/partituras', async (req, res) => {
   } catch (err) {
     console.error('[firmas/api] partituras alumno:', err);
     res.status(500).json({ error: 'Error obteniendo partituras' });
+  }
+});
+// ─────────────────────── Alumno básico por id (para mostrar nombre) ─────────────
+router.get('/api/alumno/:alumnoId/basico', async (req, res) => {
+  const id = Number(req.params.alumnoId);
+  if (!id) return res.status(400).json({ error:'id inválido' });
+  try {
+    const { rows } = await db.query('SELECT nombre FROM alumnos WHERE id=$1', [id]);
+    if (!rows.length) return res.status(404).json({ error:'Alumno no encontrado' });
+    res.json({ success:true, nombre: rows[0].nombre });
+  } catch (err) {
+    res.status(500).json({ error:'Error en DB' });
   }
 });
 

@@ -53,6 +53,29 @@ app.set('layout', 'layout');
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
+function requireAlumno(req, res, next) {
+  const open = [
+    // ✅ home pública
+    /^\/josgmaestro\/?$/i,
+    /^\/josgmaestro\/index\.html?$/i,
+
+    // ✅ páginas públicas
+    /^\/josgmaestro\/login\.html?$/i,
+    /^\/josgmaestro\/registro\.html?$/i,
+
+    // ✅ assets
+    /^\/josgmaestro\/(styles|imagenes|fonts|favicon\.ico|manifest\.json|.*\.(css|js|png|jpg|svg|webp|ico))$/i
+  ];
+
+  if (open.some(rx => rx.test(req.path))) return next();
+
+  if (req.session && req.session.alumno_id) return next();
+
+  if (req.path.startsWith('/josgmaestro/api') || req.path.startsWith('/firmas/api')) {
+    return res.status(401).json({ success:false, error:'auth_required' });
+  }
+  return res.redirect('/josgmaestro/login.html');
+}
 // función global para fechas.
 app.locals.formatDate = (isoString) => {
   if (!isoString) return '—';
@@ -103,7 +126,7 @@ app.use('/instrumentos', isAdmin, instrumentosRoutes);
 app.use('/tipos_cuotas', isAdmin, tipos_cuotasRoutes); // Solo admin
 app.use('/pagos', isAdmin, pagosRoutes);                // Solo admin
 app.use('/control_firmas', control_firmasRoutes);
-app.use('/josgmaestro', control_firmasRoutes);
+app.use('/josgmaestro', requireAlumno, express.static(path.join(__dirname, 'public/josgmaestro')));
 app.use('/plano', isAuthenticated, planoRoutes);
 app.use('/contabilidad', isAdmin, contabilidadRoutes);
 app.use('/proveedores', isAdmin, proveedoresRoutes);
