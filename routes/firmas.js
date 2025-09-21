@@ -277,6 +277,119 @@ router.get('/api/alumno/:alumnoId/basico', async (req, res) => {
     res.status(500).json({ error:'Error en DB' });
   }
 });
+// ================= MENSAJES (lectura alumno) =================
+// ================= MENSAJES (lectura alumno) =================
+async function detectMsgSchema(client){
+  const t = await client.query(`
+    SELECT lower(table_name) AS t
+    FROM information_schema.tables
+    WHERE table_schema='public'
+      AND lower(table_name) IN ('mensajes','mensaje_destino','mensaje_destinatarios','mensajes_destinatarios','mensajes_alumnos')
+  `);
+  const names = new Set(t.rows.map(r=>r.t));
+  if (!names.has('mensajes')) return null;
+
+  const colsMsg = await client.query(`
+    SELECT lower(column_name) AS c
+    FROM information_schema.columns WHERE table_name='mensajes'
+  `);
+  const M = new Set(colsMsg.rows.map(r=>r.c));
+
+  // preferimos tu tabla real 'mensaje_destino' si existe
+  const destTable =
+    names.has('mensaje_destino')        ? 'mensaje_destino'        :
+    names.has('mensaje_destinatarios')  ? 'mensaje_destinatarios'  :
+    names.has('mensajes_destinatarios') ? 'mensajes_destinatarios' :
+    names.has('mensajes_alumnos')       ? 'mensajes_alumnos'       : null;
+
+  if (!destTable) return { mensajes:true, dest:null, M, dcols:new Set(), msgCol:null, alumCol:null, grpCol:null };
+
+  const colsDest = await client.query(`SELECT lower(column_name) AS c FROM information_schema.columns WHERE table_name=$1`, [destTable]);
+  const D = new Set(colsDest.rows.map(r=>r.c));
+  const msgCol  = D.has('mensaje_id')  ? 'mensaje_id'  : D.has('mensajes_id') ? 'mensajes_id' : D.has('id_mensaje') ? 'id_mensaje' : null;
+  const alumCol = D.has('alumno_id')   ? 'alumno_id'   : D.has('alumnos_id')  ? 'alumnos_id'  : D.has('id_alumno')  ? 'id_alumno'  : null;
+  const grpCol  = D.has('grupo_id')    ? 'grupo_id'    : null;
+  return { mensajes:true, dest:destTable, M, dcols:D, msgCol, alumCol, grpCol };
+}
+
+// GET /firmas/api/alumno/:alumnoId/mensajes  → lista de mensajes del alumno
+router.get('/api/alumno/:alumnoId/mensajes', async (req,res)=>{
+  const alumnoId = Number(req.params.alumnoId || req.query.alumno_id || req.session?.alumno_id);
+  if (!alumnoId) return res.status(400).json([]);
+
+  const client = await db.connect();
+  try {
+    const sch = await detectMsgSchema(client);
+    if (!sch || !sch.dest || !sch.msgCol || !sch.alumCol) return res.json([]);
+
+    const createdExpr = sch.M.has('created_at') ? 'm.created_at'
+                      : sch.M.has('fecha')      ? 'm.fecha'
+                      : sch.M.has('ts')         ? 'm.ts'
+                      : 'NULL::timestamp';
+
+    const selTitulo = sch.M.has('titulo') ? 'm.titulo' : `'Aviso' AS titulo`;
+    const selUrl    = sch.M.has('url')    ? 'm.url'    : 'NULL AS url';
+    const selUrls   = sch.M.has('urls')   ? 'm.urls'   : 'NULL AS urls';
+
+    const joinAutor = sch.M.has('usuario_id') ? 'm.usuario_id'
+                      : sch.M.has('creado_por') ? 'm.creado_por'
+                      : sch.M.has('autor_id')   ? 'm.autor_id'
+                      : null;
+
+    const selAutor  = joinAutor ? 'COALESCE(u.nombre, \'\')' : 'NULL';
+    const leftJoinU = joinAutor ? 'LEFT JOIN usuarios u ON u.id = ' + joinAutor : '';
+
+    const selLeido  = sch.dcols.has('leido_at') ? 'd.leido_at' : 'NULL AS leido_at';
+    const selGrupo  = sch.grpCol ? `d.${sch.grpCol}` : 'NULL AS grupo_id';
+
+    const sql = `
+      SELECT m.id, ${selTitulo}, m.cuerpo, ${selUrl}, ${selUrls},
+             ${createdExpr} AS created_at,
+             ${selAutor} AS autor,
+             ${selLeido},
+             ${selGrupo}
+        FROM mensajes m
+        JOIN ${sch.dest} d ON d.${sch.msgCol} = m.id AND d.${sch.alumCol} = $1
+        ${leftJoinU}
+       ORDER BY created_at DESC NULLS LAST, m.id DESC
+       LIMIT 200;
+    `;
+    const { rows } = await client.query(sql, [alumnoId]);
+    res.json(rows);
+  } catch (e) {
+    console.error('[mensajes alumno] list:', e);
+    res.status(500).json([]);
+  } finally {
+    client.release();
+  }
+});
+
+// POST /firmas/api/alumno/:alumnoId/mensajes/:id/leer → marca como leído (si existe leido_at)
+router.post('/api/alumno/:alumnoId/mensajes/:id/leer', express.json(), async (req,res)=>{
+  const alumnoId = Number(req.params.alumnoId || req.session?.alumno_id);
+  const id = Number(req.params.id);
+  if (!alumnoId || !id) return res.status(400).json({ success:false });
+
+  const client = await db.connect();
+  try {
+    const sch = await detectMsgSchema(client);
+    if (!sch || !sch.dest || !sch.msgCol || !sch.alumCol) return res.json({ success:true });
+    if (!sch.dcols.has('leido_at')) return res.json({ success:true });
+
+    await client.query(
+      `UPDATE ${sch.dest} SET leido_at = NOW()
+        WHERE ${sch.msgCol}=$1 AND ${sch.alumCol}=$2`,
+      [id, alumnoId]
+    );
+    res.json({ success:true });
+  } catch (e) {
+    console.error('[mensajes alumno] leer:', e);
+    res.status(500).json({ success:false });
+  } finally {
+    client.release();
+  }
+});
+
 
 module.exports = router;
 

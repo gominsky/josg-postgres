@@ -81,7 +81,7 @@
   </div>
 
   <script>
-    const API_BASE   = location.pathname.startsWith('/josgmaestro/') ? '/josgmaestro/api' : '/control_firmas/api';
+    const API_BASE   = location.pathname.startsWith('/josgmaestro/') ? '/josgmaestro' : '/control_firmas';
     const usuario_id = localStorage.getItem('usuario_id');
     if (!usuario_id) location.href = 'index.html';
 
@@ -96,7 +96,7 @@
       if (box) box.textContent = nombre ? `Usuario: ${nombre}` : `Usuario #${usuario_id}`;
     })();
 
-    const API_EVENTOS = `${API_BASE}/eventos`;
+    const API_EVENTOS = `${API_BASE}/api/eventos`;
     const meses = ['ENE','FEB','MAR','ABR','MAY','JUN','JUL','AGO','SEP','OCT','NOV','DIC'];
     const dias  = ['dom','lun','mar','mié','jue','vie','sáb'];
 

@@ -111,7 +111,7 @@ router.post('/login', express.json(), async (req, res) => {
   try {
     // busca por email insensible a may/min
     const rs = await db.query(
-      `SELECT id, nombre, email, rol, password
+     `SELECT id, nombre, email, rol, password_hash AS password
          FROM usuarios
         WHERE lower(email) = lower($1)
         LIMIT 1`,
@@ -522,9 +522,15 @@ router.get('/api/mis-grupos', async (req, res) => {
 });
 // POST /api/mensajes
 // Body: { usuario_id, titulo, cuerpo, url, broadcast, grupos_nombres:[] }
+// POST /api/mensajes
+// Body: { usuario_id, titulo, cuerpo, url, broadcast, grupos_nombres:[] }
+// POST /api/mensajes
+// Body: { usuario_id, titulo, cuerpo, url, broadcast, grupos_nombres:[] }
 router.post('/api/mensajes', express.json(), async (req, res) => {
   const { usuario_id, titulo, cuerpo, url, broadcast, grupos_nombres } = req.body || {};
-  const usuarioId = Number(usuario_id);
+
+  // Prefiere el id de sesión (más fiable); si no, cae al body
+  const usuarioId = Number(req.session?.usuario_id || usuario_id);
 
   if (!usuarioId) return res.status(400).json({ success:false, error:'usuario_id requerido' });
   if (!cuerpo || !cuerpo.trim()) return res.status(400).json({ success:false, error:'Mensaje vacío' });
@@ -538,16 +544,16 @@ router.post('/api/mensajes', express.json(), async (req, res) => {
     // Normaliza grupos solicitados (por nombre)
     const gruposSolicitados = Array.isArray(grupos_nombres) ? grupos_nombres.filter(Boolean) : [];
 
-    // Destinatarios (alumnos.id)
-    let alumnoIds = [];
+    // Determinar destinatarios (con grupo_id cuando aplique)
+    let destinatarios = []; // [{ alumno_id, grupo_id|null }]
 
     if (user.rol === 'admin') {
       if (broadcast) {
-        const q = await db.query(`SELECT id FROM alumnos WHERE activo = true`);
-        alumnoIds = q.rows.map(r => r.id);
+        const q = await db.query(`SELECT id AS alumno_id FROM alumnos WHERE activo = true`);
+        destinatarios = q.rows.map(r => ({ alumno_id: r.alumno_id, grupo_id: null }));
       } else if (gruposSolicitados.length) {
         const q = await db.query(
-          `SELECT DISTINCT a.id
+          `SELECT DISTINCT a.id AS alumno_id, g.id AS grupo_id
              FROM alumnos a
              JOIN alumno_grupo ag ON ag.alumno_id = a.id
              JOIN grupos g        ON g.id = ag.grupo_id
@@ -555,7 +561,10 @@ router.post('/api/mensajes', express.json(), async (req, res) => {
               AND g.nombre = ANY($1)`,
           [gruposSolicitados]
         );
-        alumnoIds = q.rows.map(r => r.id);
+        destinatarios = q.rows;
+        if (!destinatarios.length) {
+          return res.json({ success:true, enviados:0, info:'Sin alumnos en los grupos seleccionados' });
+        }
       } else {
         return res.status(400).json({ success:false, error:'Selecciona “Todos” o al menos un grupo' });
       }
@@ -584,7 +593,7 @@ router.post('/api/mensajes', express.json(), async (req, res) => {
       }
 
       const q = await db.query(
-        `SELECT DISTINCT a.id
+        `SELECT DISTINCT a.id AS alumno_id, g.id AS grupo_id
            FROM alumnos a
            JOIN alumno_grupo ag ON ag.alumno_id = a.id
            JOIN grupos g        ON g.id = ag.grupo_id
@@ -592,114 +601,73 @@ router.post('/api/mensajes', express.json(), async (req, res) => {
             AND g.nombre = ANY($1)`,
         [gruposSolicitados]
       );
-      alumnoIds = q.rows.map(r => r.id);
+      destinatarios = q.rows;
+      if (!destinatarios.length) {
+        return res.json({ success:true, enviados:0, info:'Sin alumnos en los grupos seleccionados' });
+      }
     } else {
       return res.status(403).json({ success:false, error:'Rol no autorizado' });
     }
-
-    // Si no hay destinatarios, devolver éxito "vacío"
-    if (!alumnoIds.length) {
-      return res.json({ success:true, enviados:0, info:'Sin destinatarios (revisa grupos/alumnos activos)' });
-    }
-
-    // Detectar tablas de persistencia
-    const tables = await db.query(`
-      SELECT lower(table_name) AS t
-      FROM information_schema.tables
-      WHERE table_schema = 'public'
-        AND lower(table_name) IN ('mensajes','mensaje_destinatarios','mensajes_destinatarios','mensajes_alumnos')
-    `);
-    const names = new Set(tables.rows.map(r => r.t));
-    const hasMensajes = names.has('mensajes');
-    const destTable =
-      names.has('mensaje_destinatarios') ? 'mensaje_destinatarios' :
-      names.has('mensajes_destinatarios') ? 'mensajes_destinatarios' :
-      names.has('mensajes_alumnos') ? 'mensajes_alumnos' : null;
 
     // Inserción en transacción
     const client = await db.connect();
     try {
       await client.query('BEGIN');
 
-      // 1) mensaje
-      let mensajeId = null;
-      if (hasMensajes) {
-        // Intento estándar: (titulo, cuerpo, url, usuario_id, created_at)
-        // Detectar columnas de mensajes para no romper
-        const colsRs = await client.query(`
-          SELECT lower(column_name) AS c
-          FROM information_schema.columns
-          WHERE table_name = 'mensajes'
-        `);
-        const cols = new Set(colsRs.rows.map(r => r.c));
+      // 1) Insertar mensaje
+      // Detectar columnas de 'mensajes' para no romper
+      const colsRs = await client.query(`
+        SELECT lower(column_name) AS c
+        FROM information_schema.columns
+        WHERE table_name = 'mensajes'
+      `);
+      const cols = new Set(colsRs.rows.map(r => r.c));
 
-        const colList = ['cuerpo'];
-        const valList = ['$1'];
-        const args = [cuerpo];
+      const colList = ['cuerpo'];
+      const valList = ['$1'];
+      const args = [cuerpo];
 
-        let idx = 2;
-        if (cols.has('titulo') && titulo) { colList.push('titulo'); valList.push(`$${idx}`); args.push(titulo); idx++; }
-        if (cols.has('url') && url)       { colList.push('url');    valList.push(`$${idx}`); args.push(url); idx++; }
-        if (cols.has('usuario_id'))       { colList.push('usuario_id'); valList.push(`$${idx}`); args.push(usuarioId); idx++; }
-        if (cols.has('created_at'))       { colList.push('created_at'); valList.push('NOW()'); }
-        if (cols.has('updated_at'))       { colList.push('updated_at'); valList.push('NOW()'); }
+      let idx = 2;
+      if (cols.has('titulo') && titulo) { colList.push('titulo'); valList.push(`$${idx}`); args.push(titulo); idx++; }
+      if (cols.has('url') && url)       { colList.push('url');    valList.push(`$${idx}`); args.push(url);    idx++; }
 
-        const ins = await client.query(
-          `INSERT INTO mensajes (${colList.join(',')}) VALUES (${valList.join(',')}) RETURNING id`,
-          args
-        );
-        mensajeId = ins.rows[0]?.id ?? null;
+      // Mapea la columna del autor según exista en tu esquema
+      const autorCol = cols.has('usuario_id') ? 'usuario_id'
+                     : cols.has('creado_por') ? 'creado_por'
+                     : cols.has('autor_id')   ? 'autor_id'
+                     : null;
+      if (autorCol && usuarioId) {
+        colList.push(autorCol);
+        valList.push(`$${idx}`); args.push(usuarioId); idx++;
       }
 
-      // 2) destinatarios
-      let insertedDest = 0;
-      if (destTable && mensajeId != null) {
-        // Detectar columnas de la tabla de destinatarios
-        const cd = await client.query(`
-          SELECT lower(column_name) AS c
-          FROM information_schema.columns
-          WHERE table_name = $1
-        `, [destTable]);
-        const dcols = new Set(cd.rows.map(r => r.c));
+      if (cols.has('created_at')) { colList.push('created_at'); valList.push('NOW()'); }
+      if (cols.has('updated_at')) { colList.push('updated_at'); valList.push('NOW()'); }
 
-        // Nombre de columna para el foreign key del mensaje
-        const msgCol = dcols.has('mensaje_id') ? 'mensaje_id' :
-                       dcols.has('mensajes_id') ? 'mensajes_id' :
-                       dcols.has('id_mensaje') ? 'id_mensaje' : null;
-        const alumCol = dcols.has('alumno_id') ? 'alumno_id' :
-                        dcols.has('alumnos_id') ? 'alumnos_id' :
-                        dcols.has('id_alumno') ? 'id_alumno' : null;
+      const ins = await client.query(
+        `INSERT INTO mensajes (${colList.join(',')}) VALUES (${valList.join(',')}) RETURNING id`,
+        args
+      );
+      const mensajeId = ins.rows[0]?.id ?? null;
 
-        if (msgCol && alumCol) {
-          // Inserción por lotes
-          for (const aid of alumnoIds) {
-            await client.query(
-              `INSERT INTO ${destTable} (${msgCol}, ${alumCol}) VALUES ($1, $2)`,
-              [mensajeId, aid]
-            );
-            insertedDest++;
-          }
-        } else {
-          console.warn(`[mensajes] No pude determinar columnas en ${destTable}. Saltando destinatarios.`);
+      // 2) Insertar destinatarios en mensaje_destino (mensaje_id, alumno_id, grupo_id)
+      if (mensajeId != null) {
+        for (const d of destinatarios) {
+          await client.query(
+            `INSERT INTO mensaje_destino (mensaje_id, alumno_id, grupo_id)
+             VALUES ($1, $2, $3)`,
+            [mensajeId, d.alumno_id, d.grupo_id ?? null]
+          );
         }
-      } else {
-        if (!destTable) console.warn('[mensajes] No existe tabla de destinatarios (mensaje_destinatarios/mensajes_destinatarios/mensajes_alumnos).');
-        if (mensajeId == null) console.warn('[mensajes] No se insertó en mensajes (tabla no existe o sin PK id).');
       }
 
       await client.query('COMMIT');
 
-      // Resumen
       return res.json({
         success: true,
-        enviados: alumnoIds.length,
-        persistido: Boolean(hasMensajes && destTable && mensajeId != null && insertedDest > 0),
-        mensaje_id: mensajeId,
-        detalle: {
-          destinatarios: alumnoIds.length,
-          insertados_destinatarios: insertedDest,
-          tabla_destinatarios: destTable || null
-        }
+        enviados: destinatarios.length,
+        persistido: Boolean(mensajeId != null && destinatarios.length > 0),
+        mensaje_id: mensajeId
       });
     } catch (e) {
       await client.query('ROLLBACK');
@@ -713,5 +681,4 @@ router.post('/api/mensajes', express.json(), async (req, res) => {
     return res.status(500).json({ success:false, error:'internal_error' });
   }
 });
-
 module.exports = router;

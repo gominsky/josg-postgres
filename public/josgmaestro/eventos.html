@@ -33,7 +33,7 @@
     <button onclick="location.href='portal_maestro.html'">&larr; Inicio</button>
   </div>
   <script>
-    const API_BASE   = location.pathname.startsWith('/josgmaestro/') ? '/josgmaestro/api' : '/control_firmas/api';
+    const API_BASE   = location.pathname.startsWith('/josgmaestro/') ? '/josgmaestro' : '/control_firmas';
     const usuario_id = localStorage.getItem('usuario_id');
     if (!usuario_id) location.href = 'index.html';
 
@@ -63,7 +63,7 @@
         },
         firstDay: 1, 
         eventSources: [{
-        url: `${API_BASE}/eventos?usuario_id=${usuario_id}`,
+        url: `${API_BASE}/api/eventos?usuario_id=${usuario_id}`,
         failure: (error) => {
           console.error('No se pudieron cargar eventos', error);
           alert('No se pudieron cargar los eventos. Revisa la ruta de la API.');

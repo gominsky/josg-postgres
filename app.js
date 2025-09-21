@@ -69,7 +69,7 @@ function requireAlumno(req, res, next) {
 
   if (open.some(rx => rx.test(req.path))) return next();
 
-  if (req.session && req.session.alumno_id) return next();
+  if (req.session && (req.session.alumno_id || req.session.usuario_id)) return next();
 
   if (req.path.startsWith('/josgmaestro/api') || req.path.startsWith('/firmas/api')) {
     return res.status(401).json({ success:false, error:'auth_required' });
@@ -96,7 +96,7 @@ const guardiasRoutes = require('./routes/guardias');
 const instrumentosRoutes = require('./routes/instrumentos');
 const tipos_cuotasRoutes = require('./routes/tipos_cuotas');
 const pagosRoutes = require('./routes/pagos');
-const control_firmasRoutes = require('./routes/control_firmas','routes/josgmaestro');
+const control_firmasRoutes = require('./routes/control_firmas');
 const configuracionRoutes = require('./routes/configuracion');
 const planoRoutes = require('./routes/plano');
 const contabilidadRoutes = require('./routes/contabilidad');
@@ -126,16 +126,18 @@ app.use('/instrumentos', isAdmin, instrumentosRoutes);
 app.use('/tipos_cuotas', isAdmin, tipos_cuotasRoutes); // Solo admin
 app.use('/pagos', isAdmin, pagosRoutes);                // Solo admin
 app.use('/control_firmas', control_firmasRoutes);
-app.use('/josgmaestro', requireAlumno, express.static(path.join(__dirname, 'public/josgmaestro')));
+// Primero el router bajo /josgmaestro para que resuelva /josgmaestro/api/...
+ app.use('/josgmaestro', control_firmasRoutes);
+ // Después los estáticos del portal (carpeta renombrada)
+ app.use('/josgmaestro', requireAlumno, express.static(path.join(__dirname, 'public/josgentumano')));
+
 app.use('/plano', isAuthenticated, planoRoutes);
 app.use('/contabilidad', isAdmin, contabilidadRoutes);
 app.use('/proveedores', isAdmin, proveedoresRoutes);
 app.use('/categorias', isAdmin, categoriasRoutes);
 app.use('/cuentas', isAdmin, cuentasRoutes);
-//app.use('/api', isAuthenticated, layoutsRoutes);
- // APIs disponibles tanto en /api como en /control_firmas/api
- app.use('/api', isAuthenticated, layoutsRoutes);
- app.use('/control_firmas/api', isAuthenticated, layoutsRoutes);
+app.use('/api', isAuthenticated, layoutsRoutes);
+app.use('/control_firmas/api', isAuthenticated, layoutsRoutes);
 
 app.use('/recuperar',recuperarRoutes);
 app.use(require('./routes/share_stateless'));

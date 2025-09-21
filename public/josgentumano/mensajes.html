@@ -297,8 +297,12 @@
   // Carga datos (no paginados) y pinta la primera página
   async function cargar(){
     try{
-      const url = `/mensajes/app/mensajes?alumno_id=${encodeURIComponent(alumno_id)}&_ts=${Date.now()}`;
-      const r = await fetch(url, { cache: 'no-store' });
+      const url = `/firmas/api/alumno/${encodeURIComponent(alumno_id)}/mensajes?_ts=${Date.now()}`;
+      const r = await fetch(`/firmas/api/alumno/${encodeURIComponent(alumno_id)}/mensajes/${id}/leer`, {
+  method:'POST',
+  headers:{'Content-Type':'application/json'},
+  body: JSON.stringify({ alumno_id })
+});
       const j = await r.json();
       if (!r.ok || !Array.isArray(j)) throw new Error('No se pudieron cargar los mensajes');
       // Orden descendente por id o fecha (según lo que te llegue más estable)
