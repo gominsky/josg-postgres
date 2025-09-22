@@ -602,7 +602,7 @@ router.get('/:id/qr', async (req, res) => {
     const qrDataUrl = await QRCode.toDataURL(qrData);
 
     const fISO = toISODate(evento.fecha_inicio);
-    const hhmm = (evento.hora_inicio || '00:00');
+    const hhmm = String(evento.hora_inicio || '00:00').slice(0, 5); // HH:MM
     const fechaObj = fISO ? new Date(`${fISO}T${hhmm}:00`) : null;
 
     const fechaFormateada = fechaObj

@@ -3,6 +3,7 @@ const express = require('express');
 const router = express.Router();
 const db = require('../database/db');
 const bcrypt = require('bcrypt');
+const { enviarPush } = require('../utils/push'); 
 
 /* ───────────────────── helpers ───────────────────── */
 async function getProfesorIdByEmail(email) {
@@ -145,24 +146,6 @@ router.post('/login', express.json(), async (req, res) => {
   }
 });
 
-/* ───────────────────── salud/diag ───────────────────── */
-
-router.get('/api/health', (_req, res) => res.json({ ok: true, ts: Date.now() }));
-
-router.get('/api/_diag', async (_req, res) => {
-  try {
-    const u = await db.query('SELECT COUNT(*)::int n FROM usuarios');
-    const p = await db.query('SELECT COUNT(*)::int n FROM profesores');
-    const e = await db.query('SELECT COUNT(*)::int n FROM eventos');
-    res.json({ ok: true, usuarios: u.rows[0].n, profesores: p.rows[0].n, eventos: e.rows[0].n, ts: Date.now() });
-  } catch (err) {
-    res.status(500).json({ ok: false, error: String(err) });
-  }
-});
-
-/* ───────────────────── eventos ───────────────────── */
-// ====================== EVENTOS (admin/docente) ======================
-// ====================== EVENTOS (admin/docente) ======================
 router.get('/api/eventos', async (req, res) => {
   try {
     // 0) auth: id por sesión o query (compat)
@@ -384,8 +367,6 @@ router.get('/api/eventos/:id', async (req, res) => {
   }
 });
 
-// ─────────────────────────── alumnos del evento ─────────────────
-// ───────────────────── alumnos del evento (vía evento_asignaciones) ─────────────────────
 router.get('/api/eventos/:id/alumnos', async (req, res) => {
   const id = Number(req.params.id);
   if (!id) return res.status(400).json({ error: 'id inválido' });
@@ -632,188 +613,271 @@ router.get('/api/mis-grupos', async (req, res) => {
 // POST /api/mensajes
 // Body: { usuario_id, titulo, cuerpo, url, broadcast, grupos_nombres:[] }
 router.post('/api/mensajes', express.json(), async (req, res) => {
-  const { usuario_id, titulo, cuerpo, url, broadcast, grupos_nombres } = req.body || {};
-  // Prefiere id de sesión; cae al body para compat con tu front actual
-  const usuarioId = Number(req.session?.usuario_id || usuario_id);
+  const {
+    usuario_id,
+    titulo,
+    cuerpo,
+    url,               // enlace opcional
+    urls,              // puede venir como array o string JSON
+    broadcast,         // boolean
+    grupos_nombres,    // array opcional de nombres
+    grupos_ids,        // array opcional de ids
+    alumnos_ids        // array opcional de ids directos
+  } = req.body || {};
 
+  const usuarioId = Number(req.session?.usuario_id || usuario_id);
   if (!usuarioId) return res.status(400).json({ success:false, error:'usuario_id requerido' });
-  if (!cuerpo || !cuerpo.trim()) return res.status(400).json({ success:false, error:'Mensaje vacío' });
+  if (!cuerpo || !String(cuerpo).trim()) return res.status(400).json({ success:false, error:'Mensaje vacío' });
 
   try {
-    // Usuario + permisos
+    // 0) Usuario + rol
     const u = await db.query(`SELECT id, email, rol, nombre FROM usuarios WHERE id=$1 LIMIT 1`, [usuarioId]);
     const user = u.rows[0];
     if (!user) return res.status(404).json({ success:false, error:'usuario no encontrado' });
 
-    // Normaliza grupos solicitados (por nombre)
+    // 1) Normaliza entrada
     const gruposSolicitados = Array.isArray(grupos_nombres) ? grupos_nombres.filter(Boolean) : [];
+    const gruposIdsExtra    = Array.isArray(grupos_ids)     ? grupos_ids.map(Number).filter(Number.isInteger) : [];
+    const alumnosIdsExtra   = Array.isArray(alumnos_ids)    ? alumnos_ids.map(Number).filter(Number.isInteger) : [];
 
-    // Calcula destinatarios [{ alumno_id, grupo_id|null }]
-    let destinatarios = [];
+    // 2) Construir “targets solicitados” con permisos
+    let grupoIds = [];
+    let alumnoIds = [];
+    let isBroadcast = false;
 
     if (user.rol === 'admin') {
       if (broadcast) {
-        const q = await db.query(`SELECT id AS alumno_id FROM alumnos WHERE activo = true`);
-        destinatarios = q.rows.map(r => ({ alumno_id: r.alumno_id, grupo_id: null }));
-      } else if (gruposSolicitados.length) {
-        const q = await db.query(
-          `SELECT DISTINCT a.id AS alumno_id, g.id AS grupo_id
-             FROM alumnos a
-             JOIN alumno_grupo ag ON ag.alumno_id = a.id
-             JOIN grupos g        ON g.id = ag.grupo_id
-            WHERE a.activo = true
-              AND g.nombre = ANY($1)`,
-          [gruposSolicitados]
-        );
-        destinatarios = q.rows;
-        if (!destinatarios.length) {
-          return res.json({ success:true, enviados:0, info:'Sin alumnos en los grupos seleccionados' });
+        isBroadcast = true;
+      } else if (gruposSolicitados.length || gruposIdsExtra.length || alumnosIdsExtra.length) {
+        if (gruposSolicitados.length) {
+          const r = await db.query(`SELECT id FROM grupos WHERE nombre = ANY($1)`, [gruposSolicitados]);
+          grupoIds = r.rows.map(x=>x.id);
+        }
+        if (gruposIdsExtra.length) grupoIds = [...new Set([...grupoIds, ...gruposIdsExtra])];
+        if (alumnosIdsExtra.length) alumnoIds = [...new Set([...alumnoIds, ...alumnosIdsExtra])];
+        if (!grupoIds.length && !alumnoIds.length) {
+          return res.json({ success:true, enviados:0, info:'Sin grupos/alumnos válidos' });
         }
       } else {
-        return res.status(400).json({ success:false, error:'Selecciona “Todos” o al menos un grupo' });
+        return res.status(400).json({ success:false, error:'Selecciona “Todos”, grupo(s) o alumno(s)' });
       }
     } else if (user.rol === 'docente') {
       if (broadcast) return res.status(403).json({ success:false, error:'Un docente no puede enviar a “Todos”' });
 
-      // Vincular docente por email -> grupos permitidos
-      const rp = await db.query(`SELECT id FROM profesores WHERE lower(email) = lower($1) LIMIT 1`, [user.email]);
+      const rp = await db.query(`SELECT id FROM profesores WHERE lower(email)=lower($1) LIMIT 1`, [user.email]);
       if (!rp.rowCount) return res.status(403).json({ success:false, error:'Docente no vinculado a profesores' });
-
       const profesorId = rp.rows[0].id;
       const rg = await db.query(
-        `SELECT g.nombre
+        `SELECT g.id, g.nombre
            FROM profesor_grupo pg
            JOIN grupos g ON g.id = pg.grupo_id
           WHERE pg.profesor_id = $1`,
         [profesorId]
       );
-      const permitidos = new Set(rg.rows.map(r => r.nombre));
-      if (!gruposSolicitados.length) return res.status(400).json({ success:false, error:'Selecciona al menos un grupo' });
-      for (const nombre of gruposSolicitados) {
-        if (!permitidos.has(nombre)) {
+      const permitidosPorNombre = new Set(rg.rows.map(r => r.nombre));
+      const permitidosPorId     = new Set(rg.rows.map(r => r.id));
+
+      for (const nombre of (gruposSolicitados || [])) {
+        if (!permitidosPorNombre.has(nombre)) {
           return res.status(403).json({ success:false, error:`No puedes enviar al grupo ${nombre}` });
         }
       }
-      const q = await db.query(
-        `SELECT DISTINCT a.id AS alumno_id, g.id AS grupo_id
-           FROM alumnos a
-           JOIN alumno_grupo ag ON ag.alumno_id = a.id
-           JOIN grupos g        ON g.id = ag.grupo_id
-          WHERE a.activo = true
-            AND g.nombre = ANY($1)`,
-        [gruposSolicitados]
-      );
-      destinatarios = q.rows;
-      if (!destinatarios.length) {
-        return res.json({ success:true, enviados:0, info:'Sin alumnos en los grupos seleccionados' });
+      for (const gid of gruposIdsExtra) {
+        if (!permitidosPorId.has(gid)) {
+          return res.status(403).json({ success:false, error:`No puedes enviar al grupo ID ${gid}` });
+        }
+      }
+
+      if (gruposSolicitados.length) {
+        const r = await db.query(`SELECT id FROM grupos WHERE nombre = ANY($1)`, [gruposSolicitados]);
+        grupoIds = r.rows.map(x=>x.id);
+      }
+      if (gruposIdsExtra.length) grupoIds = [...new Set([...grupoIds, ...gruposIdsExtra])];
+      if (alumnosIdsExtra.length) alumnoIds = [...new Set([...alumnoIds, ...alumnosIdsExtra])];
+
+      if (!grupoIds.length && !alumnoIds.length) {
+        return res.status(400).json({ success:false, error:'Selecciona al menos un grupo o alumno' });
       }
     } else {
       return res.status(403).json({ success:false, error:'Rol no autorizado' });
     }
 
-    // Inserción en transacción
+    // 3) Inserción en transacción
     const client = await db.connect();
+    let mensajeId = null;
     try {
       await client.query('BEGIN');
 
-      // 1) Insertar en 'mensajes'
-      const colsRs = await client.query(`
-        SELECT lower(column_name) AS c
-        FROM information_schema.columns
-        WHERE table_name = 'mensajes'
-      `);
-      const cols = new Set(colsRs.rows.map(r => r.c));
+      // 3.1) Insertar MENSAJE
+      const tituloSafe = (titulo && String(titulo).trim()) || 'Aviso';
 
-      const colList = ['cuerpo'];
-      const valList = ['$1'];
-      const args = [cuerpo];
-
-      let idx = 2;
-      if (cols.has('titulo') && titulo) { colList.push('titulo'); valList.push(`$${idx}`); args.push(titulo); idx++; }
-      if (cols.has('url') && url)       { colList.push('url');    valList.push(`$${idx}`); args.push(url);    idx++; }
-
-      // Mapea columna del autor según tu esquema
-      const autorCol = cols.has('usuario_id') ? 'usuario_id'
-                     : cols.has('creado_por') ? 'creado_por'
-                     : cols.has('autor_id')   ? 'autor_id'
-                     : null;
-      if (autorCol && usuarioId) {
-        colList.push(autorCol);
-        valList.push(`$${idx}`); args.push(usuarioId); idx++;
+      // Normaliza urls a jsonb
+      let urlsJsonb = null;
+      if (Array.isArray(urls)) urlsJsonb = JSON.stringify(urls);
+      else if (typeof urls === 'string' && urls.trim()) {
+        try { urlsJsonb = JSON.stringify(JSON.parse(urls)); }
+        catch { urlsJsonb = JSON.stringify([urls]); }
       }
 
-      if (cols.has('created_at')) { colList.push('created_at'); valList.push('NOW()'); }
-      if (cols.has('updated_at')) { colList.push('updated_at'); valList.push('NOW()'); }
+      const cols = ['titulo','cuerpo','created_at'];
+      const vals = ['$1','$2','NOW()'];
+      const args = [tituloSafe, cuerpo];
+      let i = 3;
 
-      const ins = await client.query(
-        `INSERT INTO mensajes (${colList.join(',')}) VALUES (${valList.join(',')}) RETURNING id`,
+      if (url)      { cols.push('url');  vals.push(`$${i}`); args.push(url);       i++; }
+      if (urlsJsonb){ cols.push('urls'); vals.push(`$${i}::jsonb`); args.push(urlsJsonb); i++; }
+
+      // autor si existe
+      const autorCols = await client.query(`SELECT lower(column_name) AS c FROM information_schema.columns WHERE table_name='mensajes'`);
+      const M = new Set(autorCols.rows.map(r=>r.c));
+      const autorCol = M.has('usuario_id') ? 'usuario_id' : (M.has('creado_por') ? 'creado_por' : (M.has('autor_id') ? 'autor_id' : null));
+      if (autorCol) { cols.push(autorCol); vals.push(`$${i}`); args.push(usuarioId); i++; }
+
+      const insMsg = await client.query(
+        `INSERT INTO mensajes (${cols.join(',')}) VALUES (${vals.join(',')}) RETURNING id`,
         args
       );
-      const mensajeId = ins.rows[0]?.id ?? null;
+      mensajeId = insMsg.rows[0]?.id;
 
-      // 2) Insertar destinatarios en tu tabla real 'mensaje_destino' (o compatibles)
-      const tables = await client.query(`
-        SELECT lower(table_name) AS t
-        FROM information_schema.tables
-        WHERE table_schema = 'public'
-          AND lower(table_name) IN ('mensaje_destino','mensaje_destinatarios','mensajes_destinatarios','mensajes_alumnos')
-      `);
-      const names = new Set(tables.rows.map(r => r.t));
-      const destTable =
-        names.has('mensaje_destino')        ? 'mensaje_destino'        :
-        names.has('mensaje_destinatarios')  ? 'mensaje_destinatarios'  :
-        names.has('mensajes_destinatarios') ? 'mensajes_destinatarios' :
-        names.has('mensajes_alumnos')       ? 'mensajes_alumnos'       : null;
+      // 3.2) Registrar TARGETS en mensaje_destino (grupos / alumnos / broadcast)
+      let insTargets = 0;
 
-      let insertedDest = 0;
-      if (mensajeId != null && destTable) {
-        const cd = await client.query(`
-          SELECT lower(column_name) AS c
-          FROM information_schema.columns
-          WHERE table_name = $1
-        `, [destTable]);
-        const dcols = new Set(cd.rows.map(r => r.c));
-
-        const msgCol  = dcols.has('mensaje_id')  ? 'mensaje_id'
-                      : dcols.has('mensajes_id') ? 'mensajes_id'
-                      : dcols.has('id_mensaje')  ? 'id_mensaje'
-                      : null;
-        const alumCol = dcols.has('alumno_id')   ? 'alumno_id'
-                      : dcols.has('alumnos_id')  ? 'alumnos_id'
-                      : dcols.has('id_alumno')   ? 'id_alumno'
-                      : null;
-        const grpCol  = dcols.has('grupo_id')    ? 'grupo_id' : null;
-
-        if (msgCol && alumCol) {
-          for (const d of destinatarios) {
-            if (grpCol) {
-              await client.query(
-                `INSERT INTO ${destTable} (${msgCol}, ${alumCol}, ${grpCol})
-                 VALUES ($1, $2, $3)`,
-                [mensajeId, d.alumno_id, d.grupo_id ?? null]
-              );
-            } else {
-              await client.query(
-                `INSERT INTO ${destTable} (${msgCol}, ${alumCol})
-                 VALUES ($1, $2)`,
-                [mensajeId, d.alumno_id]
-              );
-            }
-            insertedDest++;
-          }
-        } else {
-          console.warn(`[mensajes] No pude determinar columnas en ${destTable}.`);
-        }
+      if (isBroadcast) {
+        await client.query(
+          `INSERT INTO mensaje_destino (mensaje_id)
+           SELECT $1
+           WHERE NOT EXISTS (
+             SELECT 1 FROM mensaje_destino WHERE mensaje_id=$1 AND grupo_id IS NULL AND alumno_id IS NULL
+           )`,
+          [mensajeId]
+        );
+        insTargets++;
       }
+
+      if (grupoIds.length) {
+        await client.query(
+          `INSERT INTO mensaje_destino (mensaje_id, grupo_id)
+           SELECT $1, v.gid
+             FROM UNNEST($2::int[]) AS v(gid)
+            WHERE NOT EXISTS (
+              SELECT 1 FROM mensaje_destino md
+               WHERE md.mensaje_id=$1 AND md.grupo_id = v.gid
+            )`,
+          [mensajeId, grupoIds]
+        );
+        insTargets += grupoIds.length;
+      }
+
+      if (alumnoIds.length) {
+        await client.query(
+          `INSERT INTO mensaje_destino (mensaje_id, alumno_id)
+           SELECT $1, v.aid
+             FROM UNNEST($2::int[]) AS v(aid)
+            WHERE NOT EXISTS (
+              SELECT 1 FROM mensaje_destino md
+               WHERE md.mensaje_id=$1 AND md.alumno_id = v.aid
+            )`,
+          [mensajeId, alumnoIds]
+        );
+        insTargets += alumnoIds.length;
+      }
+
+      // 3.3) Fan-out a buzones (mensaje_entrega) → una fila por alumno
+      const fanoutSql = `
+        WITH dest_alumnos AS (
+          -- alumnos directos
+          SELECT md.alumno_id AS alumno_id
+            FROM mensaje_destino md
+           WHERE md.mensaje_id = $1 AND md.alumno_id IS NOT NULL
+
+          UNION
+          -- alumnos por grupos
+          SELECT ag.alumno_id
+            FROM mensaje_destino md
+            JOIN alumno_grupo ag ON ag.grupo_id = md.grupo_id
+           WHERE md.mensaje_id = $1 AND md.grupo_id IS NOT NULL
+
+          UNION
+          -- broadcast → todos los alumnos activos
+          SELECT a.id
+            FROM mensaje_destino md
+            JOIN alumnos a ON a.activo = true
+           WHERE md.mensaje_id = $1
+             AND md.grupo_id IS NULL AND md.alumno_id IS NULL
+        )
+        INSERT INTO mensaje_entrega (mensaje_id, alumno_id, entregado_at)
+        SELECT $1, da.alumno_id, NOW()
+          FROM dest_alumnos da
+         WHERE NOT EXISTS (
+           SELECT 1 FROM mensaje_entrega me
+            WHERE me.mensaje_id = $1 AND me.alumno_id = da.alumno_id
+         );
+      `;
+      const fanout = await client.query(fanoutSql, [mensajeId]);
 
       await client.query('COMMIT');
 
+      // 3.4) (FUERA de la TX) Enviar Web Push a los alumnos destino
+      // Obtenemos los destinatarios finales
+      const { rows: dests } = await db.query(`
+        WITH dest_alumnos AS (
+          SELECT md.alumno_id AS alumno_id
+            FROM mensaje_destino md
+           WHERE md.mensaje_id = $1 AND md.alumno_id IS NOT NULL
+          UNION
+          SELECT ag.alumno_id
+            FROM mensaje_destino md
+            JOIN alumno_grupo ag ON ag.grupo_id = md.grupo_id
+           WHERE md.mensaje_id = $1 AND md.grupo_id IS NOT NULL
+          UNION
+          SELECT a.id
+            FROM mensaje_destino md
+            JOIN alumnos a ON a.activo = true
+           WHERE md.mensaje_id = $1
+             AND md.grupo_id IS NULL AND md.alumno_id IS NULL
+        )
+        SELECT DISTINCT alumno_id FROM dest_alumnos
+      `, [mensajeId]);
+
+      const alumnoIdsPush = dests.map(r => r.alumno_id);
+      if (alumnoIdsPush.length) {
+        const subs = await db.query(
+          `SELECT endpoint, p256dh, auth
+             FROM push_suscripciones
+            WHERE alumno_id = ANY($1::int[])`,
+          [alumnoIdsPush]
+        );
+
+        // Payload coherente con tu Service Worker
+        const payload = {
+          tipo: 'mensaje',
+          mensaje_id: mensajeId,
+          titulo: tituloSafe,
+          cuerpo: cuerpo || '',
+          url: url || null
+          // si quieres, añade 'urls' también
+        };
+
+        for (const s of subs.rows) {
+          try {
+            const ret = await enviarPush(
+              { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
+              payload
+            );
+            if (ret === 'expired') {
+              await db.query('DELETE FROM push_suscripciones WHERE endpoint = $1', [s.endpoint]);
+            }
+          } catch (e) {
+            console.warn('Aviso: fallo enviando a un endpoint:', e?.statusCode || e?.message);
+          }
+        }
+      }
+
       return res.json({
         success: true,
-        enviados: destinatarios.length,
-        persistido: Boolean(mensajeId != null && insertedDest > 0),
         mensaje_id: mensajeId,
-        detalle: { tabla_destinatarios: destTable || null, insertados: insertedDest }
+        targets_registrados: isBroadcast ? 1 : (grupoIds.length + alumnoIds.length),
+        entregas_creadas: (/* fanout puede venir undefined en algunos drivers */ 0) // no fiable cross-driver
       });
     } catch (e) {
       await client.query('ROLLBACK');
@@ -827,5 +891,6 @@ router.post('/api/mensajes', express.json(), async (req, res) => {
     return res.status(500).json({ success:false, error:'internal_error' });
   }
 });
+
 
 module.exports = router;

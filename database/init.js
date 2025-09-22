@@ -831,6 +831,37 @@ async function init({ reset = false } = {}) {
         created_at      TIMESTAMP NOT NULL DEFAULT NOW()
       );
   `);
+      // Índices/uniques para MENSAJES (evitan duplicados y aceleran lecturas)
+    await run(`
+      -- Evita duplicados en la bandeja por alumno
+      CREATE UNIQUE INDEX IF NOT EXISTS uq_mensaje_entrega
+        ON mensaje_entrega (mensaje_id, alumno_id);
+
+      -- Unicidad lógica en los targets:
+      --  a) targets directos por alumno
+      CREATE UNIQUE INDEX IF NOT EXISTS uq_md_m_a
+        ON mensaje_destino (mensaje_id, alumno_id)
+        WHERE alumno_id IS NOT NULL;
+
+      --  b) targets por grupo
+      CREATE UNIQUE INDEX IF NOT EXISTS uq_md_m_g
+        ON mensaje_destino (mensaje_id, grupo_id)
+        WHERE grupo_id IS NOT NULL;
+
+      --  c) broadcast (fila única por mensaje con ambos NULL)
+      CREATE UNIQUE INDEX IF NOT EXISTS uq_md_m_b
+        ON mensaje_destino (mensaje_id)
+        WHERE grupo_id IS NULL AND alumno_id IS NULL;
+
+      -- Índices de consulta habituales
+      CREATE INDEX IF NOT EXISTS ix_me_alumno
+        ON mensaje_entrega (alumno_id);
+
+      -- Útil para contador de no leídos
+      CREATE INDEX IF NOT EXISTS ix_me_unread
+        ON mensaje_entrega (alumno_id, leido_at);
+    `, 'idx:mensajes');
+
     // ============================
     // 13) VISTAS / ÍNDICES EXTRA
     // ============================
