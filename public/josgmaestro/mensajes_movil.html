@@ -68,10 +68,8 @@
     const $$ = s => Array.from(document.querySelectorAll(s));
 
     // Prefijo de API según ubicación (móvil bajo /josgmaestro/)
-    const API_BASE = location.pathname.startsWith('/josgmaestro/')
-      ? '/josgmaestro/api'
-      : '/control_firmas/api';
-
+    const IN_PORTAL = location.pathname.startsWith('/josgmaestro');
+    const API_BASE  = IN_PORTAL ? '/josgmaestro/api' : '/control_firmas/api';
     // Sesión
     const usuario_id = localStorage.getItem('usuario_id');
     const rol        = localStorage.getItem('rol') || '';

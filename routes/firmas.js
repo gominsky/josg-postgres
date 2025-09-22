@@ -4,6 +4,9 @@ const router  = express.Router();
 const db      = require('../database/db');
 const bcrypt  = require('bcrypt');
 const { isAuthenticated, isDocente } = require('../middleware/auth');
+async function ensureReadColumn(client, table){
+  await client.query(`ALTER TABLE ${table} ADD COLUMN IF NOT EXISTS leido_at TIMESTAMP NULL`);
+}
 // ---- App (alumno) autenticado por sesión ----
 function requireAlumno(req, res, next){
     const id = Number(req.session?.alumno_id || 0);
@@ -278,7 +281,7 @@ router.get('/api/alumno/:alumnoId/basico', async (req, res) => {
   }
 });
 // ================= MENSAJES (lectura alumno) =================
-// ================= MENSAJES (lectura alumno) =================
+
 async function detectMsgSchema(client){
   const t = await client.query(`
     SELECT lower(table_name) AS t
@@ -372,9 +375,11 @@ router.post('/api/alumno/:alumnoId/mensajes/:id/leer', express.json(), async (re
 
   const client = await db.connect();
   try {
-    const sch = await detectMsgSchema(client);
+    const sch = await detectMsgSchema(client); // ya lo tienes definido arriba
     if (!sch || !sch.dest || !sch.msgCol || !sch.alumCol) return res.json({ success:true });
-    if (!sch.dcols.has('leido_at')) return res.json({ success:true });
+
+    // Asegura la columna leido_at en tu tabla real (mensaje_destino)
+    await ensureReadColumn(client, sch.dest);
 
     await client.query(
       `UPDATE ${sch.dest} SET leido_at = NOW()
@@ -390,6 +395,34 @@ router.post('/api/alumno/:alumnoId/mensajes/:id/leer', express.json(), async (re
   }
 });
 
+// GET /firmas/api/alumno/:alumnoId/mensajes/unread_count
+router.get('/api/alumno/:alumnoId/mensajes/unread_count', async (req,res)=>{
+  const alumnoId = Number(req.params.alumnoId || req.session?.alumno_id);
+  if (!alumnoId) return res.status(400).json({ count: 0 });
+
+  const client = await db.connect();
+  try {
+    const sch = await detectMsgSchema(client);
+    if (!sch || !sch.dest || !sch.msgCol || !sch.alumCol) return res.json({ count: 0 });
+
+    // Asegura que existe leido_at; si se acaba de crear, todos cuentan como no leídos
+    await ensureReadColumn(client, sch.dest);
+
+    const { rows } = await client.query(
+      `SELECT COUNT(*)::int AS n
+         FROM ${sch.dest} d
+        WHERE d.${sch.alumCol} = $1
+          AND d.leido_at IS NULL`,
+      [alumnoId]
+    );
+    res.json({ count: rows[0]?.n ?? 0 });
+  } catch (e) {
+    console.error('[mensajes alumno] unread_count:', e);
+    res.status(500).json({ count: 0 });
+  } finally {
+    client.release();
+  }
+});
 
 module.exports = router;
 

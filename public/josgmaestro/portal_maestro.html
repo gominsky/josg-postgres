@@ -79,24 +79,33 @@
     <div id="upcoming" class="upcoming"></div>
     <div id="no-events" class="muted" style="display:none;">No tienes eventos próximos.</div>
   </div>
+<script>
+  (function () {
+    // Detecta si estás dentro del portal y fija la base de la API
+    const IN_PORTAL = location.pathname.startsWith('/josgmaestro'); // ← sin barra final
+    const API_BASE  = IN_PORTAL ? '/josgmaestro/api' : '/control_firmas/api';
 
-  <script>
-    const API_BASE   = location.pathname.startsWith('/josgmaestro/') ? '/josgmaestro' : '/control_firmas';
+    // Sesión
     const usuario_id = localStorage.getItem('usuario_id');
-    if (!usuario_id) location.href = 'index.html';
+    if (!usuario_id) { location.href = 'index.html'; return; }
 
-    document.getElementById('btn-logout').addEventListener('click', () => {
-      localStorage.clear();
-      location.href = 'index.html';
-    });
+    // Logout
+    const $logout = document.getElementById('btn-logout');
+    if ($logout) {
+      $logout.addEventListener('click', () => {
+        localStorage.clear();
+        location.href = 'index.html';
+      });
+    }
 
-    (function(){
-      const nombre = localStorage.getItem('usuario_nombre');
-      const box = document.getElementById('user-box');
-      if (box) box.textContent = nombre ? `Usuario: ${nombre}` : `Usuario #${usuario_id}`;
-    })();
+    // Nombre de usuario
+    const nombre = localStorage.getItem('usuario_nombre');
+    const box = document.getElementById('user-box');
+    if (box) box.textContent = nombre ? `Usuario: ${nombre}` : `Usuario #${usuario_id}`;
 
-    const API_EVENTOS = `${API_BASE}/api/eventos`;
+    // *** RUTA CORRECTA (sin /api duplicado) ***
+    const API_EVENTOS = `${API_BASE}/eventos`;
+
     const meses = ['ENE','FEB','MAR','ABR','MAY','JUN','JUL','AGO','SEP','OCT','NOV','DIC'];
     const dias  = ['dom','lun','mar','mié','jue','vie','sáb'];
 
@@ -125,57 +134,87 @@
     }
 
     function normalizarEventos(data){
-      const arr = Array.isArray(data)?data:[];
+      const arr = Array.isArray(data) ? data : [];
       return arr.map(e=>{
-        const id=e.id??e.ID??e.Id;
-        const start=e.start??e.fecha_inicio??e.inicio;
-        const end=e.end??e.fecha_fin??e.fin;
-        const grupo_nombre=e.grupo_nombre??e.grupo??e.group_name??null;
-        const title=e.title??(e.titulo&&grupo_nombre?`${e.titulo} (${grupo_nombre})`:(e.titulo||'Evento'));
-        const espacio=e.espacio??e.lugar??e.sala??e.ubicacion??e?.extendedProps?.espacio??null;
-        return {id,title,start,end,espacio,grupo_nombre};
-      }).filter(ev=>ev.id!=null&&ev.start);
+        const id = e.id ?? e.ID ?? e.Id;
+        const start = e.start ?? e.fecha_inicio ?? e.inicio;
+        const end   = e.end   ?? e.fecha_fin   ?? e.fin;
+        const grupo_nombre = e.grupo_nombre ?? e.grupo ?? e.group_name ?? null;
+        const title = e.title ?? (e.titulo && grupo_nombre ? `${e.titulo} (${grupo_nombre})` : (e.titulo || 'Evento'));
+        const espacio = e.espacio ?? e.lugar ?? e.sala ?? e.ubicacion ?? e?.extendedProps?.espacio ?? null;
+        return { id, title, start, end, espacio, grupo_nombre };
+      }).filter(ev => ev.id != null && ev.start);
     }
 
-     function filtrarProximos(eventos){
-   const hoy = new Date();
-   const hoy0 = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
-   // 1) Próximos (>= hoy)
-   const futuros = eventos
-     .filter(ev => new Date(ev.start).getTime() >= hoy0.getTime())
-     .sort((a,b) => new Date(a.start) - new Date(b.start));
-   if (futuros.length) return futuros.slice(0,8);
-   // 2) Fallback: últimos recientes (p.ej. 14 días hacia atrás)
-   const desde = new Date(hoy0); desde.setDate(desde.getDate() - 14);
-   const recientes = eventos
-     .filter(ev => {
-       const t = new Date(ev.start).getTime();
-       return t >= desde.getTime() && t < hoy0.getTime();
-     })
-     .sort((a,b) => new Date(b.start) - new Date(a.start));
-   return recientes.slice(0,8);
- }
+    function filtrarProximos(eventos){
+      const hoy = new Date();
+      const hoy0 = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
+      // Próximos (>= hoy)
+      const futuros = eventos
+        .filter(ev => new Date(ev.start).getTime() >= hoy0.getTime())
+        .sort((a,b) => new Date(a.start) - new Date(b.start));
+      if (futuros.length) return futuros.slice(0, 8);
+      // Fallback: recientes (14 días hacia atrás)
+      const desde = new Date(hoy0); desde.setDate(desde.getDate() - 14);
+      const recientes = eventos
+        .filter(ev => {
+          const t = new Date(ev.start).getTime();
+          return t >= desde.getTime() && t < hoy0.getTime();
+        })
+        .sort((a,b) => new Date(b.start) - new Date(a.start));
+      return recientes.slice(0, 8);
+    }
+
     async function cargarProximos(){
-      const wrap=document.getElementById('upcoming');
-      const empty=document.getElementById('no-events');
-      wrap.innerHTML=''; empty.style.display='none';
+      const wrap  = document.getElementById('upcoming');
+      const empty = document.getElementById('no-events');
+      if (!wrap || !empty) return;
+
+      wrap.innerHTML = '';
+      empty.style.display = 'none';
+
       try{
-        const res=await fetch(`${API_EVENTOS}?usuario_id=${encodeURIComponent(usuario_id)}`,
-                              {headers:{'Accept':'application/json'},cache:'no-store'});
-        const raw=await res.json().catch(()=>[]);
-        if(!res.ok) throw new Error(`HTTP ${res.status}`);
-        const norm=normalizarEventos(raw);
-        const proximos=filtrarProximos(norm);
-        if(!proximos.length){empty.style.display='block';return;}
-        wrap.innerHTML=proximos.map(posterHTML).join('');
+        const res = await fetch(
+          `${API_EVENTOS}?usuario_id=${encodeURIComponent(usuario_id)}`,
+          {
+            headers: { 'Accept': 'application/json' },
+            cache: 'no-store',
+            credentials: 'same-origin' // ← importante si la ruta está protegida por sesión
+          }
+        );
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const raw  = await res.json().catch(()=>[]);
+        const norm = normalizarEventos(raw);
+        const proximos = filtrarProximos(norm);
+
+        if (!proximos.length) { empty.style.display='block'; return; }
+        wrap.innerHTML = proximos.map(posterHTML).join('');
       }catch(e){
-        console.error('No se pudieron cargar eventos',e);
-        empty.textContent='No se pudieron cargar los eventos.';
-        empty.style.display='block';
+        console.error('No se pudieron cargar eventos', e);
+        empty.textContent = 'No se pudieron cargar los eventos.';
+        empty.style.display = 'block';
       }
     }
-    cargarProximos();
-  </script>
+
+    document.addEventListener('DOMContentLoaded', cargarProximos);
+  })();
+</script>
+<script>
+  const IN_PORTAL = location.pathname.startsWith('/josgmaestro');
+  const API_BASE  = IN_PORTAL ? '/josgmaestro/api' : '/control_firmas/api';
+  const API_EVENTOS = `${API_BASE}/eventos`;
+  const usuario_id = localStorage.getItem('usuario_id');
+  if (!usuario_id) { location.href='index.html'; }
+
+  // ...
+  const res = await fetch(`${API_EVENTOS}?usuario_id=${encodeURIComponent(usuario_id)}`, {
+    headers: { 'Accept':'application/json' },
+    credentials: 'same-origin',
+    cache: 'no-store'
+  });
+  // procesa JSON como ya hacías
+</script>
+
 </body>
 </html>
 

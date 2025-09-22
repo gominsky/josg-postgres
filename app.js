@@ -127,9 +127,9 @@ app.use('/tipos_cuotas', isAdmin, tipos_cuotasRoutes); // Solo admin
 app.use('/pagos', isAdmin, pagosRoutes);                // Solo admin
 app.use('/control_firmas', control_firmasRoutes);
 // Primero el router bajo /josgmaestro para que resuelva /josgmaestro/api/...
- app.use('/josgmaestro', control_firmasRoutes);
+app.use('/josgmaestro', control_firmasRoutes);
  // Después los estáticos del portal (carpeta renombrada)
- app.use('/josgmaestro', requireAlumno, express.static(path.join(__dirname, 'public/josgentumano')));
+app.use('/josgmaestro', requireAlumno, express.static(path.join(__dirname, 'public_josgmaestro')));
 
 app.use('/plano', isAuthenticated, planoRoutes);
 app.use('/contabilidad', isAdmin, contabilidadRoutes);

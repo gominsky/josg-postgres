@@ -296,27 +296,25 @@
 
   // Carga datos (no paginados) y pinta la primera página
   async function cargar(){
-    try{
-      const url = `/firmas/api/alumno/${encodeURIComponent(alumno_id)}/mensajes?_ts=${Date.now()}`;
-      const r = await fetch(`/firmas/api/alumno/${encodeURIComponent(alumno_id)}/mensajes/${id}/leer`, {
-  method:'POST',
-  headers:{'Content-Type':'application/json'},
-  body: JSON.stringify({ alumno_id })
-});
-      const j = await r.json();
-      if (!r.ok || !Array.isArray(j)) throw new Error('No se pudieron cargar los mensajes');
-      // Orden descendente por id o fecha (según lo que te llegue más estable)
-      DATA = j.slice().sort((a,b)=> Number(b.id||0) - Number(a.id||0));
-      totalPages  = Math.max(1, Math.ceil(DATA.length / PAGE_SIZE));
-      renderPage(1);
-    }catch(e){
-      console.error(e);
-      $list.innerHTML = '';
-      $pager.innerHTML = '';
-      $empty.textContent = 'No se pudieron cargar los mensajes.';
-      $empty.style.display = 'block';
-    }
+  try{
+    const url = `/firmas/api/alumno/${encodeURIComponent(alumno_id)}/mensajes?_ts=${Date.now()}`;
+    const r = await fetch(url, { credentials: 'same-origin' });
+    if (!r.ok) throw new Error('No se pudieron cargar los mensajes');
+    const j = await r.json();
+    if (!Array.isArray(j)) throw new Error('Formato inesperado');
+
+    // Orden descendente por id (o por fecha si prefieres)
+    DATA = j.slice().sort((a,b)=> Number(b.id||0) - Number(a.id||0));
+    totalPages  = Math.max(1, Math.ceil(DATA.length / PAGE_SIZE));
+    renderPage(1);
+  }catch(e){
+    console.error(e);
+    $list.innerHTML = '';
+    $pager.innerHTML = '';
+    $empty.textContent = 'No se pudieron cargar los mensajes.';
+    $empty.style.display = 'block';
   }
+}
 
   // Delegación: marcar como leído
   $list.addEventListener('click', async (ev)=>{
@@ -324,11 +322,13 @@
     if (!btn) return;
     const id = Number(btn.getAttribute('data-mark'));
     try{
-      const r = await fetch(`/mensajes/app/mensajes/${id}/leer`, {
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ alumno_id })
-      });
+      const r = await fetch(`/firmas/api/alumno/${encodeURIComponent(alumno_id)}/mensajes/${id}/leer`, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      credentials: 'same-origin',
+      body: JSON.stringify({ alumno_id })
+    });
+
       if (!r.ok) throw new Error('No se pudo marcar como leído');
       btn.remove();
       const meta = btn.closest('.card').querySelector('.meta');

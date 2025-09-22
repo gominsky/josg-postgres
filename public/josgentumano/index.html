@@ -127,3 +127,25 @@
   <script src="push-init.js"></script>
 </body>
 </html>
+<script>
+(function(){
+  const badge = document.getElementById('badge-msg');
+  const alumno_id = localStorage.getItem('alumno_id');
+
+  async function refreshBadge(){
+    if (!badge || !alumno_id) { if (badge) badge.style.display = 'none'; return; }
+    try{
+      const r = await fetch(`/firmas/api/alumno/${encodeURIComponent(alumno_id)}/mensajes/unread_count`,
+                            { credentials:'same-origin' });
+      if (!r.ok) throw 0;
+      const { count=0 } = await r.json();
+      if (count > 0) { badge.textContent = String(count); badge.style.display = 'inline-block'; }
+      else { badge.style.display = 'none'; }
+    }catch{ /* opcional: ocultar chip en error */ badge.style.display = 'none'; }
+  }
+
+  document.addEventListener('DOMContentLoaded', refreshBadge);
+  window.addEventListener('pageshow', refreshBadge);                  // al volver desde mensajes
+  document.addEventListener('visibilitychange', ()=>{ if (document.visibilityState==='visible') refreshBadge(); });
+})();
+</script>

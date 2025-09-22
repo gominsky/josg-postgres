@@ -161,78 +161,188 @@ router.get('/api/_diag', async (_req, res) => {
 });
 
 /* ───────────────────── eventos ───────────────────── */
-
+// ====================== EVENTOS (admin/docente) ======================
+// ====================== EVENTOS (admin/docente) ======================
 router.get('/api/eventos', async (req, res) => {
-  const usuarioId = Number(req.query.usuario_id);
-  if (!usuarioId) return res.status(400).json({ error: 'usuario_id requerido' });
-
   try {
-    const usuario = await getUsuarioById(usuarioId);
-    if (!usuario) return res.status(404).json({ error: 'usuario no encontrado' });
+    // 0) auth: id por sesión o query (compat)
+    const usuarioId = Number(req.session?.usuario_id || req.query?.usuario_id);
+    if (!usuarioId) return res.status(401).json({ error: 'auth_required' });
 
-    let rs;
-    if (usuario.rol === 'admin') {
-      // Admin: todo
-      rs = await db.query(`
-        SELECT
-          e.id, e.titulo,
-          e.fecha_inicio, e.hora_inicio,
-          e.fecha_fin,    e.hora_fin,
-          g.nombre              AS grupo_nombre,
-          COALESCE(s.nombre,'') AS espacio
-        FROM eventos e
-        JOIN grupos g        ON g.id = e.grupo_id
-        LEFT JOIN espacios s ON s.id = e.espacio_id
-        ORDER BY e.fecha_inicio ASC, e.hora_inicio NULLS FIRST, e.id ASC
-      `);
-    } else if (usuario.rol === 'docente') {
-      // Docente: buscar profesor por email y filtrar por sus grupos
-      const profesorId = await getProfesorIdByEmail(usuario.email);
-      if (!profesorId) {
-        console.warn(`[eventos] docente usuario_id=${usuarioId} (email=${usuario.email}) sin profesor asociado por email`);
-        return res.json([]);
+    // 1) usuario + rol
+    const u = await db.query(
+      `SELECT id, rol, email FROM usuarios WHERE id=$1 LIMIT 1`,
+      [usuarioId]
+    );
+    const user = u.rows[0];
+    if (!user) return res.status(404).json({ error: 'usuario_not_found' });
+
+    // 2) inspeccionar esquema de eventos
+    const colsEvt = await db.query(`
+      SELECT lower(column_name) AS c
+      FROM information_schema.columns
+      WHERE table_name='eventos'
+    `);
+    const E = new Set(colsEvt.rows.map(r => r.c));
+
+    // columnas posibles (elige la que exista)
+    const startCol  =
+      E.has('fecha_inicio') ? 'fecha_inicio' :
+      E.has('inicio')       ? 'inicio'       :
+      E.has('start')        ? 'start'        : null;
+
+    const endCol    =
+      E.has('fecha_fin')    ? 'fecha_fin'    :
+      E.has('fin')          ? 'fin'          :
+      E.has('end')          ? 'end'          : null;
+
+    const titleCol  =
+      E.has('titulo')       ? 'titulo'       :
+      E.has('title')        ? 'title'        :
+      E.has('nombre')       ? 'nombre'       : null;
+
+    const espacioCol =
+      E.has('espacio')      ? 'espacio'      :
+      E.has('lugar')        ? 'lugar'        :
+      E.has('sala')         ? 'sala'         :
+      E.has('ubicacion')    ? 'ubicacion'    : null;
+
+    const hasGrupoId = E.has('grupo_id');
+
+    // 3) detectar tabla de cruce evento↔grupo si no hay grupo_id en eventos
+    const t = await db.query(`
+      SELECT lower(table_name) AS t
+      FROM information_schema.tables
+      WHERE table_schema='public'
+        AND lower(table_name) IN ('evento_grupo','eventos_grupos','evento_grupos','eventos_grupo')
+    `);
+    const T = new Set(t.rows.map(r => r.t));
+    const crossTable =
+      T.has('evento_grupo')   ? 'evento_grupo'   :
+      T.has('eventos_grupos') ? 'eventos_grupos' :
+      T.has('evento_grupos')  ? 'evento_grupos'  :
+      T.has('eventos_grupo')  ? 'eventos_grupo'  : null;
+
+    // columnas reales de la tabla de cruce (flex)
+    let crossEventCol = null;
+    let crossGroupCol = null;
+    if (crossTable) {
+      const crossCols = await db.query(`
+        SELECT lower(column_name) AS c
+        FROM information_schema.columns
+        WHERE table_name=$1
+      `, [crossTable]);
+      const C = new Set(crossCols.rows.map(r => r.c));
+      crossEventCol = C.has('evento_id')   ? 'evento_id'
+                    : C.has('eventos_id')  ? 'eventos_id'
+                    : C.has('event_id')    ? 'event_id'
+                    : C.has('id_evento')   ? 'id_evento'
+                    : null;
+      crossGroupCol = C.has('grupo_id')    ? 'grupo_id'
+                    : C.has('grupos_id')   ? 'grupos_id'
+                    : C.has('id_grupo')    ? 'id_grupo'
+                    : null;
+      if (!crossEventCol || !crossGroupCol) {
+        // si no podemos determinar columnas, ignoramos la tabla de cruce
+        // (esto evitará errores y devolverá [] para docentes)
+        crossEventCol = null;
+        crossGroupCol = null;
       }
-      const grupoIds = await getGrupoIdsDeProfesor(profesorId);
-      if (!grupoIds.length) return res.json([]);
-
-      rs = await db.query(
-        {
-          text: `
-            SELECT
-              e.id, e.titulo,
-              e.fecha_inicio, e.hora_inicio,
-              e.fecha_fin,    e.hora_fin,
-              g.nombre              AS grupo_nombre,
-              COALESCE(s.nombre,'') AS espacio
-            FROM eventos e
-            JOIN grupos g        ON g.id = e.grupo_id
-            LEFT JOIN espacios s ON s.id = e.espacio_id
-            WHERE e.grupo_id = ANY($1)
-            ORDER BY e.fecha_inicio ASC, e.hora_inicio NULLS FIRST, e.id ASC
-          `,
-          values: [grupoIds],
-        }
-      );
-    } else {
-      // Otros roles: por ahora no ven nada
-      return res.json([]);
     }
 
-    const eventos = (rs.rows || []).map(e => ({
-      id: e.id,
-      title: `${e.titulo} (${e.grupo_nombre})`,
-      start: toIsoLocal(e.fecha_inicio, e.hora_inicio),
-      end:   toIsoLocal(e.fecha_fin,    e.hora_fin),
-      grupo_nombre: e.grupo_nombre,
-      espacio: e.espacio || ''
-    }));
+    // 4) si es docente: obtener sus grupos
+    let grupoIds = null; // null = sin filtro (admin); array = filtrar (docente)
+    if (user.rol === 'docente') {
+      const rp = await db.query(
+        `SELECT id FROM profesores WHERE lower(email)=lower($1) LIMIT 1`,
+        [user.email]
+      );
+      if (!rp.rowCount) return res.json([]); // docente sin vínculo → sin eventos
+      const profesorId = rp.rows[0].id;
 
-    return res.json(eventos);
-  } catch (err) {
-    console.error('GET /api/eventos error:', err);
+      const rg = await db.query(
+        `SELECT g.id
+           FROM profesor_grupo pg
+           JOIN grupos g ON g.id = pg.grupo_id
+          WHERE pg.profesor_id = $1`,
+        [profesorId]
+      );
+      grupoIds = rg.rows.map(r => r.id);
+      if (!grupoIds.length) return res.json([]); // sin grupos → sin eventos
+    }
+
+    // 5) construir SELECT normalizado
+    const baseCols = [
+      `e.id AS id`,
+      `${titleCol ? `e.${titleCol}` : `'Evento'`} AS title`,
+      `${startCol ? `e.${startCol}` : 'NULL'} AS start`,
+      `${endCol   ? `e.${endCol}`   : 'NULL'} AS end`,
+      `${espacioCol ? `e.${espacioCol}` : 'NULL'} AS espacio`
+    ];
+
+    let joins = '';
+    // nombre del grupo si es posible
+    if (hasGrupoId) {
+      joins += ' LEFT JOIN grupos g ON g.id = e.grupo_id';
+      baseCols.push('g.nombre AS grupo_nombre');
+    } else if (crossTable && crossEventCol && crossGroupCol) {
+      joins += ` LEFT JOIN ${crossTable} eg ON eg.${crossEventCol} = e.id`;
+      joins += ` LEFT JOIN grupos g ON g.id = eg.${crossGroupCol}`;
+      baseCols.push('g.nombre AS grupo_nombre');
+    }
+
+    let sql = `SELECT ${baseCols.join(', ')} FROM eventos e${joins}`;
+    const where = [];
+    const args = [];
+
+    // filtro por grupos si es docente
+    if (user.rol === 'docente') {
+      if (hasGrupoId) {
+        where.push(`e.grupo_id = ANY($${args.length + 1})`);
+        args.push(grupoIds);
+      } else if (crossTable && crossEventCol && crossGroupCol) {
+        // forzamos JOIN real para filtrar (INNER) en vez de LEFT
+        // (cambiamos el LEFT anterior por INNER sólo si filtramos)
+        sql = sql.replace(`LEFT JOIN ${crossTable}`, `JOIN ${crossTable}`);
+        where.push(`eg.${crossGroupCol} = ANY($${args.length + 1})`);
+        args.push(grupoIds);
+      } else {
+        return res.json([]); // no hay forma de mapear evento↔grupo
+      }
+    }
+
+    // filtro opcional por rango de fechas (FullCalendar pasa ?start=…&end=…)
+    if (startCol) {
+      const { start, end } = req.query || {};
+      if (start) {
+        where.push(`e.${startCol} >= $${args.length + 1}::timestamp`);
+        args.push(start);
+      }
+      if (end) {
+        where.push(`e.${startCol} <  $${args.length + 1}::timestamp`);
+        args.push(end);
+      }
+    }
+
+    if (where.length) {
+      sql += ` WHERE ${where.join(' AND ')}`;
+    }
+
+    // 6) orden razonable (sin mezclar tipos)
+    if (startCol) {
+      sql += ` ORDER BY e.${startCol} DESC NULLS LAST, e.id DESC`;
+    } else {
+      sql += ` ORDER BY e.id DESC`;
+    }
+
+    const { rows } = await db.query(sql, args);
+    return res.json(rows);
+  } catch (e) {
+    console.error('GET /api/eventos error:', e);
     return res.status(500).json({ error: 'internal_error' });
   }
 });
+
 
 // ───────────────────────────── detalle evento ───────────────────
 router.get('/api/eventos/:id', async (req, res) => {
@@ -449,7 +559,6 @@ router.post('/api/firmar-alumnos', express.json(), async (req, res) => {
   }
 });
 
-
 // ─────────────────── observaciones generales del evento ─────────
 router.patch('/api/eventos/:id/observaciones-generales', express.json(), async (req, res) => {
   const id = Number(req.params.id);
@@ -522,14 +631,9 @@ router.get('/api/mis-grupos', async (req, res) => {
 });
 // POST /api/mensajes
 // Body: { usuario_id, titulo, cuerpo, url, broadcast, grupos_nombres:[] }
-// POST /api/mensajes
-// Body: { usuario_id, titulo, cuerpo, url, broadcast, grupos_nombres:[] }
-// POST /api/mensajes
-// Body: { usuario_id, titulo, cuerpo, url, broadcast, grupos_nombres:[] }
 router.post('/api/mensajes', express.json(), async (req, res) => {
   const { usuario_id, titulo, cuerpo, url, broadcast, grupos_nombres } = req.body || {};
-
-  // Prefiere el id de sesión (más fiable); si no, cae al body
+  // Prefiere id de sesión; cae al body para compat con tu front actual
   const usuarioId = Number(req.session?.usuario_id || usuario_id);
 
   if (!usuarioId) return res.status(400).json({ success:false, error:'usuario_id requerido' });
@@ -544,8 +648,8 @@ router.post('/api/mensajes', express.json(), async (req, res) => {
     // Normaliza grupos solicitados (por nombre)
     const gruposSolicitados = Array.isArray(grupos_nombres) ? grupos_nombres.filter(Boolean) : [];
 
-    // Determinar destinatarios (con grupo_id cuando aplique)
-    let destinatarios = []; // [{ alumno_id, grupo_id|null }]
+    // Calcula destinatarios [{ alumno_id, grupo_id|null }]
+    let destinatarios = [];
 
     if (user.rol === 'admin') {
       if (broadcast) {
@@ -571,7 +675,7 @@ router.post('/api/mensajes', express.json(), async (req, res) => {
     } else if (user.rol === 'docente') {
       if (broadcast) return res.status(403).json({ success:false, error:'Un docente no puede enviar a “Todos”' });
 
-      // Vincular docente por email -> sus grupos
+      // Vincular docente por email -> grupos permitidos
       const rp = await db.query(`SELECT id FROM profesores WHERE lower(email) = lower($1) LIMIT 1`, [user.email]);
       if (!rp.rowCount) return res.status(403).json({ success:false, error:'Docente no vinculado a profesores' });
 
@@ -584,14 +688,12 @@ router.post('/api/mensajes', express.json(), async (req, res) => {
         [profesorId]
       );
       const permitidos = new Set(rg.rows.map(r => r.nombre));
-
       if (!gruposSolicitados.length) return res.status(400).json({ success:false, error:'Selecciona al menos un grupo' });
       for (const nombre of gruposSolicitados) {
         if (!permitidos.has(nombre)) {
           return res.status(403).json({ success:false, error:`No puedes enviar al grupo ${nombre}` });
         }
       }
-
       const q = await db.query(
         `SELECT DISTINCT a.id AS alumno_id, g.id AS grupo_id
            FROM alumnos a
@@ -614,8 +716,7 @@ router.post('/api/mensajes', express.json(), async (req, res) => {
     try {
       await client.query('BEGIN');
 
-      // 1) Insertar mensaje
-      // Detectar columnas de 'mensajes' para no romper
+      // 1) Insertar en 'mensajes'
       const colsRs = await client.query(`
         SELECT lower(column_name) AS c
         FROM information_schema.columns
@@ -631,7 +732,7 @@ router.post('/api/mensajes', express.json(), async (req, res) => {
       if (cols.has('titulo') && titulo) { colList.push('titulo'); valList.push(`$${idx}`); args.push(titulo); idx++; }
       if (cols.has('url') && url)       { colList.push('url');    valList.push(`$${idx}`); args.push(url);    idx++; }
 
-      // Mapea la columna del autor según exista en tu esquema
+      // Mapea columna del autor según tu esquema
       const autorCol = cols.has('usuario_id') ? 'usuario_id'
                      : cols.has('creado_por') ? 'creado_por'
                      : cols.has('autor_id')   ? 'autor_id'
@@ -650,14 +751,58 @@ router.post('/api/mensajes', express.json(), async (req, res) => {
       );
       const mensajeId = ins.rows[0]?.id ?? null;
 
-      // 2) Insertar destinatarios en mensaje_destino (mensaje_id, alumno_id, grupo_id)
-      if (mensajeId != null) {
-        for (const d of destinatarios) {
-          await client.query(
-            `INSERT INTO mensaje_destino (mensaje_id, alumno_id, grupo_id)
-             VALUES ($1, $2, $3)`,
-            [mensajeId, d.alumno_id, d.grupo_id ?? null]
-          );
+      // 2) Insertar destinatarios en tu tabla real 'mensaje_destino' (o compatibles)
+      const tables = await client.query(`
+        SELECT lower(table_name) AS t
+        FROM information_schema.tables
+        WHERE table_schema = 'public'
+          AND lower(table_name) IN ('mensaje_destino','mensaje_destinatarios','mensajes_destinatarios','mensajes_alumnos')
+      `);
+      const names = new Set(tables.rows.map(r => r.t));
+      const destTable =
+        names.has('mensaje_destino')        ? 'mensaje_destino'        :
+        names.has('mensaje_destinatarios')  ? 'mensaje_destinatarios'  :
+        names.has('mensajes_destinatarios') ? 'mensajes_destinatarios' :
+        names.has('mensajes_alumnos')       ? 'mensajes_alumnos'       : null;
+
+      let insertedDest = 0;
+      if (mensajeId != null && destTable) {
+        const cd = await client.query(`
+          SELECT lower(column_name) AS c
+          FROM information_schema.columns
+          WHERE table_name = $1
+        `, [destTable]);
+        const dcols = new Set(cd.rows.map(r => r.c));
+
+        const msgCol  = dcols.has('mensaje_id')  ? 'mensaje_id'
+                      : dcols.has('mensajes_id') ? 'mensajes_id'
+                      : dcols.has('id_mensaje')  ? 'id_mensaje'
+                      : null;
+        const alumCol = dcols.has('alumno_id')   ? 'alumno_id'
+                      : dcols.has('alumnos_id')  ? 'alumnos_id'
+                      : dcols.has('id_alumno')   ? 'id_alumno'
+                      : null;
+        const grpCol  = dcols.has('grupo_id')    ? 'grupo_id' : null;
+
+        if (msgCol && alumCol) {
+          for (const d of destinatarios) {
+            if (grpCol) {
+              await client.query(
+                `INSERT INTO ${destTable} (${msgCol}, ${alumCol}, ${grpCol})
+                 VALUES ($1, $2, $3)`,
+                [mensajeId, d.alumno_id, d.grupo_id ?? null]
+              );
+            } else {
+              await client.query(
+                `INSERT INTO ${destTable} (${msgCol}, ${alumCol})
+                 VALUES ($1, $2)`,
+                [mensajeId, d.alumno_id]
+              );
+            }
+            insertedDest++;
+          }
+        } else {
+          console.warn(`[mensajes] No pude determinar columnas en ${destTable}.`);
         }
       }
 
@@ -666,8 +811,9 @@ router.post('/api/mensajes', express.json(), async (req, res) => {
       return res.json({
         success: true,
         enviados: destinatarios.length,
-        persistido: Boolean(mensajeId != null && destinatarios.length > 0),
-        mensaje_id: mensajeId
+        persistido: Boolean(mensajeId != null && insertedDest > 0),
+        mensaje_id: mensajeId,
+        detalle: { tabla_destinatarios: destTable || null, insertados: insertedDest }
       });
     } catch (e) {
       await client.query('ROLLBACK');
@@ -681,4 +827,5 @@ router.post('/api/mensajes', express.json(), async (req, res) => {
     return res.status(500).json({ success:false, error:'internal_error' });
   }
 });
+
 module.exports = router;

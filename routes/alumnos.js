@@ -5,6 +5,9 @@ const bcrypt = require('bcrypt');
 const fs = require('fs');
 const multer = require('multer');
 const path = require('path');
+const { toISODate } = require('../utils/fechas');
+
+// ───────────── Multer ─────────────
 const storage = multer.diskStorage({
   destination: './uploads',
   filename: (req, file, cb) => {
@@ -13,7 +16,8 @@ const storage = multer.diskStorage({
   }
 });
 const upload = multer({ storage });
-const { toISODate } = require('../utils/fechas');
+
+// ───────────── Helpers de DB/metadata ─────────────
 async function tableExists(name) {
   const { rows } = await db.query('SELECT to_regclass($1) t', [`public.${name}`]);
   return Boolean(rows[0]?.t);
@@ -38,6 +42,26 @@ async function ensureAlumnosApp() {
     `);
   }
 }
+
+// ───────────── Helpers de saneo (NUEVO: globales) ─────────────
+const toStrOrNull = (v) => {
+  if (v === undefined || v === null) return null;
+  const s = String(v).trim();
+  return s === '' ? null : s;
+};
+const toIntOrNull = (v) => {
+  if (v === undefined || v === null) return null;
+  if (typeof v === 'string' && v.trim() === '') return null;
+  const n = parseInt(v, 10);
+  return Number.isFinite(n) ? n : null;
+};
+const toDateOrNull = (v) => {
+  if (!v) return null;
+  const s = String(v);
+  return s.includes('T') ? s.slice(0, 10) : s.slice(0, 10);
+};
+
+// ───────────── Credenciales app alumnos ─────────────
 async function upsertCreds({ alumnoId, email, registrado, plainPassword }) {
   const hasColumnPassword = await columnExists('alumnos', 'password');
 
@@ -73,6 +97,8 @@ async function upsertCreds({ alumnoId, email, registrado, plainPassword }) {
     }
   }
 }
+
+// ───────────── Formularios ─────────────
 router.get('/nuevo', async (req, res) => {
   try {
     const instrumentos = (await db.query('SELECT * FROM instrumentos')).rows;
@@ -90,6 +116,8 @@ router.get('/nuevo', async (req, res) => {
     res.status(500).send('Error al cargar instrumentos o grupos');
   }
 });
+
+// ───────────── Crear alumno (ARREGLADO: codigo_postal ''→NULL) ─────────────
 router.post('/', upload.single('foto'), async (req, res) => {
   const {
     nombre, apellidos, tutor, direccion, codigo_postal,
@@ -97,10 +125,25 @@ router.post('/', upload.single('foto'), async (req, res) => {
     fecha_nacimiento, dni, centro, profesor_centro,
     instrumentos, grupos
   } = req.body;
-  const fechaNacISO = toISODate(fecha_nacimiento);
+
+  // Saneo y normalización
+  const _nombre          = toStrOrNull(nombre);
+  const _apellidos       = toStrOrNull(apellidos);
+  const _tutor           = toStrOrNull(tutor);
+  const _direccion       = toStrOrNull(direccion);
+  const _codigo_postal   = toIntOrNull(codigo_postal);  // 👈 evita ''→integer
+  const _municipio       = toStrOrNull(municipio);
+  const _provincia       = toStrOrNull(provincia);
+  const _telefono        = toStrOrNull(telefono);
+  const _email           = toStrOrNull(email);
+  const _fecha_nacimiento= toISODate(fecha_nacimiento) || toDateOrNull(fecha_nacimiento);
+  const _dni             = toStrOrNull(dni);
+  const _centro          = toStrOrNull(centro);
+  const _profesor_centro = toStrOrNull(profesor_centro);
+
+  const fechaMat = new Date().toISOString().split('T')[0];
   const foto = req.file ? req.file.filename : null;
   const activo = req.body.activo === '1' ? true : false;
-  const fechaMat = new Date().toISOString().split('T')[0];
 
   const sqlInsert = `
     INSERT INTO alumnos (
@@ -111,31 +154,35 @@ router.post('/', upload.single('foto'), async (req, res) => {
     RETURNING id
   `;
   const paramsInsert = [
-    nombre, apellidos, tutor, direccion, codigo_postal,
-    municipio, provincia, telefono, email,
-    fechaNacISO, dni, centro, profesor_centro,
-    foto, activo, fechaMat
+    _nombre, _apellidos, _tutor, _direccion, _codigo_postal,
+    _municipio, _provincia, _telefono, _email, _fecha_nacimiento,
+    _dni, _centro, _profesor_centro, foto, activo, fechaMat
   ];
 
   try {
     const result = await db.query(sqlInsert, paramsInsert);
     const newId = result.rows[0].id;
 
-    const instArray = Array.isArray(instrumentos) ? instrumentos : instrumentos ? [instrumentos] : [];
-    for (let iid of instArray) {
+    // Instrumentos → enteros válidos
+    const instArray = Array.isArray(instrumentos) ? instrumentos : (instrumentos ? [instrumentos] : []);
+    const instClean = instArray.map(toIntOrNull).filter(n => n !== null);
+    for (let iid of instClean) {
       await db.query('INSERT INTO alumno_instrumento (alumno_id, instrumento_id) VALUES ($1, $2)', [newId, iid]);
     }
 
-    const grpArray = Array.isArray(grupos) ? grupos : grupos ? [grupos] : [];
-    for (let gid of grpArray) {
+    // Grupos → enteros válidos
+    const grpArray = Array.isArray(grupos) ? grupos : (grupos ? [grupos] : []);
+    const grpClean = grpArray.map(toIntOrNull).filter(n => n !== null);
+    for (let gid of grpClean) {
       await db.query('INSERT INTO alumno_grupo (alumno_id, grupo_id) VALUES ($1, $2)', [newId, gid]);
     }
-    // ---- NUEVO: credenciales app (opcional) ----
+
+    // Credenciales app (opcional)
     const registradoFlag = String(req.body.registrado || '0') === '1';
     const plainPassword  = req.body.password || '';
     await upsertCreds({
       alumnoId: newId,
-      email: (req.body.email || '').trim(),
+      email: (_email || '')?.trim(),
       registrado: registradoFlag,
       plainPassword
     });
@@ -146,65 +193,37 @@ router.post('/', upload.single('foto'), async (req, res) => {
     res.status(500).send('Error al guardar alumno');
   }
 });
+
 // Centro de ayuda (en Configuración)
 router.get('/ayuda', (_req, res) => {
   res.render('ayuda_alumnos', { title: 'Ayuda · Alumnos', hero: false });
 });
-// routes/alumnos.js (o donde tengas las rutas de alumnos)
+// Alias de ayuda
 router.get(['/alumnos/ayuda', '/musicos/ayuda'], (_req, res) => {
   res.render('ayuda_musicos', { title: 'Ayuda · Músicos', hero: false });
 });
+
+// ───────────── Actualizar alumno (ya normalizabas; unificado a helpers) ─────────────
 router.put('/:id', upload.single('foto'), async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id)) return res.status(400).send('ID inválido');
 
-  // Helpers de saneo
-  const toStrOrNull = (v) =>
-    v === '' || v === undefined || v === null ? null : String(v).trim();
-
-  const toIntOrNull = (v) => {
-    if (v === '' || v === undefined || v === null) return null;
-    const n = Number(v);
-    return Number.isInteger(n) ? n : null;
-  };
-
-  const toDateOrNull = (v) => {
-    if (!v || v === '') return null;
-    const s = String(v);
-    // admite 'YYYY-MM-DD' o ISO con 'T'
-    return s.includes('T') ? s.slice(0, 10) : s.slice(0, 10);
-  };
-
   const {
-    nombre,
-    apellidos,
-    tutor,
-    direccion,
-    codigo_postal,
-    municipio,
-    provincia,
-    telefono,
-    email,
-    fecha_nacimiento,
-    dni,
-    centro,
-    profesor_centro,
-    instrumentos,
-    grupos,
-    fotoActual
+    nombre, apellidos, tutor, direccion, codigo_postal,
+    municipio, provincia, telefono, email, fecha_nacimiento,
+    dni, centro, profesor_centro, instrumentos, grupos, fotoActual
   } = req.body;
 
   const foto = req.file ? req.file.filename : (fotoActual || null);
   const activo = req.body.activo === '1' || req.body.activo === true ? 1 : 0;
   const fechaBaja = activo === 0 ? new Date().toISOString().slice(0, 10) : null;
 
-  // Payload saneado
   const payload = {
     nombre:            toStrOrNull(nombre),
     apellidos:         toStrOrNull(apellidos),
     tutor:             toStrOrNull(tutor),
     direccion:         toStrOrNull(direccion),
-    codigo_postal:     toIntOrNull(codigo_postal),       // <- evita '' -> 0 (error)
+    codigo_postal:     toIntOrNull(codigo_postal),     // 👈 clave
     municipio:         toStrOrNull(municipio),
     provincia:         toStrOrNull(provincia),
     telefono:          toStrOrNull(telefono),
@@ -214,11 +233,11 @@ router.put('/:id', upload.single('foto'), async (req, res) => {
     centro:            toStrOrNull(centro),
     profesor_centro:   toStrOrNull(profesor_centro),
     foto:              toStrOrNull(foto),
-    activo,                                             // 1/0
+    activo,
     fecha_baja:        toDateOrNull(fechaBaja)
   };
 
-  // Normaliza arrays (evita ids vacíos)
+  // Arrays normalizados
   const arrInst = Array.isArray(instrumentos) ? instrumentos : (instrumentos ? [instrumentos] : []);
   const cleanInst = arrInst.map(toIntOrNull).filter(n => n !== null);
 
@@ -241,24 +260,23 @@ router.put('/:id', upload.single('foto'), async (req, res) => {
            centro            = $13,
            profesor_centro   = $14,
            foto              = $15,
-           activo            = $16,  -- 1/0 (boolean-like)
+           activo            = $16,  -- 1/0
            fecha_baja        = $17,  -- DATE o NULL
            updated_at        = NOW()
      WHERE id = $1
   `;
-
   const params = [
     id,
     payload.nombre,
     payload.apellidos,
     payload.tutor,
     payload.direccion,
-    payload.codigo_postal,     // <- ya saneado (null o int)
+    payload.codigo_postal,
     payload.municipio,
     payload.provincia,
     payload.telefono,
     payload.email,
-    payload.fecha_nacimiento,  // <- 'YYYY-MM-DD' o null
+    payload.fecha_nacimiento,
     payload.dni,
     payload.centro,
     payload.profesor_centro,
@@ -269,15 +287,16 @@ router.put('/:id', upload.single('foto'), async (req, res) => {
 
   try {
     await db.query('BEGIN');
-    // ---- NUEVO: credenciales app (opcional) ----
-const registradoFlag = String(req.body.registrado || (alumno?.registrado ? '1' : '0')) === '1';
-const plainPassword  = req.body.password || '';
-await upsertCreds({
-  alumnoId: id,
-  email: (req.body.email || '').trim(),
-  registrado: registradoFlag,
-  plainPassword
-});
+
+    // Credenciales app (opcional)
+    const registradoFlag = String(req.body.registrado || (req.body?.alumno?.registrado ? '1' : '0')) === '1';
+    const plainPassword  = req.body.password || '';
+    await upsertCreds({
+      alumnoId: id,
+      email: (req.body.email || '').trim(),
+      registrado: registradoFlag,
+      plainPassword
+    });
 
     // Update alumno
     await db.query(sql, params);
@@ -310,6 +329,8 @@ await upsertCreds({
     res.status(500).send('Error al actualizar alumno');
   }
 });
+
+// ───────────── Edición (form) ─────────────
 router.get('/:id/editar', async (req, res) => {
   const id = parseInt(req.params.id, 10);
 
@@ -352,6 +373,8 @@ router.get('/:id/editar', async (req, res) => {
     res.status(500).send('Error al cargar el formulario de edición');
   }
 });
+
+// ───────────── Ficha ─────────────
 router.get('/nuevo/:alumnoId', async (req, res) => {
   const alumnoId = req.params.alumnoId;
 
@@ -391,7 +414,7 @@ router.get('/nuevo/:alumnoId', async (req, res) => {
 
     const pagos = pagosRes.rows;
 
-    // 5. Obtener cuotas disponibles
+    // 5. Cuotas disponibles
     const cuotasDisponiblesRes = await db.query(`SELECT * FROM cuotas ORDER BY nombre`);
     const cuotasDisponibles = cuotasDisponiblesRes.rows;
 
@@ -411,6 +434,8 @@ router.get('/nuevo/:alumnoId', async (req, res) => {
     res.status(500).send('Error al cargar los datos del alumno');
   }
 });
+
+// ───────────── Generar cuotas ─────────────
 router.post('/generar-cuotas', async (req, res) => {
   const { alumno_id, cuota_id, fecha_inicio, fecha_fin } = req.body;
 
@@ -455,7 +480,8 @@ router.post('/generar-cuotas', async (req, res) => {
     res.status(500).send('Error generando cuotas');
   }
 });
-// LISTAR ALUMNOS (tarjetas/lista) -------------------------------------------
+
+// ───────────── Listado ─────────────
 router.get('/', async (req, res) => {
   const { estado = 'todos', grupo_id = 'todos', busqueda = '', vista } = req.query;
 
@@ -512,7 +538,6 @@ router.get('/', async (req, res) => {
       a.nombre,
       a.apellidos,
       COALESCE(a.activo, TRUE) AS activo,
-      -- agregados ordenados y únicos
       STRING_AGG(DISTINCT i.nombre, ', ' ORDER BY i.nombre) AS instrumentos,
       STRING_AGG(DISTINCT g.nombre, ', ' ORDER BY g.nombre) AS grupos
     FROM alumnos a
@@ -538,7 +563,7 @@ router.get('/', async (req, res) => {
       estadoSeleccionado: estado,
       grupoId: grupo_id,
       busqueda,
-      vista: VISTA    // <- la vista que usará el switch en la plantilla
+      vista: VISTA
     });
   } catch (err) {
     console.error('[alumnos] GET / error:', err);
@@ -546,6 +571,8 @@ router.get('/', async (req, res) => {
     res.redirect('/');
   }
 });
+
+// ───────────── Ficha detalle ─────────────
 router.get('/:id', async (req, res) => {
   const id = parseInt(req.params.id);
   if (!id) return res.status(400).send('ID inválido');
@@ -589,7 +616,7 @@ router.get('/:id', async (req, res) => {
       db.query(`
         SELECT g.nombre
         FROM grupos g
-        JOIN alumno_grupo ag ON g.id = ag.grupo_id
+        JOIN alumno_grupo ag ON ag.grupo_id = g.id
         WHERE ag.alumno_id = $1
       `, [id]),
       db.query('SELECT * FROM cuotas ORDER BY nombre'),
@@ -621,7 +648,6 @@ router.get('/:id', async (req, res) => {
     resumen.total_cuotas = Number(resumen.total_cuotas || 0);
     resumen.total_pagado = Number(resumen.total_pagado || 0);
     resumen.total_pendiente = resumen.total_cuotas - resumen.total_pagado;
-    resumen.total_pendiente = resumen.total_cuotas - resumen.total_pagado;
 
     res.render('alumnos_ficha', {
       alumno: { ...alumno, instrumentos, grupos },
@@ -636,6 +662,8 @@ router.get('/:id', async (req, res) => {
     res.status(500).send('Error interno');
   }
 });
+
+// ───────────── Eliminar ─────────────
 router.post('/:id/eliminar', async (req, res) => {
   const id = parseInt(req.params.id, 10);
   try {
@@ -652,8 +680,8 @@ router.post('/:id/eliminar', async (req, res) => {
 
     // Borrar foto si existe
     if (foto) {
-      const path = `./uploads/${foto}`;
-      if (fs.existsSync(path)) fs.unlinkSync(path);
+      const p = `./uploads/${foto}`;
+      if (fs.existsSync(p)) fs.unlinkSync(p);
     }
 
     res.redirect('/alumnos');
@@ -664,3 +692,4 @@ router.post('/:id/eliminar', async (req, res) => {
 });
 
 module.exports = router;
+

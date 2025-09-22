@@ -32,53 +32,33 @@
     <div id="calendar" class="calendar-container"></div>
     <button onclick="location.href='portal_maestro.html'">&larr; Inicio</button>
   </div>
-  <script>
-    const API_BASE   = location.pathname.startsWith('/josgmaestro/') ? '/josgmaestro' : '/control_firmas';
-    const usuario_id = localStorage.getItem('usuario_id');
-    if (!usuario_id) location.href = 'index.html';
 
-    function logout() {
-      localStorage.clear();
-      location.href = 'index.html';
-    }
-    (function(){
-      const nombre = localStorage.getItem('usuario_nombre');
-      const box = document.getElementById('user-box');
-      if (box) box.textContent = nombre ? `Usuario: ${nombre}` : `Usuario #${usuario_id}`;
-    })();
-    document.addEventListener('DOMContentLoaded', function () {
-      const calendarEl = document.getElementById('calendar');
-      const calendar = new FullCalendar.Calendar(calendarEl, {
-        locale: 'es',
-        initialView: 'dayGridMonth',
-        headerToolbar: {
-          left: 'prev,next today',
-          center: 'title',
-          right: 'dayGridMonth,listMonth'
-        },
-        buttonText: {
-          today: 'Hoy',
-          month: 'Mes',
-          list: 'Lista'
-        },
-        firstDay: 1, 
-        eventSources: [{
-        url: `${API_BASE}/api/eventos?usuario_id=${usuario_id}`,
-        failure: (error) => {
-          console.error('No se pudieron cargar eventos', error);
-          alert('No se pudieron cargar los eventos. Revisa la ruta de la API.');
-        }
+<script>
+  const IN_PORTAL = location.pathname.startsWith('/josgmaestro');
+  const API_BASE  = IN_PORTAL ? '/josgmaestro/api' : '/control_firmas/api';
+  const usuario_id = localStorage.getItem('usuario_id') || '';
+
+  document.addEventListener('DOMContentLoaded', function () {
+    const el = document.getElementById('calendar');
+    if (!el) return;
+
+    const calendar = new FullCalendar.Calendar(el, {
+      locale:'es', initialView:'dayGridMonth', firstDay:1,
+      headerToolbar:{ left:'prev,next today', center:'title', right:'dayGridMonth,listMonth' },
+      eventSources: [{
+        url: `${API_BASE}/eventos`,
+        extraParams: { usuario_id },
+        extraFetchOptions: { credentials:'same-origin' },
+        failure: (err)=>{ console.error('eventos', err); alert('No se pudieron cargar los eventos.'); }
       }],
-        eventClick: function (info) {
-          const id = info.event.id;
-          location.href = `evento_detalle.html?id=${id}`;
-        },
-        displayEventTime: false, // ← quita el "9" u hora
-        eventTimeFormat: false   // ← adicional para prevenir formatos
-      });
-      calendar.render();
+      displayEventTime:false,
+      eventClick(info){ location.href = `evento_detalle.html?id=${info.event.id}`; }
     });
-  </script>
+
+    calendar.render();
+  });
+</script>
+
 </body>
 </html>
 
