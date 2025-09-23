@@ -4,7 +4,8 @@ const router  = express.Router();
 const db      = require('../database/db');
 const bcrypt  = require('bcrypt');
 const { enviarPush } = require('../utils/push');
-
+const jwt = require('jsonwebtoken');
+const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-cambia-esto';
 /* ============ Helpers mínimos ============ */
 function toIsoLocal(dateStr, timeStr) {
   const d = (dateStr || '').toString().slice(0,10);   // YYYY-MM-DD
@@ -36,12 +37,30 @@ async function getGruposDeProfesor(profesorId){
       ORDER BY g.nombre ASC`, [profesorId]);
   return rs.rows; // [{id,nombre}]
 }
-
-/* ============ Auth (login maestro) ============ */
-router.use('/api', (req, res, next) => {
+function authDual(req, res, next) {
+  // 1) Si hay sesión (web), pasa
   if (req.session?.usuario_id) return next();
-  return res.status(401).json({ error: 'auth_required' });
-});
+
+  // 2) Si viene Authorization: Bearer <token>, valida JWT
+  const h = req.get('authorization') || '';
+  const m = h.match(/^Bearer\s+(.+)$/i);
+  if (!m) return res.status(401).json({ error: 'auth_required' });
+
+  try {
+    const payload = jwt.verify(m[1], JWT_SECRET);
+    req.user = { id: payload.sub, rol: payload.rol }; // por si lo necesitas en handlers
+    return next();
+  } catch {
+    return res.status(401).json({ error: 'invalid_token' });
+  }
+}
+
+// ✅ Aplica a todas las rutas de API
+router.use('/api', authDual);
+
+function getAuthUserId(req) {
+  return req.session?.usuario_id || req.user?.id || null;
+}
 
 router.post('/logout', (req, res) => {
   if (req.session) {
@@ -51,54 +70,70 @@ router.post('/logout', (req, res) => {
 });
 
 // === AUTH PÚBLICO (fuera del guard /api) =====================================
-
 // POST /josgmaestro/login
-router.post('/login', express.json(), async (req, res) => {
-  const email    = String(req.body?.email || '').trim();
-  const password = String(req.body?.password || '');
-    console.log('[LOGIN] body:', req.body);
-  console.log('[LOGIN] sets session for usuario_id?');
-  if (!email || !password) {
-    return res.status(400).json({ success:false, error: 'Faltan credenciales' });
-  }
+router.post('/login', async (req, res) => {
+  const { email, password } = req.body;
 
   try {
-    // lee exactamente de la tabla `usuarios` (con password_hash bcrypt)
-    const rs = await db.query(
-      `SELECT id, nombre, apellidos, email, rol, password_hash
-         FROM usuarios
-        WHERE lower(email) = lower($1)
-        LIMIT 1`,
+    const { rows } = await db.query(
+      'SELECT id, nombre, rol, password_hash FROM usuarios WHERE email=$1',
       [email]
     );
-    const u = rs.rows[0];
+    const u = rows[0];
     if (!u) {
-      // mismo mensaje genérico: no revelamos si el email existe
-      return res.status(401).json({ success:false, error:'Credenciales incorrectas' });
+      return res.status(401).json({ success: false, error: 'Credenciales incorrectas' });
     }
 
+    // compara contraseña
     const ok = await bcrypt.compare(password, u.password_hash);
     if (!ok) {
-      return res.status(401).json({ success:false, error:'Credenciales incorrectas' });
+      return res.status(401).json({ success: false, error: 'Credenciales incorrectas' });
     }
 
-    // crea sesión
-    req.session.usuario_id  = u.id;
-    req.session.usuario_rol = u.rol;
+    // regenerar y guardar sesión
+    req.session.regenerate(err => {
+      if (err) return res.status(500).json({ success:false, error:'session_regenerate_failed' });
+    
+      req.session.usuario_id  = u.id;
+      req.session.usuario_rol = u.rol;
+    
+      req.session.save(err2 => {
+        if (err2) return res.status(500).json({ success:false, error:'session_save_failed' });
+        console.log('[LOGIN] set session', { sid: req.sessionID, uid: u.id });
+        res.json({ success:true, usuario:{ id:u.id, nombre:u.nombre, rol:u.rol } });
+        
+      });
+    });
+    
+  } catch (err) {
+    console.error('Login error', err);
+    res.status(500).json({ success: false, error: 'internal_error' });
+  }
+});
+// POST /josgmaestro/token-login -> { token, usuario }
+router.post('/token-login', async (req, res) => {
+  const { email, password } = req.body;
+  try {
+    const { rows } = await db.query(
+      'SELECT id, nombre, rol, password_hash FROM usuarios WHERE email=$1',
+      [email]
+    );
+    const u = rows[0];
+    if (!u) return res.status(401).json({ error: 'Credenciales incorrectas' });
 
-    // respuesta mínima para el front
+    const ok = await bcrypt.compare(password, u.password_hash);
+    if (!ok) return res.status(401).json({ error: 'Credenciales incorrectas' });
+
+    // Token 2h con id (sub) y rol
+    const token = jwt.sign({ sub: u.id, rol: u.rol }, JWT_SECRET, { expiresIn: '2h' });
+
     return res.json({
-      success: true,
-      usuario: {
-        id: u.id,
-        nombre: u.nombre || '',
-        apellidos: u.apellidos || '',
-        rol: u.rol
-      }
+      token,
+      usuario: { id: u.id, nombre: u.nombre, rol: u.rol }
     });
   } catch (err) {
-    console.error('POST /josgmaestro/login error:', err);
-    return res.status(500).json({ success:false, error:'Error interno' });
+    console.error('token-login error', err);
+    return res.status(500).json({ error: 'internal_error' });
   }
 });
 
@@ -114,13 +149,16 @@ router.get('/me', (req, res) => {
 /* ============ Eventos ============ */
 // Lista para portal y calendario. Filtra por permisos si es docente.
 router.get('/api/eventos', async (req, res) => {
-   try {
-    const usuarioId = Number(req.session?.usuario_id);
+  try {
+    const usuarioId = Number(getAuthUserId(req));
     if (!usuarioId) return res.status(401).json({ error: 'auth_required' });
 
-    const u = await db.query(`SELECT id, email, rol FROM usuarios WHERE id=$1 LIMIT 1`, [usuarioId]);
+    const u = await db.query(
+      `SELECT id, email, rol FROM usuarios WHERE id=$1 LIMIT 1`,
+      [usuarioId]
+    );
     const user = u.rows[0];
-    if (!user) return res.status(404).json({ error:'usuario_not_found' });
+    if (!user) return res.status(404).json({ error: 'usuario_not_found' });
 
     // si docente → sus grupos; si admin → todos
     let where = [];
@@ -136,10 +174,16 @@ router.get('/api/eventos', async (req, res) => {
       args.push(grupoIds);
     }
 
-    // Rango opcional (FullCalendar suele pasar ?start=…&end=…)
+    // Helpers seguros para fechas TEXT
+    const EVENT_START = `CASE WHEN e.fecha_inicio ~ '^\\d{4}-\\d{2}-\\d{2}$' THEN (e.fecha_inicio)::date END`;
+    const EVENT_END   = `CASE WHEN e.fecha_fin    ~ '^\\d{4}-\\d{2}-\\d{2}$' THEN (e.fecha_fin)::date ELSE ${EVENT_START} END`;
+
+    // Rango opcional (FullCalendar pasa ?start=…&end=…)
     const { start, end } = req.query || {};
-    if (start) { where.push(`e.fecha_inicio >= $${args.length+1}::date`); args.push(start); }
-    if (end)   { where.push(`e.fecha_inicio <  $${args.length+1}::date`); args.push(end); }
+    if (start && end) {
+      args.push(start, end);
+      where.push(`(${EVENT_END} >= $${args.length-1}::date AND ${EVENT_START} < $${args.length}::date)`);
+    }
 
     const sql = `
       SELECT
@@ -151,28 +195,53 @@ router.get('/api/eventos', async (req, res) => {
         e.grupo_id,
         g.nombre              AS grupo_nombre,
         COALESCE(s.nombre,'') AS espacio,
-        -- start/end ISO local a partir de fecha+hora
-        CASE WHEN e.fecha_inicio IS NOT NULL
-             THEN to_char(e.fecha_inicio,'YYYY-MM-DD') || 'T' ||
-                  coalesce(to_char(e.hora_inicio,'HH24:MI'),'00:00') || ':00'
-             ELSE NULL END AS start,
-        CASE WHEN e.fecha_fin IS NOT NULL
-             THEN to_char(e.fecha_fin,'YYYY-MM-DD') || 'T' ||
-                  coalesce(to_char(e.hora_fin,'HH24:MI'),'00:00') || ':00'
-             ELSE NULL END AS "end"
+
+        -- start ISO (YYYY-MM-DDTHH:MM:SS)
+        CASE
+          WHEN e.fecha_inicio ~ '^\\d{4}-\\d{2}-\\d{2}$' THEN
+            to_char((e.fecha_inicio)::date, 'YYYY-MM-DD') || 'T' ||
+            COALESCE(
+              CASE WHEN e.hora_inicio ~ '^\\d{2}:\\d{2}(:\\d{2})?$'
+                   THEN to_char((split_part(e.hora_inicio, ' ', 1))::time, 'HH24:MI')
+                   ELSE '00:00'
+              END,
+              '00:00'
+            ) || ':00'
+          ELSE NULL
+        END AS start,
+
+        -- end ISO
+        CASE
+          WHEN e.fecha_fin ~ '^\\d{4}-\\d{2}-\\d{2}$' THEN
+            to_char((e.fecha_fin)::date, 'YYYY-MM-DD') || 'T' ||
+            COALESCE(
+              CASE WHEN e.hora_fin ~ '^\\d{2}:\\d{2}(:\\d{2})?$'
+                   THEN to_char((split_part(e.hora_fin, ' ', 1))::time, 'HH24:MI')
+                   ELSE '00:00'
+              END,
+              '00:00'
+            ) || ':00'
+          ELSE NULL
+        END AS "end"
+
       FROM eventos e
       JOIN grupos g        ON g.id = e.grupo_id
       LEFT JOIN espacios s ON s.id = e.espacio_id
       ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
-      ORDER BY e.fecha_inicio NULLS LAST, e.hora_inicio NULLS LAST, e.id ASC
+
+      ORDER BY
+        ${EVENT_START} NULLS LAST,
+        CASE WHEN e.hora_inicio ~ '^\\d{2}:\\d{2}(:\\d{2})?$'
+             THEN (split_part(e.hora_inicio, ' ', 1))::time END NULLS LAST,
+        e.id ASC
       LIMIT 1000
     `;
 
     const rs = await db.query(sql, args);
     return res.json(rs.rows || []);
-  }catch(err){
+  } catch (err) {
     console.error('GET /api/eventos error:', err);
-    return res.status(500).json({ error:'internal_error' });
+    return res.status(500).json({ error: 'internal_error' });
   }
 });
 
@@ -397,8 +466,8 @@ router.get('/api/grupos', async (_req, res) => {
 });
 
 router.get('/api/mis-grupos', async (req, res) => {
-  const usuarioId = Number(req.session?.usuario_id);
-  if (!usuarioId) return res.status(401).json({ error:'auth_required' });
+  const usuarioId = Number(getAuthUserId(req));
+if (!usuarioId) return res.status(401).json({ error:'auth_required' });
 
   try{
     const u = await db.query(`SELECT id, email, rol FROM usuarios WHERE id=$1`, [usuarioId]);
@@ -438,8 +507,8 @@ router.post('/api/mensajes', express.json(), async (req, res) => {
     alumnos_ids = []
   } = req.body || {};
 
-  const usuarioId = Number(req.session?.usuario_id);
-  if (!usuarioId) return res.status(401).json({ success:false, error:'auth_required' });
+  const usuarioId = Number(getAuthUserId(req));
+if (!usuarioId) return res.status(401).json({ success:false, error:'auth_required' });
 
   titulo = (titulo || '').toString().trim();
   cuerpo = (cuerpo || '').toString().trim();

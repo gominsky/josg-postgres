@@ -32,7 +32,39 @@
     }
     .toast-fixed.error{ background:#fef2f2; border-color:#fecaca; color:#7f1d1d; }
     .toast-fixed.show{ display:block; }
-  </style>
+
+  .button-base {
+    display: inline-block;
+    padding: 0.6rem 1.4rem;
+    border-radius: 12px;      /* mismo radio que portal */
+    font-weight: 600;
+    color: #fff;
+    border: none;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(0,0,0,.15);
+    transition: transform .12s ease, box-shadow .12s ease;
+  }
+  .button-base:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(0,0,0,.2);
+  }
+  .button-base:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 8px rgba(0,0,0,.1);
+  }
+
+  /* Estilo para ENVIAR (verde/azul) */
+  .button-send {
+    background: linear-gradient(180deg,#ffb24a,#f59e0b);
+    border:1px solid #f59e0b;
+  }
+
+  /* Estilo para CANCELAR (igual a Eventos del portal) */
+  .button-cancel {
+    background: linear-gradient(180deg,#f28d63,#ea6b38);
+    border: 1px solid #cc5c2f;
+  }
+</style>
 </head>
 <body>
   <div class="container">
@@ -56,9 +88,9 @@
         <div id="chips-help" class="help"></div>
       </div>
 
-      <div class="actions">
-        <button type="submit">Enviar</button>
-        <button type="button" class="button-cancel" onclick="history.back()">Cancelar</button>
+      <div class="form-actions">
+        <button type="submit" class="button-base button-send">Enviar</button>
+        <button type="button" class="button-base button-cancel" onclick="window.history.back()">Cancelar</button>
       </div>
     </form>
   </div>

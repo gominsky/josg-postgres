@@ -23,6 +23,21 @@
     .fc .fc-today-button { padding: .24rem .5rem; font-size: .85rem; }
     .fc .fc-button-group > .fc-button { padding: .24rem .5rem; }
     .fc .fc-header-toolbar { margin-bottom: 8px; }
+      .btn {
+      display:inline-block; padding:0.6rem 1.4rem; border-radius:12px;
+      font-weight:600; color:#fff; border:none; cursor:pointer;
+      box-shadow:0 4px 12px rgba(0,0,0,.15);
+      transition:transform .12s ease, box-shadow .12s ease;
+      text-decoration:none; text-align:center; min-width:110px;
+    }
+    .btn:hover { transform:translateY(-1px); box-shadow:0 6px 16px rgba(0,0,0,.2); }
+    .btn:active { transform:translateY(0); box-shadow:0 2px 8px rgba(0,0,0,.1); }
+  
+    /* NARANJA igual que “Eventos” del portal */
+    .btn-accent {
+      background: linear-gradient(180deg,#ffb24a,#f59e0b);
+      border:1px solid #f59e0b;
+    }
   </style>
 </head>
 <body>
@@ -30,56 +45,77 @@
     <h2>Agenda de eventos</h2>
     <div id="user-box" class="muted" style="margin:4px 0 10px; font-weight:600;"></div>
     <div id="calendar" class="calendar-container"></div>
-    <button onclick="location.href='portal_maestro.html'">&larr; Inicio</button>
+    <button class="btn btn-accent" onclick="location.href='portal_maestro.html'">&larr; Inicio</button>
   </div>
-
-<script>
-  const API_BASE = '/josgmaestro/api';
-  const usuario_id = localStorage.getItem('usuario_id') || '';
-
-  document.addEventListener('DOMContentLoaded', function () {
-    const el = document.getElementById('calendar');
-    if (!el) return;
-
-    const calendar = new FullCalendar.Calendar(el, {
-      locale: 'es',                // 👈 español
-      firstDay: 1,                 // lunes
-      initialView: 'dayGridMonth',
-      headerToolbar: {
-        left: 'prev,next today',
-        center: 'title',
-        right: 'dayGridMonth,listMonth'
-      },
-      // 👇 Fuerza textos de botones y vista lista
-      buttonText: {
-        today: 'Hoy',
-        month: 'Mes',
-        list:  'Agenda'
-      },
-      views: {
-        listMonth: { buttonText: 'Agenda' },
-        dayGridMonth: { buttonText: 'Mes' }
-      },
-      // 👇 Encabezados de días en formato corto (lun, mar, …)
-      dayHeaderFormat: { weekday: 'short' },
-      // 👇 Formato del título (p. ej. “septiembre de 2025”)
-      titleFormat: { month: 'long', year: 'numeric' },
-
-      eventSources: [{
-        url: `${API_BASE}/eventos`,
-        extraFetchOptions: { credentials: 'same-origin' },
-        failure: (err) => {
-          console.error('eventos', err);
-          alert('No se pudieron cargar los eventos.');
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      const el = document.getElementById('calendar');
+      if (!el) return;
+  
+      const API = '/josgmaestro/api';
+      const token = localStorage.getItem('token') || null;
+  
+      const headers = { 'Accept': 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+  
+      const calendar = new FullCalendar.Calendar(el, {
+        locale: 'es',
+        firstDay: 1,
+        initialView: 'dayGridMonth',
+        headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth,listMonth' },
+        buttonText: { today: 'Hoy', month: 'Mes', list: 'Agenda' },
+        displayEventTime: false,
+  
+        // 🔧 clave: traemos nosotros los eventos con fetch (con headers correctos)
+        events: async (info, success, failure) => {
+          try {
+            // si tu backend filtra por rango, pásalo; si no, omite los query params
+            const url = `${API}/eventos?start=${encodeURIComponent(info.startStr)}&end=${encodeURIComponent(info.endStr)}`;
+            const res = await fetch(url, { headers, credentials: 'include' });
+  
+            if (res.status === 401) {
+              // sin sesión ni token → manda a login
+              window.location.href = '/josgmaestro/index.html';
+              return;
+            }
+            if (!res.ok) {
+              const text = await res.text();
+              console.error('Eventos HTTP error:', res.status, text);
+              failure(new Error(`HTTP ${res.status}`));
+              alert('No se pudieron cargar los eventos (HTTP ' + res.status + ').');
+              return;
+            }
+  
+            const data = await res.json();
+            // Asegurar formato mínimo para FullCalendar
+            const events = (Array.isArray(data) ? data : []).map(e => ({
+              id: String(e.id),
+              title: e.title || e.titulo || '(sin título)',
+              start: e.start,                 // ISO String (YYYY-MM-DDTHH:MM:SS) — el backend ya lo da así
+              end: e.end || e["end"] || null, // ojo con la propiedad "end" si viene con comillas
+              extendedProps: {
+                descripcion: e.descripcion || '',
+                grupo: e.grupo_nombre || '',
+                espacio: e.espacio || ''
+              }
+            }));
+  
+            success(events);
+          } catch (err) {
+            console.error('Eventos fetch error:', err);
+            failure(err);
+            alert('No se pudieron cargar los eventos (network error).');
+          }
+        },
+  
+        eventClick(info) {
+          window.location.href = `evento_detalle.html?id=${encodeURIComponent(info.event.id)}`;
         }
-      }],
-      displayEventTime: false,
-      eventClick(info) { location.href = `evento_detalle.html?id=${info.event.id}`; }
+      });
+  
+      calendar.render();
     });
-
-    calendar.render();
-  });
-</script>
+  </script> 
 
 </body>
 </html>

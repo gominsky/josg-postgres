@@ -10,21 +10,70 @@ const expressLayouts = require('express-ejs-layouts');
 const methodOverride = require('method-override');
 require('dotenv').config();
 
+
+
+// --- Logs de proceso (como tenías) ---
 process.on('beforeExit', (code) => console.log('[proc] beforeExit code=', code));
 process.on('exit',       (code) => console.log('[proc] exit code=', code));
 process.on('uncaughtException', (err) => {
   console.error('[proc] uncaughtException:', err);
 });
-process.on('unhandledRejection', (reason, p) => {
+process.on('unhandledRejection', (reason) => {
   console.error('[proc] unhandledRejection:', reason);
 });
 
+// --- Parsers ---
+app.use(express.urlencoded({ extended: true }));
+app.use(express.json());
+
+// --- Sesión (antes de cualquier router/guard) ---
 app.use(session({
-  secret: process.env.SESSION_SECRET,
+  secret: process.env.SESSION_SECRET || 'SESSION_SECRET',
   resave: false,
-  saveUninitialized: false
+  saveUninitialized: false,
+  cookie: {
+    httpOnly: true,
+    secure: false,   // dev HTTP
+    sameSite: 'lax', // mismo origen
+    path: '/',
+  },
 }));
 
+// --- COMPuERTA TEMPRANA PARA API (nunca redirige) ---
+app.use((req, res, next) => {
+  if (req.originalUrl.startsWith('/josgmaestro/api')) {
+    // Si trae Authorization (JWT), que lo valide el router:
+    if (req.headers.authorization) return next();
+    // Si no hay token, exige sesión:
+    if (!req.session?.usuario_id) {
+      return res.status(401).json({ error: 'auth_required' });
+    }
+  }
+  return next();
+});
+
+// --- Guard para páginas estáticas de /josgmaestro (excluye /api) ---
+function requireAuthPage(req, res, next) {
+  // ¡Nunca interceptar APIs!
+  if (req.path.startsWith('/api')) return next();
+
+  // Deja pasar login y assets
+  const isAsset = /\.(css|js|png|jpg|jpeg|gif|svg|ico|webp|map)$/.test(req.path);
+  const isLogin = req.path === '/' || req.path === '/index.html';
+  if (isAsset || isLogin) return next();
+
+  // Si hay sesión, ok; si no, redirige a login
+  if (req.session?.usuario_id) return next();
+  return res.redirect('/josgmaestro/index.html');
+}
+
+// --- Rutas ---
+const josgmaestroRouter = require('./routes/josgmaestro');
+app.use('/josgmaestro', josgmaestroRouter); // APIs y páginas renderizadas
+
+// --- Estáticos de josgmaestro (protegidos por requireAuthPage) ---
+app.use('/josgmaestro', requireAuthPage, express.static(path.join(__dirname, 'public/josgmaestro')));
+    
 // Middleware para variables de sesión accesibles en views
 app.use((req, res, next) => {
   res.locals.usuario = req.session.usuario || null;
@@ -33,24 +82,12 @@ app.use((req, res, next) => {
   next();
 });
 
-// Middleware para procesar formularios y JSON
-app.use(express.urlencoded({ extended: true }));
-app.use(express.json());
+
 
 const authRoutes = require('./routes/auth');
 app.use(authRoutes);
 
-//  Middleware para páginas HTML del área josgmaestro
-function requireAuthPage(req, res, next) {
-  // deja pasar el login y assets estáticos
-  const isAsset = /\.(css|js|png|jpg|jpeg|gif|svg|ico|webp|map)$/.test(req.path);
-  const isLogin = req.path === '/' || req.path === '/index.html';
-  if (isAsset || isLogin) return next();
 
-  if (req.session?.usuario_id) return next();
-  // redirige a login del maestro
-  return res.redirect('/josgmaestro/index.html'); // ajusta la ruta si tu login vive en otra carpeta
-}
 
 // Method override (para PUT/DELETE en formularios)
 app.use(methodOverride('_method'));
@@ -84,7 +121,7 @@ const guardiasRoutes = require('./routes/guardias');
 const instrumentosRoutes = require('./routes/instrumentos');
 const tipos_cuotasRoutes = require('./routes/tipos_cuotas');
 const pagosRoutes = require('./routes/pagos');
-const josgmaestroRoutes = require('./routes/josgmaestro');
+//const josgmaestroRoutes = require('./routes/josgmaestro');
 const configuracionRoutes = require('./routes/configuracion');
 const planoRoutes = require('./routes/plano');
 const contabilidadRoutes = require('./routes/contabilidad');
@@ -114,7 +151,7 @@ app.use('/guardias', isAuthenticated, guardiasRoutes);
 app.use('/instrumentos', isAdmin, instrumentosRoutes);
 app.use('/tipos_cuotas', isAdmin, tipos_cuotasRoutes); 
 app.use('/pagos', isAdmin, pagosRoutes);                
-app.use('/josgmaestro', josgmaestroRoutes);
+//app.use('/josgmaestro', josgmaestroRoutes);
 app.use('/plano', isAuthenticated, planoRoutes);
 app.use('/contabilidad', isAdmin, contabilidadRoutes);
 app.use('/proveedores', isAdmin, proveedoresRoutes);
