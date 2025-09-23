@@ -34,8 +34,7 @@
   </div>
 
 <script>
-  const IN_PORTAL = location.pathname.startsWith('/josgmaestro');
-  const API_BASE  = IN_PORTAL ? '/josgmaestro/api' : '/control_firmas/api';
+  const API_BASE = '/josgmaestro/api';
   const usuario_id = localStorage.getItem('usuario_id') || '';
 
   document.addEventListener('DOMContentLoaded', function () {

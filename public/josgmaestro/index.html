@@ -40,7 +40,7 @@
   
       try {
         // ⬇⬇⬇  RUTA CORRECTA PARA MAESTRO
-          const res = await fetch('/control_firmas/login', {          method: 'POST',
+          const res = await fetch('/josgmaestro/login', {          method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'same-origin',          // 👈 guarda cookie de sesión
           body: JSON.stringify({ email, password })

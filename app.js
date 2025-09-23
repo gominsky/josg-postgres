@@ -96,7 +96,8 @@ const guardiasRoutes = require('./routes/guardias');
 const instrumentosRoutes = require('./routes/instrumentos');
 const tipos_cuotasRoutes = require('./routes/tipos_cuotas');
 const pagosRoutes = require('./routes/pagos');
-const control_firmasRoutes = require('./routes/control_firmas');
+//const control_firmasRoutes = require('./routes/control_firmas');
+const josgmaestroRoutes = require('./routes/josgmaestro');
 const configuracionRoutes = require('./routes/configuracion');
 const planoRoutes = require('./routes/plano');
 const contabilidadRoutes = require('./routes/contabilidad');
@@ -125,19 +126,17 @@ app.use('/guardias', isAuthenticated, guardiasRoutes);
 app.use('/instrumentos', isAdmin, instrumentosRoutes);
 app.use('/tipos_cuotas', isAdmin, tipos_cuotasRoutes); // Solo admin
 app.use('/pagos', isAdmin, pagosRoutes);                // Solo admin
-app.use('/control_firmas', control_firmasRoutes);
+//app.use('/control_firmas', control_firmasRoutes);
 // Primero el router bajo /josgmaestro para que resuelva /josgmaestro/api/...
-app.use('/josgmaestro', control_firmasRoutes);
+app.use('/josgmaestro', josgmaestroRoutes);
  // Después los estáticos del portal (carpeta renombrada)
-app.use('/josgmaestro', requireAlumno, express.static(path.join(__dirname, 'public_josgmaestro')));
-
 app.use('/plano', isAuthenticated, planoRoutes);
 app.use('/contabilidad', isAdmin, contabilidadRoutes);
 app.use('/proveedores', isAdmin, proveedoresRoutes);
 app.use('/categorias', isAdmin, categoriasRoutes);
 app.use('/cuentas', isAdmin, cuentasRoutes);
 app.use('/api', isAuthenticated, layoutsRoutes);
-app.use('/control_firmas/api', isAuthenticated, layoutsRoutes);
+//app.use('/control_firmas/api', isAuthenticated, layoutsRoutes);
 
 app.use('/recuperar',recuperarRoutes);
 app.use(require('./routes/share_stateless'));
@@ -176,11 +175,6 @@ app.get('/mensajes/nuevo', isAuthenticated, isDocente, async (req, res) => {
     });
   }
 });
-
-// endpoint de salud para comprobar el prefijo desde el front
-app.get(['/api/health','/control_firmas/api/health','/josgmaestro/api/health'], (_req, res) => {
-    res.json({ ok: true, ts: Date.now() });
-  });
 
 // Página de mantenimiento (zona de obras)
 app.get('/obras', (req, res) => {

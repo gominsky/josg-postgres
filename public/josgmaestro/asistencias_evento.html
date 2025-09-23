@@ -18,7 +18,7 @@
 
   <script>
     const evento_id = new URLSearchParams(location.search).get("id");
-
+    const API_BASE = '/josgmaestro/api';
   function formatearFecha(fechaStr) {
     if (!fechaStr) return '';
     // Caso 1: extrae siempre la parte YYYY-MM-DD aunque venga con T…Z
@@ -60,8 +60,7 @@
 
     async function cargarAsistencias() {
       try {
-        // 🚫 Evita caché agregando parámetro único y opción no-store
-        const url = `/control_firmas/api/eventos/${evento_id}/asistencias?ts=${Date.now()}`;
+        const url = `${API_BASE}/eventos/${evento_id}/asistencias?ts=${Date.now()}`;
         const res = await fetch(url, { cache: 'no-store' });
 
         if (!res.ok) {

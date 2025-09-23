@@ -81,10 +81,7 @@
   </div>
 <script>
   (function () {
-    // Detecta si estás dentro del portal y fija la base de la API
-    const IN_PORTAL = location.pathname.startsWith('/josgmaestro'); // ← sin barra final
-    const API_BASE  = IN_PORTAL ? '/josgmaestro/api' : '/control_firmas/api';
-
+    const API_BASE = '/josgmaestro/api';
     // Sesión
     const usuario_id = localStorage.getItem('usuario_id');
     if (!usuario_id) { location.href = 'index.html'; return; }
@@ -198,15 +195,15 @@
 
     document.addEventListener('DOMContentLoaded', cargarProximos);
   })();
-</script>
-<script>
-  const IN_PORTAL = location.pathname.startsWith('/josgmaestro');
-  const API_BASE  = IN_PORTAL ? '/josgmaestro/api' : '/control_firmas/api';
-  const API_EVENTOS = `${API_BASE}/eventos`;
-  const usuario_id = localStorage.getItem('usuario_id');
-  if (!usuario_id) { location.href='index.html'; }
 
-  // ...
+  // Forzamos la misma base siempre: /josgmaestro
+  const API_BASE     = '/josgmaestro/api';
+  const API_EVENTOS  = `${API_BASE}/eventos`;
+
+  const usuario_id = localStorage.getItem('usuario_id');
+  if (!usuario_id) { location.href = 'index.html'; }
+
+  // …
   const res = await fetch(`${API_EVENTOS}?usuario_id=${encodeURIComponent(usuario_id)}`, {
     headers: { 'Accept':'application/json' },
     credentials: 'same-origin',
