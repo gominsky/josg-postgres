@@ -68,8 +68,7 @@
     const $$ = s => Array.from(document.querySelectorAll(s));
 
     // Prefijo de API según ubicación (móvil bajo /josgmaestro/)
-    const IN_PORTAL = location.pathname.startsWith('/josgmaestro');
-    const API_BASE  = IN_PORTAL ? '/josgmaestro/api' : '/control_firmas/api';
+    const API_BASE = '/josgmaestro/api';
     // Sesión
     const usuario_id = localStorage.getItem('usuario_id');
     const rol        = localStorage.getItem('rol') || '';
@@ -102,7 +101,7 @@
         if (rol === 'admin') {
           // Admin: "Todos" + todos los grupos existentes
           cont.insertAdjacentHTML('beforeend', `<span class="chip active" data-scope="todos">Todos</span>`);
-          const r = await fetch(`${API_BASE}/grupos`, { cache:'no-store' });
+          const r = await fetch(`${API_BASE}/grupos`, { cache:'no-store', credentials:'same-origin' });
           const nombres = await r.json(); // ["JOSG","OEG",...]
           state.scope = 'todos';
           state.grupos = nombres;
@@ -112,7 +111,7 @@
           help.textContent = 'Selecciona “Todos” o un grupo concreto.';
         } else if (rol === 'docente') {
           // Docente: solo sus grupos
-          const r = await fetch(`${API_BASE}/mis-grupos?usuario_id=${encodeURIComponent(usuario_id)}`, { cache:'no-store' });
+          const r = await fetch(`${API_BASE}/mis-grupos`, { cache:'no-store', credentials:'same-origin' });
           const grupos = await r.json(); // [{id,nombre}]
           state.scope = grupos[0]?.nombre || null;
           state.grupos = grupos.map(g => g.nombre);
@@ -152,14 +151,14 @@
       const grupoNombre = isTodos ? null : state.scope;
 
       const body = {
-        usuario_id,
+        // usuario_id,  ← quitar
         titulo: titulo || null,
         cuerpo,
         url: url ? ensureProto(url) : null,
         broadcast: isTodos,
         grupo_nombre: grupoNombre,
         grupos_nombres: isTodos ? [] : (grupoNombre ? [grupoNombre] : []),
-        grupos: [] // compat por IDs si alguna vez lo usas
+        grupos: []
       };
 
       const btn = ev.submitter;
@@ -170,6 +169,7 @@
         const r = await fetch(`${API_BASE}/mensajes`, {
           method:'POST',
           headers:{'Content-Type':'application/json'},
+          credentials:'same-origin',
           body: JSON.stringify(body)
         });
         const j = await r.json();

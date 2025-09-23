@@ -38,37 +38,85 @@ async function getGruposDeProfesor(profesorId){
 }
 
 /* ============ Auth (login maestro) ============ */
-// El front llama a /control_firmas/login (no /api/login)  ← ver index.html
+router.use('/api', (req, res, next) => {
+  if (req.session?.usuario_id) return next();
+  return res.status(401).json({ error: 'auth_required' });
+});
+
+router.post('/logout', (req, res) => {
+  if (req.session) {
+    return req.session.destroy(() => res.json({ success: true }));
+  }
+  res.json({ success: true });
+});
+
+// === AUTH PÚBLICO (fuera del guard /api) =====================================
+
+// POST /josgmaestro/login
 router.post('/login', express.json(), async (req, res) => {
   const email    = String(req.body?.email || '').trim();
   const password = String(req.body?.password || '');
-  if (!email || !password) return res.status(400).json({ success:false, error:'Faltan credenciales' });
+    console.log('[LOGIN] body:', req.body);
+  console.log('[LOGIN] sets session for usuario_id?');
+  if (!email || !password) {
+    return res.status(400).json({ success:false, error: 'Faltan credenciales' });
+  }
 
   try {
-    const u = await getUsuarioByEmail(email);
-    if (!u || !u.password_hash) return res.status(401).json({ success:false, error:'Credenciales incorrectas' });
-
-    const ok = await bcrypt.compare(password, u.password_hash);
-    if (!ok) return res.status(401).json({ success:false, error:'Credenciales incorrectas' });
-
-    if (req.session) { // cookie de sesión para vistas protegidas
-      req.session.usuario_id  = u.id;
-      req.session.usuario_rol = u.rol;
+    // lee exactamente de la tabla `usuarios` (con password_hash bcrypt)
+    const rs = await db.query(
+      `SELECT id, nombre, apellidos, email, rol, password_hash
+         FROM usuarios
+        WHERE lower(email) = lower($1)
+        LIMIT 1`,
+      [email]
+    );
+    const u = rs.rows[0];
+    if (!u) {
+      // mismo mensaje genérico: no revelamos si el email existe
+      return res.status(401).json({ success:false, error:'Credenciales incorrectas' });
     }
 
-    return res.json({ success:true, usuario:{ id:u.id, nombre:u.nombre || '', rol:u.rol || '' } });
+    const ok = await bcrypt.compare(password, u.password_hash);
+    if (!ok) {
+      return res.status(401).json({ success:false, error:'Credenciales incorrectas' });
+    }
+
+    // crea sesión
+    req.session.usuario_id  = u.id;
+    req.session.usuario_rol = u.rol;
+
+    // respuesta mínima para el front
+    return res.json({
+      success: true,
+      usuario: {
+        id: u.id,
+        nombre: u.nombre || '',
+        apellidos: u.apellidos || '',
+        rol: u.rol
+      }
+    });
   } catch (err) {
-    console.error('POST /login error:', err);
+    console.error('POST /josgmaestro/login error:', err);
     return res.status(500).json({ success:false, error:'Error interno' });
   }
+});
+
+// GET /josgmaestro/me  -> comprueba sesión (útil para depurar)
+router.get('/me', (req, res) => {
+  if (!req.session?.usuario_id) return res.status(401).json({ logged:false });
+  res.json({
+    logged: true,
+    usuario: { id: req.session.usuario_id, rol: req.session.usuario_rol }
+  });
 });
 
 /* ============ Eventos ============ */
 // Lista para portal y calendario. Filtra por permisos si es docente.
 router.get('/api/eventos', async (req, res) => {
-  try{
-    const usuarioId = Number(req.session?.usuario_id || req.query?.usuario_id);
-    if (!usuarioId) return res.status(401).json({ error:'auth_required' });
+   try {
+    const usuarioId = Number(req.session?.usuario_id);
+    if (!usuarioId) return res.status(401).json({ error: 'auth_required' });
 
     const u = await db.query(`SELECT id, email, rol FROM usuarios WHERE id=$1 LIMIT 1`, [usuarioId]);
     const user = u.rows[0];
@@ -96,7 +144,7 @@ router.get('/api/eventos', async (req, res) => {
     const sql = `
       SELECT
         e.id,
-        e.titulo,
+        e.titulo AS title,
         e.descripcion,
         e.fecha_inicio, e.hora_inicio,
         e.fecha_fin,    e.hora_fin,
@@ -349,8 +397,8 @@ router.get('/api/grupos', async (_req, res) => {
 });
 
 router.get('/api/mis-grupos', async (req, res) => {
-  const usuarioId = Number(req.query.usuario_id);
-  if (!usuarioId) return res.status(400).json({ error:'usuario_id requerido' });
+  const usuarioId = Number(req.session?.usuario_id);
+  if (!usuarioId) return res.status(401).json({ error:'auth_required' });
 
   try{
     const u = await db.query(`SELECT id, email, rol FROM usuarios WHERE id=$1`, [usuarioId]);
@@ -374,129 +422,201 @@ router.get('/api/mis-grupos', async (req, res) => {
   }
 });
 
+// Crear mensaje nuevo
 router.post('/api/mensajes', express.json(), async (req, res) => {
-  const { usuario_id, titulo, cuerpo, url, broadcast, grupos_nombres=[], grupos_ids=[], alumnos_ids=[] } = req.body || {};
-  const usuarioId = Number(req.session?.usuario_id || usuario_id);
-  if (!usuarioId) return res.status(400).json({ success:false, error:'usuario_id requerido' });
-  if (!cuerpo || !String(cuerpo).trim()) return res.status(400).json({ success:false, error:'Mensaje vacío' });
+  let {
+    titulo,
+    cuerpo,
+    url = null,
+    links = [],
+    broadcast = false,
+    grupos = [],
+    instrumentos = [],
+    usuario_id,       // compat móvil
+    grupos_nombres = [],
+    grupos_ids = [],
+    alumnos_ids = []
+  } = req.body || {};
 
-  try{
-    // permisos básicos
+  const usuarioId = Number(req.session?.usuario_id);
+  if (!usuarioId) return res.status(401).json({ success:false, error:'auth_required' });
+
+  titulo = (titulo || '').toString().trim();
+  cuerpo = (cuerpo || '').toString().trim();
+  if (!titulo || !cuerpo) return res.status(400).json({ success:false, error:'Título y cuerpo obligatorios' });
+
+  // Normaliza URL y links
+  const ensureProto = u => /^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//.test(u) ? u : ('https://' + u);
+  url = url ? ensureProto(String(url).trim()) : null;
+  if (!Array.isArray(links)) links = [];
+  links = links.map(s => ensureProto(String(s).trim())).filter(Boolean).slice(0, 2);
+
+  try {
+    // Usuario/rol
     const u = await db.query(`SELECT id, email, rol, nombre FROM usuarios WHERE id=$1 LIMIT 1`, [usuarioId]);
     const user = u.rows[0];
     if (!user) return res.status(404).json({ success:false, error:'usuario no encontrado' });
 
-    // destinatarios
-    let grupoIds = [];
-    let alumnoIds = [];
-    let isBroadcast = false;
+    // Normaliza arrays de grupos / instrumentos
+    const groupIds = new Set(
+      []
+        .concat(Array.isArray(grupos) ? grupos : [])
+        .concat(Array.isArray(grupos_ids) ? grupos_ids : [])
+        .map(Number)
+        .filter(Number.isInteger)
+    );
+    if (Array.isArray(grupos_nombres) && grupos_nombres.length) {
+      const rs = await db.query(`SELECT id FROM grupos WHERE nombre = ANY($1::text[])`, [grupos_nombres]);
+      rs.rows.forEach(r => groupIds.add(r.id));
+    }
+    const instIds = new Set(
+      (Array.isArray(instrumentos) ? instrumentos : [])
+        .map(Number)
+        .filter(Number.isInteger)
+    );
 
-    if (user.rol === 'admin' && broadcast) {
-      isBroadcast = true;
-    } else if (user.rol === 'docente') {
-      const profesorId = await getProfesorIdByEmail(user.email);
-      const gs = profesorId ? await getGruposDeProfesor(profesorId) : [];
-      const permitidos = new Set(gs.map(x=>x.id));
-      // por nombre → ids
-      if (Array.isArray(grupos_nombres) && grupos_nombres.length){
-        const rs = await db.query(`SELECT id FROM grupos WHERE nombre = ANY($1::text[])`, [grupos_nombres]);
-        for (const r of rs.rows){ if (permitidos.has(r.id)) grupoIds.push(r.id); }
+    // Restricciones para docentes
+    if (user.rol === 'docente') {
+      const profRs = await db.query(`SELECT id FROM profesores WHERE lower(email)=lower($1) LIMIT 1`, [user.email]);
+      const profesorId = profRs.rowCount ? profRs.rows[0].id : null;
+      const gs = profesorId
+        ? await db.query(`SELECT grupo_id AS id FROM profesor_grupo WHERE profesor_id=$1`, [profesorId])
+        : { rows: [] };
+      const permitidos = new Set(gs.rows.map(x => x.id));
+
+      for (const gid of Array.from(groupIds)) {
+        if (!permitidos.has(gid)) groupIds.delete(gid);
       }
-      // por ids directos
-      if (Array.isArray(grupos_ids) && grupos_ids.length){
-        for (const gId of grupos_ids.map(Number)) if (permitidos.has(gId)) grupoIds.push(gId);
-      }
+      if (broadcast) return res.status(403).json({ success:false, error:'No puedes enviar a todos' });
     }
 
-    // Si se pasan alumnos directos (admin)
-    if (user.rol === 'admin' && Array.isArray(alumnos_ids)) {
-      alumnoIds = alumnos_ids.map(Number).filter(Number.isInteger);
-    }
+   const rsIns = await db.query(
+  `INSERT INTO mensajes (titulo, cuerpo, url, creado_por, urls)
+   VALUES ($1,$2,$3,$4,$5::jsonb) RETURNING id`,
+  [titulo, cuerpo, url, usuarioId, Array.isArray(links) ? links : []]
+);
+    const mensajeId = rsIns.rows[0].id;
 
-    if (!isBroadcast && grupoIds.length===0 && alumnoIds.length===0) {
-      return res.status(400).json({ success:false, error:'Sin destinatarios válidos' });
-    }
-
+    // Fan-out
     const client = await db.connect();
-    try{
+    let enviados = 0;
+    try {
       await client.query('BEGIN');
 
-      const rsIns = await client.query(
-        `INSERT INTO mensajes (usuario_id, titulo, cuerpo, url)
-         VALUES ($1,$2,$3,$4) RETURNING id`,
-        [usuarioId, titulo || null, cuerpo, url || null]
-      );
-      const mensajeId = rsIns.rows[0].id;
-
-      if (isBroadcast) {
-        await client.query(
-          `INSERT INTO mensaje_destino (mensaje_id) VALUES ($1)`, [mensajeId]
+      const addEntrega = async (alumnoIds) => {
+        if (!alumnoIds.length) return 0;
+        const r = await client.query(
+          `INSERT INTO mensaje_entrega (mensaje_id, alumno_id, entregado_at)
+           SELECT $1, unnest($2::int[]), NOW()
+           ON CONFLICT (mensaje_id, alumno_id) DO NOTHING
+           RETURNING alumno_id`,
+          [mensajeId, alumnoIds]
         );
+        return r.rowCount;
+      };
+
+      if (broadcast && user.rol === 'admin') {
+        await client.query(`INSERT INTO mensaje_destino (mensaje_id) VALUES ($1)`, [mensajeId]);
+        const all = await client.query(`SELECT id FROM alumnos WHERE activo = true`);
+        const ids = all.rows.map(r => r.id);
+        enviados = await addEntrega(ids);
+
       } else {
-        if (grupoIds.length) {
+        // grupo + instrumento
+        if (groupIds.size && instIds.size) {
+          const r = await client.query(`
+            SELECT DISTINCT a.id
+            FROM alumnos a
+            JOIN alumno_grupo ag       ON ag.alumno_id = a.id
+            JOIN alumno_instrumento ai ON ai.alumno_id = a.id
+            WHERE ag.grupo_id = ANY($1::int[])
+              AND ai.instrumento_id = ANY($2::int[])`,
+            [Array.from(groupIds), Array.from(instIds)]
+          );
+          const ids = r.rows.map(x => x.id);
+          if (ids.length) {
+            await client.query(
+              `INSERT INTO mensaje_destino (mensaje_id, alumno_id)
+               SELECT $1, unnest($2::int[])
+               ON CONFLICT DO NOTHING`,
+              [mensajeId, ids]
+            );
+            enviados += await addEntrega(ids);
+          }
+        }
+
+        // solo grupos
+        if (groupIds.size && !instIds.size) {
+          const gids = Array.from(groupIds);
           await client.query(
             `INSERT INTO mensaje_destino (mensaje_id, grupo_id)
-             SELECT $1, unnest($2::int[])`, [mensajeId, grupoIds]
+             SELECT $1, unnest($2::int[])`,
+            [mensajeId, gids]
           );
-        }
-        if (alumnoIds.length) {
-          await client.query(
-            `INSERT INTO mensaje_destino (mensaje_id, alumno_id)
-             SELECT $1, unnest($2::int[])`, [mensajeId, alumnoIds]
+          const r = await client.query(
+            `SELECT DISTINCT ag.alumno_id AS id
+               FROM alumno_grupo ag
+              WHERE ag.grupo_id = ANY($1::int[])`,
+            [gids]
           );
+          enviados += await addEntrega(r.rows.map(x => x.id));
         }
-      }
 
-      // fan-out a suscripciones push (si existen)
-      const dests = await client.query(`
-        WITH dest_alumnos AS (
-          SELECT md.alumno_id
-            FROM mensaje_destino md
-           WHERE md.mensaje_id = $1 AND md.alumno_id IS NOT NULL
-          UNION
-          SELECT ag.alumno_id
-            FROM mensaje_destino md
-            JOIN alumno_grupo ag ON ag.grupo_id = md.grupo_id
-           WHERE md.mensaje_id = $1 AND md.grupo_id IS NOT NULL
-          UNION
-          SELECT a.id
-            FROM mensaje_destino md
-            JOIN alumnos a ON a.activo = true
-           WHERE md.mensaje_id = $1 AND md.grupo_id IS NULL AND md.alumno_id IS NULL
-        )
-        SELECT DISTINCT alumno_id FROM dest_alumnos
-      `, [mensajeId]);
+        // solo instrumentos
+        if (instIds.size && !groupIds.size) {
+          const r = await client.query(
+            `SELECT DISTINCT ai.alumno_id AS id
+               FROM alumno_instrumento ai
+              WHERE ai.instrumento_id = ANY($1::int[])`,
+            [Array.from(instIds)]
+          );
+          const ids = r.rows.map(x => x.id);
+          if (ids.length) {
+            await client.query(
+              `INSERT INTO mensaje_destino (mensaje_id, alumno_id)
+               SELECT $1, unnest($2::int[])
+               ON CONFLICT DO NOTHING`,
+              [mensajeId, ids]
+            );
+            enviados += await addEntrega(ids);
+          }
+        }
 
-      const alumnoIdsPush = dests.rows.map(r => r.alumno_id);
-      if (alumnoIdsPush.length) {
-        const subs = await client.query(
-          `SELECT endpoint, p256dh, auth
-             FROM push_suscripciones
-            WHERE alumno_id = ANY($1::int[])`,
-          [alumnoIdsPush]
+        // alumnos directos (admin)
+        if (Array.isArray(alumnos_ids) && alumnos_ids.length && user.rol === 'admin') {
+          const ids = alumnos_ids.map(Number).filter(Number.isInteger);
+          if (ids.length) {
+            await client.query(
+              `INSERT INTO mensaje_destino (mensaje_id, alumno_id)
+               SELECT $1, unnest($2::int[])
+               ON CONFLICT DO NOTHING`,
+              [mensajeId, ids]
+            );
+            enviados += await addEntrega(ids);
+          }
+        }
+
+        // verificación
+        const chk = await client.query(
+          `SELECT 1 FROM mensaje_destino WHERE mensaje_id=$1 LIMIT 1`,
+          [mensajeId]
         );
-
-        const payload = { tipo:'mensaje', mensaje_id:mensajeId, titulo:titulo || '', cuerpo: cuerpo || '', url: url || null };
-        for (const s of subs.rows) {
-          try {
-            const ret = await enviarPush({ endpoint:s.endpoint, keys:{ p256dh:s.p256dh, auth:s.auth } }, payload);
-            if (ret === 'expired') await client.query('DELETE FROM push_suscripciones WHERE endpoint=$1', [s.endpoint]);
-          } catch (e) { console.warn('Aviso: fallo enviando push a un endpoint:', e?.statusCode || e?.message); }
-        }
+        if (!chk.rowCount) throw new Error('Sin destinatarios válidos');
       }
 
       await client.query('COMMIT');
-      return res.json({ success:true, mensaje_id:mensajeId });
-    }catch(e){
+    } catch (e) {
       await client.query('ROLLBACK');
-      console.error('POST /api/mensajes TX error:', e);
-      return res.status(500).json({ success:false, error:'internal_error_tx' });
-    }finally{
+      try { await db.query(`DELETE FROM mensajes WHERE id=$1`, [mensajeId]); } catch {}
+      throw e;
+    } finally {
       client.release();
     }
-  }catch(err){
-    console.error('POST /api/mensajes', err);
-    return res.status(500).json({ success:false, error:'internal_error' });
+
+    return res.json({ success:true, mensaje_id: mensajeId, enviados });
+  } catch (err) {
+    console.error('POST /api/mensajes error:', err);
+    return res.status(500).json({ success:false, error: err.message || 'internal_error' });
   }
 });
 

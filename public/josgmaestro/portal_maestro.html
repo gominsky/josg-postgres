@@ -90,8 +90,12 @@
     const $logout = document.getElementById('btn-logout');
     if ($logout) {
       $logout.addEventListener('click', () => {
-        localStorage.clear();
-        location.href = 'index.html';
+
+        fetch('/josgmaestro/logout', { method: 'POST', credentials: 'include' })
+        .finally(() => {
+            localStorage.clear();
+            location.href = 'index.html';
+        });
       });
     }
 
@@ -171,14 +175,16 @@
       empty.style.display = 'none';
 
       try{
-        const res = await fetch(
-          `${API_EVENTOS}?usuario_id=${encodeURIComponent(usuario_id)}`,
-          {
-            headers: { 'Accept': 'application/json' },
-            cache: 'no-store',
-            credentials: 'same-origin' // ← importante si la ruta está protegida por sesión
-          }
-        );
+        const res = await fetch(`${API_EVENTOS}`, {
+          headers: { 'Accept': 'application/json' },
+          cache: 'no-store',
+          credentials: 'same-origin'
+        });
+        if (res.status === 401) {
+          localStorage.clear();
+          location.href = 'index.html';
+          return;
+        }
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const raw  = await res.json().catch(()=>[]);
         const norm = normalizarEventos(raw);
@@ -195,21 +201,6 @@
 
     document.addEventListener('DOMContentLoaded', cargarProximos);
   })();
-
-  // Forzamos la misma base siempre: /josgmaestro
-  const API_BASE     = '/josgmaestro/api';
-  const API_EVENTOS  = `${API_BASE}/eventos`;
-
-  const usuario_id = localStorage.getItem('usuario_id');
-  if (!usuario_id) { location.href = 'index.html'; }
-
-  // …
-  const res = await fetch(`${API_EVENTOS}?usuario_id=${encodeURIComponent(usuario_id)}`, {
-    headers: { 'Accept':'application/json' },
-    credentials: 'same-origin',
-    cache: 'no-store'
-  });
-  // procesa JSON como ya hacías
 </script>
 
 </body>

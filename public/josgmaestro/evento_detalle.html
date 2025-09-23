@@ -16,8 +16,8 @@
     <button id="btn-qr" type="button" onclick="mostrarQR()">Mostrar QR</button>
     <button id="btn-toggle-qr" type="button" onclick="toggleQR()" class="button-negro" style="display:none">Activar QR</button>
     <div id="qr-container" style="margin-top: 1rem; display: none;"></div>
-    <!-- Toolbar de alumnos -->
 
+    <!-- Toolbar de alumnos -->
     <div class="alumnos-toolbar" style="display:flex;align-items:center;gap:.75rem;margin:.5rem 0 0.75rem;">
       <button id="toggle-alumnos" type="button" class="button-negro">Ocultar alumnos</button>
       <span id="alumnos-count" class="subtitulo" style="opacity:.8;"></span>
@@ -46,7 +46,6 @@
   <script>
     const API_BASE = '/josgmaestro/api';
     let evento_id = new URLSearchParams(location.search).get('id');
-    let usuario_id = localStorage.getItem('usuario_id');
     let tokenQR = '';
     let qrActivo = false;
   
@@ -61,6 +60,7 @@
       btn.textContent = alumnosOcultos ? 'Mostrar alumnos' : 'Ocultar alumnos';
     }
     // ==========================================
+
     document.addEventListener('DOMContentLoaded', () => {
       cargarEventoYAlumnos();
       document.getElementById('form-asistencias').addEventListener('submit', guardarAsistencias);
@@ -81,13 +81,16 @@
       }
       applyToggleState();
     });
+
     function verAsistencias() {
       location.href = `asistencias_evento.html?id=${evento_id}`;
     }
   
     async function cargarEventoYAlumnos() {
       try {
-        const eventoRes = await fetch(`/josgmaestro/api/eventos/${evento_id}`);
+        const eventoRes = await fetch(`${API_BASE}/eventos/${evento_id}`, {
+          credentials:'same-origin'
+        });
         const evento = await eventoRes.json();
   
         document.getElementById('titulo').innerText = evento.titulo;
@@ -121,7 +124,9 @@
     }
   
     async function actualizarListaAlumnos() {
-      const alumnosRes = await fetch(`/josgmaestro/api/eventos/${evento_id}/alumnos`);
+      const alumnosRes = await fetch(`${API_BASE}/eventos/${evento_id}/alumnos`, {
+        credentials:'same-origin'
+      });
       const alumnos = await alumnosRes.json();
   
       const lista = alumnos.map(a => `
@@ -141,11 +146,10 @@
         ${lista}
       `;
   
-      // === NUEVO: actualizar contador y respetar estado del toggle ===
+      // contador y toggle
       const countEl = document.getElementById('alumnos-count');
       if (countEl) countEl.textContent = `${alumnos.length} alumno(s)`;
       applyToggleState();
-      // ==============================================================
     }
   
     async function guardarAsistencias(e) {
@@ -167,18 +171,20 @@
         });
       });
   
-      const res = await fetch('/josgmaestro/api/firmar-alumnos', {
+      const res = await fetch(`${API_BASE}/firmar-alumnos`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials:'same-origin',
         body: JSON.stringify({ registros })
       });
   
       const data = await res.json();
       if (data.success) {
         const observacionesGenerales = document.getElementById('observaciones_generales').value;
-        await fetch(`/josgmaestro/api/eventos/${evento_id}/observaciones-generales`, {
+        await fetch(`${API_BASE}/eventos/${evento_id}/observaciones-generales`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
+          credentials:'same-origin',
           body: JSON.stringify({ observaciones: observacionesGenerales })
         });
   
@@ -188,16 +194,6 @@
         mensaje.className = 'error';
         mensaje.innerText = data.error || 'Error al guardar firmas.';
       }
-    }
-  
-    function formatearFecha(fechaISO) {
-      const fecha = new Date(fechaISO);
-      const dia = fecha.getDate().toString().padStart(2, '0');
-      const mes = (fecha.getMonth() + 1).toString().padStart(2, '0');
-      const ano = fecha.getFullYear();
-      const horas = fecha.getHours().toString().padStart(2, '0');
-      const minutos = fecha.getMinutes().toString().padStart(2, '0');
-      return `${dia}/${mes}/${ano} ${horas}:${minutos}`;
     }
   
     function mostrarQR() {
@@ -226,9 +222,10 @@
   
     async function toggleQR() {
       const nuevoEstado = !qrActivo;
-      const res = await fetch(`/josgmaestro/api/eventos/${evento_id}/activar`, {
+      const res = await fetch(`${API_BASE}/eventos/${evento_id}/activar`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
+        credentials:'same-origin',
         body: JSON.stringify({ activo: nuevoEstado })
       });
   
@@ -248,17 +245,7 @@
       }
     }
   
-    function formatearFechaDMY(fechaStr) {
-      // fechaStr = "YYYY-MM-DD"
-      const [y,m,d] = String(fechaStr).split('-');
-      return `${d}/${m}/${y}`;
-    }
-    function formatearHoraHM(horaStr) {
-      // horaStr = "HH:MM:SS" o "HH:MM"
-      if (!horaStr) return '';
-      const [h,min] = String(horaStr).split(':');
-      return `${h.padStart(2,'0')}:${min.padStart(2,'0')}`;
-    }
+    // Helpers de formato de fecha/hora
     function normalizarFecha(val) {
       if (!val) return '';
       if (typeof val === 'string' && val.includes('T')) {
@@ -286,7 +273,6 @@
       return d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
     }
   </script>
-  
- 
 </body>
 </html>
+

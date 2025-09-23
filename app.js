@@ -40,42 +40,30 @@ app.use(express.json());
 const authRoutes = require('./routes/auth');
 app.use(authRoutes);
 
+//  Middleware para páginas HTML del área josgmaestro
+function requireAuthPage(req, res, next) {
+  // deja pasar el login y assets estáticos
+  const isAsset = /\.(css|js|png|jpg|jpeg|gif|svg|ico|webp|map)$/.test(req.path);
+  const isLogin = req.path === '/' || req.path === '/index.html';
+  if (isAsset || isLogin) return next();
+
+  if (req.session?.usuario_id) return next();
+  // redirige a login del maestro
+  return res.redirect('/josgmaestro/index.html'); // ajusta la ruta si tu login vive en otra carpeta
+}
+
 // Method override (para PUT/DELETE en formularios)
 app.use(methodOverride('_method'));
-
-// Static files
+app.use('/josgmaestro', requireAuthPage, express.static(path.join(__dirname, 'public/josgmaestro')));
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/uploads', express.static('uploads'));
-//app.use('/utils', express.static(path.join(__dirname, 'utils')));
+
 // Plantillas EJS
 app.use(expressLayouts);
 app.set('layout', 'layout');
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
-function requireAlumno(req, res, next) {
-  const open = [
-    // ✅ home pública
-    /^\/josgmaestro\/?$/i,
-    /^\/josgmaestro\/index\.html?$/i,
-
-    // ✅ páginas públicas
-    /^\/josgmaestro\/login\.html?$/i,
-    /^\/josgmaestro\/registro\.html?$/i,
-
-    // ✅ assets
-    /^\/josgmaestro\/(styles|imagenes|fonts|favicon\.ico|manifest\.json|.*\.(css|js|png|jpg|svg|webp|ico))$/i
-  ];
-
-  if (open.some(rx => rx.test(req.path))) return next();
-
-  if (req.session && (req.session.alumno_id || req.session.usuario_id)) return next();
-
-  if (req.path.startsWith('/josgmaestro/api') || req.path.startsWith('/firmas/api')) {
-    return res.status(401).json({ success:false, error:'auth_required' });
-  }
-  return res.redirect('/josgmaestro/login.html');
-}
 // función global para fechas.
 app.locals.formatDate = (isoString) => {
   if (!isoString) return '—';
@@ -96,7 +84,6 @@ const guardiasRoutes = require('./routes/guardias');
 const instrumentosRoutes = require('./routes/instrumentos');
 const tipos_cuotasRoutes = require('./routes/tipos_cuotas');
 const pagosRoutes = require('./routes/pagos');
-//const control_firmasRoutes = require('./routes/control_firmas');
 const josgmaestroRoutes = require('./routes/josgmaestro');
 const configuracionRoutes = require('./routes/configuracion');
 const planoRoutes = require('./routes/plano');
@@ -113,9 +100,10 @@ const espaciosRoutes = require('./routes/espacios');
 const partiturasRoutes = require('./routes/partituras');
 const plantillasRoutes = require('./routes/plantillas');
 const mensajesRoutes = require('./routes/mensajes');
+
 app.use('/configuracion', isAdmin, configuracionRoutes);
 app.use('/usuarios', isAuthenticated,usuariosRoutes);        
-app.use('/profesores', isAuthenticated, profesoresRoutes); // Admin, docentes y usuarios
+app.use('/profesores', isAuthenticated, profesoresRoutes); 
 app.use('/alumnos', isAuthenticated, alumnosRoutes);        
 app.use('/grupos', isAdmin, gruposRoutes);  
 app.use('/cuotas', isAdmin, cuotasRoutes);            
@@ -124,20 +112,15 @@ app.use('/informes', isAuthenticated, informesRoutes);
 app.use('/firmas', firmasRoutes); 
 app.use('/guardias', isAuthenticated, guardiasRoutes);
 app.use('/instrumentos', isAdmin, instrumentosRoutes);
-app.use('/tipos_cuotas', isAdmin, tipos_cuotasRoutes); // Solo admin
-app.use('/pagos', isAdmin, pagosRoutes);                // Solo admin
-//app.use('/control_firmas', control_firmasRoutes);
-// Primero el router bajo /josgmaestro para que resuelva /josgmaestro/api/...
+app.use('/tipos_cuotas', isAdmin, tipos_cuotasRoutes); 
+app.use('/pagos', isAdmin, pagosRoutes);                
 app.use('/josgmaestro', josgmaestroRoutes);
- // Después los estáticos del portal (carpeta renombrada)
 app.use('/plano', isAuthenticated, planoRoutes);
 app.use('/contabilidad', isAdmin, contabilidadRoutes);
 app.use('/proveedores', isAdmin, proveedoresRoutes);
 app.use('/categorias', isAdmin, categoriasRoutes);
 app.use('/cuentas', isAdmin, cuentasRoutes);
 app.use('/api', isAuthenticated, layoutsRoutes);
-//app.use('/control_firmas/api', isAuthenticated, layoutsRoutes);
-
 app.use('/recuperar',recuperarRoutes);
 app.use(require('./routes/share_stateless'));
 app.use('/ausencias', isAuthenticated, ausenciasRoutes);
@@ -147,6 +130,8 @@ app.use(pdfRoutes);
 app.use('/partituras', isAuthenticated, partiturasRoutes);
 app.use('/plantillas', isAuthenticated, plantillasRoutes);
 app.use('/mensajes', mensajesRoutes);
+
+
 // Ruta de inicio
 app.get('/', (req, res) => {
   res.render('index', { title: 'Inicio - JOSG' });
@@ -171,7 +156,7 @@ app.get('/mensajes/nuevo', isAuthenticated, isDocente, async (req, res) => {
     res.render('mensajes_nuevo', {
       title: 'Mensajes',
       grupos: [],
-      instrumentos: []   // <-- importante para que la vista no pete si hay error
+      instrumentos: []   
     });
   }
 });
@@ -189,11 +174,11 @@ app.use((req, res, next) => {
   next();
 });
 
-const initDatabase = require('./database/init'); // Ajusta el path si es necesario
+const initDatabase = require('./database/init'); // Ajustar el path si es necesario
 
 (async () => {
   try {
-    await initDatabase();               // <- si falla, lo verás en catch
+    await initDatabase();               
     const PORT = process.env.PORT || 3001;
     app.listen(PORT, () => {
       console.log(`Servidor corriendo en http://localhost:${PORT}`);
@@ -208,9 +193,3 @@ const { VAPID_PUBLIC } = require('./utils/push');
 app.get('/push/public-key', (_req, res) => {
   res.json({ key: VAPID_PUBLIC || '' });
 });
-
-/* Iniciar servidor
-const PORT = 3001;
-app.listen(PORT, () => {
-  console.log(`Servidor corriendo en http://localhost:${PORT}`);
-});*/

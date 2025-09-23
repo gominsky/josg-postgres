@@ -42,16 +42,39 @@
     if (!el) return;
 
     const calendar = new FullCalendar.Calendar(el, {
-      locale:'es', initialView:'dayGridMonth', firstDay:1,
-      headerToolbar:{ left:'prev,next today', center:'title', right:'dayGridMonth,listMonth' },
+      locale: 'es',                // 👈 español
+      firstDay: 1,                 // lunes
+      initialView: 'dayGridMonth',
+      headerToolbar: {
+        left: 'prev,next today',
+        center: 'title',
+        right: 'dayGridMonth,listMonth'
+      },
+      // 👇 Fuerza textos de botones y vista lista
+      buttonText: {
+        today: 'Hoy',
+        month: 'Mes',
+        list:  'Agenda'
+      },
+      views: {
+        listMonth: { buttonText: 'Agenda' },
+        dayGridMonth: { buttonText: 'Mes' }
+      },
+      // 👇 Encabezados de días en formato corto (lun, mar, …)
+      dayHeaderFormat: { weekday: 'short' },
+      // 👇 Formato del título (p. ej. “septiembre de 2025”)
+      titleFormat: { month: 'long', year: 'numeric' },
+
       eventSources: [{
         url: `${API_BASE}/eventos`,
-        extraParams: { usuario_id },
-        extraFetchOptions: { credentials:'same-origin' },
-        failure: (err)=>{ console.error('eventos', err); alert('No se pudieron cargar los eventos.'); }
+        extraFetchOptions: { credentials: 'same-origin' },
+        failure: (err) => {
+          console.error('eventos', err);
+          alert('No se pudieron cargar los eventos.');
+        }
       }],
-      displayEventTime:false,
-      eventClick(info){ location.href = `evento_detalle.html?id=${info.event.id}`; }
+      displayEventTime: false,
+      eventClick(info) { location.href = `evento_detalle.html?id=${info.event.id}`; }
     });
 
     calendar.render();

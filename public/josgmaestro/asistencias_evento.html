@@ -61,7 +61,7 @@
     async function cargarAsistencias() {
       try {
         const url = `${API_BASE}/eventos/${evento_id}/asistencias?ts=${Date.now()}`;
-        const res = await fetch(url, { cache: 'no-store' });
+        const res = await fetch(url, { cache: 'no-store', credentials:'same-origin' });
 
         if (!res.ok) {
           throw new Error(`Error HTTP: ${res.status}`);

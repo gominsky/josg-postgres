@@ -39,21 +39,30 @@
       if (btn) { btn.disabled = true; btn.textContent = 'Entrando…'; }
   
       try {
-        // ⬇⬇⬇  RUTA CORRECTA PARA MAESTRO
-          const res = await fetch('/josgmaestro/login', {          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'same-origin',          // 👈 guarda cookie de sesión
+        const res = await fetch('/josgmaestro/login', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          credentials: 'include',
           body: JSON.stringify({ email, password })
         });
   
-        const data = await res.json().catch(()=> ({}));
-        if (res.ok && data.success && data.usuario?.id) {
+          const raw = await res.text();
+          let data = {};
+          try { data = JSON.parse(raw); } catch {}
+          if (res.ok && data.success && data.usuario?.id) {
           localStorage.setItem('usuario_id', String(data.usuario.id));
           localStorage.setItem('usuario_nombre', data.usuario.nombre || '');
           if (data.usuario.rol) localStorage.setItem('rol', data.usuario.rol);
           location.href = 'portal_maestro.html';
-        } else {
+        } else if (res.status === 401) {
           msg.textContent = data.error || 'Credenciales incorrectas';
+        } else if (res.status === 400) {
+          msg.textContent = data.error || 'Faltan credenciales';
+        } else {
+          msg.textContent = data.error || `Error del servidor (HTTP ${res.status})`;
         }
       } catch (e) {
         console.error('[login] net err', e);
