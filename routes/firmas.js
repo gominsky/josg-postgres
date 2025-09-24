@@ -151,7 +151,7 @@ router.get('/api/alumno/:alumnoId/eventos', async (req, res) => {
     const sql = `
       WITH base AS (
         SELECT e.id, e.titulo, e.descripcion, e.grupo_id, e.espacio_id,
-               e.fecha_inicio::text AS fi, e.fecha_fin::text AS ff,
+               e.fecha_inicio::text AS fi, e.fecha_fin::text AS ff, 
                e.hora_inicio, e.hora_fin,
                a.hora_inicio AS ahi, a.hora_fin AS ahf
           FROM ${asignTable} a
@@ -175,29 +175,40 @@ router.get('/api/alumno/:alumnoId/eventos', async (req, res) => {
           FROM base b
       )
       SELECT t.id, t.titulo, t.descripcion, t.start_iso, t.end_iso,
-             g.nombre AS grupo_nombre, es.nombre AS espacio_nombre
+       g.nombre AS grupo_nombre, es.nombre AS espacio_nombre,
+       es.ubicacion AS espacio_ubicacion,
+             es.ubicacion AS espacio_ubicacion   -- ⬅️ añadimos ubicación para Maps
         FROM t
         LEFT JOIN grupos   g  ON g.id  = t.grupo_id
         LEFT JOIN espacios es ON es.id = t.espacio_id
        ORDER BY t.start_iso;
     `;
     const { rows } = await db.query(sql, [alumnoId]);
-    res.json(rows.map(r => ({
-      id: r.id,
-      title: r.titulo || 'Evento',
-      start: r.start_iso,
-      end:   r.end_iso,
-      extendedProps: {
-        descripcion: r.descripcion || '',
-        grupo: r.grupo_nombre || '',
-        espacio: r.espacio_nombre || ''
-      }
-    })));
+
+    res.json(rows.map(r => {
+  const ubic = (r.espacio_ubicacion || '').trim();                            // 🆕
+  const espacio_link = ubic ? `https://www.google.com/maps?q=${encodeURIComponent(ubic)}` : null; // 🆕
+
+  return {
+    id: r.id,
+    title: r.titulo || 'Evento',
+    start: r.start_iso,
+    end:   r.end_iso,
+    extendedProps: {
+      descripcion: r.descripcion || '',
+      grupo: r.grupo_nombre || '',
+      espacio: r.espacio_nombre || '',
+      espacio_ubicacion: ubic,       
+      espacio_link                   
+    }
+  };
+}));
   } catch (err) {
     console.error('[firmas/api] eventos alumno:', err);
     res.status(500).json({ error: 'Error obteniendo eventos' });
   }
 });
+
 
 /** 2) Detalle de evento del alumno */
 router.get('/api/alumno/:alumnoId/eventos/:eventoId', async (req, res) => {
@@ -214,6 +225,7 @@ router.get('/api/alumno/:alumnoId/eventos/:eventoId', async (req, res) => {
              e.hora_inicio, e.hora_fin,
              g.nombre  AS grupo,
              es.nombre AS espacio,
+             es.ubicacion AS espacio_ubicacion, 
              a.hora_inicio AS hora_asignada_inicio,
              a.hora_fin    AS hora_asignada_fin
         FROM eventos e
@@ -233,6 +245,7 @@ router.get('/api/alumno/:alumnoId/eventos/:eventoId', async (req, res) => {
       descripcion: r.descripcion || '',
       grupo: r.grupo || '',
       espacio: r.espacio || '',
+      espacio_ubicacion: (r.espacio_ubicacion || '').trim(),
       fecha_inicio: r.fecha_inicio?.slice(0,10) || null,
       fecha_fin:    r.fecha_fin?.slice(0,10)    || null,
       hora_inicio:  (r.hora_asignada_inicio || r.hora_inicio || '')?.toString().slice(0,5) || null,

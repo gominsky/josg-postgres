@@ -137,15 +137,6 @@ router.post('/token-login', async (req, res) => {
   }
 });
 
-// GET /josgmaestro/me  -> comprueba sesión (útil para depurar)
-router.get('/me', (req, res) => {
-  if (!req.session?.usuario_id) return res.status(401).json({ logged:false });
-  res.json({
-    logged: true,
-    usuario: { id: req.session.usuario_id, rol: req.session.usuario_rol }
-  });
-});
-
 /* ============ Eventos ============ */
 // Lista para portal y calendario. Filtra por permisos si es docente.
 router.get('/api/eventos', async (req, res) => {
@@ -174,15 +165,33 @@ router.get('/api/eventos', async (req, res) => {
       args.push(grupoIds);
     }
 
-    // Helpers seguros para fechas TEXT
-    const EVENT_START = `CASE WHEN e.fecha_inicio ~ '^\\d{4}-\\d{2}-\\d{2}$' THEN (e.fecha_inicio)::date END`;
-    const EVENT_END   = `CASE WHEN e.fecha_fin    ~ '^\\d{4}-\\d{2}-\\d{2}$' THEN (e.fecha_fin)::date ELSE ${EVENT_START} END`;
+    // Helpers seguros: regex SIEMPRE sobre TEXT; cast a DATE/TIME solo si válido
+    const FECHA_INI_TXT = `trim(e.fecha_inicio::text)`;
+    const FECHA_FIN_TXT = `trim(e.fecha_fin::text)`;
+    const HORA_INI_TXT  = `trim(e.hora_inicio::text)`;
+    const HORA_FIN_TXT  = `trim(e.hora_fin::text)`;
 
-    // Rango opcional (FullCalendar pasa ?start=…&end=…)
+    const EVENT_START = `CASE WHEN ${FECHA_INI_TXT} ~ '^\\d{4}-\\d{2}-\\d{2}$'
+                             THEN (e.fecha_inicio)::date END`;
+
+    const EVENT_END   = `CASE WHEN ${FECHA_FIN_TXT} ~ '^\\d{4}-\\d{2}-\\d{2}$'
+                             THEN (e.fecha_fin)::date
+                             ELSE ${EVENT_START} END`;
+
+    const HORA_INI = `CASE WHEN ${HORA_INI_TXT} ~ '^\\d{2}:\\d{2}(:\\d{2})?$'
+                           THEN (split_part(${HORA_INI_TXT}, ' ', 1))::time END`;
+
+    const HORA_FIN = `CASE WHEN ${HORA_FIN_TXT} ~ '^\\d{2}:\\d{2}(:\\d{2})?$'
+                           THEN (split_part(${HORA_FIN_TXT}, ' ', 1))::time END`;
+
+    // Rango opcional (?start=YYYY-MM-DD&end=YYYY-MM-DD)
     const { start, end } = req.query || {};
     if (start && end) {
       args.push(start, end);
+      // solapamiento: eventEnd >= viewStart AND eventStart < viewEnd
       where.push(`(${EVENT_END} >= $${args.length-1}::date AND ${EVENT_START} < $${args.length}::date)`);
+      // y sólo eventos con fecha válida
+      where.push(`${EVENT_START} IS NOT NULL`);
     }
 
     const sql = `
@@ -198,11 +207,11 @@ router.get('/api/eventos', async (req, res) => {
 
         -- start ISO (YYYY-MM-DDTHH:MM:SS)
         CASE
-          WHEN e.fecha_inicio ~ '^\\d{4}-\\d{2}-\\d{2}$' THEN
+          WHEN ${FECHA_INI_TXT} ~ '^\\d{4}-\\d{2}-\\d{2}$' THEN
             to_char((e.fecha_inicio)::date, 'YYYY-MM-DD') || 'T' ||
             COALESCE(
-              CASE WHEN e.hora_inicio ~ '^\\d{2}:\\d{2}(:\\d{2})?$'
-                   THEN to_char((split_part(e.hora_inicio, ' ', 1))::time, 'HH24:MI')
+              CASE WHEN ${HORA_INI_TXT} ~ '^\\d{2}:\\d{2}(:\\d{2})?$'
+                   THEN to_char(${HORA_INI}, 'HH24:MI')
                    ELSE '00:00'
               END,
               '00:00'
@@ -212,11 +221,11 @@ router.get('/api/eventos', async (req, res) => {
 
         -- end ISO
         CASE
-          WHEN e.fecha_fin ~ '^\\d{4}-\\d{2}-\\d{2}$' THEN
+          WHEN ${FECHA_FIN_TXT} ~ '^\\d{4}-\\d{2}-\\d{2}$' THEN
             to_char((e.fecha_fin)::date, 'YYYY-MM-DD') || 'T' ||
             COALESCE(
-              CASE WHEN e.hora_fin ~ '^\\d{2}:\\d{2}(:\\d{2})?$'
-                   THEN to_char((split_part(e.hora_fin, ' ', 1))::time, 'HH24:MI')
+              CASE WHEN ${HORA_FIN_TXT} ~ '^\\d{2}:\\d{2}(:\\d{2})?$'
+                   THEN to_char(${HORA_FIN}, 'HH24:MI')
                    ELSE '00:00'
               END,
               '00:00'
@@ -231,8 +240,7 @@ router.get('/api/eventos', async (req, res) => {
 
       ORDER BY
         ${EVENT_START} NULLS LAST,
-        CASE WHEN e.hora_inicio ~ '^\\d{2}:\\d{2}(:\\d{2})?$'
-             THEN (split_part(e.hora_inicio, ' ', 1))::time END NULLS LAST,
+        ${HORA_INI}   NULLS LAST,
         e.id ASC
       LIMIT 1000
     `;

@@ -189,7 +189,16 @@ router.post('/', isAuthenticated, isDocente, async (req, res) => {
         [alumnoIds]
       );
 
-      const payload = { tipo: 'mensaje', mensaje_id: mensajeId, titulo, cuerpo, url: url || null, urls: links };
+      // Título para la notificación push (sin tocar el guardado en BD):
+      const notifTitle = `Notificación JOSG: ${titulo}`;
+      const payload = {
+        tipo: 'mensaje',
+        mensaje_id: mensajeId,
+        titulo: notifTitle,
+        cuerpo,
+        url: url || null,
+        urls: links
+      };
 
       for (const s of subs.rows) {
         try {

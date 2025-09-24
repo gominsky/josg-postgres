@@ -5,6 +5,61 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Josg en tu mano - Detalle del evento</title>
   <link rel="stylesheet" href="../styles/estilos_app.css" />
+  <style>
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 16px;
+    background: #f0f0f0;
+    color: #333;
+    font-size: 0.9rem;
+    text-decoration: none;
+    transition: background 0.2s;
+  }
+  .chip:hover {
+    background: #ddd;
+  }
+  .chip svg {
+    width: 16px;
+    height: 16px;
+    fill: currentColor;
+  }
+ 
+.chip-espacio {
+  background: #f0f0f0;
+  color: #333;
+}
+.chip-grupo {
+  background: #e8f5e9;
+  color: #1b5e20;
+}
+/* === Botones unificados (JOSG en tu mano) === */
+.btn{
+  display:inline-block; padding:.6rem 1.4rem; border-radius:12px;
+  font-weight:600; color:#fff; border:none; cursor:pointer;
+  box-shadow:0 4px 12px rgba(0,0,0,.15);
+  transition:transform .12s ease, box-shadow .12s ease;
+  text-decoration:none; text-align:center; min-width:110px;
+}
+.btn:hover{ transform:translateY(-1px); box-shadow:0 6px 16px rgba(0,0,0,.2); }
+.btn:active{ transform:translateY(0); box-shadow:0 2px 8px rgba(0,0,0,.1); }
+
+/* Naranja (igual que “Eventos” y mensajes_movil Cancelar) */
+.btn-accent{
+  background: linear-gradient(180deg,#f28d63,#ea6b38);
+  border:1px solid #cc5c2f;
+}
+
+/* Negro (terciario, navegación/acciones neutras) */
+.btn-tertiary{
+  background: linear-gradient(180deg,#ffb24a,#f59e0b);
+    border:1px solid #f59e0b;
+}
+
+</style>
+
 </head>
 <body data-page="evento">
   <div class="container">
@@ -14,15 +69,119 @@
         <div id="user-name" class="muted" style="font-weight:600;"></div>
       </div>
     </div>
+
     <h2 id="t">Evento</h2>
     <div id="info"></div>
     <p id="desc" class="subtitulo"></p>
 
     <div style="margin-top:1rem;">
-      <button onclick="history.back()">&larr; Volver</button>
-      <button class="button-negro" onclick="location.href='agenda.html'">Agenda</button>
-    </div>
-  </div>
-  <script src="app_alumno.js"></script>
+  <button class="btn btn-accent"   onclick="history.back()">&larr; Volver</button>
+  <button class="btn btn-tertiary" onclick="location.href='agenda.html'">Agenda</button>
+</div>
+
+<script>
+  (async () => {
+    const params   = new URLSearchParams(location.search);
+    const eventoId = params.get("id");
+    const alumnoId = localStorage.getItem('alumno_id');
+    const API      = `${location.origin}/firmas/api`;
+
+    if (!eventoId || !alumnoId) {
+      location.href = '/josg/index.html';
+      return;
+    }
+
+    // pinta el nombre si lo tienes guardado
+    const nombre = localStorage.getItem('usuario_nombre') || '';
+    if (nombre) document.getElementById('user-name').textContent = `Hola, ${nombre}`;
+
+    try {
+      const res = await fetch(
+        `${API}/alumno/${encodeURIComponent(alumnoId)}/eventos/${encodeURIComponent(eventoId)}`,
+        { credentials: "include", headers: { "Accept": "application/json" }, cache: "no-store" }
+      );
+
+      if (res.status === 401) { location.href = '/josg/index.html'; return; }
+      if (!res.ok) { throw new Error(`HTTP ${res.status}`); }
+
+      const ev = await res.json();
+
+      // === Fallbacks de nombres ===
+      const grupoNombre   = (ev.grupo_nombre ?? ev.grupo ?? '').toString().trim();
+      const espacioNombre = (ev.espacio_nombre ?? ev.espacio ?? '').toString().trim();
+      const rawUbic       = (ev.espacio_ubicacion ?? ev.ubicacion ?? '').toString().trim();
+
+      // Rango horario (ahora que ya tenemos 'ev')
+      const horaIni   = formatearHora(ev.hora_inicio);
+      const horaFin   = formatearHora(ev.hora_fin);
+      const rangoHora = horaIni && horaFin ? `${horaIni} - ${horaFin}`
+                      : horaIni ? horaIni
+                      : '';
+
+      // URL de Maps (acepta URL directa o dirección/lat,long)
+      const urlUbic = rawUbic
+        ? (/^https?:\/\//i.test(rawUbic) ? rawUbic
+           : `https://www.google.com/maps?q=${encodeURIComponent(rawUbic)}`)
+        : null;
+
+      // Grupo en negrita
+      const grupoHtml = grupoNombre ? `<p><strong>${escapeHtml(grupoNombre)}</strong></p>` : '';
+
+      // Chip de fecha + rango horario
+      const fechaHtml = ev.fecha_inicio
+        ? `<span class="chip chip-fecha">${formatearFecha(ev.fecha_inicio)} ${rangoHora}</span>`
+        : '';
+
+      // Chip de espacio con icono + enlace
+      const espacioHtml = urlUbic
+        ? `<a class="chip chip-espacio" href="${urlUbic}" target="_blank" rel="noopener">
+             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+               <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5z"/>
+             </svg>
+             ${escapeHtml(espacioNombre || "Ver ubicación")}
+           </a>`
+        : (escapeHtml(espacioNombre || "—"));
+
+      document.getElementById("t").textContent    = ev.titulo || "Evento";
+      document.getElementById("desc").textContent = ev.descripcion || "";
+      document.getElementById("info").innerHTML = `
+        ${grupoHtml}
+        ${fechaHtml ? `<p>${fechaHtml}</p>` : ''}
+        <p>${espacioHtml}</p>
+      `;
+    } catch (err) {
+      console.error("Error cargando evento:", err);
+      document.getElementById("info").innerHTML =
+        "<p class='error'>No se pudo cargar el evento.</p>";
+    }
+
+    function escapeHtml(str) {
+      return String(str)
+        .replaceAll('&','&amp;').replaceAll('<','&lt;')
+        .replaceAll('>','&gt;').replaceAll('"','&quot;')
+        .replaceAll("'",'&#039;');
+    }
+  })();
+
+  function formatearFecha(iso) {
+    if (!iso) return '';
+    const d = new Date(iso);
+    if (isNaN(d)) return iso; // fallback
+    const dd = String(d.getDate()).padStart(2,'0');
+    const mm = String(d.getMonth()+1).padStart(2,'0');
+    const yyyy = d.getFullYear();
+    return `${dd}/${mm}/${yyyy}`;
+  }
+
+  function formatearHora(hhmm) {
+    if (!hhmm) return '';
+    const m = /^(\d{1,2}):(\d{2})/.exec(hhmm);
+    if (!m) return hhmm;
+    return `${m[1].padStart(2,'0')}:${m[2]}`;
+  }
+</script>
+
+
 </body>
 </html>
+

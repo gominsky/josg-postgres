@@ -54,13 +54,13 @@
     <div id="info-evento"></div>
 
     <p id="qr-estado" class="subtitulo"></p>
-    <button id="btn-qr" type="button" onclick="mostrarQR()" class="btn btn-primary">Mostrar QR</button>
     <button id="btn-toggle-qr" type="button" onclick="toggleQR()" class="btn btn-tertiary" style="display:none">Activar QR</button>
+    <button id="btn-qr" type="button" onclick="mostrarQR()" class="btn btn-primary">Mostrar QR</button>
     <div id="qr-container" style="margin-top: 1rem; display: none;"></div>
 
     <!-- Toolbar de alumnos -->
     <div class="alumnos-toolbar" style="display:flex;align-items:center;gap:.75rem;margin:.5rem 0 0.75rem;">
-      <button id="toggle-alumnos" type="button" class="btn btn-accent">Ocultar alumnos</button>
+      <button id="toggle-alumnos" type="button" class="btn btn-accent">Ocultar músicos</button>
       <span id="alumnos-count" class="subtitulo" style="opacity:.8;"></span>
     </div>
 
@@ -98,7 +98,7 @@
       const btn = document.getElementById('toggle-alumnos');
       if (!lista || !btn) return;
       lista.style.display = alumnosOcultos ? 'none' : '';
-      btn.textContent = alumnosOcultos ? 'Mostrar alumnos' : 'Ocultar alumnos';
+      btn.textContent = alumnosOcultos ? 'Mostrar músicos' : 'Ocultar músicos';
     }
     // ==========================================
 

@@ -157,7 +157,20 @@
 }
 /* Ajustes finos por color de tarjeta */
 .card-b .motif{ opacity:.2; }
+ .btn{
+  display:inline-block; padding:.6rem 1.4rem; border-radius:12px;
+  font-weight:600; color:#fff; border:none; cursor:pointer;
+  box-shadow:0 4px 12px rgba(0,0,0,.15);
+  transition:transform .12s ease, box-shadow .12s ease;
+  text-decoration:none; text-align:center; min-width:110px;
+}
+.btn:hover{ transform:translateY(-1px); box-shadow:0 6px 16px rgba(0,0,0,.2); }
+.btn:active{ transform:translateY(0); box-shadow:0 2px 8px rgba(0,0,0,.1); }
 
+  .btn-accent{
+  background: linear-gradient(180deg,#f28d63,#ea6b38);
+  border:1px solid #cc5c2f;
+}
   </style>
 </head>
 <body>
@@ -173,7 +186,7 @@
     <div id="list" class="row-scroll"></div>
 
     <div class="back">
-      <button onclick="location.href='index.html'">&larr; Inicio</button>
+      <button class="btn btn-accent" onclick="location.href='index.html'">&larr; Inicio</button>
     </div>
   </div>
   <script>
