@@ -14,19 +14,21 @@ const toInt = (v) => { const n = Number(v); return Number.isInteger(n) ? n : nul
 
 // === Middleware JWT ===
 function requireJWT(req, res, next){
-  const h = req.headers['authorization'] || '';
-  const m = h.match(/^Bearer\s+(.+)$/i);
-  if (!m) return res.status(401).json({ success:false, error:'auth_required' });
-  try {
-    const payload = jwt.verify(m[1], process.env.JWT_SECRET);
-    req.alumno_id = Number(payload.sub || 0);
-    req.jwt = payload; // opcional: por si quieres usar nombre/email/rol
-    if (!req.alumno_id) throw new Error('invalid_sub');
-    next();
-  } catch (e) {
-    return res.status(401).json({ success:false, error:'invalid_token' });
+    const h = req.headers['authorization'] || '';
+    const m = h.match(/^Bearer\s+(.+)$/i);
+    // ✅ Plan B: permitir ?jwt=... SOLO si no hay header
+    const rawToken = m ? m[1] : (req.query && req.query.jwt ? String(req.query.jwt) : null);
+    if (!rawToken) return res.status(401).json({ success:false, error:'auth_required' });
+    try {
+      const payload = jwt.verify(rawToken, process.env.JWT_SECRET);
+      req.alumno_id = Number(payload.sub || 0);
+      req.jwt = payload; // opcional
+      if (!req.alumno_id) throw new Error('invalid_sub');
+      next();
+    } catch (e) {
+      return res.status(401).json({ success:false, error:'invalid_token' });
+    }
   }
-}
 
 // === Helper: comprobar que el :alumnoId del path coincide con el token ===
 function mustMatchAlumnoParam(req, res, next){
@@ -496,6 +498,102 @@ router.get('/api/alumno/:alumnoId/mensajes/unread_count', mustMatchAlumnoParam, 
   } catch (e) {
     console.error('[mensajes alumno] unread_count:', e);
     res.status(500).json({ count: 0 });
+  } finally {
+    client.release();
+  }
+});
+// GET /firmas/api/alumno/:alumnoId/partituras/:pid/archivo?tipo=partitura|audio
+// GET /firmas/api/alumno/:alumnoId/partituras/:pid/archivo?tipo=partitura|audio
+router.get('/api/alumno/:alumnoId/partituras/:pid/archivo', mustMatchAlumnoParam, async (req, res) => {
+  const alumnoId = Number(req.alumno_id);
+  const pid = Number(req.params.pid);
+  const tipo = (req.query.tipo || 'partitura').toString(); // 'partitura' | 'audio'
+
+  if (!pid) return res.status(400).send('pid inválido');
+
+  const client = await db.connect();
+  try {
+    // --- 0) Detecta columnas disponibles en 'partituras' ---
+    const { rows: cols } = await client.query(
+      `SELECT lower(column_name) AS c
+         FROM information_schema.columns
+        WHERE table_schema='public' AND table_name='partituras'`
+    );
+    const C = new Set(cols.map(r => r.c));
+
+    // Campos base siempre seguros
+    const sel = ['p.id', 'p.titulo'];
+
+    // Añade solo las columnas que existan
+    if (C.has('enlace_partitura')) sel.push('p.enlace_partitura');
+    if (C.has('enlace_audio'))     sel.push('p.enlace_audio');
+    if (C.has('ruta_partitura'))   sel.push('p.ruta_partitura');
+    if (C.has('ruta_audio'))       sel.push('p.ruta_audio');
+
+    // --- 1) Verifica que la partitura pertenece a un grupo del alumno y trae campos existentes ---
+    const sql = `
+      SELECT ${sel.join(', ')}
+        FROM partituras p
+       WHERE p.id = $1
+         AND p.grupo_id IN (SELECT ag.grupo_id FROM alumno_grupo ag WHERE ag.alumno_id = $2)
+       LIMIT 1
+    `;
+    const r = await client.query(sql, [pid, alumnoId]);
+    if (!r.rowCount) return res.status(404).send('No autorizada o no existe');
+
+    const p = r.rows[0];
+
+    // 2) Decide fuente en función de 'tipo'
+    const preferUrl = tipo === 'audio'
+      ? (p.enlace_audio || '')
+      : (p.enlace_partitura || '');
+    const preferPath = tipo === 'audio'
+      ? (p.ruta_audio || '')
+      : (p.ruta_partitura || '');
+
+    // 2.a) Si hay URL http(s)
+    if (/^https?:\/\//i.test(preferUrl)) {
+      // Si la autenticación viene por ?jwt= en la query, evitamos redirigir (para no filtrar referer con el token)
+      const fromQueryJwt = !!req.query.jwt;
+      if (fromQueryJwt) {
+        // Usa fetch nativo de Node >=18; si usas Node 16 instala 'node-fetch' y haz const fetch = require('node-fetch')
+        const upstream = await fetch(preferUrl);
+        if (!upstream.ok) return res.status(upstream.status).send('Archivo no disponible');
+        res.setHeader('Content-Disposition', `inline; filename*=UTF-8''${encodeURIComponent(p.titulo || 'archivo')}`);
+        const ct = upstream.headers.get('content-type') || 'application/octet-stream';
+        res.setHeader('Content-Type', ct);
+        return upstream.body.pipe(res);
+      }
+      // Si vino por header Authorization, puedes redirigir
+      res.setHeader('Content-Disposition', `inline; filename*=UTF-8''${encodeURIComponent(p.titulo || 'archivo')}`);
+      return res.redirect(302, preferUrl);
+    }
+
+    // 2.b) Si hay ruta local tipo "/uploads/partituras/xyz.pdf", envíala
+    const path = require('path');
+    const PUBLIC_ROOT = path.join(__dirname, '..', 'public'); // ajusta si tus ficheros están en otra carpeta
+
+    // Usa preferPath si existe; si no, intenta con preferUrl si es ruta absoluta “/…”
+    const rel = (preferPath && typeof preferPath === 'string') ? preferPath
+             : ((preferUrl && typeof preferUrl === 'string' && preferUrl.startsWith('/')) ? preferUrl : null);
+
+    if (rel) {
+      const safe = path.normalize(rel).replace(/^(\.\.(\/|\\|$))+/, '');
+      const abs = path.join(PUBLIC_ROOT, safe);
+      res.setHeader('Content-Disposition', `inline; filename*=UTF-8''${encodeURIComponent(p.titulo || 'archivo')}`);
+      return res.sendFile(abs, err => {
+        if (err) {
+          console.error('sendFile partituras:', err);
+          res.status(err.statusCode || 404).send('Archivo no disponible');
+        }
+      });
+    }
+
+    // Nada que servir
+    return res.status(404).send('Enlace no disponible');
+  } catch (e) {
+    console.error('proxy partitura:', e);
+    return res.status(500).send('Error interno');
   } finally {
     client.release();
   }

@@ -182,6 +182,14 @@
           <label class="form-label">Archivo de partitura (PDF/ZIP)</label>
           <input type="file" name="archivo_partitura" class="form-control" accept=".pdf,.zip,.PDF,.ZIP">
           <div class="form-text">Si no subes fichero, puedes indicar un enlace directamente.</div>
+                  <!-- Mostrar archivo actual si existe -->
+        <div id="archivoActualWrap" class="d-flex align-items-center gap-2 mt-2" hidden>
+          <span class="badge bg-secondary">Archivo actual</span>
+          <a id="archivoActualLink" href="#" target="_blank" rel="noopener" class="small text-decoration-underline"></a>
+          <button type="button" id="quitarArchivoBtn" class="btn btn-link btn-sm text-danger p-0 ms-1" data-action="quitar-archivo">Quitar</button>
+        </div>
+        <!-- Flag opcional para pedir al servidor borrar el archivo -->
+        <input type="hidden" name="eliminar_archivo_partitura" value="0">
         </div>
 
         <div class="row g-2">
@@ -242,38 +250,110 @@ document.addEventListener('DOMContentLoaded', () => {
     if (s.startsWith('/')) return location.origin + s;
     return location.origin + '/' + s;
   }
+  // === Helper: marcar <option> seleccionadas en un <select multiple> ===
+function setSelectValues(selectElem, arr) {
+  if (!selectElem || !Array.isArray(arr)) return;
+  const values = arr.map(String);
+  Array.from(selectElem.options).forEach(opt => {
+    opt.selected = values.includes(opt.value);
+  });
+}
 
-  function clearForm(){
-    form.reset();
-    form.querySelector('input[name="id"]').value = '';
-    if (selInst) Array.from(selInst.options).forEach(o => o.selected = false);
-    btnEliminar.classList.add('d-none');
-    const t = document.getElementById('partituraModalTitulo');
-    if (t) t.textContent = 'Nueva partitura';
+// === Listener delegado para el botón "Quitar" del archivo actual ===
+// (añádelo una única vez, fuera de fillForm/clearForm)
+document.addEventListener('click', (ev) => {
+  const btn = ev.target.closest('[data-action="quitar-archivo"]');
+  if (!btn) return;
+
+  ev.preventDefault();
+
+  const wrap = document.getElementById('archivoActualWrap');
+  const link = document.getElementById('archivoActualLink');
+  const flag = form.querySelector('input[name="eliminar_archivo_partitura"]');
+  const file = form.querySelector('input[name="archivo_partitura"]');
+
+  if (wrap) wrap.hidden = true;
+  if (link) { link.removeAttribute('href'); link.textContent = ''; }
+  if (flag) flag.value = '1';
+  if (file) file.value = '';
+});
+
+// === Rellena el formulario al editar ===
+function fillForm(p){
+  form.querySelector('input[name="id"]').value = p.id || '';
+  form.titulo.value             = p.titulo || '';
+  form.autor.value              = p.autor || '';
+  form.arreglista.value         = p.arreglista || '';
+  if (form.grupo_id) form.grupo_id.value = p.grupo_id || '';
+  form.duracion.value           = p.duracion || '';
+  form.genero.value             = p.genero || '';
+  form.enlace_partitura.value   = toAbsoluteUrl(p.enlace_partitura || '');
+  // Si usas un único campo para audio/vídeo, ajústalo aquí (ej. form.enlace_audio o form.enlace_video)
+  if (form.enlace_audio) form.enlace_audio.value = toAbsoluteUrl(p.enlace_audio || p.enlace_video || p.enlace || '');
+  form.descripcion.value        = p.descripcion || '';
+  if (form.activo) form.activo.checked = !!p.activo;
+
+  // Select múltiple de instrumentos (si existe)
+  if (typeof selInst !== 'undefined' && selInst) {
+    setSelectValues(selInst, (p.instrumentos || []).map(String));
   }
 
-  function fillForm(p){
-    form.querySelector('input[name="id"]').value = p.id || '';
-    form.titulo.value             = p.titulo || '';
-    form.autor.value              = p.autor || '';
-    form.arreglista.value         = p.arreglista || '';
-    if (form.grupo_id) form.grupo_id.value = p.grupo_id || '';
-    form.duracion.value           = p.duracion || '';
-    form.genero.value             = p.genero || '';
-    form.enlace_partitura.value   = toAbsoluteUrl(p.enlace_partitura || '');
-    form.enlace_audio.value       = toAbsoluteUrl(p.enlace_audio || '');
-    form.descripcion.value        = p.descripcion || '';
-    if (form.activo) form.activo.checked = !!p.activo;
+  // UI editar
+  if (typeof btnEliminar !== 'undefined' && btnEliminar) btnEliminar.classList.remove('d-none');
+  const t = document.getElementById('partituraModalTitulo');
+  if (t) t.textContent = 'Editar partitura';
 
-    if (Array.isArray(p.instrumentos) && selInst){
-      const set = new Set(p.instrumentos.map(String));
-      Array.from(selInst.options).forEach(o => { o.selected = set.has(String(o.value)); });
+  // === Mostrar "Archivo actual" si existe ===
+  const wrap = document.getElementById('archivoActualWrap');
+  const link = document.getElementById('archivoActualLink');
+  const hiddenFlag = form.querySelector('input[name="eliminar_archivo_partitura"]');
+
+  const ruta   = (p.ruta_partitura || p.ruta || p.archivo_partitura || '').toString().trim();
+  const enlace = (p.enlace_partitura || '').toString().trim();
+
+  let urlActual = '';
+  if (ruta && ruta.startsWith('/')) {
+    urlActual = location.origin + ruta;
+  } else if (enlace) {
+    urlActual = toAbsoluteUrl(enlace);
+  }
+
+  if (urlActual) {
+    if (link) {
+      link.href = urlActual;
+      link.textContent = urlActual.split('/').pop();
     }
-
-    btnEliminar.classList.remove('d-none');
-    const t = document.getElementById('partituraModalTitulo');
-    if (t) t.textContent = 'Editar partitura';
+    if (wrap) wrap.hidden = false;
+    if (hiddenFlag) hiddenFlag.value = '0';
+  } else {
+    if (wrap) wrap.hidden = true;
+    if (hiddenFlag) hiddenFlag.value = '0';
   }
+
+  // Limpia input[file] al entrar en edición (evita confusiones)
+  const file = form.querySelector('input[name="archivo_partitura"]');
+  if (file) file.value = '';
+}
+
+// === Limpia el formulario al crear nueva partitura ===
+function clearForm(){
+  form.reset();
+  form.querySelector('input[name="id"]').value = '';
+  if (typeof selInst !== 'undefined' && selInst) {
+    Array.from(selInst.options).forEach(o => (o.selected = false));
+  }
+  if (typeof btnEliminar !== 'undefined' && btnEliminar) btnEliminar.classList.add('d-none');
+  const t = document.getElementById('partituraModalTitulo');
+  if (t) t.textContent = 'Nueva partitura';
+
+  const wrap = document.getElementById('archivoActualWrap');
+  const hiddenFlag = form.querySelector('input[name="eliminar_archivo_partitura"]');
+  if (wrap) wrap.hidden = true;
+  if (hiddenFlag) hiddenFlag.value = '0';
+
+  const file = form.querySelector('input[name="archivo_partitura"]');
+  if (file) file.value = '';
+}
 
   // Nueva
   if (btnNueva) {
@@ -368,4 +448,5 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 });
+
 </script>

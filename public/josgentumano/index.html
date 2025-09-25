@@ -137,8 +137,10 @@
   async function refreshBadge(){
     if (!badge || !alumno_id) { if (badge) badge.style.display = 'none'; return; }
     try{
-      const r = await fetch(`/firmas/api/alumno/${encodeURIComponent(alumno_id)}/mensajes/unread_count`,
-                            { credentials:'same-origin' });
+      const token = localStorage.getItem('token');
+  const r = await fetch(`/firmas/api/alumno/${encodeURIComponent(alumno_id)}/mensajes/unread_count`, {
+    headers: token ? { 'Authorization':'Bearer ' + token } : {}
+  });
       if (!r.ok) throw 0;
       const { count=0 } = await r.json();
       if (count > 0) { badge.textContent = String(count); badge.style.display = 'inline-block'; }

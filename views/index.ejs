@@ -22,12 +22,12 @@
           <div class="sb-fields sb-fields--inline align-vertical">
             <div class="field-wrap">
               <label class="field-label" for="email">Usuario</label>
-              <input id="email" type="email" name="email" class="field-input" required>
+              <input id="email" type="email" name="email" class="field-input" required autocomplete="username">
             </div>
 
             <div class="field-wrap">
               <label class="field-label" for="password">Contraseña</label>
-              <input id="password" type="password" name="password" class="field-input" required>
+              <input id="password" type="password" name="password" class="field-input" required autocomplete="current-password">
               <label class="show-pass">
                 <input type="checkbox" id="toggle-pass"> Mostrar contraseña
               </label>
@@ -232,5 +232,15 @@
     btnResetSelector: '#btnReset',
     menuSlug:         'index'   // ← clave para guardar/cargar por usuario y menú
   });
+  
 </script>
+<% if (error) { %>
+  <script>
+    // Si el servidor nos devolvió la vista con error, vaciamos la contraseña al cargar
+    document.addEventListener('DOMContentLoaded', function(){
+      var p = document.getElementById('password');
+      if (p) { p.value = ''; p.type = 'password'; p.focus(); }
+    });
+  </script>
+  <% } %>
 <% } %>

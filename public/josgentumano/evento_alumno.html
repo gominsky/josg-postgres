@@ -85,23 +85,26 @@
     const eventoId = params.get("id");
     const alumnoId = localStorage.getItem('alumno_id');
     const API      = `${location.origin}/firmas/api`;
-
-    if (!eventoId || !alumnoId) {
-      location.href = '/josgentumano/index.html';
-      return;
-    }
+    if (!eventoId || !alumnoId) { location.href = 'index.html'; return; }
 
     // pinta el nombre si lo tienes guardado
     const nombre = localStorage.getItem('usuario_nombre') || '';
     if (nombre) document.getElementById('user-name').textContent = `Hola, ${nombre}`;
 
     try {
-      const res = await fetch(
-        `${API}/alumno/${encodeURIComponent(alumnoId)}/eventos/${encodeURIComponent(eventoId)}`,
-        { credentials: "include", headers: { "Accept": "application/json" }, cache: "no-store" }
-      );
+      const token = localStorage.getItem('token');
+  const res = await fetch(
+    `${API}/alumno/${encodeURIComponent(alumnoId)}/eventos/${encodeURIComponent(eventoId)}`,
+    {
+      cache: "no-store",
+      headers: Object.assign(
+        { "Accept": "application/json" },
+        token ? { "Authorization": "Bearer " + token } : {}
+      )
+    }
+  );
 
-      if (res.status === 401) { location.href = '/josgentumano/index.html'; return; }
+  if (res.status === 401) { location.href = 'index.html'; return; }
       if (!res.ok) { throw new Error(`HTTP ${res.status}`); }
 
       const ev = await res.json();

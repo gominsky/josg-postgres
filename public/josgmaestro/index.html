@@ -81,14 +81,22 @@
           location.href = 'portal_maestro.html';
         } else if (res.status === 401) {
           msg.textContent = data.error || 'Credenciales incorrectas';
+          document.getElementById('password').value = '';
+          document.getElementById('password').focus();
         } else if (res.status === 400) {
           msg.textContent = data.error || 'Faltan credenciales';
+          document.getElementById('password').value = '';
+          document.getElementById('password').focus();
         } else {
           msg.textContent = data.error || `Error del servidor (HTTP ${res.status})`;
+          document.getElementById('password').value = '';
+          document.getElementById('password').focus();
         }
       } catch (e) {
         console.error('[login] net err', e);
         msg.textContent = 'No se pudo conectar con el servidor.';
+        document.getElementById('password').value = '';
+        document.getElementById('password').focus();
       } finally {
         btn.disabled = false; btn.textContent = 'Entrar';
       }

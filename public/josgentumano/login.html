@@ -3,14 +3,14 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Josg en tu mano </title>
+  <title>¡Josg en tu mano! - Login</title>
   <link rel="stylesheet" href="../styles/estilos_app.css" /></head>
 <body>
   <div class="container">
     <img src="/../imagenes/logoJOSG.png" alt="Logo JOSG">
-    <h2>Iniciar Sesión</h2>
-    <input type="email" id="email" placeholder="Email" required />
-    <input type="password" id="password" placeholder="Contraseña" required />
+    <h2>¡Josg en tu mano! - Iniciar Sesión</h2>
+    <input type="email" id="email" placeholder="Email" required autocomplete="username" />
+    <input type="password" id="password" placeholder="Contraseña" required autocomplete="current-password" />
     <button onclick="login()">Entrar</button>
     <p id="mensaje"></p>
     <button onclick="location.href='index.html'">← Volver</button>
@@ -30,12 +30,15 @@
       const data = await res.json();
 
       if (data.success) {
-        localStorage.setItem('token', data.token);            // 🆕
+        localStorage.setItem('token', data.token);           
         localStorage.setItem('alumno_id', data.alumno_id);
         localStorage.setItem('alumno_nombre', data.nombre || '');
         window.location.href = 'index.html';
-      } else {        document.getElementById('mensaje').innerText = data.error || 'Credenciales incorrectas';
-      }
+      } else {
+   document.getElementById('mensaje').innerText = data.error || 'Credenciales incorrectas';
+   document.getElementById('password').value = '';
+   document.getElementById('password').focus();
+   }
     }
   </script>
 </body>

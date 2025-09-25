@@ -190,99 +190,110 @@
     </div>
   </div>
   <script>
-  const API_BASE = '/firmas';
-
-  function ensureProto(u){
-    if (!u) return '';
-    const s = String(u).trim();
-    if (!s) return '';
-    if (/^[a-zA-Z][\w.+-]*:/.test(s) || s.startsWith('//') || s.startsWith('/')) return s;
-    return 'https://' + s;
-  }
-  const safeUrl = u => { try { return ensureProto(u); } catch { return ''; } };
-
-  const alumno_id = localStorage.getItem('alumno_id');
-  if (!alumno_id) { location.href = 'index.html'; }
-
-  const $list = document.getElementById('list');
-  const $q    = document.getElementById('q');
-
-  let ALL = [];
-
-  // --- helpers “motivo” ---
-  const randomSymbol = () => ['♩','♪','♫','♬'][Math.floor(Math.random()*4)];
-  const randomRot  = () => (Math.floor(Math.random()*25) - 12) + 'deg';
-  const randomSize = () => (78 + Math.floor(Math.random()*19)) + 'px';
-  const randomMotifClass = () => (Math.random() < 0.55 ? 'm-staff' : '');
-
-  function cardHTML(p, idx){
-    const autor  = (p.autor || '—').trim();
-    const titulo = (p.titulo || 'Sin título').trim();
-    const dur    = (p.duracion || '').toString().trim();
-
-    const linkPart  = p.enlace_partitura ? `<a class="chip-link" href="${safeUrl(p.enlace_partitura)}" target="_blank" rel="noopener">Partitura</a>` : '';
-    const linkAudio = p.enlace_audio     ? `<a class="chip-link" href="${safeUrl(p.enlace_audio)}"     target="_blank" rel="noopener">Audio</a>` : '';
-    const linkVideo = p.enlace_video     ? `<a class="chip-link" href="${safeUrl(p.enlace_video)}"     target="_blank" rel="noopener">Vídeo</a>` : '';
-
-    const colorCls  = (idx % 2 === 0) ? 'card-a' : 'card-b';
-    const motifCls  = randomMotifClass();
-    const motifSym  = randomSymbol();
-    const motifHTML = `<span class="motif" style="--rot:${randomRot()}; --sz:${randomSize()};">${motifSym}</span>`;
-
-    return `
-      <article class="card ${colorCls} ${motifCls}">
-        <h3 class="author">${autor}</h3>
-        <p class="title">${titulo}</p>
-        ${dur ? `<p class="dur">Duración: ${dur}</p>` : ''}
-        <div class="chips">${linkPart}${linkAudio}${linkVideo}</div>
-        ${motifHTML}
-      </article>
-    `;
-  }
-
-  function render(list){
-    if (!Array.isArray(list) || list.length === 0){
-      $list.innerHTML = `<p style="margin:6px; color:#6b7280;">No hay partituras para tus grupos.</p>`;
-      return;
+    const API_BASE = '/firmas';
+  
+    function ensureProto(u){
+      if (!u) return '';
+      const s = String(u).trim();
+      if (!s) return '';
+      if (/^[a-zA-Z][\w.+-]*:/.test(s) || s.startsWith('//') || s.startsWith('/')) return s;
+      return 'https://' + s;
     }
-    $list.innerHTML = list.map((p,i) => cardHTML(p,i)).join('');
-  }
-
-  function filtrar(){
-    const q = ($q.value || '').toLowerCase();
-    const out = ALL.filter(p => {
-      const txt = `${p.titulo||''} ${p.autor||''}`.toLowerCase();
-      return txt.includes(q);
-    });
-    render(out);
-  }
-
-  // --- debounce y binding (¡fuera de filtrar!) ---
-  function debounce(fn, wait = 160){
-    let t; return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), wait); };
-  }
-  $q.addEventListener('input', debounce(filtrar, 160));
-
-  async function cargar(){
-    try{
-      const token = localStorage.getItem('token');
-  const r = await fetch(`${API_BASE}/api/alumno/${encodeURIComponent(alumno_id)}/partituras`, {
-    cache:'no-store',
-    headers: token ? { 'Authorization': 'Bearer ' + token } : {}
-  });
-      const j = await r.json();
-      if (!r.ok || !Array.isArray(j)) throw new Error('Respuesta no válida');
-      ALL = j;
-      render(ALL);                    // pinta todo
-      if ($q.value) filtrar();        // si hubiese texto precargado, filtra
-    }catch(e){
-      console.error('Error cargando partituras:', e);
-      $list.innerHTML = `<p style="margin:6px; color:#6b7280;">No se pudieron cargar las partituras.</p>`;
+    const safeUrl = u => { try { return ensureProto(u); } catch { return ''; } };
+  
+    const alumno_id = localStorage.getItem('alumno_id');
+    const token     = localStorage.getItem('token');
+    if (!alumno_id || !token) { location.href = 'index.html'; }
+  
+    const $list = document.getElementById('list');
+    const $q    = document.getElementById('q');
+  
+    let ALL = [];
+  
+    // --- helpers “motivo” (decoración) ---
+    const randomSymbol = () => ['♩','♪','♫','♬'][Math.floor(Math.random()*4)];
+    const randomRot  = () => (Math.floor(Math.random()*25) - 12) + 'deg';
+    const randomSize = () => (78 + Math.floor(Math.random()*19)) + 'px';
+    const randomMotifClass = () => (Math.random() < 0.55 ? 'm-staff' : '');
+  
+    function cardHTML(p, idx){
+      const autor  = (p.autor || '—').trim();
+      const titulo = (p.titulo || 'Sin título').trim();
+      const dur    = (p.duracion || '').toString().trim();
+  
+      // Enlace a partitura (PDF) -> pasa por tu backend (JWT en query)
+      const base = `${API_BASE}/api/alumno/${encodeURIComponent(alumno_id)}/partituras/${encodeURIComponent(p.id)}/archivo`;
+      const hasPart = !!(p.enlace_partitura && String(p.enlace_partitura).trim().length);
+      const linkPart = hasPart
+        ? `<a class="chip-link" href="${base}?tipo=partitura&jwt=${encodeURIComponent(token)}" target="_blank" rel="noopener noreferrer">Partitura</a>`
+        : '';
+  
+      // Enlace externo único (audio/vídeo) -> abrir DIRECTO (YouTube, Vimeo, etc.)
+      const mediaRaw = p.enlace_video || p.enlace_audio || p.enlace_media || p.enlace || p.url_media || p.url || '';
+      const hasMedia = !!String(mediaRaw).trim().length;
+      const linkMedia = hasMedia
+        ? `<a class="chip-link" href="${safeUrl(mediaRaw)}" target="_blank" rel="noopener noreferrer">Audio/Vídeo</a>`
+        : '';
+  
+      const colorCls  = (idx % 2 === 0) ? 'card-a' : 'card-b';
+      const motifCls  = randomMotifClass();
+      const motifSym  = randomSymbol();
+      const motifHTML = `<span class="motif" style="--rot:${randomRot()}; --sz:${randomSize()};">${motifSym}</span>`;
+  
+      return `
+        <article class="card ${colorCls} ${motifCls}">
+          <h3 class="author">${autor}</h3>
+          <p class="title">${titulo}</p>
+          ${dur ? `<p class="dur">Duración: ${dur}</p>` : ''}
+          <div class="chips">${linkPart}${linkMedia}</div>
+          ${motifHTML}
+        </article>
+      `;
     }
-  }
-
-  cargar();
-</script>
+  
+    function render(list){
+      if (!Array.isArray(list) || list.length === 0){
+        $list.innerHTML = `<p style="margin:6px; color:#6b7280;">No hay partituras para tus grupos.</p>`;
+        return;
+      }
+      $list.innerHTML = list.map((p,i) => cardHTML(p,i)).join('');
+    }
+  
+    function filtrar(){
+      const q = ($q.value || '').toLowerCase();
+      const out = ALL.filter(p => {
+        const txt = `${p.titulo||''} ${p.autor||''}`.toLowerCase();
+        return txt.includes(q);
+      });
+      render(out);
+    }
+  
+    // --- debounce y binding ---
+    function debounce(fn, wait = 160){
+      let t; return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), wait); };
+    }
+    $q.addEventListener('input', debounce(filtrar, 160));
+  
+    async function cargar(){
+      try{
+        const r = await fetch(`${API_BASE}/api/alumno/${encodeURIComponent(alumno_id)}/partituras`, {
+          cache:'no-store',
+          headers: { 'Authorization': 'Bearer ' + token }
+        });
+        const j = await r.json();
+        if (!r.ok || !Array.isArray(j)) throw new Error('Respuesta no válida');
+        ALL = j;
+        render(ALL);
+        if ($q.value) filtrar();
+      }catch(e){
+        console.error('Error cargando partituras:', e);
+        $list.innerHTML = `<p style="margin:6px; color:#6b7280;">No se pudieron cargar las partituras.</p>`;
+      }
+    }
+  
+    cargar();
+  </script>
+  
 </body>
 </html>
 
