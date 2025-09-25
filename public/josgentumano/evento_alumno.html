@@ -87,7 +87,7 @@
     const API      = `${location.origin}/firmas/api`;
 
     if (!eventoId || !alumnoId) {
-      location.href = '/josg/index.html';
+      location.href = '/josgentumano/index.html';
       return;
     }
 
@@ -101,7 +101,7 @@
         { credentials: "include", headers: { "Accept": "application/json" }, cache: "no-store" }
       );
 
-      if (res.status === 401) { location.href = '/josg/index.html'; return; }
+      if (res.status === 401) { location.href = '/josgentumano/index.html'; return; }
       if (!res.ok) { throw new Error(`HTTP ${res.status}`); }
 
       const ev = await res.json();

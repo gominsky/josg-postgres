@@ -265,7 +265,11 @@
 
   async function cargar(){
     try{
-      const r = await fetch(`${API_BASE}/api/alumno/${encodeURIComponent(alumno_id)}/partituras`, { cache:'no-store' });
+      const token = localStorage.getItem('token');
+  const r = await fetch(`${API_BASE}/api/alumno/${encodeURIComponent(alumno_id)}/partituras`, {
+    cache:'no-store',
+    headers: token ? { 'Authorization': 'Bearer ' + token } : {}
+  });
       const j = await r.json();
       if (!r.ok || !Array.isArray(j)) throw new Error('Respuesta no válida');
       ALL = j;
@@ -281,6 +285,4 @@
 </script>
 </body>
 </html>
-
-
 

@@ -52,11 +52,18 @@
     font-size: .72rem;
     padding: .12rem .35rem;
     border-radius: 999px;
+      /* Ordenable */
+  .th-sortable { cursor: pointer; user-select: none; position: relative; }
+  .th-sortable::after{
+    content: '↕'; font-size:.8em; opacity:.4; margin-left:.35rem;
+  }
+  .th-sortable[aria-sort="ascending"]::after { content: '↑'; opacity:.9; }
+  .th-sortable[aria-sort="descending"]::after{ content: '↓'; opacity:.9; }
   }
 </style>
 
 <div class="header-compact">
-  <h1 class="h1-titulo">Músicos asociados</h1>
+  <h1 class="h1-titulo">Músicos</h1>
 
   <div class="header-actions">
     <a href="/alumnos/nuevo" class="btn-main-blanco">+ Añadir músico</a>
@@ -131,26 +138,31 @@
   <table class="tabla-estilizada tabla-compacta">
     <thead>
       <tr>
-        <th>Nombre</th>
-        <th>Instrumentos</th>
-        <th>Grupos</th>
-        <th>Estado</th>
+        <th class="th-sortable" data-col="0" scope="col" tabindex="0" aria-sort="none">Nombre</th>
+        <th class="th-sortable" data-col="1" scope="col" tabindex="0" aria-sort="none">Instrumentos</th>
+        <th class="th-sortable" data-col="2" scope="col" tabindex="0" aria-sort="none">Grupos</th>
+        <th class="th-sortable" data-col="3" scope="col" tabindex="0" aria-sort="none">Estado</th>
       </tr>
     </thead>
-    <tbody>
-      <% alumnos.forEach(a => { %>
+    <tbody id="tabla-alumnos-body">
+      <% alumnos.forEach(a => { 
+           const fullName = `${a.nombre || ''} ${a.apellidos || ''}`.trim();
+           const inst = (a.instrumentos || '—');
+           const grps = (a.grupos || '—');
+           const activoNum = a.activo ? 1 : 0;
+      %>
         <tr class="fila-enlace" onclick="location.href='/alumnos/<%= a.id %>'" style="cursor:pointer;">
-          <td><strong><%= a.nombre %> <%= a.apellidos %></strong></td>
-          <td><%= a.instrumentos || '—' %></td>
-          <td><%= a.grupos || '—' %></td>
-          <td>
+          <td data-sort="<%= fullName.toLowerCase() %>"><strong><%= fullName %></strong></td>
+          <td data-sort="<%= inst.toLowerCase() %>"><%= inst %></td>
+          <td data-sort="<%= grps.toLowerCase() %>"><%= grps %></td>
+          <td data-sort="<%= activoNum %>">
             <span class="badge bg-<%= a.activo ? 'success' : 'danger' %>">
               <%= a.activo ? 'Activo' : 'No activo' %>
             </span>
           </td>
         </tr>
       <% }) %>
-    </tbody>
+    </tbody>   
   </table>
 </div>
 
@@ -187,4 +199,66 @@
     });
   })();
 </script>
-
+<script>
+  (function(){
+    const tbody = document.getElementById('tabla-alumnos-body');
+    if (!tbody) return;
+  
+    const ths = Array.from(document.querySelectorAll('.th-sortable'));
+    let sortState = { col: null, dir: 'none' }; // 'asc' | 'desc' | 'none'
+  
+    function cmp(a, b, numeric=false){
+      if (numeric){
+        const na = Number(a)||0, nb = Number(b)||0;
+        return na - nb;
+      }
+      // texto
+      return a.localeCompare(b, 'es', { sensitivity:'base' });
+    }
+  
+    function sortBy(colIdx){
+      const rows = Array.from(tbody.querySelectorAll('tr'));
+      const isEstado = colIdx === 3;
+      const nextDir =
+        (sortState.col !== colIdx) ? 'asc' :
+        (sortState.dir === 'asc' ? 'desc' : (sortState.dir === 'desc' ? 'none' : 'asc'));
+  
+      // reset aria
+      ths.forEach(th => th.setAttribute('aria-sort','none'));
+  
+      if (nextDir === 'none'){
+        // restaurar orden original (DOM order): recarga ligera
+        location.replace(location.href); // simple y efectivo en vista lista
+        return;
+      }
+  
+      // marca cabecera
+      const th = ths.find(t => Number(t.dataset.col) === colIdx);
+      if (th) th.setAttribute('aria-sort', nextDir === 'asc' ? 'ascending' : 'descending');
+  
+      rows.sort((r1, r2)=>{
+        const t1 = r1.children[colIdx]?.getAttribute('data-sort') || r1.children[colIdx]?.textContent || '';
+        const t2 = r2.children[colIdx]?.getAttribute('data-sort') || r2.children[colIdx]?.textContent || '';
+        const res = cmp(String(t1), String(t2), isEstado);
+        return nextDir === 'asc' ? res : -res;
+      });
+  
+      // reinyecta
+      const frag = document.createDocumentFragment();
+      rows.forEach(r => frag.appendChild(r));
+      tbody.innerHTML = '';
+      tbody.appendChild(frag);
+  
+      sortState = { col: colIdx, dir: nextDir };
+    }
+  
+    // click + teclado accesible (Enter/Espacio)
+    ths.forEach(th=>{
+      const col = Number(th.dataset.col);
+      th.addEventListener('click', ()=> sortBy(col));
+      th.addEventListener('keydown', (e)=>{
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); sortBy(col); }
+      });
+    });
+  })();
+  </script>  

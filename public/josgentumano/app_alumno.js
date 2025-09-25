@@ -116,6 +116,21 @@
 
   const monthUpper = d => d.toLocaleString('es-ES', { month: 'short' }).replace(/\./g, '').toUpperCase();
   const pad2 = n => String(n).padStart(2, '0');
+  
+// Añadir a app_alumno.js (zona utilidades)
+async function fetchAuth(url, opts) {
+  const token = localStorage.getItem('token');
+  const base  = opts || {};
+  base.headers = Object.assign(
+    {},
+    base.headers || {},
+    token ? { 'Authorization': 'Bearer ' + token } : {}
+  );
+  const r = await fetch(url, base);
+  if (!r.ok) throw new Error(`HTTP ${r.status} @ ${url}`);
+  return r;
+}
+async function getJSON(url, opts){ const r = await fetchAuth(url, opts); return r.json(); }
 
   // ---------- Páginas ----------
   // INDEX (inicio)
