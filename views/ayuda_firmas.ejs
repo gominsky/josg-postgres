@@ -1,43 +1,48 @@
-<% title = 'Ayuda · Firmas (Asistencia QR)' %>
+<% title = 'Ayuda · ¡JOSG en tu mano!' %>
 <% hero  = false %>
 <link rel="stylesheet" href="/styles/estilos_help.css">
 
-
 <div class="help-wrap" data-help-theme="blue">
-  
-
   <div class="panel">
     <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
-      <h1 class="h1">Ayuda · Firmas (Asistencia QR)</h1>
+      <h1 class="h1">Ayuda · ¡JOSG en tu mano!</h1>
       <div class="cta">
-        <a href="/webapp/index.html">Inicio app →</a>
+        <a href="/webapp/index.html">Inicio →</a>
         <a href="/webapp/login.html">Iniciar sesión →</a>
         <a href="/webapp/registro.html">Registrarse →</a>
-        <a href="/webapp/firma.html">Ir a firmar →</a>
+        <a href="/webapp/firma.html">Firmar asistencia →</a>
       </div>
     </div>
 
     <!-- Índice -->
     <nav class="toc" aria-label="Índice">
-      <a href="#flujo">Flujo rápido</a>
+      <a href="#que-es">Qué es la app</a>
       <a href="#acceso">Acceso (Registro / Login)</a>
-      <a href="#firma">Firmar con QR</a>
-      <a href="#ubicacion">Ubicación (opcional)</a>
-      <a href="#mensajes">Mensajes y estados</a>
+      <a href="#firma">Firmar asistencia (QR)</a>
+      <a href="#agenda">Agenda y eventos</a>
+      <a href="#partituras">Partituras</a>
+      <a href="#mensajes">Mensajes</a>
+      <a href="#privacidad">Privacidad y seguridad</a>
       <a href="#errores">Errores comunes</a>
       <a href="#faq">FAQ</a>
+      <a href="#enlaces">Enlaces rápidos</a>
     </nav>
 
-    <!-- Flujo rápido -->
-    <section id="flujo" class="section">
-      <h2>Flujo rápido</h2>
-      <ol class="list">
-        <li>Abre la <span class="kbd">app web</span> y crea tu cuenta desde <strong>Registrarse</strong> o entra con tu email y contraseña.</li>
-        <li>Una vez dentro, pulsa <strong>Ir a firmar</strong> y permite acceso a la cámara del móvil.</li>
-        <li>Escanea el <strong>QR del evento</strong> que te facilite la organización.</li>
-        <li>Si todo es correcto, verás el mensaje <em>Asistencia registrada</em> y el escáner se detendrá automáticamente.</li>
-      </ol>
-      <p class="notice info">La app recuerda tu sesión en el dispositivo. Puedes cerrar sesión desde el botón <em>Cerrar sesión</em> cuando quieras.</p>
+    <!-- Qué es -->
+    <section id="que-es" class="section">
+      <h2>¿Qué es “¡JOSG en tu mano!”?</h2>
+      <p>
+        Es la aplicación web oficial para alumnos y familias. Desde tu móvil u ordenador puedes:
+      </p>
+      <ul class="list">
+        <li><strong>Firmar asistencia</strong> a eventos mediante código QR.</li>
+        <li>Consultar tu <strong>Agenda</strong> con fechas, horarios y ubicaciones.</li>
+        <li>Acceder a <strong>Partituras</strong> y materiales vinculados a tus grupos.</li>
+        <li>Leer <strong>Mensajes</strong> del centro con enlaces y recordatorios.</li>
+      </ul>
+      <p class="notice info">
+        No necesitas instalar nada: es una <em>app web</em> que funciona en navegadores modernos.
+      </p>
     </section>
 
     <!-- Acceso -->
@@ -47,62 +52,110 @@
         <div class="card">
           <h3 style="margin:.1rem 0 .35rem;">Registrarse</h3>
           <ul class="list">
-            <li>Introduce <strong>Email</strong>, <strong>DNI</strong> y una <strong>Contraseña</strong>.</li>
-            <li>Al registrarte correctamente, se inicia sesión y pasas directamente a la pantalla de firma.</li>
+            <li>Introduce tu <strong>Email</strong>, <strong>DNI</strong> y una <strong>Contraseña</strong>.</li>
+            <li>Si el registro se valida, se inicia sesión automáticamente.</li>
           </ul>
-          <p class="notice info">Si ya tenías cuenta, usa <em>Iniciar sesión</em> para evitar errores de usuario existente.</p>
+          <p class="notice info">
+            Si ya te registraste anteriormente, usa <em>Iniciar sesión</em>.
+          </p>
         </div>
         <div class="card">
           <h3 style="margin:.1rem 0 .35rem;">Iniciar sesión</h3>
           <ul class="list">
             <li>Escribe tu email y contraseña.</li>
-            <li>Al entrar, verás el botón <em>Ir a firmar</em> para abrir el lector QR.</li>
+            <li>Accederás al inicio con accesos directos a <em>Firma</em>, <em>Agenda</em>, <em>Partituras</em> y <em>Mensajes</em>.</li>
           </ul>
         </div>
       </div>
-      <p class="notice info">La sesión se guarda en el dispositivo usando <span class="kbd">localStorage</span>. Si cambias de móvil o navegador, tendrás que volver a iniciar sesión.</p>
+      <p class="notice info">
+        La sesión se guarda en tu dispositivo (localStorage). Si cambias de móvil o borras datos del navegador, tendrás que iniciar sesión de nuevo.
+      </p>
     </section>
 
     <!-- Firmar con QR -->
     <section id="firma" class="section">
-      <h2>Firmar con QR</h2>
+      <h2>Firmar asistencia (QR)</h2>
       <div class="grid-2">
         <div class="card">
           <h3 style="margin:.1rem 0 .35rem;">Cómo funciona</h3>
           <ol class="list">
-            <li>En la pantalla de firma, concede permiso a la cámara (tras el aviso del navegador).</li>
-            <li>Apunta al código QR del evento; la app lo leerá de forma automática.</li>
-            <li>Si el QR es válido, se enviará la firma al servidor y verás la confirmación en pantalla.</li>
+            <li>Entra en <em>Firmar asistencia</em> y concede permiso a la cámara.</li>
+            <li>Apunta al <strong>QR del evento</strong> facilitado por la organización.</li>
+            <li>Si el QR es válido, se registra la asistencia y verás la confirmación.</li>
           </ol>
-          <p class="notice info">Si el QR no es válido o está dañado, se mostrará un aviso y podrás intentarlo de nuevo.</p>
+          <p class="notice info">
+            Tras firmar con éxito, el lector se detiene automáticamente para evitar duplicados.
+          </p>
         </div>
         <div class="card">
           <h3 style="margin:.1rem 0 .35rem;">Consejos de escaneo</h3>
           <ul class="list">
-            <li>Asegúrate de tener buena luz y mantener el QR estable.</li>
-            <li>Evita reflejos o pantallas con poco brillo.</li>
-            <li>Si la cámara se detiene tras firmar, vuelve a <em>Ir a firmar</em> para un nuevo escaneo.</li>
+            <li>Usa buena iluminación y evita reflejos.</li>
+            <li>Mantén el QR estable y encuadrado.</li>
+            <li>Si algo falla, vuelve a pulsar <em>Firmar asistencia</em> para reiniciar el lector.</li>
           </ul>
         </div>
       </div>
-    </section>
 
-    <!-- Ubicación -->
-    <section id="ubicacion" class="section">
-      <h2>Ubicación (opcional)</h2>
-      <p>Si el dispositivo lo permite, la app intentará adjuntar tu ubicación aproximada al firmar. Si el permiso está denegado o falla, la firma se envía igualmente sin ubicación.</p>
-      <p class="notice info">Esta ubicación ayuda a verificar presencia física en el evento, pero <strong>no es obligatoria</strong>.</p>
-    </section>
+      <h3>Ubicación (opcional)</h3>
+      <p>
+        Si das permiso de ubicación, la app adjuntará tu posición aproximada a la firma.
+        Si lo deniegas o falla, <strong>la firma se registra igualmente</strong>.
+      </p>
 
-    <!-- Mensajes y estados -->
-    <section id="mensajes" class="section">
-      <h2>Mensajes y estados</h2>
+      <h3>Mensajes de estado</h3>
       <ul class="list">
-        <li><span class="badge">✅ Asistencia registrada correctamente</span> — La firma se guardó y el escáner se detiene.</li>
-        <li><span class="badge">✅ Ya estaba registrada la asistencia</span> — No es necesario volver a firmar.</li>
-        <li><span class="badge">❌ QR inválido</span> — El código no contiene datos válidos del evento.</li>
-        <li><span class="badge">❌ Error de red</span> — Problema de conexión o respuesta del servidor. Intenta de nuevo.</li>
+        <li><span class="badge">✅ Asistencia registrada correctamente</span> — Firma realizada.</li>
+        <li><span class="badge">✅ Ya estaba registrada</span> — No es necesario repetirla.</li>
+        <li><span class="badge">❌ QR inválido</span> — El código no corresponde a un evento activo.</li>
+        <li><span class="badge">❌ Error de red</span> — Revisa tu conexión y vuelve a intentar.</li>
       </ul>
+    </section>
+
+    <!-- Agenda -->
+    <section id="agenda" class="section">
+      <h2>Agenda y eventos</h2>
+      <ul class="list">
+        <li>Consulta el calendario en vista <strong>Mes</strong> o <strong>Lista</strong>.</li>
+        <li>Toca un evento para ver <strong>título, grupo, espacio/ubicación y horario asignado</strong>.</li>
+        <li>Si el evento incluye ubicación, verás un enlace directo a <strong>Google Maps</strong>.</li>
+      </ul>
+      <p class="notice info">
+        La agenda muestra <em>tus</em> eventos según tu asignación: puede diferir de la agenda general del centro.
+      </p>
+    </section>
+
+    <!-- Partituras -->
+    <section id="partituras" class="section">
+      <h2>Partituras</h2>
+      <ul class="list">
+        <li>Explora el listado y usa el buscador por <strong>título</strong> o <strong>autor</strong>.</li>
+        <li>Accede a <strong>enlaces</strong> de partitura y/o <strong>audio</strong> (cuando estén disponibles).</li>
+        <li>El catálogo se filtra por los <strong>grupos</strong> en los que estás matriculado.</li>
+      </ul>
+    </section>
+
+    <!-- Mensajes -->
+    <section id="mensajes" class="section">
+      <h2>Mensajes</h2>
+      <ul class="list">
+        <li>Recibe comunicados del centro con <strong>fecha</strong>, <strong>autor</strong> y <strong>enlaces</strong> útiles.</li>
+        <li>Los enlaces aparecen como <em>chips</em> (Enlace 1, Enlace 2, …) para abrir en una pestaña nueva.</li>
+        <li>Marca como leído para llevar el control de lo que ya revisaste.</li>
+      </ul>
+    </section>
+
+    <!-- Privacidad -->
+    <section id="privacidad" class="section">
+      <h2>Privacidad y seguridad</h2>
+      <ul class="list">
+        <li>El acceso usa <strong>token JWT</strong> guardado en tu dispositivo.</li>
+        <li>Puedes <strong>cerrar sesión</strong> desde la pantalla de inicio (icono de salida).</li>
+        <li>La <strong>ubicación</strong> solo se solicita al firmar y es <strong>opcional</strong>.</li>
+      </ul>
+      <p class="notice info">
+        Si compartes dispositivo, recuerda cerrar sesión al finalizar para proteger tu cuenta.
+      </p>
     </section>
 
     <!-- Errores comunes -->
@@ -112,59 +165,85 @@
         <div class="card">
           <h3 style="margin:.1rem 0 .35rem;">No puedo iniciar sesión</h3>
           <ul class="list">
-            <li>Comprueba el email y la contraseña. Respeta mayúsculas/minúsculas.</li>
-            <li>Si olvidaste la contraseña, consulta con la organización para restablecerla.</li>
+            <li>Comprueba email y contraseña (respeta mayúsculas/minúsculas).</li>
+            <li>Si olvidaste la contraseña, contacta con la organización para restablecerla.</li>
           </ul>
         </div>
         <div class="card">
           <h3 style="margin:.1rem 0 .35rem;">La cámara no se activa</h3>
           <ul class="list">
-            <li>Revisa permisos de cámara en el navegador (ajustes del sitio).</li>
+            <li>Revisa los <strong>permisos de cámara</strong> del navegador.</li>
             <li>Cierra otras apps que estén usando la cámara.</li>
-            <li>Prueba con el navegador actualizado (Chrome/Edge/Safari).</li>
+            <li>Recarga la página de <em>Firmar asistencia</em>.</li>
           </ul>
         </div>
         <div class="card">
-          <h3 style="margin:.1rem 0 .35rem;">El QR no se reconoce</h3>
+          <h3 style="margin:.1rem 0 .35rem;">El QR no se lee</h3>
           <ul class="list">
-            <li>Acerca o aleja el móvil para enfocar mejor.</li>
-            <li>Evita brillos o sombras sobre el QR.</li>
-            <li>Si está impreso, asegúrate de que no esté arrugado o manchado.</li>
+            <li>Aumenta el brillo o evita reflejos.</li>
+            <li>Acércate/Aléjate ligeramente hasta enfocar.</li>
+            <li>Pide a la organización un QR de sustitución si está dañado.</li>
           </ul>
         </div>
         <div class="card">
-          <h3 style="margin:.1rem 0 .35rem;">Ya había firmado</h3>
-          <p>Si ya se registró tu asistencia para ese evento, la app te lo indicará y no duplicará firmas.</p>
+          <h3 style="margin:.1rem 0 .35rem;">No veo mis eventos/partituras</h3>
+          <ul class="list">
+            <li>Asegúrate de haber iniciado sesión con tu <strong>email correcto</strong>.</li>
+            <li>Pulsa <em>Actualizar</em> o recarga la página.</li>
+            <li>Consulta con el centro si tu <strong>asignación de grupo</strong> es correcta.</li>
+          </ul>
         </div>
       </div>
     </section>
 
     <!-- FAQ -->
     <section id="faq" class="section">
-      <h2>FAQ</h2>
+      <h2>Preguntas frecuentes (FAQ)</h2>
       <div class="grid-2">
         <div class="card">
-          <h3 style="margin:.1rem 0 .35rem;">¿Necesito cuenta para firmar?</h3>
-          <p>Sí. Debes registrarte una vez con tu email y DNI. Después podrás iniciar sesión y firmar.</p>
+          <h3>¿Necesito instalar algo?</h3>
+          <p>No. Es una app web que funciona en navegadores actuales.</p>
         </div>
         <div class="card">
-          <h3 style="margin:.1rem 0 .35rem;">¿Puedo usar cualquier móvil?</h3>
-          <p>Funciona en móviles modernos con navegador actualizado y cámara. Si el dispositivo no permite la cámara, solicita un lector alternativo al staff.</p>
+          <h3>¿Puedo firmar sin conexión?</h3>
+          <p>Necesitas conexión en el momento de firmar para enviar la asistencia.</p>
         </div>
         <div class="card">
-          <h3 style="margin:.1rem 0 .35rem;">¿Qué datos envía el QR?</h3>
-          <p>Contiene el identificador del evento y un token de seguridad. La app envía además tu identificador de alumno y, de forma opcional, la ubicación.</p>
+          <h3>¿Qué pasa si deniego la ubicación?</h3>
+          <p>La firma se registra igualmente; la ubicación es opcional.</p>
         </div>
         <div class="card">
-          <h3 style="margin:.1rem 0 .35rem;">¿Cómo cierro la sesión?</h3>
-          <p>Usa el botón <em>Cerrar sesión</em> en la app. También puedes limpiar los datos del navegador.</p>
+          <h3>¿Cómo cierro sesión?</h3>
+          <p>Desde la pantalla de inicio, usa el icono de <em>Cerrar sesión</em>.</p>
         </div>
       </div>
     </section>
 
-    <div class="section" style="display:flex;gap:10px;flex-wrap:wrap;">
-      <a class="link" href="/webapp/index.html"><span class="pill">← Volver al inicio</span></a>
-      <a class="link" href="/"><span class="pill">← Volver al panel</span></a>
-    </div>
+    <!-- Enlaces rápidos -->
+    <section id="enlaces" class="section">
+      <h2>Enlaces rápidos</h2>
+      <div class="grid-2">
+        <div class="card">
+          <h3>Accesos</h3>
+          <ul class="list">
+            <li><a href="/webapp/index.html">Inicio</a></li>
+            <li><a href="/webapp/login.html">Iniciar sesión</a></li>
+            <li><a href="/webapp/registro.html">Registrarse</a></li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Módulos</h3>
+          <ul class="list">
+            <li><a href="/webapp/firma.html">Firmar asistencia (QR)</a></li>
+            <li><a href="/webapp/agenda.html">Agenda</a></li>
+            <li><a href="/webapp/partituras.html">Partituras</a></li>
+            <li><a href="/webapp/mensajes.html">Mensajes</a></li>
+          </ul>
+        </div>
+      </div>
+      <p class="notice info">
+        Si algún enlace no carga, verifica tu conexión y que tu sesión esté activa.
+      </p>
+    </section>
   </div>
 </div>

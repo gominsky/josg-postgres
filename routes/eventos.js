@@ -5,10 +5,6 @@ const QRCode = require('qrcode');
 const { toISODate } = require('../utils/fechas');
 const { pdfControlAsistencia } = require('../utils/pdfControlAsistencia');
 
-/* -------------------------------------------
-   Helpers comunes
-------------------------------------------- */
-// "YYYY-MM-DDTHH:MM" → {fechaISO, horaHHMM}
 function splitISODateTime(input) {
   if (!input) return { fechaISO: null, horaHHMM: null };
   if (typeof input === 'string' && input.includes('T')) {
@@ -36,7 +32,6 @@ function idOrNull(v) {
 function strOrNull(v) {
   return (typeof v === 'string' && v.trim() !== '') ? v.trim() : null;
 }
-// Devuelve 'Violín I' o 'Violín II' si aplica; si no, null.
 async function nombreGrupoViolinSiAplica(client, alumnoId) {
   // ¿toca violín?
   const rBase = await client.query(`
@@ -71,7 +66,6 @@ async function nombreGrupoViolinSiAplica(client, alumnoId) {
   }
   return null;
 }
-// Normaliza fecha a 'YYYY-MM-DD' sin UTC shift
 const toISO10 = v => {
   if (!v) return '';
   if (v instanceof Date) {
@@ -85,7 +79,6 @@ const toISO10 = v => {
   if (s.includes('T')) return s.split('T')[0];
   return s.slice(0,10);
 };
-// Devuelve 'Violín I' o 'Violín II' si aplica; si no, null (para respetar el instrumento del front)
 async function decideInstrumentoParaAlumno(client, { alumnoId }) {
   // ¿toca violín?
   const rBase = await client.query(`
@@ -119,10 +112,6 @@ async function decideInstrumentoParaAlumno(client, { alumnoId }) {
   }
   return null; // no cumple → dejamos el instrumento original del front
 }
-/**
- * Foto de alumnos del grupo → evento_asignaciones
- * Copia horas del evento, casteadas a TIME de forma segura.
- */
 async function asignarAlumnosAEvento(db, eventoId, grupoId) {
   if (!grupoId) return;
 
@@ -159,17 +148,9 @@ async function asignarAlumnosAEvento(db, eventoId, grupoId) {
 
   await db.query(sql, [Number(eventoId), Number(grupoId)]);
 }
-/* -------------------------------------------
-   AYUDA
-------------------------------------------- */
 router.get('/ayuda', (_req, res) => {
   res.render('ayuda_eventos', { title: 'Ayuda · Eventos', hero: false });
 });
-/* -------------------------------------------
-   LISTADO JSON (FullCalendar)
-------------------------------------------- */
-// LISTADO JSON (FullCalendar)
-// LISTADO JSON (FullCalendar)
 router.get('/listado', async (_req, res) => {
   const sql = `
     WITH e2 AS (
@@ -268,10 +249,6 @@ router.get('/listado', async (_req, res) => {
     res.status(500).json({ error: 'Error al obtener eventos' });
   }
 });
-
-/* -------------------------------------------
-   VISTA PRINCIPAL: Calendario/Lista
-------------------------------------------- */
 router.get('/', async (req, res) => {
     const desdeRaw = req.query.desde || '';
     const hastaRaw = req.query.hasta || '';
@@ -323,11 +300,7 @@ router.get('/', async (req, res) => {
       console.error('[eventos] GET / error:', error);
       res.status(500).send('Error al obtener eventos');
     }
-  });
-
-/* -------------------------------------------
-   OBTENER 1 EVENTO (JSON)
-------------------------------------------- */
+});
 router.get('/:id', async (req, res) => {
     const id = parseInt(req.params.id, 10);
     if (!Number.isInteger(id)) return res.status(400).json({ error: 'ID inválido' });
@@ -361,10 +334,7 @@ router.get('/:id', async (req, res) => {
       console.error('[eventos] GET /:id error:', err);
       res.status(500).json({ error: 'Error al obtener evento' });
     }
-  });
-/* -------------------------------------------
-   CREAR EVENTO (con foto de asignaciones)
-------------------------------------------- */
+});
 router.post('/', async (req, res) => {
     const { titulo, descripcion, fecha_inicio, fecha_fin, grupo_id, activo, espacio_id } = req.body;
   
@@ -413,10 +383,7 @@ router.post('/', async (req, res) => {
       console.error('[eventos] POST / error:', err);
       res.status(500).json({ error: 'Error al guardar evento' });
     }
-  });
-/* -------------------------------------------
-   CREAR EVENTOS MASIVOS
-------------------------------------------- */
+});
 router.post('/masivo', async (req, res) => {
   try {
     const b = req.body || {};
@@ -510,10 +477,6 @@ router.post('/masivo', async (req, res) => {
     res.status(500).send('Error al crear eventos');
   }
 });
-
-/* -------------------------------------------
-   ACTUALIZAR EVENTO
-------------------------------------------- */
 router.put('/:id', async (req, res) => {
     const id = parseInt(req.params.id, 10);
     if (!Number.isInteger(id)) return res.status(400).json({ error: 'ID inválido' });
@@ -561,10 +524,7 @@ router.put('/:id', async (req, res) => {
       console.error('[eventos] PUT /:id error:', err);
       res.status(500).json({ error: 'Error al actualizar evento' });
     }
-  });
-/* -------------------------------------------
-   ELIMINAR EVENTO (y dependencias)
-------------------------------------------- */
+});
 router.delete('/:id', async (req, res) => {
   const id = parseInt(req.params.id, 10);
 
@@ -578,9 +538,6 @@ router.delete('/:id', async (req, res) => {
     res.status(500).json({ error: 'Error al eliminar evento' });
   }
 });
-/* -------------------------------------------
-   QR DEL EVENTO
-------------------------------------------- */
 router.get('/:id/qr', async (req, res) => {
   const eventoId = req.params.id;
 
@@ -645,9 +602,6 @@ router.get('/:id/qr', async (req, res) => {
     res.status(500).send('Error generando el QR');
   }
 });
-/* -------------------------------------------
-   FIRMA MANUAL: FORM
-------------------------------------------- */
 router.get('/:id/firma_manual', async (req, res) => {
   const eventoId = parseInt(req.params.id, 10);
   if (isNaN(eventoId)) return res.status(400).send('ID inválido');
@@ -793,9 +747,6 @@ ORDER BY apellidos NULLS LAST, nombre NULLS LAST, id;
     res.status(500).send('Error al cargar formulario de firmas');
   }
 });
-/* -------------------------------------------
-   FIRMA MANUAL: AJAX (marca asistencia)
-------------------------------------------- */
 router.post('/:id/firma_manual/ajax', async (req, res) => {
   const eventoId = Number(req.params.id);
   const alumnoId = Number(req.body.alumno_id);
@@ -848,9 +799,6 @@ router.post('/:id/firma_manual/ajax', async (req, res) => {
     return res.status(500).json({ success: false, error: 'Error actualizando firma' });
   }
 });
-/* -------------------------------------------
-   PDF CONTROL DE ASISTENCIA
-------------------------------------------- */
 router.get('/:id/firmas.pdf', async (req, res, next) => {
   try {
     const eventoId = Number(req.params.id);
@@ -860,10 +808,6 @@ router.get('/:id/firmas.pdf', async (req, res, next) => {
     next(err);
   }
 });
-/* -------------------------------------------
-   ========== ASIGNACIONES ==========
-------------------------------------------- */
-// Listar asignaciones
 router.get('/:id/asignaciones', async (req, res) => {
   const eventoId = Number(req.params.id);
   if (!Number.isInteger(eventoId)) return res.status(400).json({ error: 'ID inválido' });
@@ -900,7 +844,6 @@ router.get('/:id/asignaciones', async (req, res) => {
     res.status(500).json({ error: 'Error obteniendo asignaciones' });
   }
 });
-// Repoblar desde grupo del evento (añade faltantes)
 router.post('/:id/asignaciones/refresh', async (req, res) => {
   const eventoId = Number(req.params.id);
   const e = (await db.query('SELECT grupo_id, fecha_inicio FROM eventos WHERE id = $1', [eventoId])).rows[0];
@@ -916,7 +859,6 @@ router.post('/:id/asignaciones/refresh', async (req, res) => {
     return res.status(500).json({ error: 'Error refrescando asignaciones' });
   }
 });
-// PUT /eventos/:id/asignaciones/:alumnoId
 router.put('/:id/asignaciones/:alumnoId', async (req, res) => {
   const eventoId = Number(req.params.id);
   const alumnoId = Number(req.params.alumnoId);
@@ -1016,7 +958,6 @@ router.put('/:id/asignaciones/:alumnoId', async (req, res) => {
     client.release();
   }
 });
-// Resumen asignación/asistencia
 router.get('/:id/asignaciones/resumen', async (req, res) => {
   const eventoId = Number(req.params.id);
   if (!Number.isInteger(eventoId)) return res.status(400).json({ error: 'ID inválido' });
@@ -1038,7 +979,6 @@ router.get('/:id/asignaciones/resumen', async (req, res) => {
     res.status(500).json({ error: 'Error en resumen de asignaciones' });
   }
 });
-// DELETE /eventos/:id/asignaciones/:alumnoId  -> quita la fila del evento
 router.delete('/:id/asignaciones/:alumnoId', async (req, res) => {
   const eventoId = Number(req.params.id);
   const alumnoId = Number(req.params.alumnoId);
@@ -1064,9 +1004,6 @@ router.delete('/:id/asignaciones/:alumnoId', async (req, res) => {
     client.release();
   }
 });
-/* -------------------------------------------
-   Guardado en lote (firma_manual)
-------------------------------------------- */
 router.put('/:id/firma_manual/batch', async (req, res) => {
   const eventoId = Number(req.params.id);
   const { cambios } = req.body;
@@ -1159,7 +1096,6 @@ router.put('/:id/firma_manual/batch', async (req, res) => {
     client.release();
   }
 });
-// GET /eventos/:id/instrumentos  → una fila por instrumento con agregados
 router.get('/:id/instrumentos', async (req, res) => {
   const eventoId = Number(req.params.id);
   if (!Number.isInteger(eventoId)) return res.status(400).json({ error:'ID inválido' });
@@ -1492,7 +1428,6 @@ router.delete('/:id/instrumentos', async (req, res) => {
     client.release();
   }
 });
-// GET /eventos/:id/familias
 router.get('/:id/familias', async (req, res) => {
   const eventoId = Number(req.params.id);
   if (!Number.isInteger(eventoId)) {
@@ -1547,7 +1482,6 @@ router.get('/:id/familias', async (req, res) => {
     return res.status(500).json({ error: 'Error obteniendo familias' });
   }
 });
-// PUT masivo por familias: aplica cambios a todas las asignaciones del evento cuya familia resuelta == familia_key
 router.put('/:id/familias', async (req, res) => {
   const eventoId = Number(req.params.id);
   if (!Number.isInteger(eventoId)) {
@@ -1623,7 +1557,6 @@ router.put('/:id/familias', async (req, res) => {
     res.status(500).json({ ok:false, error:'Error actualizando por familia' });
   }
 });
-// DELETE /eventos/:id/familias  body: { familia_key: 'Viento metal' }
 router.delete('/:id/familias', async (req, res) => {
   const eventoId = Number(req.params.id);
   const { familia_key } = req.body || {};
@@ -1693,6 +1626,5 @@ router.delete('/:id/familias', async (req, res) => {
     client.release();
   }
 });
-
 module.exports = router;
 

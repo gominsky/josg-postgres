@@ -47,24 +47,47 @@ router.get('/ayuda', (_req, res) => {
 
 /* ------------------------------- REGISTRO APP ---------------------------- */
 router.post('/registro-app', async (req, res) => {
-  const { email, dni, password } = req.body;
+  const { email, dni, password } = req.body || {};
+  const mail = String(email || '').trim();
+  const dniNorm = String(dni || '').toUpperCase().replace(/\s+/g,'');
+
+  if (!mail || !dniNorm || !password) {
+    return res.status(400).json({ success:false, error:'Faltan datos' });
+  }
+
   try {
-    const r = await db.query('SELECT * FROM alumnos WHERE email = $1 AND dni = $2', [email, dni]);
+    const r = await db.query(
+      `SELECT * FROM alumnos
+        WHERE lower(email)=lower($1)
+          AND replace(upper(dni),' ','')=$2
+        LIMIT 1`,
+      [mail, dniNorm]
+    );
     const alumno = r.rows[0];
-    if (!alumno) return res.status(404).json({ error: 'No existe un alumno con ese email y DNI' });
-    if (alumno.registrado) return res.status(400).json({ error: 'Este alumno ya está registrado' });
+    if (!alumno)   return res.status(404).json({ success:false, error:'No existe un alumno con ese email y DNI' });
+    if (alumno.registrado) return res.status(400).json({ success:false, error:'Este alumno ya está registrado' });
 
     const hash = await bcrypt.hash(password, 10);
-    await db.query(
-      'UPDATE alumnos SET password = $1, registrado = $2 WHERE id = $3',
-      [hash, true, alumno.id]
+    await db.query('UPDATE alumnos SET password=$1, registrado=$2 WHERE id=$3', [hash, true, alumno.id]);
+
+    // === Emitir JWT (igual que en /login) ===
+    const token = jwt.sign(
+      { sub: alumno.id, rol: 'alumno', email: alumno.email || mail, nombre: alumno.nombre || '' },
+      process.env.JWT_SECRET,
+      { expiresIn: process.env.JWT_EXPIRES || '7d' }
     );
-    // Devuelve datos mínimos. (El token se emite en /login)
-    res.json({ success: true, alumno_id: alumno.id, nombre: alumno.nombre });
-    
+
+    return res.json({
+      success: true,
+      token,
+      alumno_id: alumno.id,
+      nombre: alumno.nombre || '',
+      email: alumno.email || mail
+    });
+
   } catch (err) {
     console.error('registro-app:', err);
-    res.status(500).json({ error: 'Error al registrar al alumno' });
+    return res.status(500).json({ success:false, error:'Error al registrar al alumno' });
   }
 });
 

@@ -26,6 +26,7 @@
     <input type="email" id="email" placeholder="Email" required />
     <input type="text" id="dni" placeholder="DNI" required />
     <input type="password" id="password" placeholder="Elegir contraseña" required />
+    <input type="password" id="password2" placeholder="Repite la contraseña" required />
 
     <button id="btn-registrar" onclick="registrar()">Registrarme</button>
 
@@ -35,11 +36,8 @@
   </div>
 
   <script>
-    // Detecta el prefijo correcto de la API en función de la ruta
-    const API_BASE = location.pathname.startsWith('/josgmaestro/')
-      ? '/josgmaestro/api'
-      : '/control_firmas/api';
-  
+    const API_BASE = '/firmas';
+
     function showMsg(text, ok){
       const msg = document.getElementById('mensaje');
       msg.textContent = text || '';
@@ -50,19 +48,25 @@
       const email = document.getElementById('email').value.trim();
       const dni = document.getElementById('dni').value.trim();
       const password = document.getElementById('password').value;
+      const password2 = document.getElementById('password2').value;
       const btn = document.getElementById('btn-registrar');
   
-      // Reset aviso
       showMsg('', true);
   
-      if (!email || !dni || !password){
+      if (!email || !dni || !password || !password2){
         showMsg('Por favor completa todos los campos.', false);
+        return;
+      }
+      if (password !== password2){
+        showMsg('Las contraseñas no coinciden.', false);
+        document.getElementById('password').value = '';
+        document.getElementById('password2').value = '';
+        document.getElementById('password').focus();
         return;
       }
   
       btn.disabled = true;
       try {
-        // Ajusta el endpoint si tu backend usa otro (p. ej., /registro-app)
         const res = await fetch(`${API_BASE}/registro-app`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -73,46 +77,43 @@
         try { data = await res.json(); } catch(_) {}
   
         if (res.ok && (data.success ?? true)) {
-          // —— Guardar ID
-          const alumnoId =
-            data.alumno_id ??
-            data.id ??
-            (data.alumno && (data.alumno.id || data.alumno.alumno_id));
+          if (data.token) {
+            localStorage.setItem('token', data.token);
   
-          if (alumnoId) localStorage.setItem('alumno_id', String(alumnoId));
+            const alumnoId =
+              data.alumno_id ??
+              data.id ??
+              (data.alumno && (data.alumno.id || data.alumno.alumno_id)) ?? '';
+            if (alumnoId) localStorage.setItem('alumno_id', String(alumnoId));
   
-          // —— Guardar nombre (si vino) o hidratar con fallback
-          let nombre =
-            data.nombre ??
-            (data.alumno && data.alumno.nombre) ??
-            (data.user && data.user.nombre) ??
-            (data.perfil && data.perfil.nombre) ??
-            '';
+            const nombre =
+              data.nombre ??
+              (data.alumno && data.alumno.nombre) ?? '';
+            localStorage.setItem('alumno_nombre', nombre || '');
   
-          if (!nombre && alumnoId) {
-            try {
-              const r2 = await fetch(`${API_BASE}/alumnos/${alumnoId}/basico`, { cache:'no-store' });
-              const j2 = await r2.json();
-              if (j2 && (j2.success || j2.nombre)) {
-                nombre = j2.nombre || '';
-              }
-            } catch (_) {}
+            showMsg('✅ Registro correcto. Entrando…', true);
+            setTimeout(()=> window.location.href = 'index.html', 300);
+          } else {
+            showMsg('✅ Registro correcto. Inicia sesión para continuar.', true);
+            setTimeout(()=> window.location.href = 'login.html', 600);
           }
-          localStorage.setItem('alumno_nombre', nombre || '');
-  
-          // Aviso + redirección
-          showMsg('✅ Registro correcto. Redirigiendo…', true);
-          setTimeout(()=> window.location.href = 'index.html', 1000);
         } else {
           showMsg(data.error || 'Error al registrar', false);
+          document.getElementById('password').value = '';
+          document.getElementById('password2').value = '';
+          document.getElementById('password').focus();
         }
       } catch (e) {
         showMsg('No se pudo conectar con el servidor. Inténtalo de nuevo.', false);
+        document.getElementById('password').value = '';
+        document.getElementById('password2').value = '';
+        document.getElementById('password').focus();
       } finally {
         btn.disabled = false;
       }
     }
   </script>
-  
 </body>
 </html>
+
+
