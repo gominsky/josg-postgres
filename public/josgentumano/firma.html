@@ -62,9 +62,10 @@
 
     async function enviarFirma(payload) {
       try {
+        const tokenAuth = localStorage.getItem('token');
         const res = await fetch("/firmas/firmar-qr", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: Object.assign({ "Content-Type": "application/json" }, tokenAuth ? { "Authorization": "Bearer " + tokenAuth } : {}),
           body: JSON.stringify(payload)
         });
 
@@ -96,7 +97,7 @@
 
     async function firmarConPosibleUbicacion({ evento_id, token }) {
       const base = {
-        alumno_id: Number(alumno_id),
+        //alumno_id: Number(alumno_id),
         evento_id: Number(evento_id),
         token: String(token)
       };

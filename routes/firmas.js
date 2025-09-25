@@ -1,28 +1,48 @@
-// routes/firmas.js (SERVIDOR)
+// routes/firmas.js (SERVIDOR) — versión JWT (sin cookies/sesión)
 const express = require('express');
 const router  = express.Router();
 const db      = require('../database/db');
 const bcrypt  = require('bcrypt');
-const { isAuthenticated, isDocente } = require('../middleware/auth');
+const jwt     = require('jsonwebtoken');
+
+// === Utilidades ===
 async function ensureReadColumn(client, table){
   await client.query(`ALTER TABLE ${table} ADD COLUMN IF NOT EXISTS leido_at TIMESTAMP NULL`);
 }
-// ---- App (alumno) autenticado por sesión ----
-function requireAlumno(req, res, next){
-    const id = Number(req.session?.alumno_id || 0);
-    if (!id) return res.status(401).json({ error: 'No autenticado' });
-    req.alumno_id = id; // fuente de verdad para rutas /app
+
+const toInt = (v) => { const n = Number(v); return Number.isInteger(n) ? n : null; };
+
+// === Middleware JWT ===
+function requireJWT(req, res, next){
+  const h = req.headers['authorization'] || '';
+  const m = h.match(/^Bearer\s+(.+)$/i);
+  if (!m) return res.status(401).json({ success:false, error:'auth_required' });
+  try {
+    const payload = jwt.verify(m[1], process.env.JWT_SECRET);
+    req.alumno_id = Number(payload.sub || 0);
+    req.jwt = payload; // opcional: por si quieres usar nombre/email/rol
+    if (!req.alumno_id) throw new Error('invalid_sub');
     next();
+  } catch (e) {
+    return res.status(401).json({ success:false, error:'invalid_token' });
   }
-// En routes/firmas.js:
-router.use('/api', (req, res, next) => {
-  if (req.session && req.session.alumno_id) return next();
-  return res.status(401).json({ success:false, error:'auth_required' });
-});
+}
+
+// === Helper: comprobar que el :alumnoId del path coincide con el token ===
+function mustMatchAlumnoParam(req, res, next){
+  const urlId = toInt(req.params.alumnoId);
+  if (!urlId) return res.status(400).json({ error: 'alumnoId inválido' });
+  if (urlId !== Number(req.alumno_id)) {
+    return res.status(403).json({ error: 'forbidden' });
+  }
+  next();
+}
+
 /* -------------------------------- PÁGINAS -------------------------------- */
 router.get('/ayuda', (_req, res) => {
   res.render('ayuda_firmas', { title: 'Ayuda · Alumnos', hero: false });
 });
+
 /* ------------------------------- REGISTRO APP ---------------------------- */
 router.post('/registro-app', async (req, res) => {
   const { email, dni, password } = req.body;
@@ -37,7 +57,7 @@ router.post('/registro-app', async (req, res) => {
       'UPDATE alumnos SET password = $1, registrado = $2 WHERE id = $3',
       [hash, true, alumno.id]
     );
-    // Ahora devuelve el nombre
+    // Devuelve datos mínimos. (El token se emite en /login)
     res.json({ success: true, alumno_id: alumno.id, nombre: alumno.nombre });
     
   } catch (err) {
@@ -47,7 +67,7 @@ router.post('/registro-app', async (req, res) => {
 });
 
 /* ---------------------------------- LOGIN -------------------------------- */
-// Login alumno (JOSG en tu mano)
+// Login alumno (JOSG en tu mano) — emite JWT
 router.post('/login', async (req, res) => {
   const { email, password } = req.body || {};
   try {
@@ -62,12 +82,17 @@ router.post('/login', async (req, res) => {
     const ok = await bcrypt.compare(password || '', alumno.password);
     if (!ok) return res.status(401).json({ success:false, error: 'Contraseña incorrecta' });
 
-    // sesión para rutas /mensajes/app/* si las usas
-    req.session.alumno_id = alumno.id;
+    // === JWT ===
+    const token = jwt.sign(
+      { sub: alumno.id, rol: 'alumno', email: alumno.email || null, nombre: alumno.nombre || '' },
+      process.env.JWT_SECRET,
+      { expiresIn: process.env.JWT_EXPIRES || '7d' }
+    );
 
     // devuelve también el nombre (y, si te sirve, el email)
     return res.json({
       success: true,
+      token,
       alumno_id: alumno.id,
       nombre: alumno.nombre || '',
       email: alumno.email || null
@@ -78,18 +103,18 @@ router.post('/login', async (req, res) => {
   }
 });
 
-
 /* ------------------------------ FIRMA POR QR ----------------------------- */
+// Protegido por JWT; toma el alumno_id del token (no del body)
 async function handleFirmarQR(req, res) {
   try {
     const raw = req.body || {};
-    const alumno_id = Number(raw.alumno_id);
+    const alumno_id = Number(req.alumno_id || 0);
     const evento_id = Number(raw.evento_id);
-    const token     = raw.token != null ? String(raw.token) : null;
+    const tokenQR   = raw.token != null ? String(raw.token) : null;
     const ubicacion = (raw.ubicacion != null && raw.ubicacion !== '') ? String(raw.ubicacion) : null;
 
-    if (!alumno_id || !evento_id || !token) {
-      return res.status(400).json({ success: false, mensaje: 'Faltan datos (alumno_id, evento_id, token)' });
+    if (!alumno_id || !evento_id || !tokenQR) {
+      return res.status(400).json({ success: false, mensaje: 'Faltan datos (evento_id, token)' });
     }
 
     // validar evento + token
@@ -98,7 +123,7 @@ async function handleFirmarQR(req, res) {
         WHERE id = $1::int
           AND token = $2::text
           AND activo IS TRUE`,
-      [evento_id, token]
+      [evento_id, tokenQR]
     );
     if (ev.rowCount === 0) {
       return res.status(400).json({ success: false, mensaje: 'Evento no válido o inactivo' });
@@ -123,11 +148,10 @@ async function handleFirmarQR(req, res) {
     return res.status(500).json({ success: false, mensaje: 'Error interno' });
   }
 }
-router.post('/firmar-qr', handleFirmarQR);
-router.post('/',        handleFirmarQR); // alias histórico
+router.post('/firmar-qr', requireJWT, handleFirmarQR);
+router.post('/',        requireJWT, handleFirmarQR); // alias histórico
 
 /* ------------------------- HELPERS + TABLA ASIGN. ------------------------ */
-const toInt = (v) => { const n = Number(v); return Number.isInteger(n) ? n : null; };
 
 let _asignTable = null;
 async function getAsignTable() {
@@ -141,10 +165,12 @@ async function getAsignTable() {
 }
 
 /* =============================== API ALUMNO ============================== */
+// Todas las rutas /api/* requieren JWT
+router.use('/api', requireJWT);
+
 /** 1) Eventos del alumno (calendario) */
-router.get('/api/alumno/:alumnoId/eventos', async (req, res) => {
-  const alumnoId = toInt(req.params.alumnoId);
-  if (!alumnoId) return res.status(400).json({ error: 'alumnoId inválido' });
+router.get('/api/alumno/:alumnoId/eventos', mustMatchAlumnoParam, async (req, res) => {
+  const alumnoId = Number(req.alumno_id);
 
   try {
     const asignTable = await getAsignTable();
@@ -176,8 +202,7 @@ router.get('/api/alumno/:alumnoId/eventos', async (req, res) => {
       )
       SELECT t.id, t.titulo, t.descripcion, t.start_iso, t.end_iso,
        g.nombre AS grupo_nombre, es.nombre AS espacio_nombre,
-       es.ubicacion AS espacio_ubicacion,
-             es.ubicacion AS espacio_ubicacion   -- ⬅️ añadimos ubicación para Maps
+       es.ubicacion AS espacio_ubicacion
         FROM t
         LEFT JOIN grupos   g  ON g.id  = t.grupo_id
         LEFT JOIN espacios es ON es.id = t.espacio_id
@@ -186,35 +211,34 @@ router.get('/api/alumno/:alumnoId/eventos', async (req, res) => {
     const { rows } = await db.query(sql, [alumnoId]);
 
     res.json(rows.map(r => {
-  const ubic = (r.espacio_ubicacion || '').trim();                            // 🆕
-  const espacio_link = ubic ? `https://www.google.com/maps?q=${encodeURIComponent(ubic)}` : null; // 🆕
+      const ubic = (r.espacio_ubicacion || '').trim();
+      const espacio_link = ubic ? `https://www.google.com/maps?q=${encodeURIComponent(ubic)}` : null;
 
-  return {
-    id: r.id,
-    title: r.titulo || 'Evento',
-    start: r.start_iso,
-    end:   r.end_iso,
-    extendedProps: {
-      descripcion: r.descripcion || '',
-      grupo: r.grupo_nombre || '',
-      espacio: r.espacio_nombre || '',
-      espacio_ubicacion: ubic,       
-      espacio_link                   
-    }
-  };
-}));
+      return {
+        id: r.id,
+        title: r.titulo || 'Evento',
+        start: r.start_iso,
+        end:   r.end_iso,
+        extendedProps: {
+          descripcion: r.descripcion || '',
+          grupo: r.grupo_nombre || '',
+          espacio: r.espacio_nombre || '',
+          espacio_ubicacion: ubic,
+          espacio_link
+        }
+      };
+    }));
   } catch (err) {
     console.error('[firmas/api] eventos alumno:', err);
     res.status(500).json({ error: 'Error obteniendo eventos' });
   }
 });
 
-
 /** 2) Detalle de evento del alumno */
-router.get('/api/alumno/:alumnoId/eventos/:eventoId', async (req, res) => {
-  const alumnoId = toInt(req.params.alumnoId);
+router.get('/api/alumno/:alumnoId/eventos/:eventoId', mustMatchAlumnoParam, async (req, res) => {
+  const alumnoId = Number(req.alumno_id);
   const eventoId = toInt(req.params.eventoId);
-  if (!alumnoId || !eventoId) return res.status(400).json({ error: 'IDs inválidos' });
+  if (!eventoId) return res.status(400).json({ error: 'eventoId inválido' });
 
   try {
     const asignTable = await getAsignTable();
@@ -258,9 +282,8 @@ router.get('/api/alumno/:alumnoId/eventos/:eventoId', async (req, res) => {
 });
 
 /** 3) Partituras por grupos del alumno */
-router.get('/api/alumno/:alumnoId/partituras', async (req, res) => {
-  const alumnoId = toInt(req.params.alumnoId);
-  if (!alumnoId) return res.status(400).json({ error: 'alumnoId inválido' });
+router.get('/api/alumno/:alumnoId/partituras', mustMatchAlumnoParam, async (req, res) => {
+  const alumnoId = Number(req.alumno_id);
 
   const sql = `
     SELECT p.id, p.titulo, p.autor, p.arreglista,
@@ -281,10 +304,10 @@ router.get('/api/alumno/:alumnoId/partituras', async (req, res) => {
     res.status(500).json({ error: 'Error obteniendo partituras' });
   }
 });
+
 // ─────────────────────── Alumno básico por id (para mostrar nombre) ─────────────
-router.get('/api/alumno/:alumnoId/basico', async (req, res) => {
-  const id = Number(req.params.alumnoId);
-  if (!id) return res.status(400).json({ error:'id inválido' });
+router.get('/api/alumno/:alumnoId/basico', mustMatchAlumnoParam, async (req, res) => {
+  const id = Number(req.alumno_id);
   try {
     const { rows } = await db.query('SELECT nombre FROM alumnos WHERE id=$1', [id]);
     if (!rows.length) return res.status(404).json({ error:'Alumno no encontrado' });
@@ -293,6 +316,7 @@ router.get('/api/alumno/:alumnoId/basico', async (req, res) => {
     res.status(500).json({ error:'Error en DB' });
   }
 });
+
 // ================= MENSAJES (lectura alumno) =================
 
 async function detectMsgSchema(client){
@@ -352,9 +376,8 @@ async function detectMsgSchema(client){
 }
 
 // GET /firmas/api/alumno/:alumnoId/mensajes
-router.get('/api/alumno/:alumnoId/mensajes', async (req,res)=>{
-  const alumnoId = Number(req.params.alumnoId || req.query.alumno_id || req.session?.alumno_id);
-  if (!alumnoId) return res.status(400).json([]);
+router.get('/api/alumno/:alumnoId/mensajes', mustMatchAlumnoParam, async (req,res)=>{
+  const alumnoId = Number(req.alumno_id);
 
   const client = await db.connect();
   try {
@@ -369,7 +392,7 @@ router.get('/api/alumno/:alumnoId/mensajes', async (req,res)=>{
                   : `'Aviso'`;
 
     const selUrl   = sch.M.has('url')  ? 'm.url'  : 'NULL';
-    // NORMALIZA urls a JSON array como en /mensajes/app/mensajes
+    // NORMALIZA urls a JSON array
     const selUrls  = sch.M.has('urls')
       ? `COALESCE(NULLIF(m.urls::text,'')::jsonb,'[]'::jsonb)`
       : `'[]'::jsonb`;
@@ -422,16 +445,15 @@ router.get('/api/alumno/:alumnoId/mensajes', async (req,res)=>{
   }
 });
 
-
 // POST /firmas/api/alumno/:alumnoId/mensajes/:id/leer → marca como leído (si existe leido_at)
-router.post('/api/alumno/:alumnoId/mensajes/:id/leer', express.json(), async (req,res)=>{
-  const alumnoId = Number(req.params.alumnoId || req.session?.alumno_id);
+router.post('/api/alumno/:alumnoId/mensajes/:id/leer', mustMatchAlumnoParam, express.json(), async (req,res)=>{
+  const alumnoId = Number(req.alumno_id);
   const id = Number(req.params.id);
-  if (!alumnoId || !id) return res.status(400).json({ success:false });
+  if (!id) return res.status(400).json({ success:false });
 
   const client = await db.connect();
   try {
-    const sch = await detectMsgSchema(client); // ya lo tienes definido arriba
+    const sch = await detectMsgSchema(client);
     if (!sch || !sch.dest || !sch.msgCol || !sch.alumCol) return res.json({ success:true });
 
     // Asegura la columna leido_at en tu tabla real (mensaje_destino)
@@ -452,9 +474,8 @@ router.post('/api/alumno/:alumnoId/mensajes/:id/leer', express.json(), async (re
 });
 
 // GET /firmas/api/alumno/:alumnoId/mensajes/unread_count
-router.get('/api/alumno/:alumnoId/mensajes/unread_count', async (req,res)=>{
-  const alumnoId = Number(req.params.alumnoId || req.session?.alumno_id);
-  if (!alumnoId) return res.status(400).json({ count: 0 });
+router.get('/api/alumno/:alumnoId/mensajes/unread_count', mustMatchAlumnoParam, async (req,res)=>{
+  const alumnoId = Number(req.alumno_id);
 
   const client = await db.connect();
   try {
@@ -481,4 +502,5 @@ router.get('/api/alumno/:alumnoId/mensajes/unread_count', async (req,res)=>{
 });
 
 module.exports = router;
+
 

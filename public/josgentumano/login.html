@@ -30,12 +30,11 @@
       const data = await res.json();
 
       if (data.success) {
-  localStorage.setItem('alumno_id', data.alumno_id);
-  localStorage.setItem('alumno_nombre', data.nombre || '');
-  window.location.href = 'index.html';
-
-      } else {
-        document.getElementById('mensaje').innerText = data.error || 'Credenciales incorrectas';
+        localStorage.setItem('token', data.token);            // 🆕
+        localStorage.setItem('alumno_id', data.alumno_id);
+        localStorage.setItem('alumno_nombre', data.nombre || '');
+        window.location.href = 'index.html';
+      } else {        document.getElementById('mensaje').innerText = data.error || 'Credenciales incorrectas';
       }
     }
   </script>

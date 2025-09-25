@@ -22,8 +22,9 @@
   }
 
   function ensureSession() {
-    const id = getAlumnoId();
-    if (!id && needSession()) {
+      const id = getAlumnoId();
+      const token = localStorage.getItem('token');
+      if ((!id || !token) && needSession()) {
       location.href = 'login.html';
       return false;
     }
@@ -59,13 +60,17 @@
     btn.addEventListener('click', () => {
       localStorage.removeItem('alumno_id');
       localStorage.removeItem('alumno_nombre');
+      localStorage.removeItem('token');
       location.href = 'login.html';
     });
   }
 
   // ---------- Helpers varios ----------
-  async function fetchJSON(url, opts) {
-    const r = await fetch(url, opts);
+    async function fetchJSON(url, opts) {
+        const token = localStorage.getItem('token');
+        const base = opts || {};
+        base.headers = Object.assign({}, base.headers, token ? { 'Authorization': 'Bearer ' + token } : {});
+        const r = await fetch(url, base);
     let j = null;
     try { j = await r.json(); } catch {}
     if (!r.ok) throw new Error((j && j.error) || r.statusText);

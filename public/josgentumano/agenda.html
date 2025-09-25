@@ -82,7 +82,17 @@
         },
         buttonText: { today: 'Hoy', month: 'Mes', list: 'Lista' },
         displayEventTime: false,
-        events: `/firmas/api/alumno/${alumno_id}/eventos`,
+        events: async (info, success, failure) => {
+          try {
+            const token = localStorage.getItem('token');
+            const r = await fetch(`/firmas/api/alumno/${alumno_id}/eventos`, {
+              headers: token ? { 'Authorization': 'Bearer ' + token } : {}
+            });
+            if (!r.ok) throw new Error('HTTP ' + r.status);
+            const data = await r.json();
+            success(data);
+          } catch (e) { failure(e); }
+        },
         eventClick: function (info) {
           const id = info.event.id;
           location.href = `evento_alumno.html?id=${id}`;
