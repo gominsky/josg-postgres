@@ -98,7 +98,7 @@ router.post('/', upload.single('archivo_partitura'), async (req, res) => {
   // ⚠️ Usa la ruta estática correcta para servir archivos (normalmente /uploads/partituras/)
   let enlace_partitura = null;
   if (req.file) {
-    enlace_partitura = '/uploads/partituras/' + req.file.filename; // <-- ajusta si tu static es otro
+    enlace_partitura = '/partituras/' + req.file.filename; // <-- ajusta si tu static es otro
   } else {
     enlace_partitura = normalizeUrl(enlace_input);
   }
