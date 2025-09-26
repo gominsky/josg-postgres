@@ -1,13 +1,20 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>¡JOSG en tu mano!</title>
   <link rel="stylesheet" href="../styles/estilos_app.css" />
   <style>
-    /* Topbar */
-    .topbar{ display:flex; justify-content:space-between; align-items:center; }
+    :root{
+      --ink:#0f172a;
+      --muted:#6b7280;
+      --brd:#e5e7eb;
+    }
+    body{ color:var(--ink); background:#fff; }
+
+    /* Topbar minimal: sin logo, alineado a la derecha */
+    .topbar{ display:flex; justify-content:flex-end; align-items:center; min-height:48px; }
     .icon-btn{
       border:1px solid #e5e7eb; background:transparent; color:#111;
       width:36px; height:36px; border-radius:10px; font-size:18px; cursor:pointer;
@@ -16,18 +23,85 @@
     .icon-btn:hover{ background:#fff; }
     .icon-btn:focus{ outline:2px solid #e5e7eb; outline-offset:2px; }
     .icon-btn:active{ transform: translateY(1px); }
+    #btn-logout{ display:none; } /* oculto hasta login */
+    #user-name{ color:var(--muted); font-weight:600; margin-right:8px; }
 
-    /* Hero (título más fino) */
-    .hero{ text-align:center; margin:16px 0 8px; }
-    .hero h1{
-      margin:0;
-      font-weight:600;            /* <- menos “gordo” */
-      letter-spacing:.4px;
-      line-height:1.05;
-      font-size: clamp(28px, 6.2vw, 44px);
+    /* ========= HERO con pentagrama horizontal y figuras "marca de agua" ========= */
+    .hero{
+      position:relative;
+      margin:16px 0 12px; padding:32px 16px 26px;
+      border:1px solid #f3e7da; border-radius:22px;
+      overflow:hidden; text-align:center;
+
+      /* Luces + pentagrama (bloques de 5 líneas) + base */
+      background-image:
+        radial-gradient(1400px 380px at -10% -10%, rgba(255,229,209,.85) 0%, rgba(255,229,209,0) 60%),
+        radial-gradient(1200px 360px at 110% 0%, rgba(255,241,201,.85) 0%, rgba(255,241,201,0) 55%),
+        linear-gradient(to bottom, rgba(0,0,0,.055) 0, rgba(0,0,0,.055) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(0,0,0,.055) 0, rgba(0,0,0,.055) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(0,0,0,.055) 0, rgba(0,0,0,.055) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(0,0,0,.055) 0, rgba(0,0,0,.055) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(0,0,0,.055) 0, rgba(0,0,0,.055) 1px, transparent 1px),
+        linear-gradient(180deg,#ffffff,#fff9f2 72%);
+      background-size:
+        auto, auto,
+        100% 60px, 100% 60px, 100% 60px, 100% 60px, 100% 60px,
+        auto;
+      background-position:
+        center, center,
+        0 0, 0 8px, 0 16px, 0 24px, 0 32px,
+        center;
+      background-repeat:
+        no-repeat, no-repeat,
+        repeat-y, repeat-y, repeat-y, repeat-y, repeat-y,
+        no-repeat;
+
+      box-shadow:0 12px 36px rgba(0,0,0,.08);
+    }
+    .hero::after{ content:none !important; } /* sin texturas diagonales */
+    .hero::before{
+      content:""; position:absolute; right:-28px; bottom:-28px; width:300px; height:180px; opacity:.055;
+      background: url("../imagenes/logoJOSG.png") no-repeat right bottom / contain;
+      pointer-events:none;
     }
 
-    /* Grid de acciones */
+    /* Capa para figuras (rellena por JS) */
+    .motifs-layer{
+      position:absolute; inset:0; z-index:1; pointer-events:none; user-select:none;
+    }
+    .motif{
+      position:absolute; line-height:1;
+      color:#000; opacity:.035;     /* marca de agua */
+      filter: blur(.15px);
+      mix-blend-mode: multiply;
+      transform-origin:center;
+      will-change: transform, left, top;
+    }
+
+    .hero .hero-logo, .hero h1, .hero p{ position:relative; z-index:2; }
+    .hero .hero-logo{
+      display:block; margin:0 auto 10px; max-height:112px; width:auto;
+      filter: drop-shadow(0 4px 14px rgba(0,0,0,.10));
+    }
+    .hero h1{
+      margin:0; font-weight:900; letter-spacing:.2px;
+      font-size: clamp(28px, 6.2vw, 44px); line-height:1.02;
+      background: linear-gradient(180deg,#111,#744b00);
+      -webkit-background-clip:text; background-clip:text; color:transparent;
+    }
+    .hero p{ margin:6px 0 0; color:var(--muted); font-size:clamp(.98rem, 2.6vw, 1.05rem); }
+
+    /* CTA Ayuda visible en portada */
+    .help-cta{ display:flex; justify-content:center; margin:12px 0 10px; }
+    .help-cta a{
+      font-weight:900; text-decoration:none; border:1px solid #f59e0b;
+      background:linear-gradient(180deg,#fff7e6,#fff);
+      padding:.7rem 1rem; border-radius:12px; color:#8a4b00;
+      box-shadow:0 8px 22px rgba(245,158,11,.25);
+    }
+    .help-cta a:active{ transform: translateY(1px); }
+
+    /* Acciones (como la original, sin iconos) */
     .grid-actions{
       display:grid; grid-template-columns: repeat(2, 1fr);
       gap:14px; margin:16px 0 18px;
@@ -35,20 +109,16 @@
     .action{
       display:flex; align-items:center; justify-content:center; text-align:center;
       min-height:96px; border-radius:18px; text-decoration:none; position:relative;
-      font-weight:600;               /* <- trazo más fino en botones */
-      letter-spacing:.1px; color:#fff; user-select:none;
+      font-weight:700; letter-spacing:.1px; color:#fff; user-select:none;
       box-shadow:0 6px 18px rgba(0,0,0,.12);
       transition: transform .12s ease, box-shadow .12s ease, filter .12s ease;
     }
     .action:hover{ transform: translateY(-2px); box-shadow:0 10px 24px rgba(0,0,0,.16); }
     .action:active{ transform: translateY(0); }
-
-    /* Naranja corporativo (para “Firma”) */
     .action--orange{
       background: linear-gradient(180deg,#ffb24a,#f59e0b);
       border:1px solid #f59e0b;
     }
-    /* Acento #ea6b38 para el resto */
     .action--accent{
       background: linear-gradient(180deg,#f28d63,#ea6b38);
       border:1px solid #cc5c2f;
@@ -60,7 +130,7 @@
       background:#e11d48; color:#fff; border-radius:999px; font-size:12px; line-height:20px; display:none;
     }
 
-    /* Próximos eventos (sin cambios) */
+    /* Próximos eventos (original) */
     .section-title{ margin:8px 0; font-weight:700; }
     .upcoming{
       display:flex; gap:12px; overflow-x:auto; padding-bottom:6px; scrollbar-width:thin;
@@ -75,43 +145,41 @@
     .poster .meta{ display:flex; flex-direction:column; gap:2px; text-transform:uppercase; font-weight:700; color:#b45309; font-size:12px; }
     .poster .title{ margin-top:8px; font-weight:700; line-height:1.2; min-height:2.4em; }
     .poster .line{ height:2px; background:repeating-linear-gradient(90deg,#000 0 8px, transparent 8px 12px); opacity:.25; margin:6px 0; }
+
     .muted{ color:#6b7280; font-size:.9rem; }
-    #btn-logout {
-  display: none; /* oculto hasta login */
-}
   </style>
 </head>
 <body data-page="index">
   <div class="container" id="contenedor">
-    <div class="topbar">
-  <div class="brand">
-    <img src="../imagenes/logoJOSG.png" alt="JOSG" />
-  </div>
-  <div style="display:flex; flex-direction:column; align-items:flex-end;">
-    <div id="user-name" class="muted" style="margin-bottom:4px; font-weight:600;"></div>
-    <button id="btn-logout" class="icon-btn" title="Cerrar sesión" aria-label="Cerrar sesión">⎋</button>
-  </div>
-</div>
 
-    <!-- HERO -->
-    <div class="hero">
-      <h1>¡En tu mano!</h1>
+    <!-- Topbar SIN logo -->
+    <div class="topbar">
+      <div id="user-name"></div>
+      <button id="btn-logout" class="icon-btn" title="Cerrar sesión" aria-label="Cerrar sesión">⎋</button>
     </div>
 
-    <!-- Vista no logeado -->
+    <!-- HERO -->
+    <div class="hero" aria-label="Bienvenida">
+      <div class="motifs-layer" aria-hidden="true"></div>
+      <img class="hero-logo" src="../imagenes/logoJOSG.png" alt="JOSG">
+      <h1>¡En tu mano!</h1>
+      <p>Asociación Joven Orquesta Sinfónica de Granada</p>
+    </div>
+
+        <!-- Vista no logeado -->
     <div id="desconectado" style="display:none;">
       <div class="grid-actions">
         <a class="action action--accent" href="login.html">Iniciar sesión</a>
         <a class="action action--orange" href="registro.html">Registrarse</a>
       </div>
     </div>
-
-    <!-- Vista logeado -->
+    
+    <!-- Vista logeado (como la tenías) -->
     <div id="conectado" style="display:none;">
       <div class="grid-actions">
-        <a class="action action--accent" href="firma.html">Firma</a>
+        <a class="action action--orange" href="firma.html">Firma</a>
         <a class="action action--accent" href="partituras.html">Partituras</a>
-        <a class="action action--orange" href="mensajes.html" style="position:relative;">
+        <a class="action action--accent" href="mensajes.html" style="position:relative;">
           Mensajes
           <span id="badge-msg" class="badge">0</span>
         </a>
@@ -125,31 +193,123 @@
     </div>
   </div>
 
+  <!-- JS de tu app -->
   <script src="app_alumno.js"></script>
   <script src="push-init.js"></script>
+
+  <!-- 1) Badge de mensajes (igual que tu original) -->
+  <script>
+  (function(){
+    const badge = document.getElementById('badge-msg');
+    const alumno_id = localStorage.getItem('alumno_id');
+
+    async function refreshBadge(){
+      if (!badge || !alumno_id) { if (badge) badge.style.display = 'none'; return; }
+      try {
+        const token = localStorage.getItem('token');
+        const r = await fetch(`/firmas/api/alumno/${encodeURIComponent(alumno_id)}/mensajes/unread_count`, {
+          headers: token ? { 'Authorization':'Bearer ' + token } : {}
+        });
+        if (!r.ok) throw 0;
+        const { count = 0 } = await r.json();
+        if (count > 0) { badge.textContent = String(count); badge.style.display = 'inline-block'; }
+        else { badge.style.display = 'none'; }
+      } catch { badge.style.display = 'none'; }
+    }
+
+    document.addEventListener('DOMContentLoaded', refreshBadge);
+    window.addEventListener('pageshow', refreshBadge);
+    document.addEventListener('visibilitychange', ()=>{ if (document.visibilityState==='visible') refreshBadge(); });
+  })();
+  </script>
+
+  <!-- 2) Motivos musicales: aleatorios, sin solaparse, estilo "marca de agua" -->
+  <script>
+  (function(){
+    const SYMBOLS = ['♩','♪','♫','♬'];
+    const COUNT_MIN = 7, COUNT_MAX = 10;          // número de figuras
+    const SIZE_MIN = 72, SIZE_MAX = 160;          // tamaño en px (marca de agua)
+    const ROT_MIN  = -16, ROT_MAX  = 16;          // rotación en grados
+    const PADDING  = 10;                          // separación mínima entre figuras
+    const EDGE_PAD = 6;                           // margen a los bordes del hero
+    const MAX_TRIES_PER_NOTE = 80;                // intentos por figura
+
+    function randInt(a,b){ return Math.floor(Math.random()*(b-a+1))+a; }
+    function pick(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+
+    function getRectRelative(el, relativeTo){
+      const r = el.getBoundingClientRect();
+      const base = relativeTo.getBoundingClientRect();
+      return { x: r.left - base.left, y: r.top - base.top, w: r.width, h: r.height };
+    }
+    function intersects(a,b,pad){
+      return !(
+        a.x + a.w + pad <= b.x ||
+        b.x + b.w + pad <= a.x ||
+        a.y + a.h + pad <= b.y ||
+        b.y + b.h + pad <= a.y
+      );
+    }
+
+    function placeMotifs(){
+      const hero = document.querySelector('.hero');
+      const layer = document.querySelector('.motifs-layer');
+      if (!hero || !layer) return;
+
+      layer.innerHTML = ''; // limpia previas
+      const heroRect = hero.getBoundingClientRect();
+
+      // Evitar logo, título y subtítulo
+      const avoidRects = [];
+      ['.hero-logo', 'h1', 'p'].forEach(sel=>{
+        const el = hero.querySelector(sel);
+        if (!el) return;
+        const r = getRectRelative(el, hero);
+        avoidRects.push({ x: r.x - 10, y: r.y - 10, w: r.w + 20, h: r.h + 20 });
+      });
+
+      const count = randInt(COUNT_MIN, COUNT_MAX);
+      const placed = [];
+
+      for (let i=0; i<count; i++){
+        const span = document.createElement('span');
+        span.className = 'motif';
+        span.textContent = pick(SYMBOLS);
+        span.style.opacity = '0';
+        layer.appendChild(span);
+
+        let ok = false;
+        for (let t=0; t<MAX_TRIES_PER_NOTE; t++){
+          const size = randInt(SIZE_MIN, SIZE_MAX);
+          const rot  = randInt(ROT_MIN, ROT_MAX);
+          span.style.fontSize = size + 'px';
+          span.style.transform = `rotate(${rot}deg)`;
+
+          const left = randInt(EDGE_PAD, Math.max(EDGE_PAD, heroRect.width - size - EDGE_PAD));
+          const top  = randInt(EDGE_PAD, Math.max(EDGE_PAD, heroRect.height - size - EDGE_PAD));
+          span.style.left = left + 'px';
+          span.style.top  = top  + 'px';
+
+          const r = getRectRelative(span, hero);
+
+          if (r.x < EDGE_PAD || r.y < EDGE_PAD || r.x + r.w > heroRect.width - EDGE_PAD || r.y + r.h > heroRect.height - EDGE_PAD) continue;
+          if (avoidRects.some(av => intersects(r, av, PADDING))) continue;
+          if (placed.some(pr => intersects(r, pr, PADDING))) continue;
+
+          placed.push(r);
+          span.style.opacity = ''; // usa la opacidad CSS (0.035)
+          ok = true;
+          break;
+        }
+        if (!ok) layer.removeChild(span);
+      }
+    }
+
+    window.addEventListener('load', placeMotifs);
+    window.addEventListener('pageshow', (e)=>{ if (e.persisted) setTimeout(placeMotifs, 0); });
+    let resizeTimer = null;
+    window.addEventListener('resize', ()=>{ clearTimeout(resizeTimer); resizeTimer = setTimeout(placeMotifs, 120); });
+  })();
+  </script>
 </body>
 </html>
-<script>
-(function(){
-  const badge = document.getElementById('badge-msg');
-  const alumno_id = localStorage.getItem('alumno_id');
-
-  async function refreshBadge(){
-    if (!badge || !alumno_id) { if (badge) badge.style.display = 'none'; return; }
-    try{
-      const token = localStorage.getItem('token');
-  const r = await fetch(`/firmas/api/alumno/${encodeURIComponent(alumno_id)}/mensajes/unread_count`, {
-    headers: token ? { 'Authorization':'Bearer ' + token } : {}
-  });
-      if (!r.ok) throw 0;
-      const { count=0 } = await r.json();
-      if (count > 0) { badge.textContent = String(count); badge.style.display = 'inline-block'; }
-      else { badge.style.display = 'none'; }
-    }catch{ /* opcional: ocultar chip en error */ badge.style.display = 'none'; }
-  }
-
-  document.addEventListener('DOMContentLoaded', refreshBadge);
-  window.addEventListener('pageshow', refreshBadge);                  // al volver desde mensajes
-  document.addEventListener('visibilitychange', ()=>{ if (document.visibilityState==='visible') refreshBadge(); });
-})();
-</script>

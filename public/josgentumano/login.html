@@ -3,44 +3,225 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>¡Josg en tu mano! - Login</title>
-  <link rel="stylesheet" href="../styles/estilos_app.css" /></head>
+  <title>¡JOSG en tu mano! · Iniciar sesión</title>
+  <link rel="stylesheet" href="../styles/estilos_app.css" />
+  <style>
+    :root{
+      --ink:#0f172a; --muted:#6b7280; --brd:#e5e7eb;
+    }
+    body{ color:var(--ink); background:#fff; }
+    .container{ max-width:520px; margin:0 auto; padding:16px; }
+
+    /* ========= HERO con pentagrama + figuras “marca de agua” ========= */
+    .hero{
+      position:relative; margin:10px 0 16px; padding:28px 16px 24px;
+      border:1px solid #f3e7da; border-radius:22px; text-align:center; overflow:hidden;
+      background-image:
+        radial-gradient(1400px 380px at -10% -10%, rgba(255,229,209,.85) 0%, rgba(255,229,209,0) 60%),
+        radial-gradient(1200px 360px at 110% 0%, rgba(255,241,201,.85) 0%, rgba(255,241,201,0) 55%),
+        linear-gradient(to bottom, rgba(0,0,0,.055) 0, rgba(0,0,0,.055) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(0,0,0,.055) 0, rgba(0,0,0,.055) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(0,0,0,.055) 0, rgba(0,0,0,.055) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(0,0,0,.055) 0, rgba(0,0,0,.055) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(0,0,0,.055) 0, rgba(0,0,0,.055) 1px, transparent 1px),
+        linear-gradient(180deg,#ffffff,#fff9f2 72%);
+      background-size: auto, auto, 100% 60px, 100% 60px, 100% 60px, 100% 60px, 100% 60px, auto;
+      background-position: center, center, 0 0, 0 8px, 0 16px, 0 24px, 0 32px, center;
+      background-repeat: no-repeat, no-repeat, repeat-y, repeat-y, repeat-y, repeat-y, repeat-y, no-repeat;
+      box-shadow:0 12px 36px rgba(0,0,0,.08);
+    }
+    .hero::after{ content:none !important; }
+    .hero::before{
+      content:""; position:absolute; right:-28px; bottom:-28px; width:300px; height:180px; opacity:.055;
+      background:url("../imagenes/logoJOSG.png") no-repeat right bottom / contain;
+      pointer-events:none;
+    }
+    .motifs-layer{ position:absolute; inset:0; z-index:1; pointer-events:none; user-select:none; }
+    .motif{
+      position:absolute; line-height:1; color:#000; opacity:.035; filter: blur(.15px);
+      mix-blend-mode: multiply; transform-origin:center; will-change: transform,left,top;
+    }
+    .hero .hero-logo, .hero h1, .hero p{ position:relative; z-index:2; }
+    .hero .hero-logo{ display:block; margin:0 auto 10px; max-height:112px; width:auto; filter: drop-shadow(0 4px 14px rgba(0,0,0,.10)); }
+    .hero h1{
+      margin:0; font-weight:900; letter-spacing:.2px; font-size:clamp(28px, 6.2vw, 44px); line-height:1.02;
+      background: linear-gradient(180deg,#111,#744b00); -webkit-background-clip:text; background-clip:text; color:transparent;
+    }
+    .hero p{ margin:6px 0 0; color:var(--muted); }
+
+    /* Formulario */
+    .panel{ background:#fff; border:1px solid var(--brd); border-radius:16px; padding:14px; box-shadow:0 4px 16px rgba(0,0,0,.06); }
+    .panel h2{ margin:.2rem 0 .4rem; }
+    .subtitulo{ color:var(--muted); font-weight:600; margin-top:0; }
+    .field{ display:flex; flex-direction:column; gap:6px; margin:.5rem 0; }
+    .field input{
+      width:100%; padding:.75rem .9rem; border:1px solid #e5e7eb; border-radius:12px; outline:0;
+      font-size:1rem; transition:border-color .12s ease, box-shadow .12s ease;
+    }
+    .field input:focus{ border-color:#f59e0b; box-shadow:0 0 0 4px rgba(245,158,11,.15); }
+
+    /* Botones (ambos naranjas para igualar con registro) */
+    .actions{ display:flex; gap:10px; flex-wrap:wrap; margin-top:.6rem; }
+    .btn{
+      padding:.7rem 1rem; border-radius:12px; border:1px solid transparent; font-weight:800; cursor:pointer;
+      box-shadow:0 6px 18px rgba(0,0,0,.12); transition: transform .12s ease, box-shadow .12s ease, opacity .12s ease;
+    }
+    .btn:active{ transform:translateY(1px); }
+    .btn-primary,
+    .btn-secondary{ background:linear-gradient(180deg,#ffb24a,#f59e0b); border-color:#f59e0b; color:#fff; }
+    .btn:hover{ filter:brightness(1.05); }
+
+    /* Avisos */
+    .notice{ display:none; margin-top:.75rem; padding:.6rem .8rem; border-radius:.6rem; font-weight:700; }
+    .notice.ok{ display:block; background:#e9f7ef; color:#186a3b; border:1px solid #c8e6d1; }
+    .notice.err{ display:block; background:#fdecea; color:#b71c1c; border:1px solid #f5c6cb; }
+    button[disabled]{ opacity:.7; cursor:not-allowed; }
+  </style>
+</head>
 <body>
   <div class="container">
-    <img src="/../imagenes/logoJOSG.png" alt="Logo JOSG">
-    <h2>¡Josg en tu mano! - Iniciar Sesión</h2>
-    <input type="email" id="email" placeholder="Email" required autocomplete="username" />
-    <input type="password" id="password" placeholder="Contraseña" required autocomplete="current-password" />
-    <button onclick="login()">Entrar</button>
-    <p id="mensaje"></p>
-    <button onclick="location.href='index.html'">← Volver</button>
+    <!-- sin topbar -->
+
+    <div class="hero" aria-label="Bienvenida">
+      <div class="motifs-layer" aria-hidden="true"></div>
+      <img class="hero-logo" src="../imagenes/logoJOSG.png" alt="JOSG">
+      <h1>¡En tu mano!</h1>
+      <p>Inicia sesión para continuar.</p>
+    </div>
+
+    <div class="panel" role="region" aria-labelledby="tit-login">
+      <h2 id="tit-login">Iniciar sesión</h2>
+      <p class="subtitulo">Introduce tu email y contraseña.</p>
+
+      <div class="field">
+        <input type="email" id="email" placeholder="Email" required autocomplete="username" />
+      </div>
+      <div class="field">
+        <input type="password" id="password" placeholder="Contraseña" required autocomplete="current-password" />
+      </div>
+
+      <div class="actions">
+        <button id="btn-login" class="btn btn-primary">Entrar</button>
+        <button class="btn btn-secondary" onclick="location.href='registro.html'">Crear cuenta</button>
+      </div>
+
+      <p id="mensaje" class="notice" role="status" aria-live="polite"></p>
+    </div>
   </div>
 
   <script>
     async function login() {
       const email = document.getElementById('email').value.trim();
       const password = document.getElementById('password').value;
+      const btn = document.getElementById('btn-login');
+      const msg = document.getElementById('mensaje');
 
-      const res = await fetch('/firmas/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
+      const show = (t, ok)=>{ msg.textContent = t||''; msg.className = 'notice ' + (ok ? 'ok':'err'); };
+
+      if (!email || !password){ show('Completa email y contraseña.', false); return; }
+
+      btn.disabled = true; show('', true);
+      try{
+        const res = await fetch('/firmas/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+        let data = {};
+        try{ data = await res.json(); }catch(_){}
+
+        if (res.ok && data.success){
+          localStorage.setItem('token', data.token);
+          localStorage.setItem('alumno_id', data.alumno_id);
+          localStorage.setItem('alumno_nombre', data.nombre || '');
+          window.location.href = 'index.html';
+        }else{
+          show(data.error || 'Credenciales incorrectas', false);
+          document.getElementById('password').value = '';
+          document.getElementById('password').focus();
+        }
+      }catch(e){
+        show('No se pudo conectar con el servidor. Inténtalo de nuevo.', false);
+      }finally{
+        btn.disabled = false;
+      }
+    }
+
+    document.getElementById('btn-login').addEventListener('click', login);
+    document.addEventListener('keydown', (e)=>{ if (e.key === 'Enter') login(); });
+  </script>
+
+  <!-- Motivos musicales aleatorios sin solaparse -->
+  <script>
+  (function(){
+    const SYMBOLS = ['♩','♪','♫','♬'];
+    const COUNT_MIN = 7, COUNT_MAX = 10;
+    const SIZE_MIN = 72, SIZE_MAX = 160;
+    const ROT_MIN  = -16, ROT_MAX  = 16;
+    const PADDING  = 10;
+    const EDGE_PAD = 6;
+    const MAX_TRIES_PER_NOTE = 80;
+
+    const randInt = (a,b)=> Math.floor(Math.random()*(b-a+1))+a;
+    const pick = (arr)=> arr[Math.floor(Math.random()*arr.length)];
+
+    const getRectRelative = (el, parent)=>{
+      const r = el.getBoundingClientRect(), p = parent.getBoundingClientRect();
+      return { x:r.left-p.left, y:r.top-p.top, w:r.width, h:r.height };
+    };
+    const intersects = (a,b,p)=> !(a.x+a.w+p<=b.x || b.x+b.w+p<=a.x || a.y+a.h+p<=b.y || b.y+b.h+p<=a.y);
+
+    function place(){
+      const hero = document.querySelector('.hero');
+      const layer = document.querySelector('.motifs-layer');
+      if (!hero || !layer) return;
+      layer.innerHTML = '';
+      const heroRect = hero.getBoundingClientRect();
+
+      const avoid = [];
+      ['.hero-logo','h1','p'].forEach(sel=>{
+        const el = hero.querySelector(sel); if (!el) return;
+        const r = getRectRelative(el, hero);
+        avoid.push({ x:r.x-10, y:r.y-10, w:r.w+20, h:r.h+20 });
       });
 
-      const data = await res.json();
+      const count = randInt(COUNT_MIN, COUNT_MAX);
+      const placed = [];
 
-      if (data.success) {
-        localStorage.setItem('token', data.token);           
-        localStorage.setItem('alumno_id', data.alumno_id);
-        localStorage.setItem('alumno_nombre', data.nombre || '');
-        window.location.href = 'index.html';
-      } else {
-   document.getElementById('mensaje').innerText = data.error || 'Credenciales incorrectas';
-   document.getElementById('password').value = '';
-   document.getElementById('password').focus();
-   }
+      for (let i=0;i<count;i++){
+        const s = document.createElement('span');
+        s.className = 'motif';
+        s.textContent = pick(SYMBOLS);
+        s.style.opacity = '0';
+        layer.appendChild(s);
+
+        let ok=false;
+        for (let t=0;t<MAX_TRIES_PER_NOTE;t++){
+          const size = randInt(SIZE_MIN, SIZE_MAX);
+          const rot = randInt(ROT_MIN, ROT_MAX);
+          s.style.fontSize = size+'px';
+          s.style.transform = `rotate(${rot}deg)`;
+          const left = randInt(EDGE_PAD, Math.max(EDGE_PAD, heroRect.width - size - EDGE_PAD));
+          const top  = randInt(EDGE_PAD, Math.max(EDGE_PAD, heroRect.height - size - EDGE_PAD));
+          s.style.left = left+'px'; s.style.top = top+'px';
+
+          const r = getRectRelative(s, hero);
+          if (r.x<EDGE_PAD || r.y<EDGE_PAD || r.x+r.w>heroRect.width-EDGE_PAD || r.y+r.h>heroRect.height-EDGE_PAD) continue;
+          if (avoid.some(av=>intersects(r,av,PADDING))) continue;
+          if (placed.some(pr=>intersects(r,pr,PADDING))) continue;
+
+          placed.push(r); s.style.opacity = ''; ok = true; break;
+        }
+        if (!ok) layer.removeChild(s);
+      }
     }
+
+    window.addEventListener('load', place);
+    window.addEventListener('pageshow', (e)=>{ if (e.persisted) setTimeout(place,0); });
+    let tm=null; window.addEventListener('resize', ()=>{ clearTimeout(tm); tm=setTimeout(place,120); });
+  })();
   </script>
 </body>
 </html>
+
 
