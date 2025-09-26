@@ -3,30 +3,64 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Josg en tu mano - Partituras</title>
+  <title>¡JOSG en tu mano! · Partituras</title>
   <link rel="stylesheet" href="../styles/estilos_app.css" />
   <style>
     :root{
-      --ink:#0f172a;
-      --muted:#6b7280;
-      --accentA:#ea6b38;   /* corporativo 1 */
-      --accentB:#f59e0b;   /* corporativo 2 */
-      --chip-bg:#ffffff;
-      --chip-brd:#ffffff;
+      --ink:#0f172a; --muted:#6b7280; --brd:#e5e7eb;
+      --accentA:#ea6b38; --accentB:#f59e0b;
+      --chip-bg:#ffffff; --chip-brd:#ffffff;
     }
-
     body{ color:var(--ink); background:#fff; }
+    .container{ max-width:920px; margin:0 auto; padding:16px; }
 
-    /* Topbar con logo */
-    .topbar{ display:flex; align-items:center; justify-content:space-between; margin:6px 0 2px; }
-    .topbar img{ height:46px; }
-    .topbar .spacer{ width:36px; height:36px; }
+    /* === Topbar mínima: solo el nombre, alineado a la derecha === */
+.topbar{
+  display:flex; justify-content:flex-end; align-items:center; min-height:44px;
+}
+#user-name{ color:#6b7280; font-weight:600; }
 
+/* === HERO con pentagrama horizontal + figuras "marca de agua" === */
+.hero{
+  position:relative; margin:10px 0 14px; padding:28px 16px 24px;
+  border:1px solid #f3e7da; border-radius:22px; text-align:center; overflow:hidden;
+  background-image:
+    radial-gradient(1400px 380px at -10% -10%, rgba(255,229,209,.85) 0%, rgba(255,229,209,0) 60%),
+    radial-gradient(1200px 360px at 110% 0%, rgba(255,241,201,.85) 0%, rgba(255,241,201,0) 55%),
+    /* Pentagrama: 5 líneas finas repetidas en bloques verticales */
+    linear-gradient(to bottom, rgba(0,0,0,.055) 0, rgba(0,0,0,.055) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(0,0,0,.055) 0, rgba(0,0,0,.055) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(0,0,0,.055) 0, rgba(0,0,0,.055) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(0,0,0,.055) 0, rgba(0,0,0,.055) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(0,0,0,.055) 0, rgba(0,0,0,.055) 1px, transparent 1px),
+    linear-gradient(180deg,#ffffff,#fff9f2 72%);
+  background-size: auto, auto, 100% 60px, 100% 60px, 100% 60px, 100% 60px, 100% 60px, auto;
+  background-position: center, center, 0 0, 0 8px, 0 16px, 0 24px, 0 32px, center;
+  background-repeat: no-repeat, no-repeat, repeat-y, repeat-y, repeat-y, repeat-y, repeat-y, no-repeat;
+  box-shadow:0 12px 36px rgba(0,0,0,.08);
+}
+.hero::after{ content:none !important; } /* sin diagonales */
+.hero::before{
+  content:""; position:absolute; right:-28px; bottom:-28px; width:300px; height:180px; opacity:.055;
+  background:url("../imagenes/logoJOSG.png") no-repeat right bottom / contain;
+  pointer-events:none;
+}
+.motifs-layer{ position:absolute; inset:0; z-index:1; pointer-events:none; user-select:none; }
+.motif{
+  position:absolute; line-height:1; color:#000; opacity:.035; filter: blur(.15px);
+  mix-blend-mode:multiply; transform-origin:center; will-change:transform,left,top;
+}
+.hero .hero-logo, .hero h1, .hero p{ position:relative; z-index:2; }
+.hero .hero-logo{ display:block; margin:0 auto 10px; max-height:112px; width:auto; filter: drop-shadow(0 4px 14px rgba(0,0,0,.10)); }
+.hero h1{
+  margin:0; font-weight:900; letter-spacing:.2px; font-size:clamp(28px, 6.2vw, 44px); line-height:1.02;
+  background: linear-gradient(180deg,#111,#744b00); -webkit-background-clip:text; background-clip:text; color:transparent;
+}
+.hero p{ margin:6px 0 0; color:#6b7280; }
+
+    /* Encabezado de sección */
     .head{ text-align:center; margin:8px 0 6px; }
-    .head h2{
-      margin:0; font-weight:600; letter-spacing:.3px;
-      font-size: clamp(22px, 5.2vw, 32px); color:#0f172a;
-    }
+    .head h2{ margin:0; font-weight:700; letter-spacing:.2px; font-size: clamp(20px, 4.6vw, 30px); color:#0f172a; }
 
     /* Buscador centrado */
     .search{
@@ -35,13 +69,11 @@
     }
     .input{
       flex:1 1 260px; max-width:520px;
-      padding:.6rem .75rem; border:1px solid #e5e7eb; border-radius:12px;
-      outline:0; background:#fff; color:#111827;
+      padding:.75rem .9rem; border:1px solid #e5e7eb; border-radius:12px;
+      outline:0; background:#fff; color:#111827; font-size:1rem;
+      transition:border-color .12s ease, box-shadow .12s ease;
     }
-    .search button{
-      padding:.6rem .95rem; border:1px solid #d1d5db; border-radius:12px; background:#fff; color:#111;
-      font-weight:700; letter-spacing:.02em;
-    }
+    .input:focus{ border-color:#f59e0b; box-shadow:0 0 0 4px rgba(245,158,11,.15); }
 
     /* Carrusel horizontal */
     .row-scroll{
@@ -59,122 +91,81 @@
       padding:14px;
       display:flex; flex-direction:column; gap:8px;
       min-height: 148px;
+      position:relative; overflow:hidden;   /* para el motivo */
     }
     .card-a{ background: var(--accentA); }
     .card-b{ background: var(--accentB); }
 
-    /* 1) Autor (arriba) */
+    /* 1) Autor */
     .author{
-      margin:0;
-      font-weight:800;
-      letter-spacing:.2px;
-      font-size:1.1rem;
-      line-height:1.15;
+      margin:0; font-weight:800; letter-spacing:.2px; font-size:1.1rem; line-height:1.15;
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
       text-shadow: 0 1px 0 rgba(0,0,0,.06);
     }
-
-    /* 2) Título (debajo) */
+    /* 2) Título */
     .title{
-      margin:0;
-      font-weight:600;
-      font-size:1rem;
-      line-height:1.25;
-      opacity:.98;
-      display:-webkit-box; -webkit-box-orient:vertical; overflow:hidden;
+      margin:0; font-weight:700; line-height:1.2; font-size:1.05rem;
     }
-    /* Ajuste de tamaños (override) */
-.author{
-  font-size: 1.28rem;     /* antes ~1.10rem */
-  line-height: 1.18;
-}
-.title{
-  font-size: 1.12rem;     /* antes ~1.00rem */
-  line-height: 1.26;
-}
-
-/* Un pelín más grande en pantallas a partir de 480px */
-@media (min-width: 480px){
-  .author{ font-size: 1.34rem; }
-  .title { font-size: 1.18rem; }
-}
-
-    /* 3) Duración (debajo del título) */
+    /* 3) Duración */
     .dur{
-      margin:0;
-      color:#fff; opacity:.95; font-weight:700; font-size:.9rem;
-      white-space: nowrap;
+      margin:.1rem 0 0; font-weight:700; font-size:.92rem;
+      background:rgba(255,255,255,.18); display:inline-block; padding:.2rem .5rem; border-radius:.5rem;
     }
 
-    /* 4) Chips centrados debajo */
-    .chips{
-      display:flex; justify-content:center; gap:.5rem; flex-wrap:wrap; margin-top:2px;
-    }
+    /* Chips de enlaces */
+    .chips{ display:flex; gap:.5rem; flex-wrap:wrap; margin-top:2px; }
     .chip-link{
-      display:inline-block;
-      text-decoration:none;
-      font-weight:700;
-      font-size:.92rem;
-      padding:.48rem .8rem;
-      border-radius:999px;
-      background:var(--chip-bg);
-      color:#111;
-      border:1px solid var(--chip-brd);
+      display:inline-block; text-decoration:none; font-weight:700; font-size:.92rem;
+      padding:.48rem .8rem; border-radius:999px; background:var(--chip-bg); color:#111; border:1px solid var(--chip-brd);
       transition: transform .12s ease, box-shadow .12s ease, opacity .12s ease;
-      white-space: nowrap;
-      max-width:100%; overflow-wrap:anywhere; word-break:break-word;
+      white-space: nowrap; max-width:100%; overflow-wrap:anywhere; word-break:break-word;
     }
     .card-a .chip-link{ color:#ad4319; } /* contraste sobre #ea6b38 */
     .card-b .chip-link{ color:#7a4d00; } /* contraste sobre #f59e0b */
     .chip-link:hover{ transform: translateY(-1px); box-shadow:0 6px 18px rgba(0,0,0,.18); }
     .chip-link:active{ opacity:.9; transform: translateY(0); }
 
+    /* Motivo dentro de la tarjeta (nota grande + opcional pentagrama sutil) */
+    .card > * { position:relative; z-index:1; }
+    .card.m-staff::before{
+      content:""; position:absolute; inset:0; pointer-events:none;
+      background: repeating-linear-gradient(180deg, rgba(255,255,255,.22) 0 1px, transparent 1px 8px);
+      opacity:.18; z-index:0;
+    }
+    .card .motif{
+      position:absolute; right:-8px; bottom:-12px; pointer-events:none;
+      font-size: var(--sz, 84px); line-height:1; color:#fff;
+      opacity:.18; transform: rotate(var(--rot, -10deg)); filter: blur(.2px); z-index:0;
+    }
+    .card-b .motif{ opacity:.2; }
+
+    /* Botón volver */
     .back{ margin: 12px 4px 2px; text-align:center; }
-    /* --- Motivos musicales aleatorios --- */
-.card{ position:relative; overflow:hidden; }
-.card > * { position:relative; z-index:1; }     /* el contenido por encima del motivo */
-
-/* Pentagrama muy sutil (variante de fondo) */
-.card.m-staff::before{
-  content:""; position:absolute; inset:0; pointer-events:none;
-  background:
-    repeating-linear-gradient(
-      180deg,
-      rgba(255,255,255,.22) 0 1px,
-      transparent 1px 8px
-    );
-  opacity:.18;
-  z-index:0;
-}
-
-/* Nota grande en esquina (variante de icono) */
-.card .motif{
-  position:absolute; right:-8px; bottom:-12px; pointer-events:none;
-  font-size: var(--sz, 84px); line-height:1; color:#fff;
-  opacity:.18; transform: rotate(var(--rot, -10deg));
-  filter: blur(.2px);
-  z-index:0;
-}
-/* Ajustes finos por color de tarjeta */
-.card-b .motif{ opacity:.2; }
- .btn{
-  display:inline-block; padding:.6rem 1.4rem; border-radius:12px;
-  font-weight:600; color:#fff; border:none; cursor:pointer;
-  box-shadow:0 4px 12px rgba(0,0,0,.15);
-  transition:transform .12s ease, box-shadow .12s ease;
-  text-decoration:none; text-align:center; min-width:110px;
-}
-.btn:hover{ transform:translateY(-1px); box-shadow:0 6px 16px rgba(0,0,0,.2); }
-.btn:active{ transform:translateY(0); box-shadow:0 2px 8px rgba(0,0,0,.1); }
-
-  .btn-accent{
-  background: linear-gradient(180deg,#f28d63,#ea6b38);
-  border:1px solid #cc5c2f;
-}
+    .btn{
+      display:inline-block; padding:.6rem 1.4rem; border-radius:12px; font-weight:600; color:#fff; border:none; cursor:pointer;
+      box-shadow:0 4px 12px rgba(0,0,0,.15); transition:transform .12s ease, box-shadow .12s ease; text-decoration:none; text-align:center; min-width:110px;
+    }
+    .btn:hover{ transform:translateY(-1px); box-shadow:0 6px 16px rgba(0,0,0,.2); }
+    .btn:active{ transform:translateY(0); box-shadow:0 2px 8px rgba(0,0,0,.1); }
+    .btn-accent{ background: linear-gradient(180deg,#f28d63,#ea6b38); border:1px solid #cc5c2f; }
   </style>
 </head>
 <body>
   <div class="container">
+
+   <!-- Topbar SIN logo: solo el nombre -->
+<div class="topbar">
+  <div id="user-name"></div>
+</div>
+
+<!-- HERO musical -->
+<div class="hero" aria-label="Bienvenida">
+  <div class="motifs-layer" aria-hidden="true"></div>
+  <img class="hero-logo" src="../imagenes/logoJOSG.png" alt="JOSG">
+  <h1>¡En tu mano!</h1>
+  <p>Tus partituras organizadas y a un toque.</p>
+</div>
+
     <div class="head">
       <h2>Partituras</h2>
     </div>
@@ -189,111 +180,201 @@
       <button class="btn btn-accent" onclick="location.href='index.html'">&larr; Inicio</button>
     </div>
   </div>
+
   <script>
-    const API_BASE = '/firmas';
-  
-    function ensureProto(u){
-      if (!u) return '';
-      const s = String(u).trim();
-      if (!s) return '';
-      if (/^[a-zA-Z][\w.+-]*:/.test(s) || s.startsWith('//') || s.startsWith('/')) return s;
-      return 'https://' + s;
-    }
-    const safeUrl = u => { try { return ensureProto(u); } catch { return ''; } };
-  
-    const alumno_id = localStorage.getItem('alumno_id');
-    const token     = localStorage.getItem('token');
-    if (!alumno_id || !token) { location.href = 'index.html'; }
-  
-    const $list = document.getElementById('list');
-    const $q    = document.getElementById('q');
-  
-    let ALL = [];
-  
-    // --- helpers “motivo” (decoración) ---
-    const randomSymbol = () => ['♩','♪','♫','♬'][Math.floor(Math.random()*4)];
-    const randomRot  = () => (Math.floor(Math.random()*25) - 12) + 'deg';
-    const randomSize = () => (78 + Math.floor(Math.random()*19)) + 'px';
-    const randomMotifClass = () => (Math.random() < 0.55 ? 'm-staff' : '');
-  
-    function cardHTML(p, idx){
-      const autor  = (p.autor || '—').trim();
-      const titulo = (p.titulo || 'Sin título').trim();
-      const dur    = (p.duracion || '').toString().trim();
-  
-      // Enlace a partitura (PDF) -> pasa por tu backend (JWT en query)
-      const base = `${API_BASE}/api/alumno/${encodeURIComponent(alumno_id)}/partituras/${encodeURIComponent(p.id)}/archivo`;
-      const hasPart = !!(p.enlace_partitura && String(p.enlace_partitura).trim().length);
-      const linkPart = hasPart
-        ? `<a class="chip-link" href="${base}?tipo=partitura&jwt=${encodeURIComponent(token)}" target="_blank" rel="noopener noreferrer">Partitura</a>`
-        : '';
-  
-      // Enlace externo único (audio/vídeo) -> abrir DIRECTO (YouTube, Vimeo, etc.)
-      const mediaRaw = p.enlace_video || p.enlace_audio || p.enlace_media || p.enlace || p.url_media || p.url || '';
-      const hasMedia = !!String(mediaRaw).trim().length;
-      const linkMedia = hasMedia
-        ? `<a class="chip-link" href="${safeUrl(mediaRaw)}" target="_blank" rel="noopener noreferrer">Audio/Vídeo</a>`
-        : '';
-  
-      const colorCls  = (idx % 2 === 0) ? 'card-a' : 'card-b';
-      const motifCls  = randomMotifClass();
-      const motifSym  = randomSymbol();
-      const motifHTML = `<span class="motif" style="--rot:${randomRot()}; --sz:${randomSize()};">${motifSym}</span>`;
-  
-      return `
-        <article class="card ${colorCls} ${motifCls}">
-          <h3 class="author">${autor}</h3>
-          <p class="title">${titulo}</p>
-          ${dur ? `<p class="dur">Duración: ${dur}</p>` : ''}
-          <div class="chips">${linkPart}${linkMedia}</div>
-          ${motifHTML}
-        </article>
-      `;
-    }
-  
-    function render(list){
-      if (!Array.isArray(list) || list.length === 0){
-        $list.innerHTML = `<p style="margin:6px; color:#6b7280;">No hay partituras para tus grupos.</p>`;
-        return;
-      }
-      $list.innerHTML = list.map((p,i) => cardHTML(p,i)).join('');
-    }
-  
-    function filtrar(){
-      const q = ($q.value || '').toLowerCase();
-      const out = ALL.filter(p => {
-        const txt = `${p.titulo||''} ${p.autor||''}`.toLowerCase();
-        return txt.includes(q);
-      });
-      render(out);
-    }
-  
-    // --- debounce y binding ---
-    function debounce(fn, wait = 160){
-      let t; return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), wait); };
-    }
-    $q.addEventListener('input', debounce(filtrar, 160));
-  
-    async function cargar(){
-      try{
-        const r = await fetch(`${API_BASE}/api/alumno/${encodeURIComponent(alumno_id)}/partituras`, {
-          cache:'no-store',
-          headers: { 'Authorization': 'Bearer ' + token }
-        });
-        const j = await r.json();
-        if (!r.ok || !Array.isArray(j)) throw new Error('Respuesta no válida');
-        ALL = j;
-        render(ALL);
-        if ($q.value) filtrar();
-      }catch(e){
-        console.error('Error cargando partituras:', e);
-        $list.innerHTML = `<p style="margin:6px; color:#6b7280;">No se pudieron cargar las partituras.</p>`;
-      }
-    }
-  
-    cargar();
+    // Muestra el nombre del alumno en la topbar
+    (function(){
+      const slot = document.getElementById('user-name');
+      const nombre = localStorage.getItem('alumno_nombre') || '';
+      if (slot) slot.textContent = nombre;
+    })();
   </script>
-  
+
+<script>
+  const API_BASE = '/firmas';
+
+  function ensureProto(u){
+    if (!u) return '';
+    const s = String(u).trim();
+    if (!s) return '';
+    // CORREGIDO: \w (no \\w)
+    if (/^[a-zA-Z][\w.+-]*:/.test(s) || s.startsWith('//') || s.startsWith('/')) return s;
+    return 'https://' + s;
+  }
+  const safeUrl = u => { try { return ensureProto(u); } catch { return ''; } };
+
+  const alumno_id = localStorage.getItem('alumno_id');
+  const token     = localStorage.getItem('token');
+  if (!alumno_id || !token) { location.href = 'index.html'; }
+
+  const $list = document.getElementById('list');
+  const $q    = document.getElementById('q');
+
+  let ALL = [];
+
+  // --- helpers “motivo” (decoración tarjeta) ---
+  const randomSymbol = () => ['♩','♪','♫','♬'][Math.floor(Math.random()*4)];
+  const randomRot  = () => (Math.floor(Math.random()*25) - 12) + 'deg';
+  const randomSize = () => (78 + Math.floor(Math.random()*19)) + 'px';
+  const randomMotifClass = () => (Math.random() < 0.55 ? 'm-staff' : '');
+
+  function cardHTML(p, idx){
+    const autor  = (p.autor || '—').trim();
+    const titulo = (p.titulo || 'Sin título').trim();
+    const dur    = (p.duracion || '').toString().trim();
+
+    // Enlace a partitura (PDF) vía backend con JWT en query
+    const base = `${API_BASE}/api/alumno/${encodeURIComponent(alumno_id)}/partituras/${encodeURIComponent(p.id)}/archivo`;
+    const hasPart = !!(p.enlace_partitura && String(p.enlace_partitura).trim().length);
+    const linkPart = hasPart
+      ? `<a class="chip-link" href="${base}?tipo=partitura&jwt=${encodeURIComponent(token)}" target="_blank" rel="noopener noreferrer">Partitura</a>`
+      : '';
+
+    // Enlace externo único (audio/vídeo)
+    const mediaRaw = p.enlace_video || p.enlace_audio || p.enlace_media || p.enlace || p.url_media || p.url || '';
+    const hasMedia = !!String(mediaRaw).trim().length;
+    const linkMedia = hasMedia
+      ? `<a class="chip-link" href="${safeUrl(mediaRaw)}" target="_blank" rel="noopener noreferrer">Audio/Vídeo</a>`
+      : '';
+
+    const colorCls  = (idx % 2 === 0) ? 'card-a' : 'card-b';
+    const motifCls  = randomMotifClass();
+    const motifSym  = randomSymbol();
+    const motifHTML = `<span class="motif" style="--rot:${randomRot()}; --sz:${randomSize()}">${motifSym}</span>`;
+
+    return `
+      <article class="card ${colorCls} ${motifCls}">
+        <h3 class="author">${autor}</h3>
+        <p class="title">${titulo}</p>
+        ${dur ? `<p class="dur">Duración: ${dur}</p>` : ''}
+        <div class="chips">${linkPart}${linkMedia}</div>
+        ${motifHTML}
+      </article>
+    `;
+  }
+
+  function render(list){
+    if (!Array.isArray(list) || list.length === 0){
+      $list.innerHTML = `<p style="margin:6px; color:#6b7280;">No hay partituras para tus grupos.</p>`;
+      return;
+    }
+    $list.innerHTML = list.map((p,i) => cardHTML(p,i)).join('');
+  }
+
+  function filtrar(){
+    const q = ($q.value || '').toLowerCase();
+    const out = ALL.filter(p => {
+      const txt = `${p.titulo||''} ${p.autor||''}`.toLowerCase();
+      return txt.includes(q);
+    });
+    render(out);
+  }
+
+  // --- debounce correcto ---
+  function debounce(fn, wait = 160){
+    let t; return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), wait); };
+  }
+  $q.addEventListener('input', debounce(filtrar, 160));
+
+  async function cargar(){
+    try{
+      const r = await fetch(`${API_BASE}/api/alumno/${encodeURIComponent(alumno_id)}/partituras`, {
+        cache:'no-store',
+        headers: { 'Authorization': 'Bearer ' + token }
+      });
+      const j = await r.json();
+      if (!r.ok || !Array.isArray(j)) throw new Error('Respuesta no válida');
+      ALL = j;
+      render(ALL);
+      if ($q.value) filtrar();
+    }catch(e){
+      console.error('Error cargando partituras:', e);
+      $list.innerHTML = `<p style="margin:6px; color:#6b7280;">No se pudieron cargar las partituras.</p>`;
+    }
+  }
+
+  cargar();
+</script>
+<script>
+  // Muestra el nombre del alumno en la topbar (no interfiere con tu app)
+  (function(){
+    const slot = document.getElementById('user-name');
+    const nombre = localStorage.getItem('alumno_nombre') || '';
+    if (slot) slot.textContent = nombre;
+  })();
+</script>
+
+<script>
+  // Motivos musicales del HERO: aleatorios, sin solaparse (marca de agua)
+  (function(){
+    const SYMBOLS = ['♩','♪','♫','♬'];
+    const COUNT_MIN = 7, COUNT_MAX = 10;
+    const SIZE_MIN = 72, SIZE_MAX = 160;
+    const ROT_MIN  = -16, ROT_MAX  = 16;
+    const PADDING  = 10;
+    const EDGE_PAD = 6;
+    const MAX_TRIES_PER_NOTE = 80;
+
+    const randInt = (a,b)=> Math.floor(Math.random()*(b-a+1))+a;
+    const pick = (arr)=> arr[Math.floor(Math.random()*arr.length)];
+
+    const getRectRelative = (el, parent)=>{
+      const r = el.getBoundingClientRect(), p = parent.getBoundingClientRect();
+      return { x:r.left-p.left, y:r.top-p.top, w:r.width, h:r.height };
+    };
+    const intersects = (a,b,p)=> !(a.x+a.w+p<=b.x || b.x+b.w+p<=a.x || a.y+a.h+p<=b.y || b.y+b.h+p<=a.y);
+
+    function place(){
+      const hero = document.querySelector('.hero');
+      const layer = document.querySelector('.motifs-layer');
+      if (!hero || !layer) return;
+      layer.innerHTML = '';
+      const heroRect = hero.getBoundingClientRect();
+
+      // evita logo, título y subtítulo
+      const avoid = [];
+      ['.hero-logo','h1','p'].forEach(sel=>{
+        const el = hero.querySelector(sel); if (!el) return;
+        const r = getRectRelative(el, hero);
+        avoid.push({ x:r.x-10, y:r.y-10, w:r.w+20, h:r.h+20 });
+      });
+
+      const count = randInt(COUNT_MIN, COUNT_MAX);
+      const placed = [];
+
+      for (let i=0;i<count;i++){
+        const s = document.createElement('span');
+        s.className = 'motif';
+        s.textContent = pick(SYMBOLS);
+        s.style.opacity = '0';
+        layer.appendChild(s);
+
+        let ok=false;
+        for (let t=0;t<MAX_TRIES_PER_NOTE;t++){
+          const size = randInt(SIZE_MIN, SIZE_MAX);
+          const rot = randInt(ROT_MIN, ROT_MAX);
+          s.style.fontSize = size+'px';
+          s.style.transform = `rotate(${rot}deg)`;
+          const left = randInt(EDGE_PAD, Math.max(EDGE_PAD, heroRect.width - size - EDGE_PAD));
+          const top  = randInt(EDGE_PAD, Math.max(EDGE_PAD, heroRect.height - size - EDGE_PAD));
+          s.style.left = left+'px'; s.style.top = top+'px';
+
+          const r = getRectRelative(s, hero);
+          if (r.x<EDGE_PAD || r.y<EDGE_PAD || r.x+r.w>heroRect.width-EDGE_PAD || r.y+r.h>heroRect.height-EDGE_PAD) continue;
+          if (avoid.some(av=>intersects(r,av,PADDING))) continue;
+          if (placed.some(pr=>intersects(r,pr,PADDING))) continue;
+
+          placed.push(r); s.style.opacity = ''; ok = true; break;
+        }
+        if (!ok) layer.removeChild(s);
+      }
+    }
+
+    window.addEventListener('load', place);
+    window.addEventListener('pageshow', (e)=>{ if (e.persisted) setTimeout(place,0); });
+    let tm=null; window.addEventListener('resize', ()=>{ clearTimeout(tm); tm=setTimeout(place,120); });
+  })();
+</script>
 </body>
 </html>
 
