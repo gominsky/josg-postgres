@@ -3,63 +3,76 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Josg en tu mano - Agenda</title>
+  <title>¡JOSG en tu mano! · Agenda</title>
 
   <link rel="stylesheet" href="../styles/estilos_app.css" />
-  <!-- CSS de FullCalendar -->
+  <!-- FullCalendar -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/main.min.css" />
-  <!-- JS de FullCalendar -->
   <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/locales-all.global.min.js"></script>
 
   <style>
+    .container{ max-width:980px; margin:0 auto; padding:16px; }
     .calendar-container{ min-height:60vh; }
+
+    /* Toolbar de FC más compacta */
+    .fc .fc-toolbar { flex-wrap: wrap; gap: 6px; }
+    .fc .fc-toolbar-title { font-size: 1rem; line-height: 1.2; }
+    .fc .fc-button { padding: .28rem .55rem; font-size: .9rem; border-radius: 8px; }
+    .fc .fc-today-button { padding:.24rem .5rem; font-size:.85rem; }
+    .fc .fc-button-group > .fc-button { padding:.24rem .5rem; }
+    .fc .fc-header-toolbar { margin-bottom: 8px; }
+
+    /* Botón Inicio */
+    .btn{
+      display:inline-block; padding:.6rem 1.4rem; border-radius:12px;
+      font-weight:600; color:#fff; border:none; cursor:pointer;
+      box-shadow:0 4px 12px rgba(0,0,0,.15);
+      transition:transform .12s ease, box-shadow .12s ease;
+      text-decoration:none; text-align:center; min-width:110px;
+    }
+    .btn:hover{ transform:translateY(-1px); box-shadow:0 6px 16px rgba(0,0,0,.2); }
+    .btn:active{ transform:translateY(0); box-shadow:0 2px 8px rgba(0,0,0,.1); }
+    .btn-accent{ background: linear-gradient(180deg,#f28d63,#ea6b38); border:1px solid #cc5c2f; }
+
+    /* ========== Hero compacto para Agenda ========== */
+    .hero.hero--compact{ padding:14px 12px 12px; margin:10px 0 10px; }
+    .hero.hero--compact .hero-logo{ max-height:84px; margin-bottom:6px; }
+    .hero.hero--compact p{ margin-top:4px; }
+
+    /* ===== Agenda: ancho cómodo en desktop + evitar desbordes ===== */
+    @media (min-width: 992px){
+      .page-agenda .container{ max-width: 760px; }
+    }
+    body.page-agenda{ overflow-x: hidden; }
+    /* Logo marca de agua más contenido en desktop */
+    @media (min-width: 992px){
+      .page-agenda .hero.hero--compact::before{
+        width: clamp(120px, 18vw, 180px);
+        height: clamp(70px, 11vw, 110px);
+        right:-12px; bottom:-12px; opacity:.055;
+      }
+    }
   </style>
 </head>
-<style>
-  /* Cabecera más compacta y botones pequeños */
-  .fc .fc-toolbar { flex-wrap: wrap; gap: 6px; }
-  .fc .fc-toolbar-title { font-size: 1rem; line-height: 1.2; }
-
-  .fc .fc-button {
-    padding: .28rem .55rem;      /* reduce tamaño general de botones */
-    font-size: .9rem;
-    border-radius: 8px;
-  }
-  .fc .fc-today-button {
-    padding: .24rem .5rem;       /* aún más compacto para "Hoy" */
-    font-size: .85rem;
-  }
-
-  .fc .fc-button-group > .fc-button { padding: .24rem .5rem; }
-  .fc .fc-header-toolbar { margin-bottom: 8px; }
-  .btn{
-  display:inline-block; padding:.6rem 1.4rem; border-radius:12px;
-  font-weight:600; color:#fff; border:none; cursor:pointer;
-  box-shadow:0 4px 12px rgba(0,0,0,.15);
-  transition:transform .12s ease, box-shadow .12s ease;
-  text-decoration:none; text-align:center; min-width:110px;
-}
-.btn:hover{ transform:translateY(-1px); box-shadow:0 6px 16px rgba(0,0,0,.2); }
-.btn:active{ transform:translateY(0); box-shadow:0 2px 8px rgba(0,0,0,.1); }
-
-  .btn-accent{
-  background: linear-gradient(180deg,#f28d63,#ea6b38);
-  border:1px solid #cc5c2f;
-}
-</style>
-
-<body>
+<body class="page-agenda">
   <div class="container">
-    <div class="topbar" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-      <div class="brand" style="display:flex;align-items:center;gap:10px;">
-        <img src="../imagenes/logoJOSG.png" alt="JOSG" style="max-height:44px;">
-        <div id="user-name" class="muted" style="font-weight:600;"></div>
-      </div>
+    <!-- Topbar mínima -->
+    <div class="topbar">
+      <div id="user-name" class="muted" style="font-weight:600;"></div>
     </div>
-    
+
+    <!-- Hero musical COMPACTO -->
+    <div class="hero hero--compact" aria-label="Cabecera agenda">
+      <div class="motifs-layer" aria-hidden="true"></div>
+      <img class="hero-logo" src="../imagenes/logoJOSG.png" alt="JOSG">
+      <h1>¡En tu mano!</h1>
+      <p>Tu agenda</p>
+    </div>
+
     <h2>Agenda</h2>
     <div id="calendar" class="calendar-container"></div>
+
     <div style="margin-top:1rem;">
       <button class="btn btn-accent" onclick="location.href='index.html'">&larr; Inicio</button>
     </div>
@@ -69,11 +82,18 @@
     const alumno_id = localStorage.getItem('alumno_id');
     if (!alumno_id) location.href = 'index.html';
 
+    // Nombre en cabecera (Hola, …)
+    (function(){
+      const n = localStorage.getItem('alumno_nombre') || '';
+      const slot = document.getElementById('user-name');
+      if (slot) slot.textContent = `Hola, ${n}`;
+    })();
+
     document.addEventListener('DOMContentLoaded', function () {
       const calendarEl = document.getElementById('calendar');
       const calendar = new FullCalendar.Calendar(calendarEl, {
         locale: 'es',
-        firstDay: 1,                 // 👈 Semana empieza en lunes
+        firstDay: 1,
         initialView: 'dayGridMonth',
         headerToolbar: {
           left: 'prev,next today',
@@ -101,7 +121,48 @@
       calendar.render();
     });
   </script>
+
+  <!-- Motivos musicales del HERO (compactos) -->
+  <script>
+    (function(){
+      const SYMBOLS=['♩','♪','♫','♬'];
+      const COUNT_MIN=4, COUNT_MAX=6, SIZE_MIN=60, SIZE_MAX=120, ROT_MIN=-12, ROT_MAX=12;
+      const PADDING=8, EDGE_PAD=6, MAX_TRIES=70;
+      const rInt=(a,b)=>Math.floor(Math.random()*(b-a+1))+a, pick=a=>a[Math.floor(Math.random()*a.length)];
+      const rel=(el,p)=>{const r=el.getBoundingClientRect(),b=p.getBoundingClientRect();return {x:r.left-b.left,y:r.top-b.top,w:r.width,h:r.height};};
+      const hit=(a,b,p)=>!(a.x+a.w+p<=b.x||b.x+b.w+p<=a.x||a.y+a.h+p<=b.y||b.y+b.h+p<=a.y);
+      function place(){
+        const hero=document.querySelector('.hero.hero--compact'), layer=document.querySelector('.motifs-layer'); if(!hero||!layer)return;
+        layer.innerHTML='';
+        const avoid=[]; ['.hero-logo','h1','p'].forEach(sel=>{const el=hero.querySelector(sel); if(!el)return; const r=rel(el,hero); avoid.push({x:r.x-8,y:r.y-8,w:r.w+16,h:r.h+16});});
+        const placed=[]; const count=rInt(COUNT_MIN,COUNT_MAX);
+        for(let i=0;i<count;i++){
+          const s=document.createElement('span'); s.className='motif'; s.textContent=pick(SYMBOLS); s.style.opacity='0'; layer.appendChild(s);
+          let ok=false;
+          for(let t=0;t<MAX_TRIES;t++){
+            const size=rInt(SIZE_MIN,SIZE_MAX), rot=rInt(ROT_MIN,ROT_MAX);
+            s.style.fontSize=size+'px'; s.style.transform=`rotate(${rot}deg)`;
+            const left=rInt(EDGE_PAD, Math.max(EDGE_PAD, hero.clientWidth - size - EDGE_PAD));
+            const top =rInt(EDGE_PAD, Math.max(EDGE_PAD, hero.clientHeight - size - EDGE_PAD));
+            s.style.left=left+'px'; s.style.top=top+'px';
+            const rr=rel(s,hero);
+            if (rr.x<EDGE_PAD||rr.y<EDGE_PAD||rr.x+rr.w>hero.clientWidth-EDGE_PAD||rr.y+rr.h>hero.clientHeight-EDGE_PAD) continue;
+            if (avoid.some(av=>hit(rr,av,PADDING))) continue;
+            if (placed.some(pr=>hit(rr,pr,PADDING))) continue;
+            placed.push(rr); s.style.opacity=''; ok=true; break;
+          }
+          if(!ok) layer.removeChild(s);
+        }
+      }
+      window.addEventListener('load', place);
+      window.addEventListener('pageshow', e=>{ if(e.persisted) setTimeout(place,0); });
+      let tm; window.addEventListener('resize', ()=>{ clearTimeout(tm); tm=setTimeout(place,120); });
+    })();
+  </script>
+
   <script src="app_alumno.js"></script>
 </body>
 </html>
+
+
 

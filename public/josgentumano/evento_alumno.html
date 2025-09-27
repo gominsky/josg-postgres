@@ -3,83 +3,141 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Josg en tu mano - Detalle del evento</title>
+  <title>¡JOSG en tu mano! · Detalle del evento</title>
+
+  <!-- Estilos globales (incluyen .topbar y .hero) -->
   <link rel="stylesheet" href="../styles/estilos_app.css" />
+
   <style>
-  .chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 4px 10px;
-    border-radius: 16px;
-    background: #f0f0f0;
-    color: #333;
-    font-size: 0.9rem;
-    text-decoration: none;
-    transition: background 0.2s;
-  }
-  .chip:hover {
-    background: #ddd;
-  }
-  .chip svg {
-    width: 16px;
-    height: 16px;
-    fill: currentColor;
-  }
- 
-.chip-espacio {
-  background: #f0f0f0;
-  color: #333;
-}
-.chip-grupo {
-  background: #e8f5e9;
-  color: #1b5e20;
-}
-/* === Botones unificados (JOSG en tu mano) === */
-.btn{
-  display:inline-block; padding:.6rem 1.4rem; border-radius:12px;
-  font-weight:600; color:#fff; border:none; cursor:pointer;
-  box-shadow:0 4px 12px rgba(0,0,0,.15);
-  transition:transform .12s ease, box-shadow .12s ease;
-  text-decoration:none; text-align:center; min-width:110px;
-}
-.btn:hover{ transform:translateY(-1px); box-shadow:0 6px 16px rgba(0,0,0,.2); }
-.btn:active{ transform:translateY(0); box-shadow:0 2px 8px rgba(0,0,0,.1); }
+    .container{ max-width:760px; margin:0 auto; padding:16px; }
 
-/* Naranja (igual que “Eventos” y mensajes_movil Cancelar) */
-.btn-accent{
-  background: linear-gradient(180deg,#f28d63,#ea6b38);
-  border:1px solid #cc5c2f;
-}
+    /* ===== BOTONES (nuevo diseño unificado) ===== */
+    .btn{
+      display:inline-block; padding:.6rem 1.4rem; border-radius:12px;
+      font-weight:600; color:#fff; border:none; cursor:pointer;
+      box-shadow:0 4px 12px rgba(0,0,0,.15);
+      transition:transform .12s ease, box-shadow .12s ease;
+      text-decoration:none; text-align:center; min-width:110px; user-select:none;
+    }
+    .btn:hover{ transform:translateY(-1px); box-shadow:0 6px 16px rgba(0,0,0,.2); }
+    .btn:active{ transform:translateY(0); box-shadow:0 2px 8px rgba(0,0,0,.1); }
+    .btn-accent{ background: linear-gradient(180deg,#f28d63,#ea6b38); border:1px solid #cc5c2f; }
+    .btn-tertiary{ background: linear-gradient(180deg,#ffb24a,#f59e0b); border:1px solid #f59e0b; }
 
-/* Negro (terciario, navegación/acciones neutras) */
-.btn-tertiary{
-  background: linear-gradient(180deg,#ffb24a,#f59e0b);
-    border:1px solid #f59e0b;
-}
+    /* ===== Chips ligeros (fecha/hora) ===== */
+    .chip{
+      display:inline-flex; align-items:center; gap:6px;
+      padding:6px 12px; border-radius:999px; text-decoration:none;
+      font-weight:700; font-size:.92rem; border:1px solid rgba(0,0,0,.06);
+      background:#fff; color:#111;
+      box-shadow:0 3px 10px rgba(0,0,0,.06);
+      white-space:nowrap;
+    }
+    .chip-fecha{ background:#fff7e6; color:#7a4d00; border-color:#f59e0b33; }
 
-</style>
+    /* ===== Ficha de espacio (enlace a Google Maps) ===== */
+    .space-card{
+      display:block; width:100%;
+      border:1px solid #e6eefb; border-radius:16px;
+      background:linear-gradient(180deg,#ffffff,#f5f9ff 85%);
+      box-shadow:0 6px 16px rgba(0,0,0,.08);
+      padding:12px 14px; text-decoration:none; color:#0b4d8c;
+      transition: transform .12s ease, box-shadow .12s ease;
+    }
+    .space-card:hover{ transform:translateY(-1px); box-shadow:0 10px 22px rgba(0,0,0,.12); }
+    .space-card:active{ transform:translateY(0); }
+    .space-card .row{ display:flex; align-items:center; gap:10px; }
+    .space-card svg{ width:18px; height:18px; flex:0 0 18px; fill:currentColor; opacity:.9; }
+    .space-card .label{ font-weight:800; }
+    .space-card .meta{ color:#1f4b84; font-weight:600; }
 
+    /* ===== Ajuste de ancho para EVENTO (desktop) ===== */
+    @media (min-width: 992px){
+      .page-evento .container{ max-width: 560px; }
+    }
+    body.page-evento{ overflow-x:hidden; }
+    .page-evento .hero::before{
+      width: clamp(150px, 22vw, 220px);
+      height: clamp(90px, 14vw, 130px);
+      right:-16px; bottom:-16px; opacity:.055;
+    }
+  </style>
 </head>
-<body data-page="evento">
+<body class="page-evento" data-page="evento">
   <div class="container">
-    <div class="topbar" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-      <div class="brand" style="display:flex;align-items:center;gap:10px;">
-        <img src="../imagenes/logoJOSG.png" alt="JOSG" style="max-height:44px;">
-        <div id="user-name" class="muted" style="font-weight:600;"></div>
-      </div>
+    <!-- Topbar mínima (solo nombre, sin logo) -->
+    <div class="topbar">
+      <div id="user-name" class="muted" style="font-weight:600;"></div>
+    </div>
+
+    <!-- Hero musical estándar -->
+    <div class="hero" aria-label="Cabecera">
+      <div class="motifs-layer" aria-hidden="true"></div>
+      <img class="hero-logo" src="../imagenes/logoJOSG.png" alt="JOSG">
+      <h1>¡En tu mano!</h1>
+      <p>Detalle del evento</p>
     </div>
 
     <h2 id="t">Evento</h2>
-    <div id="info"></div>
-    <p id="desc" class="subtitulo"></p>
+
+    <!-- Grupo en negrita (sin etiqueta) -->
+    <p id="grupo" style="font-weight:800; margin:.2rem 0 .4rem;"></p>
+
+    <!-- Chips (fecha/hora) -->
+    <p id="chips" style="margin:.2rem 0 .8rem;"></p>
+
+    <!-- Ficha de espacio (enlace Google Maps) -->
+    <a id="space-card" class="space-card" href="#" target="_blank" rel="noopener" style="display:none;">
+      <div class="row">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5z"/>
+        </svg>
+        <div class="text">
+          <div class="label">Espacio / Ubicación</div>
+          <div class="meta" id="space-name"></div>
+        </div>
+      </div>
+    </a>
+
+    <!-- Descripción -->
+    <p id="desc" class="subtitulo" style="margin-top:.8rem;"></p>
 
     <div style="margin-top:1rem;">
-  <button class="btn btn-accent"   onclick="history.back()">&larr; Volver</button>
-  <button class="btn btn-tertiary" onclick="location.href='agenda.html'">Agenda</button>
-</div>
+      <button class="btn btn-accent"   onclick="history.back()">&larr; Volver</button>
+      <button class="btn btn-tertiary" onclick="location.href='agenda.html'">Agenda</button>
+    </div>
+  </div>
 
 <script>
+  // Helpers mínimos
+  function escapeHtml(str){
+    return String(str)
+      .replaceAll('&','&amp;').replaceAll('<','&lt;')
+      .replaceAll('>','&gt;').replaceAll('"','&quot;')
+      .replaceAll("'",'&#039;');
+  }
+  function mapsHrefFrom(rawUbic, fallbackName){
+    const raw = (rawUbic||'').trim();
+    if (raw) return /^https?:\/\//i.test(raw) ? raw : `https://www.google.com/maps?q=${encodeURIComponent(raw)}`;
+    if ((fallbackName||'').trim()) return `https://www.google.com/maps?q=${encodeURIComponent(fallbackName.trim())}`;
+    return '';
+  }
+  function formatearFecha(iso) {
+    if (!iso) return '';
+    const d = new Date(iso);
+    if (isNaN(d)) return iso;
+    const dd = String(d.getDate()).padStart(2,'0');
+    const mm = String(d.getMonth()+1).padStart(2,'0');
+    const yyyy = d.getFullYear();
+    return `${dd}/${mm}/${yyyy}`;
+  }
+  function formatearHora(hhmm) {
+    if (!hhmm) return '';
+    const m = /^(\d{1,2}):(\d{2})/.exec(hhmm);
+    if (!m) return hhmm;
+    return `${m[1].padStart(2,'0')}:${m[2]}`;
+  }
+
   (async () => {
     const params   = new URLSearchParams(location.search);
     const eventoId = params.get("id");
@@ -87,104 +145,116 @@
     const API      = `${location.origin}/firmas/api`;
     if (!eventoId || !alumnoId) { location.href = 'index.html'; return; }
 
-    // pinta el nombre si lo tienes guardado
-    const nombre = localStorage.getItem('usuario_nombre') || '';
+    // Nombre (Hola, …)
+    const nombre = localStorage.getItem('alumno_nombre') || localStorage.getItem('usuario_nombre') || '';
     if (nombre) document.getElementById('user-name').textContent = `Hola, ${nombre}`;
 
     try {
       const token = localStorage.getItem('token');
-  const res = await fetch(
-    `${API}/alumno/${encodeURIComponent(alumnoId)}/eventos/${encodeURIComponent(eventoId)}`,
-    {
-      cache: "no-store",
-      headers: Object.assign(
-        { "Accept": "application/json" },
-        token ? { "Authorization": "Bearer " + token } : {}
-      )
-    }
-  );
+      const res = await fetch(
+        `${API}/alumno/${encodeURIComponent(alumnoId)}/eventos/${encodeURIComponent(eventoId)}`,
+        {
+          cache: "no-store",
+          headers: Object.assign(
+            { "Accept": "application/json" },
+            token ? { "Authorization": "Bearer " + token } : {}
+          )
+        }
+      );
 
-  if (res.status === 401) { location.href = 'index.html'; return; }
+      if (res.status === 401) { location.href = 'index.html'; return; }
       if (!res.ok) { throw new Error(`HTTP ${res.status}`); }
 
       const ev = await res.json();
 
-      // === Fallbacks de nombres ===
-      const grupoNombre   = (ev.grupo_nombre ?? ev.grupo ?? '').toString().trim();
-      const espacioNombre = (ev.espacio_nombre ?? ev.espacio ?? '').toString().trim();
-      const rawUbic       = (ev.espacio_ubicacion ?? ev.ubicacion ?? '').toString().trim();
+      // Datos base (igual que tenías)
+      const grupoNombre   = (ev.grupo ?? ev.grupo_nombre ?? '').toString().trim();
+      const espacioNombre = (ev.espacio ?? ev.espacio_nombre ?? '').toString().trim();
 
-      // Rango horario (ahora que ya tenemos 'ev')
-      const horaIni   = formatearHora(ev.hora_inicio);
-      const horaFin   = formatearHora(ev.hora_fin);
-      const rangoHora = horaIni && horaFin ? `${horaIni} - ${horaFin}`
-                      : horaIni ? horaIni
-                      : '';
-
-      // URL de Maps (acepta URL directa o dirección/lat,long)
-      const urlUbic = rawUbic
-        ? (/^https?:\/\//i.test(rawUbic) ? rawUbic
-           : `https://www.google.com/maps?q=${encodeURIComponent(rawUbic)}`)
-        : null;
-
-      // Grupo en negrita
-      const grupoHtml = grupoNombre ? `<p><strong>${escapeHtml(grupoNombre)}</strong></p>` : '';
-
-      // Chip de fecha + rango horario
-      const fechaHtml = ev.fecha_inicio
-        ? `<span class="chip chip-fecha">${formatearFecha(ev.fecha_inicio)} ${rangoHora}</span>`
+      // Chips fecha/hora (como antes)
+      const hIni = (ev.hora_asignada_inicio || ev.hora_inicio || '').toString();
+      const hFin = (ev.hora_asignada_fin    || ev.hora_fin    || '').toString();
+      const horaIni   = formatearHora(hIni);
+      const horaFin   = formatearHora(hFin);
+      const rangoHora = (horaIni && horaFin) ? `${horaIni} - ${horaFin}` : (horaIni || '');
+      const fechaChip = ev.fecha_inicio
+        ? `<span class="chip chip-fecha">${formatearFecha(ev.fecha_inicio)}${rangoHora ? ' · ' + rangoHora : ''}</span>`
         : '';
 
-      // Chip de espacio con icono + enlace
-      const espacioHtml = urlUbic
-        ? `<a class="chip chip-espacio" href="${urlUbic}" target="_blank" rel="noopener">
-             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-               <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5z"/>
-             </svg>
-             ${escapeHtml(espacioNombre || "Ver ubicación")}
-           </a>`
-        : (escapeHtml(espacioNombre || "—"));
+      // Pinta grupo (solo el nombre, sin etiqueta)
+      document.getElementById("grupo").textContent = grupoNombre || '';
 
+      // Pinta chips
+      document.getElementById("chips").innerHTML = fechaChip;
+
+      // === Espacio como FICHA (enlace a Google Maps) ===
+      const rawUbic = (ev.espacio_ubicacion ?? ev.ubicacion ?? ev.espacio_url ?? ev.ubicacion_url ?? '').toString().trim();
+      const mapsHref = mapsHrefFrom(rawUbic, espacioNombre);
+      const $spaceCard = document.getElementById('space-card');
+      const $spaceName = document.getElementById('space-name');
+      if (mapsHref) {
+        $spaceCard.href = mapsHref;
+        $spaceName.textContent = espacioNombre || 'Ver ubicación';
+        $spaceCard.style.display = '';
+      } else if (espacioNombre) {
+        // Sin enlace, pero mostramos ficha sin href (por accesibilidad mejor dejarla en texto)
+        $spaceCard.removeAttribute('href');
+        $spaceCard.removeAttribute('target');
+        $spaceCard.removeAttribute('rel');
+        $spaceName.textContent = espacioNombre;
+        $spaceCard.style.display = '';
+      }
+
+      // Descripción
       document.getElementById("t").textContent    = ev.titulo || "Evento";
       document.getElementById("desc").textContent = ev.descripcion || "";
-      document.getElementById("info").innerHTML = `
-        ${grupoHtml}
-        ${fechaHtml ? `<p>${fechaHtml}</p>` : ''}
-        <p>${espacioHtml}</p>
-      `;
+
     } catch (err) {
       console.error("Error cargando evento:", err);
-      document.getElementById("info").innerHTML =
-        "<p class='error'>No se pudo cargar el evento.</p>";
-    }
-
-    function escapeHtml(str) {
-      return String(str)
-        .replaceAll('&','&amp;').replaceAll('<','&lt;')
-        .replaceAll('>','&gt;').replaceAll('"','&quot;')
-        .replaceAll("'",'&#039;');
+      document.getElementById("desc").innerHTML =
+        "<span class='error'>No se pudo cargar el evento.</span>";
     }
   })();
-
-  function formatearFecha(iso) {
-    if (!iso) return '';
-    const d = new Date(iso);
-    if (isNaN(d)) return iso; // fallback
-    const dd = String(d.getDate()).padStart(2,'0');
-    const mm = String(d.getMonth()+1).padStart(2,'0');
-    const yyyy = d.getFullYear();
-    return `${dd}/${mm}/${yyyy}`;
-  }
-
-  function formatearHora(hhmm) {
-    if (!hhmm) return '';
-    const m = /^(\d{1,2}):(\d{2})/.exec(hhmm);
-    if (!m) return hhmm;
-    return `${m[1].padStart(2,'0')}:${m[2]}`;
-  }
 </script>
 
+<!-- Motivos musicales del HERO (marca de agua) -->
+<script>
+  (function(){
+    const SYMBOLS=['♩','♪','♫','♬'];
+    const COUNT_MIN=7, COUNT_MAX=10, SIZE_MIN=72, SIZE_MAX=160, ROT_MIN=-16, ROT_MAX=16;
+    const PADDING=10, EDGE_PAD=6, MAX_TRIES=80;
+    const rInt=(a,b)=>Math.floor(Math.random()*(b-a+1))+a, pick=a=>a[Math.floor(Math.random()*a.length)];
+    const rel=(el,p)=>{const r=el.getBoundingClientRect(),b=p.getBoundingClientRect();return {x:r.left-b.left,y:r.top-b.top,w:r.width,h:r.height};};
+    const hit=(a,b,p)=>!(a.x+a.w+p<=b.x||b.x+b.w+p<=a.x||a.y+a.h+p<=b.y||b.y+b.h+p<=a.y);
+    function place(){
+      const hero=document.querySelector('.hero'), layer=document.querySelector('.motifs-layer'); if(!hero||!layer)return;
+      layer.innerHTML='';
+      const avoid=[]; ['.hero-logo','h1','p'].forEach(sel=>{const el=hero.querySelector(sel); if(!el)return; const r=rel(el,hero); avoid.push({x:r.x-10,y:r.y-10,w:r.w+20,h:r.h+20});});
+      const placed=[]; const count=rInt(COUNT_MIN,COUNT_MAX);
+      for(let i=0;i<count;i++){
+        const s=document.createElement('span'); s.className='motif'; s.textContent=pick(SYMBOLS); s.style.opacity='0'; layer.appendChild(s);
+        let ok=false;
+        for(let t=0;t<MAX_TRIES;t++){
+          const size=rInt(SIZE_MIN,SIZE_MAX), rot=rInt(ROT_MIN,ROT_MAX);
+          s.style.fontSize=size+'px'; s.style.transform=`rotate(${rot}deg)`;
+          const left=rInt(EDGE_PAD, Math.max(EDGE_PAD, hero.clientWidth - size - EDGE_PAD));
+          const top =rInt(EDGE_PAD, Math.max(EDGE_PAD, hero.clientHeight - size - EDGE_PAD));
+          s.style.left=left+'px'; s.style.top=top+'px';
+          const rr=rel(s,hero);
+          if (rr.x<EDGE_PAD||rr.y<EDGE_PAD||rr.x+rr.w>hero.clientWidth-EDGE_PAD||rr.y+rr.h>hero.clientHeight-EDGE_PAD) continue;
+          if (avoid.some(av=>hit(rr,av,PADDING))) continue;
+          if (placed.some(pr=>hit(rr,pr,PADDING))) continue;
+          placed.push(rr); s.style.opacity=''; ok=true; break;
+        }
+        if(!ok) layer.removeChild(s);
+      }
+    }
+    window.addEventListener('load', place);
+    window.addEventListener('pageshow', e=>{ if(e.persisted) setTimeout(place,0); });
+    let tm; window.addEventListener('resize', ()=>{ clearTimeout(tm); tm=setTimeout(place,120); });
+  })();
+</script>
 
+<script src="app_alumno.js"></script>
 </body>
 </html>
-

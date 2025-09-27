@@ -147,6 +147,28 @@
     .poster .line{ height:2px; background:repeating-linear-gradient(90deg,#000 0 8px, transparent 8px 12px); opacity:.25; margin:6px 0; }
 
     .muted{ color:#6b7280; font-size:.9rem; }
+    /* Alinear nombre + botón en una sola fila, centrados verticalmente */
+.topbar{
+  display:flex;
+  justify-content:flex-end;
+  align-items:center;
+  gap:8px;            /* espacio entre nombre y botón */
+  flex-wrap:nowrap;   /* evita salto de línea */
+}
+
+/* Evita que el nombre haga saltar el botón a otra línea */
+#user-name{
+  margin:0;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  min-width:0;        /* permite que se encoja en flex */
+}
+
+/* Que el botón no se deforme al encoger */
+.icon-btn{
+  flex:0 0 auto;
+}
   </style>
 </head>
 <body data-page="index">

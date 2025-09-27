@@ -15,48 +15,48 @@
     .container{ max-width:920px; margin:0 auto; padding:16px; }
 
     /* === Topbar mínima: solo el nombre, alineado a la derecha === */
-.topbar{
-  display:flex; justify-content:flex-end; align-items:center; min-height:44px;
-}
-#user-name{ color:#6b7280; font-weight:600; }
+    .topbar{
+      display:flex; justify-content:flex-end; align-items:center; min-height:44px;
+    }
+    #user-name{ color:#6b7280; font-weight:600; }
 
-/* === HERO con pentagrama horizontal + figuras "marca de agua" === */
-.hero{
-  position:relative; margin:10px 0 14px; padding:28px 16px 24px;
-  border:1px solid #f3e7da; border-radius:22px; text-align:center; overflow:hidden;
-  background-image:
-    radial-gradient(1400px 380px at -10% -10%, rgba(255,229,209,.85) 0%, rgba(255,229,209,0) 60%),
-    radial-gradient(1200px 360px at 110% 0%, rgba(255,241,201,.85) 0%, rgba(255,241,201,0) 55%),
-    /* Pentagrama: 5 líneas finas repetidas en bloques verticales */
-    linear-gradient(to bottom, rgba(0,0,0,.055) 0, rgba(0,0,0,.055) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(0,0,0,.055) 0, rgba(0,0,0,.055) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(0,0,0,.055) 0, rgba(0,0,0,.055) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(0,0,0,.055) 0, rgba(0,0,0,.055) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(0,0,0,.055) 0, rgba(0,0,0,.055) 1px, transparent 1px),
-    linear-gradient(180deg,#ffffff,#fff9f2 72%);
-  background-size: auto, auto, 100% 60px, 100% 60px, 100% 60px, 100% 60px, 100% 60px, auto;
-  background-position: center, center, 0 0, 0 8px, 0 16px, 0 24px, 0 32px, center;
-  background-repeat: no-repeat, no-repeat, repeat-y, repeat-y, repeat-y, repeat-y, repeat-y, no-repeat;
-  box-shadow:0 12px 36px rgba(0,0,0,.08);
-}
-.hero::after{ content:none !important; } /* sin diagonales */
-.hero::before{
-  content:""; position:absolute; right:-28px; bottom:-28px; width:300px; height:180px; opacity:.055;
-  background:url("../imagenes/logoJOSG.png") no-repeat right bottom / contain;
-  pointer-events:none;
-}
-.motifs-layer{ position:absolute; inset:0; z-index:1; pointer-events:none; user-select:none; }
-.motif{
-  position:absolute; line-height:1; color:#000; opacity:.035; filter: blur(.15px);
-  mix-blend-mode:multiply; transform-origin:center; will-change:transform,left,top;
-}
-.hero .hero-logo, .hero h1, .hero p{ position:relative; z-index:2; }
-.hero .hero-logo{ display:block; margin:0 auto 10px; max-height:112px; width:auto; filter: drop-shadow(0 4px 14px rgba(0,0,0,.10)); }
-.hero h1{
-  margin:0; font-weight:900; letter-spacing:.2px; font-size:clamp(28px, 6.2vw, 44px); line-height:1.02;
-  background: linear-gradient(180deg,#111,#744b00); -webkit-background-clip:text; background-clip:text; color:transparent;
-}
-.hero p{ margin:6px 0 0; color:#6b7280; }
+    /* === HERO con pentagrama horizontal + figuras "marca de agua" === */
+    .hero{
+      position:relative; margin:10px 0 14px; padding:28px 16px 24px;
+      border:1px solid #f3e7da; border-radius:22px; text-align:center; overflow:hidden;
+      background-image:
+        radial-gradient(1400px 380px at -10% -10%, rgba(255,229,209,.85) 0%, rgba(255,229,209,0) 60%),
+        radial-gradient(1200px 360px at 110% 0%, rgba(255,241,201,.85) 0%, rgba(255,241,201,0) 55%),
+        /* Pentagrama: 5 líneas finas repetidas en bloques verticales */
+        linear-gradient(to bottom, rgba(0,0,0,.055) 0, rgba(0,0,0,.055) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(0,0,0,.055) 0, rgba(0,0,0,.055) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(0,0,0,.055) 0, rgba(0,0,0,.055) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(0,0,0,.055) 0, rgba(0,0,0,.055) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(0,0,0,.055) 0, rgba(0,0,0,.055) 1px, transparent 1px),
+        linear-gradient(180deg,#ffffff,#fff9f2 72%);
+      background-size: auto, auto, 100% 60px, 100% 60px, 100% 60px, 100% 60px, 100% 60px, auto;
+      background-position: center, center, 0 0, 0 8px, 0 16px, 0 24px, 0 32px, center;
+      background-repeat: no-repeat, no-repeat, repeat-y, repeat-y, repeat-y, repeat-y, repeat-y, no-repeat;
+      box-shadow:0 12px 36px rgba(0,0,0,.08);
+    }
+    .hero::after{ content:none !important; } /* sin diagonales */
+    .hero::before{
+      content:""; position:absolute; right:-28px; bottom:-28px; width:300px; height:180px; opacity:.055;
+      background:url("../imagenes/logoJOSG.png") no-repeat right bottom / contain;
+      pointer-events:none;
+    }
+    .motifs-layer{ position:absolute; inset:0; z-index:1; pointer-events:none; user-select:none; }
+    .motif{
+      position:absolute; line-height:1; color:#000; opacity:.035; filter: blur(.15px);
+      mix-blend-mode:multiply; transform-origin:center; will-change:transform,left,top;
+    }
+    .hero .hero-logo, .hero h1, .hero p{ position:relative; z-index:2; }
+    .hero .hero-logo{ display:block; margin:0 auto 10px; max-height:112px; width:auto; filter: drop-shadow(0 4px 14px rgba(0,0,0,.10)); }
+    .hero h1{
+      margin:0; font-weight:900; letter-spacing:.2px; font-size:clamp(28px, 6.2vw, 44px); line-height:1.02;
+      background: linear-gradient(180deg,#111,#744b00); -webkit-background-clip:text; background-clip:text; color:transparent;
+    }
+    .hero p{ margin:6px 0 0; color:#6b7280; }
 
     /* Encabezado de sección */
     .head{ text-align:center; margin:8px 0 6px; }
@@ -148,26 +148,38 @@
     .btn:hover{ transform:translateY(-1px); box-shadow:0 6px 16px rgba(0,0,0,.2); }
     .btn:active{ transform:translateY(0); box-shadow:0 2px 8px rgba(0,0,0,.1); }
     .btn-accent{ background: linear-gradient(180deg,#f28d63,#ea6b38); border:1px solid #cc5c2f; }
+
+    /* ===== Ajuste de ancho para PARTITURAS (desktop) ===== */
+    @media (min-width: 992px){
+      .page-partituras .container{
+        max-width: 560px; /* ajusta si lo quieres algo más ancho: 580/600px */
+      }
+    }
+    body.page-partituras{ overflow-x:hidden; }
+    .page-partituras .hero::before{
+      /* Logo contenido en desktop: no más grande que 220px */
+      width: clamp(150px, 22vw, 220px);
+      height: clamp(90px, 14vw, 130px);
+      right: -16px;
+      bottom: -16px;
+      opacity:.055;
+    }
   </style>
 </head>
-<body>
+<body class="page-partituras">
   <div class="container">
 
-   <!-- Topbar SIN logo: solo el nombre -->
-<div class="topbar">
-  <div id="user-name"></div>
-</div>
+    <!-- Topbar SIN logo: solo el nombre -->
+    <div class="topbar">
+      <div id="user-name"></div>
+    </div>
 
-<!-- HERO musical -->
-<div class="hero" aria-label="Bienvenida">
-  <div class="motifs-layer" aria-hidden="true"></div>
-  <img class="hero-logo" src="../imagenes/logoJOSG.png" alt="JOSG">
-  <h1>¡En tu mano!</h1>
-  <p>Tus partituras organizadas y a un toque.</p>
-</div>
-
-    <div class="head">
-      <h2>Partituras</h2>
+    <!-- HERO musical -->
+    <div class="hero" aria-label="Bienvenida">
+      <div class="motifs-layer" aria-hidden="true"></div>
+      <img class="hero-logo" src="../imagenes/logoJOSG.png" alt="JOSG">
+      <h1>¡En tu mano!</h1>
+      <p>Partituras</p>
     </div>
 
     <div class="search">
@@ -186,195 +198,186 @@
     (function(){
       const slot = document.getElementById('user-name');
       const nombre = localStorage.getItem('alumno_nombre') || '';
-      if (slot) slot.textContent = nombre;
+      if (slot) slot.textContent = `Hola, ${nombre}`;
     })();
   </script>
 
-<script>
-  const API_BASE = '/firmas';
+  <script>
+    const API_BASE = '/firmas';
 
-  function ensureProto(u){
-    if (!u) return '';
-    const s = String(u).trim();
-    if (!s) return '';
-    // CORREGIDO: \w (no \\w)
-    if (/^[a-zA-Z][\w.+-]*:/.test(s) || s.startsWith('//') || s.startsWith('/')) return s;
-    return 'https://' + s;
-  }
-  const safeUrl = u => { try { return ensureProto(u); } catch { return ''; } };
-
-  const alumno_id = localStorage.getItem('alumno_id');
-  const token     = localStorage.getItem('token');
-  if (!alumno_id || !token) { location.href = 'index.html'; }
-
-  const $list = document.getElementById('list');
-  const $q    = document.getElementById('q');
-
-  let ALL = [];
-
-  // --- helpers “motivo” (decoración tarjeta) ---
-  const randomSymbol = () => ['♩','♪','♫','♬'][Math.floor(Math.random()*4)];
-  const randomRot  = () => (Math.floor(Math.random()*25) - 12) + 'deg';
-  const randomSize = () => (78 + Math.floor(Math.random()*19)) + 'px';
-  const randomMotifClass = () => (Math.random() < 0.55 ? 'm-staff' : '');
-
-  function cardHTML(p, idx){
-    const autor  = (p.autor || '—').trim();
-    const titulo = (p.titulo || 'Sin título').trim();
-    const dur    = (p.duracion || '').toString().trim();
-
-    // Enlace a partitura (PDF) vía backend con JWT en query
-    const base = `${API_BASE}/api/alumno/${encodeURIComponent(alumno_id)}/partituras/${encodeURIComponent(p.id)}/archivo`;
-    const hasPart = !!(p.enlace_partitura && String(p.enlace_partitura).trim().length);
-    const linkPart = hasPart
-      ? `<a class="chip-link" href="${base}?tipo=partitura&jwt=${encodeURIComponent(token)}" target="_blank" rel="noopener noreferrer">Partitura</a>`
-      : '';
-
-    // Enlace externo único (audio/vídeo)
-    const mediaRaw = p.enlace_video || p.enlace_audio || p.enlace_media || p.enlace || p.url_media || p.url || '';
-    const hasMedia = !!String(mediaRaw).trim().length;
-    const linkMedia = hasMedia
-      ? `<a class="chip-link" href="${safeUrl(mediaRaw)}" target="_blank" rel="noopener noreferrer">Audio/Vídeo</a>`
-      : '';
-
-    const colorCls  = (idx % 2 === 0) ? 'card-a' : 'card-b';
-    const motifCls  = randomMotifClass();
-    const motifSym  = randomSymbol();
-    const motifHTML = `<span class="motif" style="--rot:${randomRot()}; --sz:${randomSize()}">${motifSym}</span>`;
-
-    return `
-      <article class="card ${colorCls} ${motifCls}">
-        <h3 class="author">${autor}</h3>
-        <p class="title">${titulo}</p>
-        ${dur ? `<p class="dur">Duración: ${dur}</p>` : ''}
-        <div class="chips">${linkPart}${linkMedia}</div>
-        ${motifHTML}
-      </article>
-    `;
-  }
-
-  function render(list){
-    if (!Array.isArray(list) || list.length === 0){
-      $list.innerHTML = `<p style="margin:6px; color:#6b7280;">No hay partituras para tus grupos.</p>`;
-      return;
+    function ensureProto(u){
+      if (!u) return '';
+      const s = String(u).trim();
+      if (!s) return '';
+      if (/^[a-zA-Z][\w.+-]*:/.test(s) || s.startsWith('//') || s.startsWith('/')) return s;
+      return 'https://' + s;
     }
-    $list.innerHTML = list.map((p,i) => cardHTML(p,i)).join('');
-  }
+    const safeUrl = u => { try { return ensureProto(u); } catch { return ''; } };
 
-  function filtrar(){
-    const q = ($q.value || '').toLowerCase();
-    const out = ALL.filter(p => {
-      const txt = `${p.titulo||''} ${p.autor||''}`.toLowerCase();
-      return txt.includes(q);
-    });
-    render(out);
-  }
+    const alumno_id = localStorage.getItem('alumno_id');
+    const token     = localStorage.getItem('token');
+    if (!alumno_id || !token) { location.href = 'index.html'; }
 
-  // --- debounce correcto ---
-  function debounce(fn, wait = 160){
-    let t; return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), wait); };
-  }
-  $q.addEventListener('input', debounce(filtrar, 160));
+    const $list = document.getElementById('list');
+    const $q    = document.getElementById('q');
 
-  async function cargar(){
-    try{
-      const r = await fetch(`${API_BASE}/api/alumno/${encodeURIComponent(alumno_id)}/partituras`, {
-        cache:'no-store',
-        headers: { 'Authorization': 'Bearer ' + token }
-      });
-      const j = await r.json();
-      if (!r.ok || !Array.isArray(j)) throw new Error('Respuesta no válida');
-      ALL = j;
-      render(ALL);
-      if ($q.value) filtrar();
-    }catch(e){
-      console.error('Error cargando partituras:', e);
-      $list.innerHTML = `<p style="margin:6px; color:#6b7280;">No se pudieron cargar las partituras.</p>`;
+    let ALL = [];
+
+    // --- helpers “motivo” (decoración tarjeta) ---
+    const randomSymbol = () => ['♩','♪','♫','♬'][Math.floor(Math.random()*4)];
+    const randomRot  = () => (Math.floor(Math.random()*25) - 12) + 'deg';
+    const randomSize = () => (78 + Math.floor(Math.random()*19)) + 'px';
+    const randomMotifClass = () => (Math.random() < 0.55 ? 'm-staff' : '');
+
+    function cardHTML(p, idx){
+      const autor  = (p.autor || '—').trim();
+      const titulo = (p.titulo || 'Sin título').trim();
+      const dur    = (p.duracion || '').toString().trim();
+
+      // Enlace a partitura (PDF) vía backend con JWT en query
+      const base = `${API_BASE}/api/alumno/${encodeURIComponent(alumno_id)}/partituras/${encodeURIComponent(p.id)}/archivo`;
+      const hasPart = !!(p.enlace_partitura && String(p.enlace_partitura).trim().length);
+      const linkPart = hasPart
+        ? `<a class="chip-link" href="${base}?tipo=partitura&jwt=${encodeURIComponent(token)}" target="_blank" rel="noopener noreferrer">Partitura</a>`
+        : '';
+
+      // Enlace externo único (audio/vídeo)
+      const mediaRaw = p.enlace_video || p.enlace_audio || p.enlace_media || p.enlace || p.url_media || p.url || '';
+      const hasMedia = !!String(mediaRaw).trim().length;
+      const linkMedia = hasMedia
+        ? `<a class="chip-link" href="${safeUrl(mediaRaw)}" target="_blank" rel="noopener noreferrer">Audio/Vídeo</a>`
+        : '';
+
+      const colorCls  = (idx % 2 === 0) ? 'card-a' : 'card-b';
+      const motifCls  = randomMotifClass();
+      const motifSym  = randomSymbol();
+      const motifHTML = `<span class="motif" style="--rot:${randomRot()}; --sz:${randomSize()}">${motifSym}</span>`;
+
+      return `
+        <article class="card ${colorCls} ${motifCls}">
+          <h3 class="author">${autor}</h3>
+          <p class="title">${titulo}</p>
+          ${dur ? `<p class="dur">Duración: ${dur}</p>` : ''}
+          <div class="chips">${linkPart}${linkMedia}</div>
+          ${motifHTML}
+        </article>
+      `;
     }
-  }
 
-  cargar();
-</script>
-<script>
-  // Muestra el nombre del alumno en la topbar (no interfiere con tu app)
-  (function(){
-    const slot = document.getElementById('user-name');
-    const nombre = localStorage.getItem('alumno_nombre') || '';
-    if (slot) slot.textContent = nombre;
-  })();
-</script>
+    function render(list){
+      if (!Array.isArray(list) || list.length === 0){
+        $list.innerHTML = `<p style="margin:6px; color:#6b7280;">No hay partituras para tus grupos.</p>`;
+        return;
+      }
+      $list.innerHTML = list.map((p,i) => cardHTML(p,i)).join('');
+    }
 
-<script>
-  // Motivos musicales del HERO: aleatorios, sin solaparse (marca de agua)
-  (function(){
-    const SYMBOLS = ['♩','♪','♫','♬'];
-    const COUNT_MIN = 7, COUNT_MAX = 10;
-    const SIZE_MIN = 72, SIZE_MAX = 160;
-    const ROT_MIN  = -16, ROT_MAX  = 16;
-    const PADDING  = 10;
-    const EDGE_PAD = 6;
-    const MAX_TRIES_PER_NOTE = 80;
-
-    const randInt = (a,b)=> Math.floor(Math.random()*(b-a+1))+a;
-    const pick = (arr)=> arr[Math.floor(Math.random()*arr.length)];
-
-    const getRectRelative = (el, parent)=>{
-      const r = el.getBoundingClientRect(), p = parent.getBoundingClientRect();
-      return { x:r.left-p.left, y:r.top-p.top, w:r.width, h:r.height };
-    };
-    const intersects = (a,b,p)=> !(a.x+a.w+p<=b.x || b.x+b.w+p<=a.x || a.y+a.h+p<=b.y || b.y+b.h+p<=a.y);
-
-    function place(){
-      const hero = document.querySelector('.hero');
-      const layer = document.querySelector('.motifs-layer');
-      if (!hero || !layer) return;
-      layer.innerHTML = '';
-      const heroRect = hero.getBoundingClientRect();
-
-      // evita logo, título y subtítulo
-      const avoid = [];
-      ['.hero-logo','h1','p'].forEach(sel=>{
-        const el = hero.querySelector(sel); if (!el) return;
-        const r = getRectRelative(el, hero);
-        avoid.push({ x:r.x-10, y:r.y-10, w:r.w+20, h:r.h+20 });
+    function filtrar(){
+      const q = ($q.value || '').toLowerCase();
+      const out = ALL.filter(p => {
+        const txt = `${p.titulo||''} ${p.autor||''}`.toLowerCase();
+        return txt.includes(q);
       });
+      render(out);
+    }
 
-      const count = randInt(COUNT_MIN, COUNT_MAX);
-      const placed = [];
+    // --- debounce correcto ---
+    function debounce(fn, wait = 160){
+      let t; return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), wait); };
+    }
+    $q.addEventListener('input', debounce(filtrar, 160));
 
-      for (let i=0;i<count;i++){
-        const s = document.createElement('span');
-        s.className = 'motif';
-        s.textContent = pick(SYMBOLS);
-        s.style.opacity = '0';
-        layer.appendChild(s);
-
-        let ok=false;
-        for (let t=0;t<MAX_TRIES_PER_NOTE;t++){
-          const size = randInt(SIZE_MIN, SIZE_MAX);
-          const rot = randInt(ROT_MIN, ROT_MAX);
-          s.style.fontSize = size+'px';
-          s.style.transform = `rotate(${rot}deg)`;
-          const left = randInt(EDGE_PAD, Math.max(EDGE_PAD, heroRect.width - size - EDGE_PAD));
-          const top  = randInt(EDGE_PAD, Math.max(EDGE_PAD, heroRect.height - size - EDGE_PAD));
-          s.style.left = left+'px'; s.style.top = top+'px';
-
-          const r = getRectRelative(s, hero);
-          if (r.x<EDGE_PAD || r.y<EDGE_PAD || r.x+r.w>heroRect.width-EDGE_PAD || r.y+r.h>heroRect.height-EDGE_PAD) continue;
-          if (avoid.some(av=>intersects(r,av,PADDING))) continue;
-          if (placed.some(pr=>intersects(r,pr,PADDING))) continue;
-
-          placed.push(r); s.style.opacity = ''; ok = true; break;
-        }
-        if (!ok) layer.removeChild(s);
+    async function cargar(){
+      try{
+        const r = await fetch(`${API_BASE}/api/alumno/${encodeURIComponent(alumno_id)}/partituras`, {
+          cache:'no-store',
+          headers: { 'Authorization': 'Bearer ' + token }
+        });
+        const j = await r.json();
+        if (!r.ok || !Array.isArray(j)) throw new Error('Respuesta no válida');
+        ALL = j;
+        render(ALL);
+        if ($q.value) filtrar();
+      }catch(e){
+        console.error('Error cargando partituras:', e);
+        $list.innerHTML = `<p style="margin:6px; color:#6b7280;">No se pudieron cargar las partituras.</p>`;
       }
     }
 
-    window.addEventListener('load', place);
-    window.addEventListener('pageshow', (e)=>{ if (e.persisted) setTimeout(place,0); });
-    let tm=null; window.addEventListener('resize', ()=>{ clearTimeout(tm); tm=setTimeout(place,120); });
-  })();
-</script>
+    cargar();
+  </script>
+
+  <!-- Motivos musicales del HERO -->
+  <script>
+    (function(){
+      const SYMBOLS = ['♩','♪','♫','♬'];
+      const COUNT_MIN = 7, COUNT_MAX = 10;
+      const SIZE_MIN = 72, SIZE_MAX = 160;
+      const ROT_MIN  = -16, ROT_MAX  = 16;
+      const PADDING  = 10;
+      const EDGE_PAD = 6;
+      const MAX_TRIES_PER_NOTE = 80;
+
+      const randInt = (a,b)=> Math.floor(Math.random()*(b-a+1))+a;
+      const pick = (arr)=> arr[Math.floor(Math.random()*arr.length)];
+
+      const getRectRelative = (el, parent)=>{
+        const r = el.getBoundingClientRect(), p = parent.getBoundingClientRect();
+        return { x:r.left-p.left, y:r.top-p.top, w:r.width, h:r.height };
+      };
+      const intersects = (a,b,p)=> !(a.x+a.w+p<=b.x || b.x+b.w+p<=a.x || a.y+a.h+p<=b.y || b.y+b.h+p<=a.y);
+
+      function place(){
+        const hero = document.querySelector('.hero');
+        const layer = document.querySelector('.motifs-layer');
+        if (!hero || !layer) return;
+        layer.innerHTML = '';
+        const heroRect = hero.getBoundingClientRect();
+
+        // evita logo, título y subtítulo
+        const avoid = [];
+        ['.hero-logo','h1','p'].forEach(sel=>{
+          const el = hero.querySelector(sel); if (!el) return;
+          const r = getRectRelative(el, hero);
+          avoid.push({ x:r.x-10, y:r.y-10, w:r.w+20, h:r.h+20 });
+        });
+
+        const count = randInt(COUNT_MIN, COUNT_MAX);
+        const placed = [];
+
+        for (let i=0;i<count;i++){
+          const s = document.createElement('span');
+          s.className = 'motif';
+          s.textContent = pick(SYMBOLS);
+          s.style.opacity = '0';
+          layer.appendChild(s);
+
+          let ok=false;
+          for (let t=0;t<MAX_TRIES_PER_NOTE;t++){
+            const size = randInt(SIZE_MIN, SIZE_MAX);
+            const rot = randInt(ROT_MIN, ROT_MAX);
+            s.style.fontSize = size+'px';
+            s.style.transform = `rotate(${rot}deg)`;
+            const left = randInt(EDGE_PAD, Math.max(EDGE_PAD, heroRect.width - size - EDGE_PAD));
+            const top  = randInt(EDGE_PAD, Math.max(EDGE_PAD, heroRect.height - size - EDGE_PAD));
+            s.style.left = left+'px'; s.style.top = top+'px';
+
+            const r = getRectRelative(s, hero);
+            if (r.x<EDGE_PAD || r.y<EDGE_PAD || r.x+r.w>heroRect.width-EDGE_PAD || r.y+r.h>heroRect.height-EDGE_PAD) continue;
+            if (avoid.some(av=>intersects(r,av,PADDING))) continue;
+            if (placed.some(pr=>intersects(r,pr,PADDING))) continue;
+
+            placed.push(r); s.style.opacity = ''; ok = true; break;
+          }
+          if (!ok) layer.removeChild(s);
+        }
+      }
+
+      window.addEventListener('load', place);
+      window.addEventListener('pageshow', (e)=>{ if (e.persisted) setTimeout(place,0); });
+      let tm=null; window.addEventListener('resize', ()=>{ clearTimeout(tm); tm=setTimeout(place,120); });
+    })();
+  </script>
 </body>
 </html>
 
