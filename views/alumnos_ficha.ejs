@@ -2,82 +2,158 @@
 <% hero = false %>
 <link rel="stylesheet" href="/styles.css">
 <style>
-  /* --- Ajuste de color: menos naranja, texto base negro --- */
-  .ficha-container { color: #111; }
-  .ficha-container p,
-  .ficha-container li,
-  .ficha-container td,
-  .ficha-container th,
-  .ficha-container .muted,
-  .fichanav a { color: #111; }
+  /* ====== Tokens de color y tipografía ====== */
+  .ficha-container{
+    --ink:#111;
+    --muted:#5c6670;
+    --accent:#ff6a00;
+    --chip-green:#28a745;
+    --chip-red:#dc3545;
+    --chip-warn:#f0ad4e;
+    --card:#fff;
+    --line:#eceff1;
+  }
 
-  /* Titulares con acento sutil naranja solo en el borde */
-  .h1-titulo, .ficha-grupo h2 { color: #111; }
-  .ficha-grupo h2 { border-left: 4px solid #ff6a00; padding-left: .5rem; }
-
-  /* Enlaces finales: negro por defecto, naranja al pasar */
-  .enlace-final-naranja { color: #111 !important; border-bottom: 2px solid #ff6a00; }
-  .enlace-final-naranja:hover { color: #ff6a00 !important; }
-
-  /* Chips de tags en tono suave */
-  .tag { background: #fff3e6; color: #111; border: 1px solid #ffd1a8; }
-
-  /* Navegación */
-  .fichanav a:hover { color: #ff6a00; }
-  /* Labels (strong) en naranja, valores en negro */
-  .ficha-container strong { color: #ff6a00; font-weight: 600; }
-  /* === Forzar valores en negro (sobrescribe estilos globales) === */
+  /* ====== Reset local (sin pisar global) ====== */
   .ficha-container,
   .ficha-container p,
   .ficha-container li,
   .ficha-container td,
   .ficha-container th,
-  .ficha-container .info-grid,
-  .ficha-container .info-grid div,
-  .ficha-container .info-grid span,
-  .ficha-container .info-grid a { color:#111 !important; }
+  .ficha-container a,
+  .ficha-container span { color: var(--ink); }
 
-  /* Labels en naranja, mantienen contraste */
-  .ficha-container strong { color:#ff6a00 !important; font-weight:600; }
-
-  /* Chips/tags: texto negro, acento suave */
-  .ficha-container .tag { color:#111 !important; background:#fff3e6; border:1px solid #ffd1a8; }
-</style>
-<style>
-  /* ——— Colores locales de la ficha ——— */
-  /* Todo el texto de la ficha a negro (por si había naranja global) */
-  .ficha-container,
-  .ficha-container p,
-  .ficha-container li,
-  .ficha-container td,
-  .ficha-container th,
-  .ficha-container .info-grid,
-  .ficha-container .info-grid > div,
-  .ficha-container .info-grid span,
-  .ficha-container .info-grid a {
-    color: #111 !important;
+  /* Títulos sobrios + acento muy sutil */
+  .h1-titulo{
+    margin:0 0 .25rem;
+    font-weight:700;
+    letter-spacing:.2px;
+  }
+  .ficha-grupo h2{
+    margin:0 0 .75rem;
+    font-size:1rem;
+    font-weight:700;
+    border-left:3px solid var(--accent);
+    padding-left:.5rem;
+    color:var(--ink);
   }
 
-  /* Labels en negro y en negrita */
-  .ficha-container strong {
-    color: #111 !important;
-    font-weight: 700;
+  /* Header compacto */
+  .ficha-header{ margin-bottom:.75rem; }
+  .tutor-line{ margin:.15rem 0 0; font-size:1.05rem; color:var(--muted); }
+  .tutor-line strong{ color:var(--ink); }
+
+  /* Tarjetización ligera para cada grupo */
+  .ficha-grupo{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:14px;
+    margin:12px 0;
   }
 
-  /* Badges/chips existentes (estado, etc.) con texto blanco */
-  .ficha-container .badge * { color:#fff !important; }
-  .ficha-container .badge { color:#fff !important; }
-  .bg-success { background:#28a745; }  /* verde */
-  .bg-danger  { background:#dc3545; }  /* rojo  */
-  /* Tutor un poco más grande y legible */
-  .tutor-line {
-    font-size: 1.1rem;
-    margin-top: .25rem;
+  /* Perfil compacto: avatar + grid */
+  .info-flex{
+    display:grid;
+    grid-template-columns:96px 1fr;
+    gap:14px;
+    align-items:center;
   }
-   /* Forzar blanco en chips dentro de la grid de la ficha */
-   .ficha-container .info-grid .badge,
-  .ficha-container .info-grid .badge * {
-    color: #fff !important;}
+  .foto-perfil{
+    width:96px; height:96px;
+    border-radius:999px;
+    overflow:hidden;
+    border:1px solid var(--line);
+    background:#f6f7f8;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .foto-perfil img{ width:100%; height:100%; object-fit:cover; display:block; }
+  .foto-perfil svg{ opacity:.6 }
+
+  /* Grid de info en 2–3 columnas fluido */
+  .info-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit, minmax(220px,1fr));
+    gap:8px 16px;
+  }
+  .info-grid > div{
+    display:flex; gap:6px; align-items:baseline;
+    min-height:24px;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  .info-grid > div strong{
+    font-weight:700; color:var(--ink);
+    font-size:.85rem; letter-spacing:.02em;
+  }
+
+  /* Chips (badges) modernos */
+  .badge{
+    display:inline-flex; align-items:center;
+    padding:.18rem .55rem; border-radius:999px;
+    font-weight:600; font-size:.8rem; line-height:1;
+    color:#fff !important;
+  }
+  .bg-success{ background:var(--chip-green); }
+  .bg-danger{  background:var(--chip-red); }
+  .bg-warning{ background:var(--chip-warn); }
+  /* por si alguna regla global pintaba spans en negro */
+  .info-grid .badge, .info-grid .badge *{ color:#fff !important; }
+
+  /* Tags más contenidos */
+  .tags-wrap{ display:flex; flex-wrap:wrap; gap:6px; }
+  .tag{
+    padding:.18rem .5rem; border:1px solid #ffd1a8;
+    background:#fff3e6; color:var(--ink);
+    border-radius:999px; font-size:.8rem;
+  }
+
+  /* Botones secundarios */
+  .btn-main-verde{
+    border-radius:10px; padding:.45rem .75rem; font-weight:600;
+  }
+
+  /* Tablas más aireadas (finanzas) */
+  .table th, .table td{ vertical-align:middle; }
+
+  /* Enlaces “volver/editar” sobrios con acento al pasar */
+  .enlace-final-naranja{ color:var(--ink) !important; border-bottom:2px solid var(--accent); }
+  .enlace-final-naranja:hover{ color:var(--accent) !important; }
+
+  /* Responsivo: en móviles, stack */
+  @media (max-width: 640px){
+    .info-flex{ grid-template-columns:72px 1fr; gap:10px; }
+    .foto-perfil{ width:72px; height:72px; }
+    .info-grid{ grid-template-columns:1fr; }
+    .ficha-grupo{ padding:12px; border-radius:12px; }
+  }
+  /* Instrumentos + Grupos en la misma fila en pantallas anchas */
+@media (min-width: 900px){
+  #instrumentos,
+  #grupos{
+    display:inline-block;
+    width:calc(50% - 10px);
+    vertical-align:top;
+    margin:0 10px 12px 0; /* pequeño gap entre columnas */
+  }
+  #grupos{ margin-right:0; } /* la última sin gap a la derecha */
+}
+
+/* Ajuste interno para que la tarjeta no quede “doble” de separada */
+#instrumentos.ficha-grupo,
+#grupos.ficha-grupo{
+  margin:0 0 12px 0;
+}
+
+  /* Valores de los campos en negro (sin tocar labels ni chips) */
+  .ficha-container .info-grid > div { color:#111 !important; }
+
+  /* A prueba de bombas: si hubiese spans/links coloreados en naranja */
+  .ficha-container .info-grid > div span:not(.badge),
+  .ficha-container .info-grid > div a { color:#111 !important; }
+
+  /* Mantener chips con texto blanco */
+  .ficha-container .info-grid .badge,
+  .ficha-container .info-grid .badge * { color:#fff !important; }
 </style>
 
 <script>

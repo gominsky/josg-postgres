@@ -253,7 +253,6 @@ router.post('/', upload.single('foto'), async (req, res) => {
         plainPassword: password || ''
       });
     }
-
     await client.query('COMMIT');
     res.redirect('/alumnos');
   } catch (err) {

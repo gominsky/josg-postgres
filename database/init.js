@@ -1045,7 +1045,7 @@ async function init({ reset = false } = {}) {
       for (const instr of instrumentos) {
         await run(`INSERT INTO instrumentos (nombre, familia) VALUES ('${instr.nombre.replace(/'/g, "''")}', '${instr.familia.replace(/'/g, "''")}')`);
       }
-      console.log('Instrumentos base insertados.');
+      //console.log('Instrumentos base insertados.');
     }
 
     // Grupos base (idempotente)
@@ -1057,7 +1057,7 @@ async function init({ reset = false } = {}) {
          WHERE NOT EXISTS (SELECT 1 FROM grupos WHERE LOWER(nombre) = LOWER('${g.replace(/'/g, "''")}'))`
       );
     }
-    console.log('Grupos base verificados/creados.');
+    //console.log('Grupos base verificados/creados.');
 
     // Admin por defecto si no existe ninguno
     const rAdmin = await run(`SELECT COUNT(*)::int AS n FROM usuarios WHERE rol='admin'`, 'seed:admin-count');
@@ -1108,8 +1108,6 @@ async function init({ reset = false } = {}) {
         SELECT 1 FROM espacios WHERE LOWER(nombre) = LOWER('Teatro Municipal "Maestro Alonso"')
       );
     `, 'seed:espacios-teatro-maestro-alonso');
-    console.log('Espacio Teatro Municipal "Maestro Alonso" verificado/creado.');
-
     // Ausencias base
     {
       const tiposAusencia = ['Injustificada','Justificada','Parcial','Retraso'];
@@ -1122,7 +1120,6 @@ async function init({ reset = false } = {}) {
            )`
         );
       }
-      console.log('Tipos de ausencia verificados/creados.');
     }
 
     // Actividades complementarias base
@@ -1141,7 +1138,6 @@ async function init({ reset = false } = {}) {
            )`
         );
       }
-      console.log('Actividades complementarias verificadas/creadas.');
     }
     // ---- PATCH: constraints & índices extra (pegar antes del COMMIT) ----
 

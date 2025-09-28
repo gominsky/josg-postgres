@@ -399,77 +399,6 @@ async function detectMsgSchema(client){
 
   return { mensajes:true, dest:destTable, M, dcols:D, msgCol, alumCol, grpCol };
 }
-
-// GET /firmas/api/alumno/:alumnoId/mensajes
-router.get('/api/alumno/:alumnoId/mensajes', mustMatchAlumnoParam, async (req,res)=>{
-  const alumnoId = Number(req.alumno_id);
-
-  const client = await db.connect();
-  try {
-    const sch = await detectMsgSchema(client);
-    if (!sch || !sch.dest || !sch.msgCol || !sch.alumCol) return res.json([]);
-
-    // columnas opcionales en 'mensajes'
-    const hasTitulo = sch.M.has('titulo') || sch.M.has('title') || sch.M.has('nombre');
-    const selTitulo = sch.M.has('titulo') ? 'm.titulo'
-                  : sch.M.has('title')    ? 'm.title'
-                  : sch.M.has('nombre')   ? 'm.nombre'
-                  : `'Aviso'`;
-
-    const selUrl   = sch.M.has('url')  ? 'm.url'  : 'NULL';
-    // NORMALIZA urls a JSON array
-    const selUrls  = sch.M.has('urls')
-      ? `COALESCE(NULLIF(m.urls::text,'')::jsonb,'[]'::jsonb)`
-      : `'[]'::jsonb`;
-
-    const createdExpr =
-      sch.M.has('created_at') ? 'm.created_at'
-    : sch.M.has('fecha')      ? 'm.fecha'
-    : sch.M.has('ts')         ? 'm.ts'
-    : 'NULL::timestamp';
-
-    // autor si existe (usuario_id / creado_por / autor_id)
-    const joinAutor = sch.M.has('usuario_id') ? 'm.usuario_id'
-                    : sch.M.has('creado_por') ? 'm.creado_por'
-                    : sch.M.has('autor_id')   ? 'm.autor_id'
-                    : null;
-
-    const selAutor  = joinAutor
-      ? `COALESCE(NULLIF(TRIM(COALESCE(u.nombre,'') || ' ' || COALESCE(u.apellidos,'')),''),
-                  u.email,'')`
-      : 'NULL';
-
-    const leftJoinU = joinAutor ? `LEFT JOIN usuarios u ON u.id = ${joinAutor}` : '';
-
-    const selLeido  = sch.dcols.has('leido_at') ? 'd.leido_at' : 'NULL AS leido_at';
-    const selGrupo  = sch.grpCol ? `d.${sch.grpCol}` : 'NULL AS grupo_id';
-
-    const sql = `
-      SELECT m.id,
-             ${selTitulo} AS titulo,
-             m.cuerpo,
-             ${selUrl} AS url,
-             ${selUrls} AS urls,
-             ${createdExpr} AS created_at,
-             ${selAutor} AS autor,
-             ${selLeido},
-             ${selGrupo}
-        FROM mensajes m
-        JOIN ${sch.dest} d ON d.${sch.msgCol} = m.id AND d.${sch.alumCol} = $1
-        ${leftJoinU}
-       ORDER BY ${createdExpr} DESC NULLS LAST, m.id DESC
-       LIMIT 200;
-    `;
-    const { rows } = await client.query(sql, [alumnoId]);
-    res.json(rows);
-  } catch (e) {
-    console.error('[mensajes alumno] list:', e);
-    res.status(500).json([]);
-  } finally {
-    client.release();
-  }
-});
-
 // POST /firmas/api/alumno/:alumnoId/mensajes/:id/leer → marca como leído (si existe leido_at)
 router.post('/api/alumno/:alumnoId/mensajes/:id/leer', mustMatchAlumnoParam, express.json(), async (req,res)=>{
   const alumnoId = Number(req.alumno_id);
@@ -525,7 +454,6 @@ router.get('/api/alumno/:alumnoId/mensajes/unread_count', mustMatchAlumnoParam, 
     client.release();
   }
 });
-// GET /firmas/api/alumno/:alumnoId/partituras/:pid/archivo?tipo=partitura|audio
 // GET /firmas/api/alumno/:alumnoId/partituras/:pid/archivo?tipo=partitura|audio
 router.get('/api/alumno/:alumnoId/partituras/:pid/archivo', mustMatchAlumnoParam, async (req, res) => {
   const alumnoId = Number(req.alumno_id);

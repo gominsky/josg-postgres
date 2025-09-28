@@ -82,12 +82,8 @@ app.use((req, res, next) => {
   next();
 });
 
-
-
 const authRoutes = require('./routes/auth');
 app.use(authRoutes);
-
-
 
 // Method override (para PUT/DELETE en formularios)
 app.use(methodOverride('_method'));
