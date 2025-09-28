@@ -23,7 +23,7 @@
     .card h3{ margin:.1rem 0 .25rem; font-size:1.05rem; }
     .card p{ margin:.25rem 0; }
     .meta{ font-size:.85rem; color:var(--muted); }
-    .msg-body{ white-space:pre-wrap; word-break:break-word; }
+    .msg-body{ white-space:pre-wrap; word-break:break-word; display:block; }
 
     /* Chips de enlaces */
     .chips{
@@ -33,16 +33,17 @@
     .chip{
       display:inline-block; padding:.38rem .7rem; border:1px solid var(--border);
       border-radius:999px; background:#fff;
-      font-weight:700; font-size:.9rem; color:var(--accent); text-decoration:none;
+      font-weight:700; font-size:.9rem; color:#ea6b38; text-decoration:none;
       white-space:nowrap;
     }
     .chip:active{ transform: translateY(1px); }
 
-    /* “Marcar leído” */
-    .mark-wrap{ margin-top:.35rem; }
+    /* Botoncitos secundarios (Marcar leído / Ver más) */
+    .mark-wrap{ margin-top:.35rem; display:flex; gap:.4rem; flex-wrap:wrap; }
     .btn-ghost{
       padding:.4rem .6rem; font-size:.85rem; background:#fff;
       border:1px solid var(--border); border-radius:999px; color:#374151;
+      cursor:pointer; user-select:none;
     }
     .btn-ghost:hover{ background:#f9fafb; }
     .btn-ghost:active{ transform: translateY(1px); }
@@ -53,7 +54,7 @@
       gap:6px; flex-wrap:wrap; margin:14px 0 4px;
     }
     .pager-btn{
-      all: unset;                    /* <- limpia estilos globales de botones */
+      all: unset;
       display:inline-flex; align-items:center; justify-content:center;
       padding:.35rem .6rem; min-width:2.2rem; text-align:center;
       border:1px solid var(--border); border-radius:8px; background:#fff;
@@ -63,14 +64,13 @@
     .pager-btn:active{ transform: translateY(1px); }
     .pager-btn[disabled]{ opacity:.5; cursor:default; }
     .pager-btn.active{ font-weight:700; border-color:#ffb554; box-shadow:0 0 0 3px #fff6e8; color:#ea6b38; }
-    .pager span{ padding:0 .25rem; color:#6c757d; align-self:center; }
 
-    /* Botón Inicio (naranja) – aislado para no chocar con la paginación */
+    /* Botón Inicio (naranja) */
     .back{ margin:16px 0 6px; }
     .btn-home{
       display:inline-block; padding:.6rem 1.2rem; min-width:110px;
       border-radius:12px; font-weight:600; color:#fff; text-decoration:none; border:0;
-      background: linear-gradient(180deg,#f28d63,#ea6b38); border:1px solid #cc5c2f;
+      background:linear-gradient(180deg,#ffb24a,#f59e0b); border-color:#f59e0b; color:#fff; 
       box-shadow:0 4px 12px rgba(0,0,0,.15);
       cursor:pointer; text-align:center;
     }
@@ -79,22 +79,20 @@
   </style>
 </head>
 <body>
-  
-  
   <div class="container">
+    <!-- Topbar: solo nombre -->
     <div class="topbar">
       <div id="user-name"></div>
     </div>
-    
+
+    <!-- Hero musical -->
     <div class="hero" aria-label="Bienvenida">
       <div class="motifs-layer" aria-hidden="true"></div>
       <img class="hero-logo" src="../imagenes/logoJOSG.png" alt="JOSG">
       <h1>¡En tu mano!</h1>
-      <p>Avisios y notificaciones.</p>
+      <p>Avisos y notificaciones.</p>
     </div>
-    <div class="topbar">
-      <div id="user-name"></div>
-    </div>
+
     <div id="empty" class="muted" style="display:none;">No tienes mensajes aún.</div>
     <div id="list" class="list"></div>
     <div id="pager" class="pager"></div>
@@ -105,11 +103,21 @@
   </div>
 
 <script>
+/* =================== Persistencia de “leídos” en local =================== */
+const LS_KEY = `mensajes_leidos_${localStorage.getItem('alumno_id')||'anon'}`;
+const getReadSet = () => new Set(JSON.parse(localStorage.getItem(LS_KEY) || '[]'));
+const saveReadSet = (set) => localStorage.setItem(LS_KEY, JSON.stringify([...set]));
+const isRead = (m, readSet) => (
+  !!(m.leido || m.leído || m.read || m.read_at || m.fecha_leido || m.f_leido || m.visto || m.visto_el)
+  || readSet.has(String(m.id))
+);
+
+/* =============================== Página ================================ */
 (function(){
   const alumno_id = localStorage.getItem('alumno_id');
   if (!alumno_id) { location.href = 'index.html'; return; }
 
-  // pinta nombre si está guardado
+  // Nombre
   const nombre = localStorage.getItem('alumno_nombre') || localStorage.getItem('usuario_nombre') || '';
   if (nombre) document.getElementById('user-name').textContent = `Hola, ${nombre}`;
 
@@ -118,6 +126,7 @@
   const $pager = document.getElementById('pager');
 
   const PAGE_SIZE = 5;
+  const MAX_CHARS = 320;                 // umbral “Ver más”
   let DATA = [];
   let currentPage = 1;
   let totalPages  = 1;
@@ -126,12 +135,11 @@
     .replace(/&/g,"&amp;").replace(/</g,"&lt;")
     .replace(/>/g,"&gt;").replace(/"/g,"&quot;")
     .replace(/'/g,"&#39;");
+
   const safeHref = (u)=>{
     if (!u) return '';
-    let s = String(u).trim();
-    s = s.replace(/^https?\/\//i, m => m.includes('://') ? m : m.replace('//', '://'));
-    if (/^[a-zA-Z][\w.+-]*:/.test(s)) return s;
-    if (s.startsWith('//') || s.startsWith('/')) return s;
+    const s = String(u).trim();
+    if (/^[a-zA-Z][\w.+-]*:/.test(s) || s.startsWith('//') || s.startsWith('/')) return s;
     return 'https://' + s;
   };
 
@@ -151,7 +159,6 @@
     const seen = new Set();
     let arr = null;
 
-    // m.urls puede ser array o JSON en string
     if (Array.isArray(m.urls)) arr = m.urls;
     else if (typeof m.urls === 'string'){
       try{ const j = JSON.parse(m.urls); if (Array.isArray(j)) arr = j; }catch{}
@@ -171,26 +178,72 @@
     return out;
   }
 
-  function cardHTML(m){
-    const titulo = esc(m.titulo || 'Mensaje');
-    const cuerpo = esc(m.mensaje || m.texto || '');
-    const fecha  = fmtFecha(m.fecha || m.created_at || m.f_creacion);
+  // --- Body robusto: prueba claves típicas y, si falla, busca el string más largo en el objeto ---
+  function getBody(m){
+    const keysPrefer = [
+      'mensaje','texto','contenido','descripcion','descripcion_larga',
+      'body','content','msg','message','observaciones','nota','notas'
+    ];
+    for (const k of keysPrefer){
+      if (m[k] != null && String(m[k]).trim().length) return String(m[k]);
+    }
+    // Fallback: toma el string más largo de todas las propiedades (excluye títulos/fechas/urls)
+    const exclude = new Set(['titulo','title','urls','url','id','fecha','created_at','f_creacion','updated_at']);
+    let best = '';
+    for (const [k,v] of Object.entries(m)){
+      if (exclude.has(k)) continue;
+      if (v != null && typeof v === 'string' && v.trim().length > best.length){
+        best = v.trim();
+      }
+    }
+    return best;
+  }
 
-    const links = linksDe(m);
-    const chips = links.map((href,i)=>`<a class="chip" href="${href}" target="_blank" rel="noopener">Enlace ${i+1}</a>`).join('');
+  function clampForCard(text){
+    const raw = String(text || '');
+    if (!raw) return { short: '', full: '', truncated:false };
+    if (raw.length <= MAX_CHARS) {
+      const escFull = esc(raw);
+      return { short: escFull, full: escFull, truncated:false };
+    }
+    const cut = raw.slice(0, MAX_CHARS);
+    const lastSpace = cut.lastIndexOf(' ');
+    const shortRaw = (lastSpace > 40 ? cut.slice(0,lastSpace) : cut).trim() + '…';
+    return { short: esc(shortRaw), full: esc(raw), truncated:true };
+  }
+
+  function cardHTML(m, readSet){
+    const titulo = esc(m.titulo || m.title || 'Mensaje');
+    const bodyRaw = getBody(m);
+    const { short, full, truncated } = clampForCard(bodyRaw);
+    const fecha  = fmtFecha(m.fecha || m.created_at || m.f_creacion);
+    const links  = linksDe(m);
+    const chips  = links.map((href,i)=>`<a class="chip" href="${href}" target="_blank" rel="noopener">Enlace ${i+1}</a>`).join('');
+    const read   = isRead(m, readSet);
+    const idStr  = String(m.id || '');
+
+    // Si sigue sin cuerpo, muestra “—” para que no quede vacío
+    const visibleText = short || '—';
 
     return `
-      <article class="card">
+      <article class="card" data-id="${idStr}">
         <h3>${titulo}</h3>
-        <p class="meta">${fecha}${m.leido ? ' · leído':''}</p>
-        <p class="msg-body">${cuerpo}</p>
+        <p class="meta">${fecha || ''}${read ? (fecha ? ' · ' : '') + 'leído' : ''}</p>
+        <p class="msg-body"
+           data-expanded="false"
+           data-full="${full.replace(/"/g,'&quot;')}"
+           data-short="${visibleText.replace(/"/g,'&quot;')}">${visibleText}</p>
         ${chips ? `<div class="chips">${chips}</div>`:''}
-        ${!m.leido ? `<div class="mark-wrap"><button class="btn-ghost" data-mark="${Number(m.id||0)}">Marcar leído</button></div>`:''}
+        <div class="mark-wrap">
+          ${truncated ? `<button class="btn-ghost" data-toggle="${idStr}">Ver más</button>`:''}
+          ${!read ? `<button class="btn-ghost" data-mark="${idStr}">Marcar leído</button>`:''}
+        </div>
       </article>
     `;
   }
 
   function renderPage(page=1){
+    const READ = getReadSet();
     currentPage = Math.min(Math.max(1,page), totalPages);
     if (DATA.length === 0){
       $list.innerHTML = '';
@@ -201,7 +254,7 @@
     $empty.style.display = 'none';
     const start = (currentPage-1)*PAGE_SIZE;
     const slice = DATA.slice(start, start+PAGE_SIZE);
-    $list.innerHTML = slice.map(cardHTML).join('');
+    $list.innerHTML = slice.map(m => cardHTML(m, READ)).join('');
     renderPager();
   }
 
@@ -221,10 +274,8 @@
       $pager.appendChild(b);
     };
 
-    // anterior
     addBtn('‹', Math.max(1, currentPage-1), { disabled: currentPage === 1 });
 
-    // ventana compacta (1 a cada lado)
     const win = 1;
     let start = Math.max(1, currentPage - win);
     let end   = Math.min(totalPages, currentPage + win);
@@ -239,7 +290,6 @@
       addBtn(String(totalPages), totalPages, { active: currentPage === totalPages });
     }
 
-    // siguiente
     addBtn('›', Math.min(totalPages, currentPage + 1), { disabled: currentPage === totalPages });
 
     function addEllipsis(){
@@ -258,12 +308,10 @@
       const j = await r.json();
       if (!Array.isArray(j)) throw new Error('Formato inesperado');
 
-      // Orden más reciente primero
-      DATA = j.slice().sort((a,b)=> Number(b.id||0) - Number(a.id||0));
+      DATA = j.slice().sort((a,b)=> Number(b.id||0) - Number(a.id||0));  // recientes primero
       totalPages = Math.max(1, Math.ceil(DATA.length / PAGE_SIZE));
       renderPage(1);
 
-      // Si el sitio no pidió permisos aún, dispara el prompt sutilmente
       if ('Notification' in window && Notification.permission === 'default'){
         try{ Notification.requestPermission(); }catch{}
       }
@@ -276,11 +324,28 @@
     }
   }
 
-  // marcar como leído (delegación)
+  // Delegación: Ver más / Ver menos y Marcar leído
   $list.addEventListener('click', async (ev)=>{
+    const more = ev.target.closest('button[data-toggle]');
+    if (more){
+      const card = more.closest('.card');
+      const body = card.querySelector('.msg-body');
+      const expanded = body.getAttribute('data-expanded') === 'true';
+      if (expanded){
+        body.innerHTML = body.dataset.short;
+        body.setAttribute('data-expanded','false');
+        more.textContent = 'Ver más';
+      }else{
+        body.innerHTML = body.dataset.full || body.dataset.short;
+        body.setAttribute('data-expanded','true');
+        more.textContent = 'Ver menos';
+      }
+      return;
+    }
+
     const btn = ev.target.closest('button[data-mark]');
     if (!btn) return;
-    const id = Number(btn.getAttribute('data-mark'));
+    const id = String(btn.getAttribute('data-mark'));
     try{
       const token = localStorage.getItem('token');
       const r = await fetch(`/firmas/api/alumno/${encodeURIComponent(alumno_id)}/mensajes/${id}/leer`, {
@@ -291,10 +356,13 @@
         )
       });
       if (!r.ok) throw new Error('No se pudo marcar como leído');
+
+      const set = getReadSet(); set.add(id); saveReadSet(set);
+
       btn.remove();
       const meta = btn.closest('.card').querySelector('.meta');
-      if (meta && !/· leído/.test(meta.textContent)) {
-        meta.textContent = meta.textContent + ' · leído';
+      if (meta && !/leído/.test(meta.textContent)) {
+        meta.textContent = (meta.textContent ? meta.textContent + ' · ' : '') + 'leído';
       }
     }catch(e){ console.error(e); }
   });
@@ -304,54 +372,45 @@
   document.addEventListener('visibilitychange', ()=>{ if (document.visibilityState === 'visible') cargar(); });
 })();
 </script>
-<script>
-  // Nombre del usuario en la cabecera
-  (function(){
-    const n = localStorage.getItem('alumno_nombre') || '';
-    const slot = document.getElementById('user-name');
-    if (slot) slot.textContent = n;
-  })();
-</script>
 
 <script>
-  // Figuras musicales (marca de agua)
-  (function(){
-    const SYMBOLS=['♩','♪','♫','♬']; const COUNT_MIN=7,COUNT_MAX=10,SIZE_MIN=72,SIZE_MAX=160,ROT_MIN=-16,ROT_MAX=16;
-    const PADDING=10, EDGE_PAD=6, MAX_TRIES=80;
-    const rInt=(a,b)=>Math.floor(Math.random()*(b-a+1))+a, pick=a=>a[Math.floor(Math.random()*a.length)];
-    const rel=(el,p)=>{const r=el.getBoundingClientRect(),b=p.getBoundingClientRect();return {x:r.left-b.left,y:r.top-b.top,w:r.width,h:r.height};};
-    const hit=(a,b,p)=>!(a.x+a.w+p<=b.x||b.x+b.w+p<=a.x||a.y+a.h+p<=b.y||b.y+b.h+p<=a.y);
-    function place(){
-      const hero=document.querySelector('.hero'), layer=document.querySelector('.motifs-layer'); if(!hero||!layer)return;
-      layer.innerHTML='';
-      const avoid=[]; ['.hero-logo','h1','p'].forEach(sel=>{const el=hero.querySelector(sel); if(!el)return; const r=rel(el,hero); avoid.push({x:r.x-10,y:r.y-10,w:r.w+20,h:r.h+20});});
-      const placed=[]; const count=rInt(COUNT_MIN,COUNT_MAX);
-      for(let i=0;i<count;i++){
-        const s=document.createElement('span'); s.className='motif'; s.textContent=pick(SYMBOLS); s.style.opacity='0'; layer.appendChild(s);
-        let ok=false;
-        for(let t=0;t<MAX_TRIES;t++){
-          const size=rInt(SIZE_MIN,SIZE_MAX), rot=rInt(ROT_MIN,ROT_MAX);
-          s.style.fontSize=size+'px'; s.style.transform=`rotate(${rot}deg)`;
-          const left=rInt(EDGE_PAD, Math.max(EDGE_PAD, hero.clientWidth - size - EDGE_PAD));
-          const top =rInt(EDGE_PAD, Math.max(EDGE_PAD, hero.clientHeight - size - EDGE_PAD));
-          s.style.left=left+'px'; s.style.top=top+'px';
-          const rr=rel(s,hero);
-          if (rr.x<EDGE_PAD||rr.y<EDGE_PAD||rr.x+rr.w>hero.clientWidth-EDGE_PAD||rr.y+rr.h>hero.clientHeight-EDGE_PAD) continue;
-          if (avoid.some(av=>hit(rr,av,PADDING))) continue;
-          if (placed.some(pr=>hit(rr,pr,PADDING))) continue;
-          placed.push(rr); s.style.opacity=''; ok=true; break;
-        }
-        if(!ok) layer.removeChild(s);
+/* Figuras musicales del HERO (marca de agua) */
+(function(){
+  const SYMBOLS=['♩','♪','♫','♬']; const COUNT_MIN=7,COUNT_MAX=10,SIZE_MIN=72,SIZE_MAX=160,ROT_MIN=-16,ROT_MAX=16;
+  const PADDING=10, EDGE_PAD=6, MAX_TRIES=80;
+  const rInt=(a,b)=>Math.floor(Math.random()*(b-a+1))+a, pick=a=>a[Math.floor(Math.random()*a.length)];
+  const rel=(el,p)=>{const r=el.getBoundingClientRect(),b=p.getBoundingClientRect();return {x:r.left-b.left,y:r.top-b.top,w:r.width,h:r.height};};
+  const hit=(a,b,p)=>!(a.x+a.w+p<=b.x||b.x+b.w+p<=a.x||a.y+a.h+p<=b.y||b.y+b.h+p<=a.y);
+  function place(){
+    const hero=document.querySelector('.hero'), layer=document.querySelector('.motifs-layer'); if(!hero||!layer)return;
+    layer.innerHTML='';
+    const avoid=[]; ['.hero-logo','h1','p'].forEach(sel=>{const el=hero.querySelector(sel); if(!el)return; const r=rel(el,hero); avoid.push({x:r.x-10,y:r.y-10,w:r.w+20,h:r.h+20});});
+    const placed=[]; const count=rInt(COUNT_MIN,COUNT_MAX);
+    for(let i=0;i<count;i++){
+      const s=document.createElement('span'); s.className='motif'; s.textContent=pick(SYMBOLS); s.style.opacity='0'; layer.appendChild(s);
+      let ok=false;
+      for(let t=0;t<MAX_TRIES;t++){
+        const size=rInt(SIZE_MIN,SIZE_MAX), rot=rInt(ROT_MIN,ROT_MAX);
+        s.style.fontSize=size+'px'; s.style.transform=`rotate(${rot}deg)`;
+        const left=rInt(EDGE_PAD, Math.max(EDGE_PAD, hero.clientWidth - size - EDGE_PAD));
+        const top =rInt(EDGE_PAD, Math.max(EDGE_PAD, hero.clientHeight - size - EDGE_PAD));
+        s.style.left=left+'px'; s.style.top=top+'px';
+        const rr=rel(s,hero);
+        if (rr.x<EDGE_PAD||rr.y<EDGE_PAD||rr.x+rr.w>hero.clientWidth-EDGE_PAD||rr.y+rr.h>hero.clientHeight-EDGE_PAD) continue;
+        if (avoid.some(av=>hit(rr,av,PADDING))) continue;
+        if (placed.some(pr=>hit(rr,pr,PADDING))) continue;
+        placed.push(rr); s.style.opacity=''; ok=true; break;
       }
+      if(!ok) layer.removeChild(s);
     }
-    window.addEventListener('load', place);
-    window.addEventListener('pageshow', e=>{ if(e.persisted) setTimeout(place,0); });
-    let tm; window.addEventListener('resize', ()=>{ clearTimeout(tm); tm=setTimeout(place,120); });
-  })();
+  }
+  window.addEventListener('load', place);
+  window.addEventListener('pageshow', e=>{ if(e.persisted) setTimeout(place,0); });
+  let tm; window.addEventListener('resize', ()=>{ clearTimeout(tm); tm=setTimeout(place,120); });
+})();
 </script>
 
 <script src="app_alumno.js"></script>
 </body>
 </html>
-
 

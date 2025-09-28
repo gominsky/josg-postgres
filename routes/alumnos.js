@@ -117,80 +117,155 @@ router.get('/nuevo', async (req, res) => {
   }
 });
 
-// ───────────── Crear alumno (ARREGLADO: codigo_postal ''→NULL) ─────────────
+// Crear alumno (con relaciones instrumentos/grupos)
 router.post('/', upload.single('foto'), async (req, res) => {
-  const {
-    nombre, apellidos, tutor, direccion, codigo_postal,
-    municipio, provincia, telefono, email,
-    fecha_nacimiento, dni, centro, profesor_centro,
-    instrumentos, grupos
-  } = req.body;
-
-  // Saneo y normalización
-  const _nombre          = toStrOrNull(nombre);
-  const _apellidos       = toStrOrNull(apellidos);
-  const _tutor           = toStrOrNull(tutor);
-  const _direccion       = toStrOrNull(direccion);
-  const _codigo_postal   = toIntOrNull(codigo_postal);  // 👈 evita ''→integer
-  const _municipio       = toStrOrNull(municipio);
-  const _provincia       = toStrOrNull(provincia);
-  const _telefono        = toStrOrNull(telefono);
-  const _email           = toStrOrNull(email);
-  const _fecha_nacimiento= toISODate(fecha_nacimiento) || toDateOrNull(fecha_nacimiento);
-  const _dni             = toStrOrNull(dni);
-  const _centro          = toStrOrNull(centro);
-  const _profesor_centro = toStrOrNull(profesor_centro);
-
-  const fechaMat = new Date().toISOString().split('T')[0];
-  const foto = req.file ? req.file.filename : null;
-  const activo = req.body.activo === '1' ? true : false;
-
-  const sqlInsert = `
-    INSERT INTO alumnos (
-      nombre, apellidos, tutor, direccion, codigo_postal,
-      municipio, provincia, telefono, email, fecha_nacimiento,
-      dni, centro, profesor_centro, foto, activo, fecha_matriculacion
-    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
-    RETURNING id
-  `;
-  const paramsInsert = [
-    _nombre, _apellidos, _tutor, _direccion, _codigo_postal,
-    _municipio, _provincia, _telefono, _email, _fecha_nacimiento,
-    _dni, _centro, _profesor_centro, foto, activo, fechaMat
-  ];
-
+  const client = await db.connect();
   try {
-    const result = await db.query(sqlInsert, paramsInsert);
-    const newId = result.rows[0].id;
+    await client.query('BEGIN');
 
-    // Instrumentos → enteros válidos
-    const instArray = Array.isArray(instrumentos) ? instrumentos : (instrumentos ? [instrumentos] : []);
-    const instClean = instArray.map(toIntOrNull).filter(n => n !== null);
-    for (let iid of instClean) {
-      await db.query('INSERT INTO alumno_instrumento (alumno_id, instrumento_id) VALUES ($1, $2)', [newId, iid]);
+    const {
+      // datos base
+      nombre, apellidos, tutor, direccion,
+      codigo_postal, cp, municipio, provincia,
+      telefono, email, fecha_nacimiento, DNI, dni,
+      centro, profesor_centro, repertorio_id,
+      registrado, activo, password,
+      guardias_actual, guardias_hist,
+      fecha_matriculacion, fecha_alta, fecha_baja,
+
+      // relaciones (select multiple)
+      instrumentos, grupos
+    } = req.body;
+
+    // normalizaciones
+    const normEmail = (e) => (e ?? '').toString().trim().toLowerCase() || null;
+    const normalizedEmail = normEmail(email);
+    const DNI_val = (DNI ?? dni ?? '').trim() || null;
+    const codigo_postal_val = codigo_postal ?? cp ?? null;
+    const fecha_matriculacion_val =
+      fecha_matriculacion ?? fecha_alta ?? new Date().toISOString().slice(0, 10);
+    const fecha_baja_val = fecha_baja ?? null;
+
+    // booleans reales
+    const toBool = (v) => {
+      const s = String(v ?? '').toLowerCase();
+      return s === '1' || s === 'true' || s === 'on';
+    };
+    const activoBool = toBool(activo);
+    const registradoBool = toBool(registrado);
+
+    // --- Validar duplicados ---
+    if (DNI_val) {
+      const dupDni = await client.query(
+        `SELECT 1 FROM alumnos WHERE dni = $1 LIMIT 1`,
+        [DNI_val]
+      );
+      if (dupDni.rowCount > 0) {
+        if (req.file?.filename) { try { fs.unlinkSync(path.join('./uploads', req.file.filename)); } catch {} }
+        await client.query('ROLLBACK');
+        return res.status(409).send('El DNI ya está registrado');
+      }
+    }
+    if (normalizedEmail) {
+      const dupEmail = await client.query(
+        `SELECT 1 FROM alumnos WHERE email IS NOT NULL AND LOWER(email) = $1 LIMIT 1`,
+        [normalizedEmail]
+      );
+      if (dupEmail.rowCount > 0) {
+        if (req.file?.filename) { try { fs.unlinkSync(path.join('./uploads', req.file.filename)); } catch {} }
+        await client.query('ROLLBACK');
+        return res.status(409).send('El email ya está registrado');
+      }
     }
 
-    // Grupos → enteros válidos
-    const grpArray = Array.isArray(grupos) ? grupos : (grupos ? [grupos] : []);
-    const grpClean = grpArray.map(toIntOrNull).filter(n => n !== null);
-    for (let gid of grpClean) {
-      await db.query('INSERT INTO alumno_grupo (alumno_id, grupo_id) VALUES ($1, $2)', [newId, gid]);
+    // foto
+    const foto = req.file ? req.file.filename : null;
+
+    // payload alumno
+    const payload = {
+      nombre: toStrOrNull(nombre),
+      apellidos: toStrOrNull(apellidos),
+      tutor: toStrOrNull(tutor),
+      direccion: toStrOrNull(direccion),
+      codigo_postal: toIntOrNull(codigo_postal_val),
+      municipio: toStrOrNull(municipio),
+      provincia: toStrOrNull(provincia),
+      telefono: toStrOrNull(telefono),
+      email: toStrOrNull(normalizedEmail),
+      fecha_nacimiento: toDateOrNull(fecha_nacimiento),
+      dni: toStrOrNull(DNI_val),
+      centro: toStrOrNull(centro),
+      profesor_centro: toStrOrNull(profesor_centro),
+      repertorio_id: toIntOrNull(repertorio_id),
+      foto: toStrOrNull(foto),
+      activo: activoBool,
+      password: toStrOrNull(password),
+      registrado: registradoBool,
+      guardias_actual: toIntOrNull(guardias_actual),
+      guardias_hist: toIntOrNull(guardias_hist),
+      fecha_matriculacion: toDateOrNull(fecha_matriculacion_val),
+      fecha_baja: toDateOrNull(fecha_baja_val)
+      // created_at / updated_at -> defaults
+    };
+
+    // INSERT alumno y obtener id
+    const fields = Object.keys(payload).join(', ');
+    const placeholders = Object.keys(payload).map((_, i) => `$${i + 1}`).join(', ');
+    const values = Object.values(payload);
+
+    const ins = await client.query(
+      `INSERT INTO alumnos (${fields}) VALUES (${placeholders}) RETURNING id`,
+      values
+    );
+    const newId = ins.rows[0].id;
+
+    // ---------- Relaciones ----------
+    // Normalizar arrays desde el form (acepta valor único o array)
+    const toIdArray = (v) => {
+      const arr = Array.isArray(v) ? v : (v ? [v] : []);
+      // números únicos y válidos
+      return [...new Set(arr.map(n => parseInt(n, 10)).filter(Number.isFinite))];
+    };
+
+    const instIds = toIdArray(instrumentos);
+    const grpIds  = toIdArray(grupos);
+
+    if (instIds.length) {
+      const sql = 'INSERT INTO alumno_instrumento (alumno_id, instrumento_id) VALUES ($1, $2)';
+      for (const iid of instIds) {
+        await client.query(sql, [newId, iid]);
+      }
     }
 
-    // Credenciales app (opcional)
-    const registradoFlag = String(req.body.registrado || '0') === '1';
-    const plainPassword  = req.body.password || '';
-    await upsertCreds({
-      alumnoId: newId,
-      email: (_email || '')?.trim(),
-      registrado: registradoFlag,
-      plainPassword
-    });
+    if (grpIds.length) {
+      const sql = 'INSERT INTO alumno_grupo (alumno_id, grupo_id) VALUES ($1, $2)';
+      for (const gid of grpIds) {
+        await client.query(sql, [newId, gid]);
+      }
+    }
 
-    res.redirect(`/alumnos/${newId}`);
+    // ---------- Credenciales app (si tienes la función arriba en el archivo) ----------
+    if (typeof upsertCreds === 'function') {
+      await upsertCreds({
+        alumnoId: newId,
+        email: normalizedEmail,
+        registrado: registradoBool,
+        plainPassword: password || ''
+      });
+    }
+
+    await client.query('COMMIT');
+    res.redirect('/alumnos');
   } catch (err) {
+    await client.query('ROLLBACK');
     console.error('Error al crear alumno:', err);
-    res.status(500).send('Error al guardar alumno');
+    // limpiar foto subida si algo falla
+    if (req.file?.filename) {
+      try { fs.unlinkSync(path.join('./uploads', req.file.filename)); } catch {}
+    }
+    res.status(500).send('Error al crear alumno');
+  } finally {
+    client.release();
   }
 });
 
@@ -202,133 +277,197 @@ router.get('/ayuda', (_req, res) => {
 router.get(['/alumnos/ayuda', '/musicos/ayuda'], (_req, res) => {
   res.render('ayuda_musicos', { title: 'Ayuda · Músicos', hero: false });
 });
+// Normaliza email (lowercase + trim). Devuelve null si queda vacío
+const normEmail = (e) => {
+  const v = (e ?? '').toString().trim().toLowerCase();
+  return v.length ? v : null;
+};
 
-// ───────────── Actualizar alumno (ya normalizabas; unificado a helpers) ─────────────
-router.put('/:id', upload.single('foto'), async (req, res) => {
-  const id = Number(req.params.id);
-  if (!Number.isInteger(id)) return res.status(400).send('ID inválido');
-
-  const {
-    nombre, apellidos, tutor, direccion, codigo_postal,
-    municipio, provincia, telefono, email, fecha_nacimiento,
-    dni, centro, profesor_centro, instrumentos, grupos, fotoActual
-  } = req.body;
-
-  const foto = req.file ? req.file.filename : (fotoActual || null);
-  const activo = req.body.activo === '1' || req.body.activo === true ? 1 : 0;
-  const fechaBaja = activo === 0 ? new Date().toISOString().slice(0, 10) : null;
-
-  const payload = {
-    nombre:            toStrOrNull(nombre),
-    apellidos:         toStrOrNull(apellidos),
-    tutor:             toStrOrNull(tutor),
-    direccion:         toStrOrNull(direccion),
-    codigo_postal:     toIntOrNull(codigo_postal),     // 👈 clave
-    municipio:         toStrOrNull(municipio),
-    provincia:         toStrOrNull(provincia),
-    telefono:          toStrOrNull(telefono),
-    email:             toStrOrNull(email),
-    fecha_nacimiento:  toDateOrNull(fecha_nacimiento),
-    dni:               toStrOrNull(dni),
-    centro:            toStrOrNull(centro),
-    profesor_centro:   toStrOrNull(profesor_centro),
-    foto:              toStrOrNull(foto),
-    activo,
-    fecha_baja:        toDateOrNull(fechaBaja)
-  };
-
-  // Arrays normalizados
-  const arrInst = Array.isArray(instrumentos) ? instrumentos : (instrumentos ? [instrumentos] : []);
-  const cleanInst = arrInst.map(toIntOrNull).filter(n => n !== null);
-
-  const arrGrp = Array.isArray(grupos) ? grupos : (grupos ? [grupos] : []);
-  const cleanGrps = arrGrp.map(toIntOrNull).filter(n => n !== null);
-
-  const sql = `
-    UPDATE alumnos
-       SET nombre            = $2,
-           apellidos         = $3,
-           tutor             = $4,
-           direccion         = $5,
-           codigo_postal     = $6,   -- INTEGER o NULL
-           municipio         = $7,
-           provincia         = $8,
-           telefono          = $9,
-           email             = $10,
-           fecha_nacimiento  = $11,  -- DATE o NULL
-           dni               = $12,
-           centro            = $13,
-           profesor_centro   = $14,
-           foto              = $15,
-           activo            = $16,  -- 1/0
-           fecha_baja        = $17,  -- DATE o NULL
-           updated_at        = NOW()
-     WHERE id = $1
-  `;
-  const params = [
-    id,
-    payload.nombre,
-    payload.apellidos,
-    payload.tutor,
-    payload.direccion,
-    payload.codigo_postal,
-    payload.municipio,
-    payload.provincia,
-    payload.telefono,
-    payload.email,
-    payload.fecha_nacimiento,
-    payload.dni,
-    payload.centro,
-    payload.profesor_centro,
-    payload.foto,
-    payload.activo,
-    payload.fecha_baja
-  ];
-
+// API: comprobar si un email está libre. Opcionalmente excluir un id (edición)
+router.get('/api/check-email', async (req, res) => {
   try {
-    await db.query('BEGIN');
+    const email = normEmail(req.query.email);
+    const excludeId = parseInt(req.query.excludeId, 10) || null;
+    if (!email) return res.json({ ok: true }); // vacío no se considera ocupado
 
-    // Credenciales app (opcional)
-    const registradoFlag = String(req.body.registrado || (req.body?.alumno?.registrado ? '1' : '0')) === '1';
-    const plainPassword  = req.body.password || '';
-    await upsertCreds({
-      alumnoId: id,
-      email: (req.body.email || '').trim(),
-      registrado: registradoFlag,
-      plainPassword
-    });
-
-    // Update alumno
-    await db.query(sql, params);
-
-    // Relaciones: instrumentos
-    await db.query('DELETE FROM alumno_instrumento WHERE alumno_id = $1', [id]);
-    if (cleanInst.length) {
-      const text = `
-        INSERT INTO alumno_instrumento (alumno_id, instrumento_id)
-        SELECT $1, x FROM UNNEST($2::int[]) AS t(x)
-      `;
-      await db.query(text, [id, cleanInst]);
+    const params = [email];
+    let sql = `SELECT 1 FROM alumnos WHERE email IS NOT NULL AND LOWER(email) = $1`;
+    if (excludeId) {
+      params.push(excludeId);
+      sql += ` AND id <> $2`;
     }
 
-    // Relaciones: grupos
-    await db.query('DELETE FROM alumno_grupo WHERE alumno_id = $1', [id]);
-    if (cleanGrps.length) {
-      const text = `
-        INSERT INTO alumno_grupo (alumno_id, grupo_id)
-        SELECT $1, x FROM UNNEST($2::int[]) AS t(x)
-      `;
-      await db.query(text, [id, cleanGrps]);
-    }
-
-    await db.query('COMMIT');
-    res.redirect(`/alumnos/${id}`);
+    const { rows } = await db.query(sql, params);
+    return res.json({ ok: rows.length === 0 });
   } catch (err) {
-    await db.query('ROLLBACK');
-    console.error('Error al actualizar alumno:', err);
-    res.status(500).send('Error al actualizar alumno');
+    console.error('[check-email] error:', err);
+    return res.status(500).json({ ok: false });
   }
 });
+
+// Actualizar alumno (sin bloqueos: upsertCreds tras COMMIT)
+router.put('/:id', upload.single('foto'), async (req, res) => {
+  const client = await db.connect();
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (!id) return res.status(400).send('ID inválido');
+
+    await client.query('BEGIN');
+
+    const {
+      nombre, apellidos, tutor, direccion,
+      codigo_postal, cp, municipio, provincia,
+      telefono, email, fecha_nacimiento, DNI, dni,
+      centro, profesor_centro, repertorio_id,
+      registrado, activo, password,
+      guardias_actual, guardias_hist,
+      fecha_matriculacion, fecha_alta, fecha_baja,
+      eliminar_foto, fotoActual,
+      instrumentos, grupos
+    } = req.body;
+
+    // Normalizaciones
+    const normEmail = (e) => (e ?? '').toString().trim().toLowerCase() || null;
+    const normalizedEmail = normEmail(email);
+    const codigo_postal_val = codigo_postal ?? cp ?? null;
+
+    // DNI: solo si viene en el body (evita borrarlo)
+    const dniKeyPresent = Object.prototype.hasOwnProperty.call(req.body, 'DNI')
+                       || Object.prototype.hasOwnProperty.call(req.body, 'dni');
+    const DNI_raw = dniKeyPresent ? (DNI ?? dni ?? '') : undefined;
+    const DNI_val = dniKeyPresent ? DNI_raw.toString().trim() : undefined;
+    const dniProvided = dniKeyPresent && DNI_val && DNI_val.length > 0;
+
+    // Foto
+    let foto = req.file ? req.file.filename : (fotoActual || null);
+    if (eliminar_foto === '1') {
+      if (fotoActual) {
+        const p = path.join('./uploads', fotoActual);
+        if (fs.existsSync(p)) { try { fs.unlinkSync(p); } catch {} }
+      }
+      foto = null;
+    }
+
+    // Bools
+    const toBool = (v) => { const s = String(v ?? '').toLowerCase(); return s === '1' || s === 'true' || s === 'on'; };
+    const activoBool = toBool(activo);
+    const registradoBool = toBool(registrado);
+
+    // fecha_baja: si no llega y pasas a inactivo => hoy; si activo => null
+    const fecha_baja_val = fecha_baja ?? (activoBool ? null : new Date().toISOString().slice(0, 10));
+
+    // Email duplicado (excluyéndome)
+    if (normalizedEmail) {
+      const dupEmail = await client.query(
+        `SELECT 1 FROM alumnos WHERE email IS NOT NULL AND LOWER(email) = $1 AND id <> $2 LIMIT 1`,
+        [normalizedEmail, id]
+      );
+      if (dupEmail.rowCount > 0) {
+        if (req.file?.filename) { try { fs.unlinkSync(path.join('./uploads', req.file.filename)); } catch {} }
+        await client.query('ROLLBACK');
+        return res.status(409).send('El email ya está registrado');
+      }
+    }
+
+    // DNI duplicado SOLO si vino
+    if (dniProvided) {
+      const dupDni = await client.query(
+        `SELECT 1 FROM alumnos WHERE dni = $1 AND id <> $2 LIMIT 1`,
+        [DNI_val, id]
+      );
+      if (dupDni.rowCount > 0) {
+        if (req.file?.filename) { try { fs.unlinkSync(path.join('./uploads', req.file.filename)); } catch {} }
+        await client.query('ROLLBACK');
+        return res.status(409).send('El DNI ya está registrado');
+      }
+    }
+
+    // ---------- UPDATE alumno (sin password ni fecha_matriculacion por defecto) ----------
+    const payload = {
+      nombre: toStrOrNull(nombre),
+      apellidos: toStrOrNull(apellidos),
+      tutor: toStrOrNull(tutor),
+      direccion: toStrOrNull(direccion),
+      codigo_postal: toIntOrNull(codigo_postal_val),
+      municipio: toStrOrNull(municipio),
+      provincia: toStrOrNull(provincia),
+      telefono: toStrOrNull(telefono),
+      email: toStrOrNull(normalizedEmail),
+      fecha_nacimiento: toDateOrNull(fecha_nacimiento),
+      centro: toStrOrNull(centro),
+      profesor_centro: toStrOrNull(profesor_centro),
+      repertorio_id: toIntOrNull(repertorio_id),
+      foto: toStrOrNull(foto),
+      activo: activoBool,
+      registrado: registradoBool,
+      guardias_actual: toIntOrNull(guardias_actual),
+      guardias_hist: toIntOrNull(guardias_hist),
+      fecha_baja: toDateOrNull(fecha_baja_val)
+    };
+    if (dniProvided) payload.dni = toStrOrNull(DNI_val);
+    if (fecha_matriculacion || fecha_alta) {
+      payload.fecha_matriculacion = toDateOrNull(fecha_matriculacion ?? fecha_alta);
+    }
+
+    const fields = Object.keys(payload).map((k, i) => `${k}=$${i + 1}`).join(', ');
+    const values = Object.values(payload);
+    values.push(id);
+    await client.query(
+      `UPDATE alumnos SET ${fields}, updated_at = NOW() WHERE id = $${values.length}`,
+      values
+    );
+
+    // ---------- Relaciones (solo si el form las manda) ----------
+    const hasInstField = Object.prototype.hasOwnProperty.call(req.body, 'instrumentos');
+    const hasGrpField  = Object.prototype.hasOwnProperty.call(req.body, 'grupos');
+
+    if (hasInstField) {
+      const arrInst = Array.isArray(instrumentos) ? instrumentos : (instrumentos ? [instrumentos] : []);
+      const instIds = [...new Set(arrInst.map(v => parseInt(v, 10)).filter(Number.isFinite))];
+      await client.query('DELETE FROM alumno_instrumento WHERE alumno_id = $1', [id]);
+      for (const iid of instIds) {
+        await client.query('INSERT INTO alumno_instrumento (alumno_id, instrumento_id) VALUES ($1, $2)', [id, iid]);
+      }
+    }
+
+    if (hasGrpField) {
+      const arrGrps = Array.isArray(grupos) ? grupos : (grupos ? [grupos] : []);
+      const grpIds = [...new Set(arrGrps.map(v => parseInt(v, 10)).filter(Number.isFinite))];
+      await client.query('DELETE FROM alumno_grupo WHERE alumno_id = $1', [id]);
+      for (const gid of grpIds) {
+        await client.query('INSERT INTO alumno_grupo (alumno_id, grupo_id) VALUES ($1, $2)', [id, gid]);
+      }
+    }
+
+    // Cerrar la transacción ANTES de tocar password con otro pool
+    await client.query('COMMIT');
+
+    // ---------- Password fuera de la transacción (evita bloqueos) ----------
+    if ((password ?? '').trim() !== '') {
+      if (typeof upsertCreds === 'function') {
+        await upsertCreds({
+          alumnoId: id,
+          email: normalizedEmail,
+          registrado: registradoBool,
+          plainPassword: password.trim()
+        });
+      } else {
+        // Fallback si no tienes upsertCreds: hash directo
+        const hash = await bcrypt.hash(password.trim(), 10);
+        await db.query('UPDATE alumnos SET password = $1 WHERE id = $2', [hash, id]);
+      }
+    }
+
+    return res.redirect('/alumnos');
+  } catch (err) {
+    try { await client.query('ROLLBACK'); } catch {}
+    console.error('Error al actualizar alumno:', err);
+    return res.status(500).send('Error al actualizar alumno');
+  } finally {
+    client.release();
+  }
+});
+
 
 // ───────────── Edición (form) ─────────────
 router.get('/:id/editar', async (req, res) => {

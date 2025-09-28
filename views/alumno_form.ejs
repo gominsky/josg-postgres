@@ -23,14 +23,14 @@
         <input type="date" name="fecha_nacimiento" value="<%= alumno?.fecha_nacimiento || '' %>">
       </label>
       <label>DNI:
-        <input type="text" name="dni" value="<%= alumno?.dni || '' %>">
+        <input type="text" name="DNI" value="<%= alumno?.DNI || alumno?.dni || '' %>" />
       </label>
       <label>Dirección:
         <input type="text" name="direccion" value="<%= alumno?.direccion || '' %>">
       </label>
-      <label>Código Postal:
-        <input type="text" name="codigo_postal" value="<%= alumno?.codigo_postal || '' %>">
-      </label>
+      <label>Código postal:
+        <input type="number" name="codigo_postal" value="<%= alumno?.codigo_postal ?? '' %>">
+      </label>      
       <label>Municipio:
         <input type="text" name="municipio" value="<%= alumno?.municipio || '' %>">
       </label>
@@ -48,8 +48,10 @@
         <input type="text" name="telefono" value="<%= alumno?.telefono || '' %>">
       </label>
       <label>Email:
-        <input type="email" name="email" value="<%= alumno?.email || '' %>">
+        <input type="email" name="email" value="<%= alumno?.email || '' %>" id="email-input">
+        <small id="email-msg" style="display:block; color:#ffcc00; min-height:1em;"></small>
       </label>
+      
       <label>Tutor:
         <input type="text" name="tutor" value="<%= alumno?.tutor || '' %>">
       </label>
@@ -75,8 +77,9 @@
     <div class="form-grid-2">
       <label>Registrado en la app:
         <select name="registrado" class="form-control form-control-sm" style="width:auto;">
-          <option value="1" <%= alumno?.registrado ? 'selected' : '' %>>Sí</option>
           <option value="0" <%= alumno && !alumno.registrado ? 'selected' : '' %>>No</option>
+          <option value="1" <%= alumno?.registrado ? 'selected' : '' %>>Sí</option>
+         
         </select>
       </label>
       <label>Nueva contraseña (opcional):
@@ -124,17 +127,30 @@
   </div>
 
   <!-- ===== Foto ===== -->
-  <div class="grupo-campos">
-    <h2>Foto</h2>
-    <label>Subir nueva: <input type="file" name="foto" accept="image/*"></label>
-    <% if (alumno && alumno.foto) { %>
-      <input type="hidden" name="fotoActual" value="<%= alumno.foto %>">
-      <div class="foto-actual">
-        <strong>Foto actual:</strong><br>
-        <img src="/uploads/<%= alumno.foto %>" class="foto-perfil" alt="Foto del alumno">
+<div class="grupo-campos">
+  <h2>Foto</h2>
+
+  <label>Subir nueva:
+    <input type="file" name="foto" id="foto-input" accept="image/*">
+  </label>
+  <div id="foto-preview" style="margin-top:.5rem;"></div>
+  <button type="button" id="btn-quitar-foto" class="btn-main-blanco" style="display:none;margin-top:.5rem;">Quitar foto seleccionada</button>
+
+  <% if (alumno && alumno.foto) { %>
+    <input type="hidden" name="fotoActual" value="<%= alumno.foto %>">
+    <input type="hidden" name="eliminar_foto" id="eliminar_foto" value="0">
+    <div class="foto-actual" id="bloque-foto-actual" style="margin-top:1rem;">
+      <strong>Foto actual:</strong><br>
+      <img src="/uploads/<%= alumno.foto %>" class="foto-perfil" alt="Foto del alumno" style="max-height:120px;">
+      <div>
+        <button type="button" id="btn-eliminar-foto-actual" class="btn-main-blanco" style="margin-top:.5rem;">
+          Eliminar foto actual
+        </button>
       </div>
-    <% } %>
-  </div>
+    </div>
+  <% } %>
+</div>
+
 
   <div class="acciones-finales">
     <div class="volver-bloque-izquierda">
@@ -156,3 +172,109 @@
     <button type="submit" class="btn-main-blanco">Eliminar</button>
   </form>
 <% } %>
+<script>
+  (function(){
+    const form = document.querySelector('form.formulario-alumno');
+    const alumnoId = <%= alumno?.id ? JSON.stringify(alumno.id) : 'null' %>;
+  
+    // --- Email ocupado ---
+    const emailInput = document.getElementById('email-input');
+    const emailMsg   = document.getElementById('email-msg');
+    let emailTaken = false;
+    let debounceTimer;
+  
+    function setEmailMsg(text, color){
+      emailMsg.textContent = text || '';
+      if (text) {
+        emailMsg.style.color = color || '#ffcc00';
+      }
+    }
+  
+    async function checkEmail(){
+      const email = (emailInput.value || '').trim();
+      if (!email) { emailTaken = false; setEmailMsg(''); return; }
+      try {
+        const q = new URLSearchParams({ email, excludeId: alumnoId || '' });
+        const res = await fetch('/alumnos/api/check-email?' + q.toString(), { cache: 'no-store' });
+        const data = await res.json();
+        emailTaken = !data.ok;
+        setEmailMsg(emailTaken ? 'Este email ya está registrado. Prueba con otro.' : '', '#ff5c5c');
+      } catch(e){
+        // silencio: si falla la red, no bloqueamos, validará el servidor
+      }
+    }
+  
+    ['input','change','blur'].forEach(ev => {
+      if (emailInput) {
+        emailInput.addEventListener(ev, () => {
+          clearTimeout(debounceTimer);
+          debounceTimer = setTimeout(checkEmail, ev === 'blur' ? 0 : 300);
+        });
+      }
+    });
+  
+    form.addEventListener('submit', (e) => {
+      if (emailTaken) {
+        e.preventDefault();
+        emailInput.focus();
+        setEmailMsg('Este email ya está registrado. Prueba con otro.', '#ff5c5c');
+      }
+    });
+  
+    // --- Foto: preview / filename / quitar ---
+    const fileInput = document.getElementById('foto-input');
+    const preview   = document.getElementById('foto-preview');
+    const btnQuitar = document.getElementById('btn-quitar-foto');
+  
+    function clearSelectedFile() {
+      fileInput.value = '';
+      preview.innerHTML = '';
+      btnQuitar.style.display = 'none';
+    }
+  
+    if (fileInput) {
+      fileInput.addEventListener('change', () => {
+        preview.innerHTML = '';
+        if (fileInput.files && fileInput.files[0]) {
+          const f = fileInput.files[0];
+          const p = document.createElement('div');
+          p.style.display = 'flex';
+          p.style.alignItems = 'center';
+          p.style.gap = '.5rem';
+  
+          if (f.type && f.type.startsWith('image/')) {
+            const img = document.createElement('img');
+            img.src = URL.createObjectURL(f);
+            img.alt = f.name;
+            img.style.maxHeight = '80px';
+            img.onload = () => URL.revokeObjectURL(img.src);
+            p.appendChild(img);
+          }
+          const span = document.createElement('span');
+          span.textContent = f.name;
+          p.appendChild(span);
+  
+          preview.appendChild(p);
+          btnQuitar.style.display = 'inline-block';
+        } else {
+          btnQuitar.style.display = 'none';
+        }
+      });
+  
+      btnQuitar?.addEventListener('click', clearSelectedFile);
+    }
+  
+    // --- Eliminar foto actual (edición) ---
+    const btnEliminarActual = document.getElementById('btn-eliminar-foto-actual');
+    const inputEliminar     = document.getElementById('eliminar_foto');
+    const bloqueFotoActual  = document.getElementById('bloque-foto-actual');
+  
+    btnEliminarActual?.addEventListener('click', () => {
+      if (confirm('¿Eliminar la foto actual?')) {
+        if (inputEliminar) inputEliminar.value = '1';
+        if (bloqueFotoActual) bloqueFotoActual.style.display = 'none';
+      }
+    });
+  })();
+  </script>
+  

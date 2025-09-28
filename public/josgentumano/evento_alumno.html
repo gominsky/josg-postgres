@@ -5,13 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>¡JOSG en tu mano! · Detalle del evento</title>
 
-  <!-- Estilos globales (incluyen .topbar y .hero) -->
   <link rel="stylesheet" href="../styles/estilos_app.css" />
 
   <style>
     .container{ max-width:760px; margin:0 auto; padding:16px; }
 
-    /* ===== BOTONES (nuevo diseño unificado) ===== */
+    /* Botones (nuevo diseño) */
     .btn{
       display:inline-block; padding:.6rem 1.4rem; border-radius:12px;
       font-weight:600; color:#fff; border:none; cursor:pointer;
@@ -24,34 +23,21 @@
     .btn-accent{ background: linear-gradient(180deg,#f28d63,#ea6b38); border:1px solid #cc5c2f; }
     .btn-tertiary{ background: linear-gradient(180deg,#ffb24a,#f59e0b); border:1px solid #f59e0b; }
 
-    /* ===== Chips ligeros (fecha/hora) ===== */
-    .chip{
-      display:inline-flex; align-items:center; gap:6px;
-      padding:6px 12px; border-radius:999px; text-decoration:none;
-      font-weight:700; font-size:.92rem; border:1px solid rgba(0,0,0,.06);
-      background:#fff; color:#111;
-      box-shadow:0 3px 10px rgba(0,0,0,.06);
-      white-space:nowrap;
-    }
-    .chip-fecha{ background:#fff7e6; color:#7a4d00; border-color:#f59e0b33; }
-
-    /* ===== Ficha de espacio (enlace a Google Maps) ===== */
+    /* Ficha de espacio: compacta, sin etiqueta */
     .space-card{
-      display:block; width:100%;
-      border:1px solid #e6eefb; border-radius:16px;
-      background:linear-gradient(180deg,#ffffff,#f5f9ff 85%);
-      box-shadow:0 6px 16px rgba(0,0,0,.08);
-      padding:12px 14px; text-decoration:none; color:#0b4d8c;
+      display:inline-flex; align-items:center; gap:8px;
+      padding:8px 10px; border-radius:12px;
+      border:1px solid #e6eefb; background:linear-gradient(180deg,#ffffff,#f5f9ff 85%);
+      box-shadow:0 3px 10px rgba(0,0,0,.08);
+      text-decoration:none; color: #f59e0b; max-width:100%;
       transition: transform .12s ease, box-shadow .12s ease;
     }
-    .space-card:hover{ transform:translateY(-1px); box-shadow:0 10px 22px rgba(0,0,0,.12); }
+    .space-card:hover{ transform:translateY(-1px); box-shadow:0 8px 16px rgba(0,0,0,.12); }
     .space-card:active{ transform:translateY(0); }
-    .space-card .row{ display:flex; align-items:center; gap:10px; }
-    .space-card svg{ width:18px; height:18px; flex:0 0 18px; fill:currentColor; opacity:.9; }
-    .space-card .label{ font-weight:800; }
-    .space-card .meta{ color:#1f4b84; font-weight:600; }
+    .space-card svg{ width:14px; height:14px; flex:0 0 14px; fill:currentColor; opacity:.9; }
+    .space-card .meta{ font-weight:700; line-height:1.2; }
 
-    /* ===== Ajuste de ancho para EVENTO (desktop) ===== */
+    /* Ancho compacto en desktop */
     @media (min-width: 992px){
       .page-evento .container{ max-width: 560px; }
     }
@@ -65,12 +51,12 @@
 </head>
 <body class="page-evento" data-page="evento">
   <div class="container">
-    <!-- Topbar mínima (solo nombre, sin logo) -->
+    <!-- Topbar mínima -->
     <div class="topbar">
       <div id="user-name" class="muted" style="font-weight:600;"></div>
     </div>
 
-    <!-- Hero musical estándar -->
+    <!-- Hero musical -->
     <div class="hero" aria-label="Cabecera">
       <div class="motifs-layer" aria-hidden="true"></div>
       <img class="hero-logo" src="../imagenes/logoJOSG.png" alt="JOSG">
@@ -80,23 +66,17 @@
 
     <h2 id="t">Evento</h2>
 
-    <!-- Grupo en negrita (sin etiqueta) -->
-    <p id="grupo" style="font-weight:800; margin:.2rem 0 .4rem;"></p>
-
-    <!-- Chips (fecha/hora) -->
-    <p id="chips" style="margin:.2rem 0 .8rem;"></p>
+    <!-- Grupo (negrita, sin etiqueta) -->
+    <p id="grupo" style="font-weight:800; margin:.2rem 0 .2rem;"></p>
+    <!-- Fecha y hora como texto plano (sin chips) -->
+    <p id="fechahora" style="margin:.1rem 0 .6rem;"></p>
 
     <!-- Ficha de espacio (enlace Google Maps) -->
     <a id="space-card" class="space-card" href="#" target="_blank" rel="noopener" style="display:none;">
-      <div class="row">
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5z"/>
-        </svg>
-        <div class="text">
-          <div class="label">Espacio / Ubicación</div>
-          <div class="meta" id="space-name"></div>
-        </div>
-      </div>
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5z"/>
+      </svg>
+      <span class="meta" id="space-name"></span>
     </a>
 
     <!-- Descripción -->
@@ -109,7 +89,7 @@
   </div>
 
 <script>
-  // Helpers mínimos
+  // Helpers
   function escapeHtml(str){
     return String(str)
       .replaceAll('&','&amp;').replaceAll('<','&lt;')
@@ -167,27 +147,23 @@
 
       const ev = await res.json();
 
-      // Datos base (igual que tenías)
       const grupoNombre   = (ev.grupo ?? ev.grupo_nombre ?? '').toString().trim();
       const espacioNombre = (ev.espacio ?? ev.espacio_nombre ?? '').toString().trim();
 
-      // Chips fecha/hora (como antes)
+      // Grupo en texto
+      document.getElementById("grupo").textContent = grupoNombre || '';
+
+      // Fecha + hora en texto (mismo renglón)
       const hIni = (ev.hora_asignada_inicio || ev.hora_inicio || '').toString();
       const hFin = (ev.hora_asignada_fin    || ev.hora_fin    || '').toString();
       const horaIni   = formatearHora(hIni);
       const horaFin   = formatearHora(hFin);
       const rangoHora = (horaIni && horaFin) ? `${horaIni} - ${horaFin}` : (horaIni || '');
-      const fechaChip = ev.fecha_inicio
-        ? `<span class="chip chip-fecha">${formatearFecha(ev.fecha_inicio)}${rangoHora ? ' · ' + rangoHora : ''}</span>`
-        : '';
+      const fechaStr  = ev.fecha_inicio ? formatearFecha(ev.fecha_inicio) : '';
+      const fh = [fechaStr, rangoHora].filter(Boolean).join(' · ');
+      document.getElementById("fechahora").textContent = fh;
 
-      // Pinta grupo (solo el nombre, sin etiqueta)
-      document.getElementById("grupo").textContent = grupoNombre || '';
-
-      // Pinta chips
-      document.getElementById("chips").innerHTML = fechaChip;
-
-      // === Espacio como FICHA (enlace a Google Maps) ===
+      // Ficha de espacio (enlace a Google Maps)
       const rawUbic = (ev.espacio_ubicacion ?? ev.ubicacion ?? ev.espacio_url ?? ev.ubicacion_url ?? '').toString().trim();
       const mapsHref = mapsHrefFrom(rawUbic, espacioNombre);
       const $spaceCard = document.getElementById('space-card');
@@ -197,10 +173,7 @@
         $spaceName.textContent = espacioNombre || 'Ver ubicación';
         $spaceCard.style.display = '';
       } else if (espacioNombre) {
-        // Sin enlace, pero mostramos ficha sin href (por accesibilidad mejor dejarla en texto)
-        $spaceCard.removeAttribute('href');
-        $spaceCard.removeAttribute('target');
-        $spaceCard.removeAttribute('rel');
+        $spaceCard.removeAttribute('href'); $spaceCard.removeAttribute('target'); $spaceCard.removeAttribute('rel');
         $spaceName.textContent = espacioNombre;
         $spaceCard.style.display = '';
       }
@@ -208,7 +181,6 @@
       // Descripción
       document.getElementById("t").textContent    = ev.titulo || "Evento";
       document.getElementById("desc").textContent = ev.descripcion || "";
-
     } catch (err) {
       console.error("Error cargando evento:", err);
       document.getElementById("desc").innerHTML =
@@ -258,3 +230,4 @@
 <script src="app_alumno.js"></script>
 </body>
 </html>
+
