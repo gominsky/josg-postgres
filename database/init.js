@@ -276,6 +276,7 @@ async function init({ reset = false } = {}) {
       CREATE INDEX IF NOT EXISTS idx_eventos_grupo ON eventos(grupo_id);
       CREATE INDEX IF NOT EXISTS idx_eventos_activos_grupo ON eventos(grupo_id, fecha_inicio) WHERE activo IS TRUE;
       CREATE INDEX IF NOT EXISTS idx_eventos_espacio ON eventos(espacio_id);
+      CREATE UNIQUE INDEX IF NOT EXISTS ux_asistencias_evento_alumno ON asistencias (evento_id, alumno_id);
 
       CREATE TABLE IF NOT EXISTS asistencias (
         id            INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -290,6 +291,10 @@ async function init({ reset = false } = {}) {
         updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         CONSTRAINT asistencias_alumno_evento_uniq UNIQUE (alumno_id, evento_id)
       );
+
+      ALTER TABLE asistencias
+      ADD COLUMN IF NOT EXISTS minutos_perdidos int CHECK (minutos_perdidos IS NULL OR minutos_perdidos >= 0);
+
       CREATE INDEX IF NOT EXISTS idx_asistencias_evento      ON asistencias(evento_id);
       CREATE INDEX IF NOT EXISTS idx_asistencias_alumno      ON asistencias(alumno_id);
       CREATE INDEX IF NOT EXISTS idx_asistencias_evento_hora ON asistencias(evento_id, hora);

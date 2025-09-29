@@ -430,6 +430,7 @@
             <th class="text-center th-sort" data-key="inicio">Inicio</th>
             <th class="text-center th-sort" data-key="fin">Fin</th>
             <th class="th-sort" data-key="ausencia">Ausencia</th>
+            <th class="text-center">Min. perdidos</th>
             <th class="th-sort" data-key="actividad">Actividad</th>
             <th class="th-sort" data-key="notas">Notas</th>
             <th></th>
@@ -451,6 +452,7 @@
               data-actividad="<%= row.actividad_complementaria || '' %>"
               data-notas="<%= row.notas || '' %>"
               data-familia="<%= row.familia_mostrada || '' %>"
+              data-minutos="<%= row.minutos_perdidos || '' %>"
             >
             <td>
               <strong><%= (row.apellidos||'') %>, <%= (row.nombre||'') %></strong>
@@ -472,6 +474,14 @@
               <td><input type="time" class="form-control form-control-sm inp-fin"
                 value="<%= (row.hora_fin || '').slice(0,5) %>"></td>
               <td><select class="form-select form-select-sm sel-aus"></select></td>
+              <td class="text-center">
+                <% if (row.minutos_perdidos && row.minutos_perdidos > 0) { %>
+                  <span class="badge-delay">+<%= row.minutos_perdidos %> min</span>
+                <% } else { %>
+                  —
+                <% } %>
+              </td>
+              
               <td><select class="form-select form-select-sm sel-act"></select></td>
               <td><input type="text" class="form-control form-control-sm inp-notas"
                 value="<%= row.notas || '' %>"></td>

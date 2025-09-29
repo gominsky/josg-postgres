@@ -308,9 +308,10 @@ router.get('/api/eventos/:id/alumnos', async (req, res) => {
 
   try{
     const q = `
-      SELECT a.id, a.nombre, a.apellidos,
-             CASE WHEN asi.id IS NOT NULL THEN true ELSE false END AS asistio,
-             COALESCE(asi.observaciones,'') AS observaciones
+     SELECT a.id, a.nombre, a.apellidos,
+       CASE WHEN asi.id IS NOT NULL THEN true ELSE false END AS asistio,
+       COALESCE(asi.observaciones,'') AS observaciones,
+       asi.minutos_perdidos
       FROM evento_asignaciones ea
       JOIN alumnos a
         ON a.id = ea.alumno_id
@@ -321,7 +322,14 @@ router.get('/api/eventos/:id/alumnos', async (req, res) => {
       ORDER BY a.apellidos ASC, a.nombre ASC
     `;
     const rs = await db.query(q, [id]);
-    res.json(rs.rows || []);
+    res.json((rs.rows || []).map(r => ({
+      id: r.id,
+      nombre: r.nombre,
+      apellidos: r.apellidos,
+      asistio: r.asistio,
+      observaciones: r.observaciones,
+      minutos_perdidos: r.minutos_perdidos ?? null
+    })));    
   }catch(err){
     console.error('GET /api/eventos/:id/alumnos error:', err);
     res.status(500).json({ error:'internal_error' });
@@ -335,9 +343,10 @@ router.get('/api/eventos/:id/asistencias', async (req, res) => {
   try{
     const q = `
       SELECT
-        a.nombre, a.apellidos,
-        asi.fecha, asi.hora, asi.tipo, asi.ubicacion,
-        COALESCE(asi.observaciones,'') AS observaciones
+      a.nombre, a.apellidos,
+      asi.fecha, asi.hora, asi.tipo, asi.ubicacion,
+      COALESCE(asi.observaciones,'') AS observaciones,
+      asi.minutos_perdidos
       FROM asistencias asi
       JOIN evento_asignaciones ea
         ON ea.evento_id = asi.evento_id
@@ -356,8 +365,9 @@ router.get('/api/eventos/:id/asistencias', async (req, res) => {
       hora:  r.hora  ? String(r.hora).slice(0,5)   : '',
       tipo:  r.tipo || '',
       ubicacion: r.ubicacion || '',
-      observaciones: r.observaciones || ''
-    }));
+      observaciones: r.observaciones || '',
+      minutos_perdidos: (r.minutos_perdidos ?? null)
+    }));    
     res.json(data);
   }catch(err){
     console.error('GET /api/eventos/:id/asistencias error:', err);
@@ -369,16 +379,20 @@ router.post('/api/firmar-alumnos', express.json(), async (req, res) => {
   const registros = Array.isArray(req.body?.registros) ? req.body.registros : [];
   if (!registros.length) return res.status(400).json({ success:false, ok:false, error:'registros requeridos' });
 
+  const GRACE = parseInt(process.env.QR_GRACE_MINUTES || '5', 10);
+
   const client = await db.connect();
   try{
     await client.query('BEGIN');
 
-    // Si existe updated_at en asistencias, lo actualizamos
+    // Detecta columnas útiles en asistencias
     const cols = await client.query(`
       SELECT lower(column_name) AS c
       FROM information_schema.columns
-      WHERE table_name = 'asistencias'`);
-    const hasUpdatedAt = new Set(cols.rows.map(r=>r.c)).has('updated_at');
+      WHERE table_schema='public' AND table_name = 'asistencias'`);
+    const C = new Set(cols.rows.map(r=>r.c));
+    const hasUpdatedAt = C.has('updated_at');
+    const hasMinutos   = C.has('minutos_perdidos');
 
     let inserted=0, updated=0, deleted=0, skipped=0, notAssigned=0;
 
@@ -393,34 +407,83 @@ router.post('/api/firmar-alumnos', express.json(), async (req, res) => {
         `SELECT 1 FROM evento_asignaciones WHERE evento_id=$1 AND alumno_id=$2`,
         [eventoId, alumnoId]);
       if (!ea.rowCount) { notAssigned++; continue; }
-
       if (asistio) {
-        const ex = await client.query(
-          `SELECT id FROM asistencias WHERE evento_id=$1 AND alumno_id=$2`,
-          [eventoId, alumnoId]);
+        // calcula minutos de retraso en SQL (Europe/Madrid), usando hora asignada si existe
+        const sql = `
+  WITH base AS (
+    SELECT
+      e.fecha_inicio::date AS fecha,
+      -- Normaliza a TIME si el texto encaja con HH:MM[:SS]
+      CASE
+        WHEN trim(a.hora_inicio::text) ~ '^\\d{2}:\\d{2}(:\\d{2})?$'
+          THEN split_part(trim(a.hora_inicio::text), ' ', 1)::time
+        ELSE NULL
+      END AS hora_asign,
+      CASE
+        WHEN trim(e.hora_inicio::text) ~ '^\\d{2}:\\d{2}(:\\d{2})?$'
+          THEN split_part(trim(e.hora_inicio::text), ' ', 1)::time
+        ELSE NULL
+      END AS hora_evento
+    FROM eventos e
+    LEFT JOIN evento_asignaciones a
+           ON a.evento_id = e.id AND a.alumno_id = $2
+    WHERE e.id = $1
+    LIMIT 1
+  ),
+  ref AS (
+    SELECT
+      (now() at time zone 'Europe/Madrid')::date      AS hoy,
+      (now() at time zone 'Europe/Madrid')::time      AS ahora,
+      (fecha::timestamp
+        + COALESCE(hora_asign, hora_evento))          AS start_local
+    FROM base
+  ),
+  calc AS (
+    SELECT
+      CASE
+        WHEN start_local IS NULL THEN NULL
+        ELSE GREATEST(
+               CEIL(EXTRACT(EPOCH FROM (
+                 (now() at time zone 'Europe/Madrid')::timestamp - start_local
+               )) / 60.0)::int - $4::int,
+               0
+             )
+      END AS minutos
+    FROM ref
+  )
+  INSERT INTO asistencias (evento_id, alumno_id, fecha, hora, observaciones, tipo${hasMinutos?', minutos_perdidos':''})
+  VALUES (
+    $1, $2,
+    (now() at time zone 'Europe/Madrid')::date,
+    (now() at time zone 'Europe/Madrid')::time,
+    $3, 'manual'${hasMinutos?', (SELECT minutos FROM calc)':''}
+  )
+  ON CONFLICT (evento_id, alumno_id)
+  DO UPDATE SET
+    fecha = EXCLUDED.fecha,
+    hora  = EXCLUDED.hora,
+    observaciones = EXCLUDED.observaciones,
+    tipo  = 'manual'
+    ${hasMinutos ? ', minutos_perdidos = COALESCE(EXCLUDED.minutos_perdidos, asistencias.minutos_perdidos)' : ''}
+    ${hasUpdatedAt ? ', updated_at = NOW()' : ''}
+`;
 
-        if (ex.rowCount) {
-          const qUpd =
-            `UPDATE asistencias
-                SET fecha=CURRENT_DATE, hora=CURRENT_TIME,
-                    observaciones=$3, tipo='manual'` +
-            (hasUpdatedAt ? `, updated_at=NOW()` : ``) +
-            ` WHERE evento_id=$1 AND alumno_id=$2`;
-          await client.query(qUpd, [eventoId, alumnoId, obs]);
-          updated++;
-        } else {
-          await client.query(
-            `INSERT INTO asistencias (evento_id, alumno_id, fecha, hora, observaciones, tipo)
-             VALUES ($1,$2,CURRENT_DATE,CURRENT_TIME,$3,'manual')`,
-            [eventoId, alumnoId, obs]);
-          inserted++;
-        }
+        await client.query(sql, [eventoId, alumnoId, obs, GRACE]);
+      
+        // contadores (opcional, simple)
+        const chk = await client.query(
+          `SELECT 1 FROM asistencias WHERE evento_id=$1 AND alumno_id=$2`,
+          [eventoId, alumnoId]
+        );
+        if (chk.rowCount) updated++; else inserted++;
       } else {
         const del = await client.query(
           `DELETE FROM asistencias WHERE evento_id=$1 AND alumno_id=$2`,
-          [eventoId, alumnoId]);
+          [eventoId, alumnoId]
+        );
         deleted += del.rowCount;
-      }
+      }  
+      
     }
 
     await client.query('COMMIT');

@@ -130,6 +130,9 @@ router.post('/login', async (req, res) => {
 
 /* ------------------------------ FIRMA POR QR ----------------------------- */
 // Protegido por JWT; toma el alumno_id del token (no del body)
+// minutos de cortesía (por defecto 5)
+const QR_GRACE_MINUTES = parseInt(process.env.QR_GRACE_MINUTES || '15', 10);
+
 async function handleFirmarQR(req, res) {
   try {
     const raw = req.body || {};
@@ -142,37 +145,80 @@ async function handleFirmarQR(req, res) {
       return res.status(400).json({ success: false, mensaje: 'Faltan datos (evento_id, token)' });
     }
 
-    // validar evento + token
+    // validar evento + token (igual que antes)
     const ev = await db.query(
-      `SELECT id FROM eventos
-        WHERE id = $1::int
-          AND token = $2::text
-          AND activo IS TRUE`,
+      `SELECT id, fecha_inicio, hora_inicio
+         FROM eventos
+        WHERE id = $1::int AND token = $2::text AND activo IS TRUE`,
       [evento_id, tokenQR]
     );
     if (ev.rowCount === 0) {
       return res.status(400).json({ success: false, mensaje: 'Evento no válido o inactivo' });
     }
 
-    // upsert idempotente
-    const nowMadrid = " (now() at time zone 'Europe/Madrid') ";
-    const upsert = await db.query(
-      `INSERT INTO asistencias (alumno_id, evento_id, fecha, hora, tipo, ubicacion)
-       VALUES ($1::int, $2::int, (${nowMadrid})::date, (${nowMadrid})::time, 'qr', $3::text)
-       ON CONFLICT ON CONSTRAINT asistencias_alumno_evento_uniq DO NOTHING
-       RETURNING id`,
-      [alumno_id, evento_id, ubicacion]
-    );
+    // Calcular minutos de retraso (Europe/Madrid), usando hora asignada si existe
+    // y actualizando/insertando la asistencia en una sola sentencia.
+    const sql = `
+      WITH base AS (
+        SELECT
+          e.id AS evento_id,
+          $1::int AS alumno_id,
+          e.fecha_inicio::date AS fecha,
+          COALESCE(a.hora_inicio, e.hora_inicio) AS hora_ini
+        FROM eventos e
+        LEFT JOIN evento_asignaciones a
+               ON a.evento_id = e.id AND a.alumno_id = $1::int
+        WHERE e.id = $2::int
+        LIMIT 1
+      ),
+      calc AS (
+        SELECT
+          b.evento_id, b.alumno_id, b.fecha,
+          CASE
+            WHEN b.hora_ini IS NULL THEN NULL
+            ELSE (timezone('Europe/Madrid', b.fecha::timestamp) + (b.hora_ini)::interval)
+          END AS start_local,
+          timezone('Europe/Madrid', now()) AS now_local
+        FROM base b
+      ),
+      retraso AS (
+        SELECT
+          CASE
+            WHEN c.start_local IS NULL THEN NULL
+            ELSE GREATEST(CEIL(EXTRACT(EPOCH FROM (c.now_local - c.start_local))/60.0)::int - $4::int, 0)
+          END AS minutos
+        FROM calc c
+      )
+      INSERT INTO asistencias (alumno_id, evento_id, fecha, hora, tipo, ubicacion, minutos_perdidos)
+      VALUES ($1::int, $2::int, (now() at time zone 'Europe/Madrid')::date,
+              (now() at time zone 'Europe/Madrid')::time, 'qr', $3::text,
+              (SELECT minutos FROM retraso))
+     ON CONFLICT (evento_id, alumno_id)
+DO UPDATE SET
+  fecha = EXCLUDED.fecha,
+  hora  = EXCLUDED.hora,
+  tipo  = 'qr',
+  ubicacion = COALESCE(EXCLUDED.ubicacion, asistencias.ubicacion),
+  minutos_perdidos = COALESCE(EXCLUDED.minutos_perdidos, asistencias.minutos_perdidos)
 
-    if (upsert.rowCount === 0) {
-      return res.json({ success: true, yaFirmado: true, mensaje: 'Asistencia ya estaba registrada para este evento' });
-    }
-    return res.json({ success: true, yaFirmado: false, mensaje: 'Asistencia registrada correctamente' });
+      RETURNING id, minutos_perdidos
+    `;
+    const up = await db.query(sql, [alumno_id, evento_id, ubicacion, QR_GRACE_MINUTES]);
+
+    const yaFirmado = up.rowCount === 0; // por compat, aunque RETURNING siempre trae fila
+    return res.json({
+      success: true,
+      yaFirmado,
+      mensaje: yaFirmado ? 'Asistencia ya estaba registrada para este evento'
+                         : 'Asistencia registrada correctamente',
+      minutos_perdidos: up.rows[0]?.minutos_perdidos ?? null
+    });
   } catch (err) {
     console.error('firmar-qr:', err);
     return res.status(500).json({ success: false, mensaje: 'Error interno' });
   }
 }
+
 router.post('/firmar-qr', requireJWT, handleFirmarQR);
 router.post('/',        requireJWT, handleFirmarQR); // alias histórico
 

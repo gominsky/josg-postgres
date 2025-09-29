@@ -45,8 +45,26 @@
   background: linear-gradient(180deg, #444, #000);
   border: 1px solid #222;
 }
-  </style>
-  
+  .badge-delay{
+    display:inline-block; margin-left:.5rem; padding:.1rem .45rem;
+    border-radius:999px; font-size:.78rem; font-weight:700; line-height:1;
+    background:#111; color:#fff;
+  }
+</style> 
+<style>
+  .badge-delay {
+    display: inline-block;
+    margin-left: .5rem;
+    padding: .1rem .45rem;
+    border-radius: 999px;
+    font-size: .78rem;
+    font-weight: 700;
+    line-height: 1;
+    background: #111;
+    color: #fff;
+  }
+</style>
+
 </head>
 <body>
   <div class="container">
@@ -163,36 +181,47 @@
         console.error('Error al cargar evento o alumnos', error);
       }
     }
-  
     async function actualizarListaAlumnos() {
-      const alumnosRes = await fetch(`${API_BASE}/eventos/${evento_id}/alumnos`, {
-        credentials:'same-origin'
-      });
-      const alumnos = await alumnosRes.json();
-  
-      const lista = alumnos.map(a => `
-        <div class="item-firma">
-          <div class="firma-check">
-            <input type="checkbox" name="alumno_id" value="${a.id}" ${a.asistio ? 'checked' : ''} />
-          </div>
-          <div class="firma-nombre">${a.nombre} ${a.apellidos}</div>
+  const alumnosRes = await fetch(`${API_BASE}/eventos/${evento_id}/alumnos`, {
+    credentials: 'same-origin'
+  });
+  if (!alumnosRes.ok) {
+    console.error('No se pudieron cargar alumnos:', alumnosRes.status, alumnosRes.statusText);
+    return;
+  }
+  const alumnos = await alumnosRes.json();
+
+  const lista = alumnos.map(a => {
+    const delay = Number.isFinite(a.minutos_perdidos) && a.minutos_perdidos > 0
+      ? `<span class="badge-delay">+${a.minutos_perdidos} min</span>`
+      : '';
+    return `
+      <div class="item-firma">
+        <div class="firma-check">
+          <input type="checkbox" name="alumno_id" value="${a.id}" ${a.asistio ? 'checked' : ''} />
         </div>
-      `).join('');
-  
-      document.getElementById('lista-alumnos').innerHTML = `
-        <div class="firma-header">
-          <div class="firma-check"><strong>Firma</strong></div>
-          <div class="firma-nombre"><strong>Nombre</strong></div>
+        <div class="firma-nombre">
+          ${a.nombre} ${a.apellidos}
+          ${delay}
         </div>
-        ${lista}
-      `;
-  
-      // contador y toggle
-      const countEl = document.getElementById('alumnos-count');
-      if (countEl) countEl.textContent = `${alumnos.length} alumno(s)`;
-      applyToggleState();
-    }
-  
+      </div>
+    `;
+  }).join('');
+
+  document.getElementById('lista-alumnos').innerHTML = `
+    <div class="firma-header">
+      <div class="firma-check"><strong>Firma</strong></div>
+      <div class="firma-nombre"><strong>Nombre</strong></div>
+    </div>
+    ${lista}
+  `;
+
+  // contador y toggle
+  const countEl = document.getElementById('alumnos-count');
+  if (countEl) countEl.textContent = `${alumnos.length} alumno(s)`;
+  applyToggleState();
+}
+
     async function guardarAsistencias(e) {
       e.preventDefault();
       const mensaje = document.getElementById('mensaje');
