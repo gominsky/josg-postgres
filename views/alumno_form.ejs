@@ -127,29 +127,55 @@
   </div>
 
   <!-- ===== Foto ===== -->
+  <!-- ===== Foto ===== -->
 <div class="grupo-campos">
   <h2>Foto</h2>
 
-  <label>Subir nueva:
-    <input type="file" name="foto" id="foto-input" accept="image/*">
-  </label>
-  <div id="foto-preview" style="margin-top:.5rem;"></div>
-  <button type="button" id="btn-quitar-foto" class="btn-main-blanco" style="display:none;margin-top:.5rem;">Quitar foto seleccionada</button>
+  <% const tieneFoto = Boolean(alumno && alumno.foto); %>
 
-  <% if (alumno && alumno.foto) { %>
+  <% if (tieneFoto) { %>
+    <!-- Bloque: hay foto actual => no permitir nueva subida hasta eliminar -->
     <input type="hidden" name="fotoActual" value="<%= alumno.foto %>">
     <input type="hidden" name="eliminar_foto" id="eliminar_foto" value="0">
-    <div class="foto-actual" id="bloque-foto-actual" style="margin-top:1rem;">
-      <strong>Foto actual:</strong><br>
+
+    <div id="bloque-foto-actual" style="display:block; margin-top:.5rem;">
+      <strong>Foto actual</strong><br>
       <img src="/uploads/<%= alumno.foto %>" class="foto-perfil" alt="Foto del alumno" style="max-height:120px;">
-      <div>
-        <button type="button" id="btn-eliminar-foto-actual" class="btn-main-blanco" style="margin-top:.5rem;">
+      <div style="margin-top:.5rem; display:flex; gap:.5rem; flex-wrap:wrap;">
+        <a href="/uploads/<%= alumno.foto %>" target="_blank" class="btn-main-blanco">Ver tamaño completo</a>
+        <button type="button" id="btn-eliminar-foto-actual" class="btn-main-blanco">
           Eliminar foto actual
         </button>
       </div>
+      <small style="display:block; color:#aaa; margin-top:.25rem;">
+        Para subir una foto nueva, elimina primero la actual.
+      </small>
+    </div>
+
+    <!-- Bloque de subida: inicialmente oculto hasta que se elimine la actual -->
+    <div id="bloque-subida" style="display:none; margin-top:1rem;">
+      <label>Subir nueva:
+        <input type="file" name="foto" id="foto-input" accept="image/*">
+      </label>
+      <div id="foto-preview" style="margin-top:.5rem;"></div>
+      <button type="button" id="btn-quitar-foto" class="btn-main-blanco" style="display:none; margin-top:.5rem;">
+        Quitar foto seleccionada
+      </button>
+    </div>
+  <% } else { %>
+    <!-- Bloque: no hay foto => permitir subida directamente -->
+    <div id="bloque-subida" style="display:block;">
+      <label>Subir foto:
+        <input type="file" name="foto" id="foto-input" accept="image/*">
+      </label>
+      <div id="foto-preview" style="margin-top:.5rem;"></div>
+      <button type="button" id="btn-quitar-foto" class="btn-main-blanco" style="display:none; margin-top:.5rem;">
+        Quitar foto seleccionada
+      </button>
     </div>
   <% } %>
 </div>
+
 
 
   <div class="acciones-finales">
@@ -176,22 +202,22 @@
   (function(){
     const form = document.querySelector('form.formulario-alumno');
     const alumnoId = <%= alumno?.id ? JSON.stringify(alumno.id) : 'null' %>;
-  
+
     // --- Email ocupado ---
     const emailInput = document.getElementById('email-input');
     const emailMsg   = document.getElementById('email-msg');
     let emailTaken = false;
     let debounceTimer;
-  
+
     function setEmailMsg(text, color){
       emailMsg.textContent = text || '';
       if (text) {
         emailMsg.style.color = color || '#ffcc00';
       }
     }
-  
+
     async function checkEmail(){
-      const email = (emailInput.value || '').trim();
+      const email = (emailInput?.value || '').trim();
       if (!email) { emailTaken = false; setEmailMsg(''); return; }
       try {
         const q = new URLSearchParams({ email, excludeId: alumnoId || '' });
@@ -200,10 +226,10 @@
         emailTaken = !data.ok;
         setEmailMsg(emailTaken ? 'Este email ya está registrado. Prueba con otro.' : '', '#ff5c5c');
       } catch(e){
-        // silencio: si falla la red, no bloqueamos, validará el servidor
+        // silencio: si falla la red, valida el servidor
       }
     }
-  
+
     ['input','change','blur'].forEach(ev => {
       if (emailInput) {
         emailInput.addEventListener(ev, () => {
@@ -212,69 +238,91 @@
         });
       }
     });
-  
-    form.addEventListener('submit', (e) => {
+
+    form?.addEventListener('submit', (e) => {
       if (emailTaken) {
         e.preventDefault();
-        emailInput.focus();
+        emailInput?.focus();
         setEmailMsg('Este email ya está registrado. Prueba con otro.', '#ff5c5c');
       }
     });
-  
+
     // --- Foto: preview / filename / quitar ---
-    const fileInput = document.getElementById('foto-input');
-    const preview   = document.getElementById('foto-preview');
-    const btnQuitar = document.getElementById('btn-quitar-foto');
-  
+    const fileInput        = document.getElementById('foto-input');
+    const preview          = document.getElementById('foto-preview');
+    const btnQuitar        = document.getElementById('btn-quitar-foto');
+    const btnEliminarActual= document.getElementById('btn-eliminar-foto-actual');
+    const inputEliminar    = document.getElementById('eliminar_foto');
+    const bloqueFotoActual = document.getElementById('bloque-foto-actual');
+    const bloqueSubida     = document.getElementById('bloque-subida');
+
     function clearSelectedFile() {
-      fileInput.value = '';
-      preview.innerHTML = '';
-      btnQuitar.style.display = 'none';
+      if (fileInput) fileInput.value = '';
+      if (preview) preview.innerHTML = '';
+      if (btnQuitar) btnQuitar.style.display = 'none';
     }
-  
+
+    // Estado inicial: si hay foto actual visible, aseguramos que la subida esté oculta
+    if (bloqueFotoActual && getComputedStyle(bloqueFotoActual).display !== 'none') {
+      if (bloqueSubida) bloqueSubida.style.display = 'none';
+      // Defensa extra: evita seleccionar archivo mientras no se haya marcado eliminar
+      if (fileInput) fileInput.disabled = false; // lo mantenemos habilitado por accesibilidad, pero lo bloqueamos en change
+    }
+
     if (fileInput) {
       fileInput.addEventListener('change', () => {
-        preview.innerHTML = '';
-        if (fileInput.files && fileInput.files[0]) {
-          const f = fileInput.files[0];
-          const p = document.createElement('div');
-          p.style.display = 'flex';
-          p.style.alignItems = 'center';
-          p.style.gap = '.5rem';
-  
-          if (f.type && f.type.startsWith('image/')) {
-            const img = document.createElement('img');
-            img.src = URL.createObjectURL(f);
-            img.alt = f.name;
-            img.style.maxHeight = '80px';
-            img.onload = () => URL.revokeObjectURL(img.src);
-            p.appendChild(img);
-          }
-          const span = document.createElement('span');
-          span.textContent = f.name;
-          p.appendChild(span);
-  
-          preview.appendChild(p);
-          btnQuitar.style.display = 'inline-block';
-        } else {
-          btnQuitar.style.display = 'none';
+        // Defensa: si no se ha marcado eliminar y hay foto actual visible, descartar cualquier selección
+        const hayFotoVisible = bloqueFotoActual && getComputedStyle(bloqueFotoActual).display !== 'none';
+        const eliminarMarcado = (inputEliminar && inputEliminar.value === '1');
+        if (hayFotoVisible && !eliminarMarcado) {
+          clearSelectedFile();
+          return;
         }
+
+        if (!fileInput.files || !fileInput.files[0]) {
+          if (btnQuitar) btnQuitar.style.display = 'none';
+          if (preview) preview.innerHTML = '';
+          return;
+        }
+
+        const f = fileInput.files[0];
+        const p = document.createElement('div');
+        p.style.display = 'flex';
+        p.style.alignItems = 'center';
+        p.style.gap = '.5rem';
+
+        if (f.type && f.type.startsWith('image/')) {
+          const img = document.createElement('img');
+          img.src = URL.createObjectURL(f);
+          img.alt = f.name;
+          img.style.maxHeight = '80px';
+          img.onload = () => URL.revokeObjectURL(img.src);
+          p.appendChild(img);
+        }
+        const span = document.createElement('span');
+        span.textContent = f.name;
+        p.appendChild(span);
+
+        if (preview) {
+          preview.innerHTML = '';
+          preview.appendChild(p);
+        }
+        if (btnQuitar) btnQuitar.style.display = 'inline-block';
       });
-  
+
       btnQuitar?.addEventListener('click', clearSelectedFile);
     }
-  
-    // --- Eliminar foto actual (edición) ---
-    const btnEliminarActual = document.getElementById('btn-eliminar-foto-actual');
-    const inputEliminar     = document.getElementById('eliminar_foto');
-    const bloqueFotoActual  = document.getElementById('bloque-foto-actual');
-  
+
+    // --- Eliminar foto actual (edición): al eliminar, mostrar bloque de subida ---
     btnEliminarActual?.addEventListener('click', () => {
       if (confirm('¿Eliminar la foto actual?')) {
         if (inputEliminar) inputEliminar.value = '1';
         if (bloqueFotoActual) bloqueFotoActual.style.display = 'none';
+        if (bloqueSubida) bloqueSubida.style.display = 'block';
+        clearSelectedFile();
       }
     });
   })();
-  </script>
+</script>
+
   

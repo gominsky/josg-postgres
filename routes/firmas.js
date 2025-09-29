@@ -329,6 +329,95 @@ router.get('/api/alumno/:alumnoId/partituras', mustMatchAlumnoParam, async (req,
     res.status(500).json({ error: 'Error obteniendo partituras' });
   }
 });
+/** 4) Mensajes por grupo */
+router.get('/api/alumno/:alumnoId/mensajes', mustMatchAlumnoParam, async (req,res)=>{
+  const alumnoId = Number(req.alumno_id);
+  const client = await db.connect();
+  try {
+    const sch = await detectMsgSchema(client);
+    if (!sch || !sch.dest || !sch.msgCol || !sch.alumCol) return res.json([]);
+
+    // ---- SELECT dinámico y seguro ----
+    // título
+    const selTitulo = sch.M.has('titulo') ? 'm.titulo'
+                  : sch.M.has('title')    ? 'm.title'
+                  : sch.M.has('nombre')   ? 'm.nombre'
+                  : `'Aviso'`;
+
+    // cuerpo/mensaje
+    const selCuerpo = sch.M.has('mensaje')     ? 'm.mensaje'
+                    : sch.M.has('cuerpo')      ? 'm.cuerpo'
+                    : sch.M.has('texto')       ? 'm.texto'
+                    : sch.M.has('contenido')   ? 'm.contenido'
+                    : sch.M.has('descripcion') ? 'm.descripcion'
+                    : `''`;
+
+    // una sola url
+    const selUrl   = sch.M.has('url') ? 'm.url' : 'NULL';
+
+    // urls: no asumimos JSON válido (si es texto, devolvemos array con ese texto; si parece JSON array, lo casteamos)
+    const selUrls  = sch.M.has('urls')
+      ? `CASE
+           WHEN m.urls IS NULL THEN '[]'::jsonb
+           WHEN left(m.urls::text,1)='[' THEN (m.urls::text)::jsonb
+           WHEN btrim(m.urls::text)='' THEN '[]'::jsonb
+           ELSE jsonb_build_array(m.urls::text)
+         END`
+      : `'[]'::jsonb`;
+
+    // fecha/created
+    const createdExpr =
+      sch.M.has('created_at') ? 'm.created_at'
+    : sch.M.has('fecha')      ? 'm.fecha'
+    : sch.M.has('ts')         ? 'm.ts'
+    : null;
+
+    // autor opcional
+    const joinAutor = sch.M.has('usuario_id') ? 'm.usuario_id'
+                    : sch.M.has('creado_por') ? 'm.creado_por'
+                    : sch.M.has('autor_id')   ? 'm.autor_id'
+                    : null;
+
+    const selAutor  = joinAutor
+      ? `COALESCE(NULLIF(TRIM(COALESCE(u.nombre,'') || ' ' || COALESCE(u.apellidos,'')),''),
+                  u.email,'')`
+      : 'NULL';
+
+    const leftJoinU = joinAutor ? `LEFT JOIN usuarios u ON u.id = ${joinAutor}` : '';
+
+    const selLeido  = sch.dcols?.has('leido_at') ? 'd.leido_at' : 'NULL AS leido_at';
+    const selGrupo  = sch.grpCol ? `d.${sch.grpCol}` : 'NULL AS grupo_id';
+
+    // ORDER BY con fallback si no hay fecha en la tabla
+    const orderExpr = createdExpr ? `${createdExpr} DESC NULLS LAST, m.id DESC`
+                                  : `m.id DESC`;
+
+    const sql = `
+      SELECT m.id,
+             ${selTitulo} AS titulo,
+             ${selCuerpo} AS mensaje,
+             ${selUrl} AS url,
+             ${selUrls} AS urls,
+             ${createdExpr ? `${createdExpr} AS created_at` : 'NULL::timestamp AS created_at'},
+             ${selAutor} AS autor,
+             ${selLeido},
+             ${selGrupo}
+        FROM mensajes m
+        JOIN ${sch.dest} d ON d.${sch.msgCol} = m.id AND d.${sch.alumCol} = $1
+        ${leftJoinU}
+       ORDER BY ${orderExpr}
+       LIMIT 200;
+    `;
+
+    const { rows } = await client.query(sql, [alumnoId]);
+    res.json(rows);
+  } catch (e) {
+    console.error('[mensajes alumno] list:', e);
+    res.status(500).json([]);
+  } finally {
+    client.release();
+  }
+});
 
 // ─────────────────────── Alumno básico por id (para mostrar nombre) ─────────────
 router.get('/api/alumno/:alumnoId/basico', mustMatchAlumnoParam, async (req, res) => {

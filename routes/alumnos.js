@@ -152,8 +152,9 @@ router.post('/', upload.single('foto'), async (req, res) => {
       return s === '1' || s === 'true' || s === 'on';
     };
     const activoBool = toBool(activo);
-    const registradoBool = toBool(registrado);
-
+    // Si está inactivo, registrado debe ser false (sin acceso)
+    let registradoBool = toBool(registrado);
+    if (!activoBool) registradoBool = false;
     // --- Validar duplicados ---
     if (DNI_val) {
       const dupDni = await client.query(
@@ -338,19 +339,34 @@ router.put('/:id', upload.single('foto'), async (req, res) => {
     const dniProvided = dniKeyPresent && DNI_val && DNI_val.length > 0;
 
     // Foto
-    let foto = req.file ? req.file.filename : (fotoActual || null);
-    if (eliminar_foto === '1') {
-      if (fotoActual) {
-        const p = path.join('./uploads', fotoActual);
-        if (fs.existsSync(p)) { try { fs.unlinkSync(p); } catch {} }
-      }
-      foto = null;
-    }
+    // Foto (no permitir nueva subida si existe foto actual y no se marca eliminar)
+const fotoActualNombre = fotoActual || null;
+let foto = fotoActualNombre;
+
+// Si el usuario intenta subir una nueva foto sin eliminar la actual, la descartamos para no ocupar disco
+if (req.file && fotoActualNombre && eliminar_foto !== '1') {
+  try { fs.unlinkSync(path.join('./uploads', req.file.filename)); } catch {}
+  // mantenemos la foto existente
+}
+
+// Si marca eliminar, borramos la actual y dejamos foto en null
+if (eliminar_foto === '1' && fotoActualNombre) {
+  const p = path.join('./uploads', fotoActualNombre);
+  if (fs.existsSync(p)) { try { fs.unlinkSync(p); } catch {} }
+  foto = null;
+}
+
+// Si no hay foto actual (o ya se eliminó) y se sube una nueva, la aceptamos
+if (!foto && req.file) {
+  foto = req.file.filename;
+}
 
     // Bools
     const toBool = (v) => { const s = String(v ?? '').toLowerCase(); return s === '1' || s === 'true' || s === 'on'; };
     const activoBool = toBool(activo);
-    const registradoBool = toBool(registrado);
+    // Si está inactivo, registrado debe ser false (sin acceso)
+    let registradoBool = toBool(registrado);
+    if (!activoBool) registradoBool = false;
 
     // fecha_baja: si no llega y pasas a inactivo => hoy; si activo => null
     const fecha_baja_val = fecha_baja ?? (activoBool ? null : new Date().toISOString().slice(0, 10));
@@ -457,7 +473,7 @@ router.put('/:id', upload.single('foto'), async (req, res) => {
       }
     }
 
-    return res.redirect('/alumnos');
+    return res.redirect(303, `/alumnos/${id}`);
   } catch (err) {
     try { await client.query('ROLLBACK'); } catch {}
     console.error('Error al actualizar alumno:', err);
@@ -466,7 +482,6 @@ router.put('/:id', upload.single('foto'), async (req, res) => {
     client.release();
   }
 });
-
 
 // ───────────── Edición (form) ─────────────
 router.get('/:id/editar', async (req, res) => {
