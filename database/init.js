@@ -277,6 +277,7 @@ async function init({ reset = false } = {}) {
       CREATE INDEX IF NOT EXISTS idx_eventos_activos_grupo ON eventos(grupo_id, fecha_inicio) WHERE activo IS TRUE;
       CREATE INDEX IF NOT EXISTS idx_eventos_espacio ON eventos(espacio_id);
       CREATE UNIQUE INDEX IF NOT EXISTS ux_asistencias_evento_alumno ON asistencias (evento_id, alumno_id);
+      CREATE UNIQUE INDEX IF NOT EXISTS ux_asistencias_evento_alumno ON asistencias (evento_id, alumno_id);
 
       CREATE TABLE IF NOT EXISTS asistencias (
         id            INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
