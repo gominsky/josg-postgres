@@ -415,10 +415,17 @@ if (!foto && req.file) {
       foto: toStrOrNull(foto),
       activo: activoBool,
       registrado: registradoBool,
-      guardias_actual: toIntOrNull(guardias_actual),
-      guardias_hist: toIntOrNull(guardias_hist),
       fecha_baja: toDateOrNull(fecha_baja_val)
-    };
+        };
+        // Solo actualizar guardias si llegan explícitamente y con número válido
+    if (Object.prototype.hasOwnProperty.call(req.body, 'guardias_actual')) {
+      const v = toIntOrNull(guardias_actual);
+      if (v !== null) payload.guardias_actual = v;
+    }
+    if (Object.prototype.hasOwnProperty.call(req.body, 'guardias_hist')) {
+      const v = toIntOrNull(guardias_hist);
+      if (v !== null) payload.guardias_hist = v;
+    }
     if (dniProvided) payload.dni = toStrOrNull(DNI_val);
     if (fecha_matriculacion || fecha_alta) {
       payload.fecha_matriculacion = toDateOrNull(fecha_matriculacion ?? fecha_alta);

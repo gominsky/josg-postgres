@@ -427,10 +427,10 @@
             <th class="th-sort" data-key="apellidos">Músico</th>
             <th class="th-sort" data-key="instrumento">Instrumento</th>
             <th class="text-center th-sort" data-key="firmado">Firmado</th>
-            <th class="text-center th-sort" data-key="inicio">Inicio</th>
-            <th class="text-center th-sort" data-key="fin">Fin</th>
+            <th class="th-sort" data-key="inicio">Inicio</th>
+            <th class="th-sort" data-key="fin">Fin</th>
             <th class="th-sort" data-key="ausencia">Ausencia</th>
-            <th class="text-center">Min. perdidos</th>
+            <th class="th-sort">Min. perdidos</th>
             <th class="th-sort" data-key="actividad">Actividad</th>
             <th class="th-sort" data-key="notas">Notas</th>
             <th></th>
@@ -475,12 +475,14 @@
                 value="<%= (row.hora_fin || '').slice(0,5) %>"></td>
               <td><select class="form-select form-select-sm sel-aus"></select></td>
               <td class="text-center">
-                <% if (row.minutos_perdidos && row.minutos_perdidos > 0) { %>
-                  <span class="badge-delay">+<%= row.minutos_perdidos %> min</span>
-                <% } else { %>
-                  —
-                <% } %>
-              </td>
+              <input type="number" min="0" step="1"
+                    class="form-control form-control-sm inp-min"
+                    value="<%= row.minutos_perdidos || '' %>"
+                    style="width:6.5rem; display:none;">
+              <% if (row.minutos_perdidos && row.ausencia_tipo && row.ausencia_tipo.toLowerCase().includes('retras')) { %>
+                <span class="badge-delay">+<%= row.minutos_perdidos %> min</span>
+              <% } %>
+            </td>
               
               <td><select class="form-select form-select-sm sel-act"></select></td>
               <td><input type="text" class="form-control form-control-sm inp-notas"
@@ -702,6 +704,28 @@
 
       window.__AUS_CAT__ = AUS;
       window.__ACT_CAT__ = ACT;
+      // Ajuste inicial de visibilidad del input de minutos según la ausencia elegida
+      $tbody.querySelectorAll('tr').forEach(tr => {
+        const selAus = tr.querySelector('.sel-aus');
+        const inpMin = tr.querySelector('.inp-min');
+        const badge  = tr.querySelector('.badge-delay');
+        if (!selAus || !inpMin) return;
+
+        const showMin = __isParcialSel(selAus);
+        inpMin.style.display = showMin ? '' : 'none';
+
+        if (showMin) {
+          // cargar valor inicial si venía en data-minutos
+          const init = tr.dataset.minutos || '';
+          inpMin.value = init;
+          // si mostramos input por "Parcial", ocultamos el badge de "Retraso" si existe
+          if (badge) badge.style.display = 'none';
+        } else {
+          // si NO es parcial y hay badge de retraso, lo dejamos visible (si existía)
+          if (badge) badge.style.display = '';
+        }
+      });
+
     } catch (e) {
       console.error('[preload selects] No se pudieron hidratar los selects de alumnos', e);
     }
@@ -726,6 +750,12 @@
       if (!r.ok) throw new Error(await r.text() || r.status);
       tr.classList.add('row-dirty'); setTimeout(()=>tr.classList.remove('row-dirty'), 400);
     }
+    // ── Helpers para detectar "Parcial" / "Retraso"
+    // Helpers para ausencia
+    const __norm = s => (s||'').toString().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+    const __isParcialSel = (sel) => __norm(sel?.selectedOptions?.[0]?.textContent).includes('parcial');
+    const __isRetrasoSel = (sel) => __norm(sel?.selectedOptions?.[0]?.textContent).includes('retras');
+
 
     // Firmado
     $tbody.addEventListener('change', async (ev) => {
@@ -772,10 +802,54 @@
         const v = ev.target.value || null; tr.dataset.inicio = v||''; savePartial(tr, { hora_inicio: v });
       } else if (ev.target.classList.contains('inp-fin')) {
         const v = ev.target.value || null; tr.dataset.fin = v||''; savePartial(tr, { hora_fin: v });
-      } else if (ev.target.classList.contains('sel-aus')) {
-        const v = ev.target.value === '' ? null : Number(ev.target.value);
-        tr.dataset.ausenciaId = v||''; tr.dataset.ausencia = ev.target.selectedOptions[0]?.textContent || '';
-        savePartial(tr, { ausencia_tipo_id: v });
+       } else if (ev.target.classList.contains('sel-aus')) {
+  const sel = ev.target;
+  const tr  = sel.closest('tr');
+  const v   = sel.value === '' ? null : Number(sel.value);
+  tr.dataset.ausenciaId = v || '';
+  tr.dataset.ausencia   = sel.selectedOptions[0]?.textContent || '';
+
+  // Mostrar/ocultar input de minutos
+  const inpMin = tr.querySelector('.inp-min');
+  const showMin = __isParcialSel(sel) || __isRetrasoSel(sel);
+  if (inpMin) {
+    inpMin.style.display = showMin ? '' : 'none';
+    if (!showMin) inpMin.value = '';
+  }
+  // Quitar badge de retraso si cambiamos el tipo
+  tr.querySelector('.badge-delay')?.remove();
+
+  // 1) Persistir ausencia en asignación (opcional si la usas en esa tabla)
+  savePartial(tr, { ausencia_tipo_id: v }).catch(console.error);
+
+  // 2) Persistir minutos_perdidos en ASISTENCIAS vía AJAX (limpiar si no procede)
+  const alumnoId = tr.dataset.alumno;
+  const minutos  = showMin ? (inpMin?.value?.trim() || null) : null;
+  const body = {
+    alumno_id: Number(alumnoId),
+    minutos_perdidos: minutos === null || minutos === '' ? null : Math.max(0, parseInt(minutos,10)||0)
+  };
+  fetch(`/eventos/${eventoId}/firma_manual/ajax`, {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify(body)
+  }).then(r=>r.ok?r.json():Promise.reject(r.status)).catch(console.error);
+
+  if (badge) badge.remove();
+
+  // Construir payload a guardar
+  const payload = { ausencia_tipo_id: v };
+  if (mostrarMin) {
+    // si es parcial y ya hay número, lo enviamos también
+    const num = Math.max(0, parseInt((inp?.value || '').trim(), 10) || 0);
+    payload.minutos_perdidos = Number.isFinite(num) ? num : null;
+    tr.dataset.minutos = payload.minutos_perdidos != null ? String(payload.minutos_perdidos) : '';
+  } else {
+    // al salir de parcial, minutos_perdidos -> NULL en BD
+    payload.minutos_perdidos = null;
+  }
+  savePartial(tr, payload).catch(console.error);
+
       } else if (ev.target.classList.contains('sel-act')) {
         const v = ev.target.value === '' ? null : Number(ev.target.value);
         tr.dataset.actividadId = v||''; tr.dataset.actividad = ev.target.selectedOptions[0]?.textContent || '';
@@ -796,10 +870,23 @@
       tr.dataset.instrumento = val;
       savePartial(tr, { instrumento: val || null });
     }, true);
+    $tbody.addEventListener('input', ev => {
+      if (!ev.target.classList.contains('inp-min')) return;
+      const tr = ev.target.closest('tr'); if (!tr) return;
+
+      const raw = (ev.target.value || '').trim();
+      const num = raw === '' ? null : Math.max(0, parseInt(raw, 10) || 0);
+      tr.dataset.minutos = num == null ? '' : String(num);
+
+      // guardamos solo minutos_perdidos; la ausencia ya se guardó al cambiar el select
+      savePartial(tr, { minutos_perdidos: num }).catch(console.error);
+    });
+
   } catch (err) {
     console.error('[tabla individual] init error', err);
   }
 })();
+
 </script>
 
 <!-- ============ Ordenación por cabecera (2 estados asc/desc) ============ -->
@@ -901,277 +988,110 @@
 </script>
 
 <!-- ============ Tabla INSTRUMENTOS: editor visual + autoguardado alumnos ============ -->
-<script>
-  (() => {
-    const eventoId = <%= evento.id %>;
-    const $instBody = document.getElementById('instBody');
-    const $alumBody = document.getElementById('asigBody');
-  
-    const DEF_INI = '<%= hIni %>';
-    const DEF_FIN = '<%= hFin %>';
-  
-    const ENDPOINTS = {
-      list : `/eventos/${eventoId}/instrumentos`,
-      del  : `/eventos/${eventoId}/instrumentos`,
-      act  : `/actividades/api`,
-      bulk : window.ROUTES.asignaciones.bulk(eventoId),
-      putAsig: (alId)=> window.ROUTES.asignaciones.base(eventoId, alId)
+
+  <script>
+(() => {
+  const eventoId = <%= evento.id %>;
+  const $tbody = document.getElementById('asigBody');
+
+  async function savePartial(tr, payload){
+    const alumnoId = tr?.dataset?.alumno; if (!alumnoId) return;
+    const r = await fetch(`/eventos/${eventoId}/asignaciones/${alumnoId}`, {
+      method:'PUT',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(payload)
+    });
+    if (!r.ok) {
+      const t = await r.text().catch(()=>r.status);
+      throw new Error(t);
+    }
+    tr.classList.add('row-dirty');
+    setTimeout(()=>tr.classList.remove('row-dirty'), 300);
+  }
+
+  // Helpers normalización
+  const __norm = s => (s||'').toString().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+  const __isParcialSel = (sel) => __norm(sel?.selectedOptions?.[0]?.textContent).includes('parcial');
+  const __isRetrasoSel = (sel) => __norm(sel?.selectedOptions?.[0]?.textContent).includes('retras');
+
+  // === Listener de cambios en AUSENCIA ===
+  $tbody.addEventListener('change', ev => {
+    const sel = ev.target.closest('.sel-aus'); 
+    if (!sel) return;
+
+    const tr  = sel.closest('tr');
+    const v   = sel.value === '' ? null : Number(sel.value);
+    tr.dataset.ausenciaId = v || '';
+    tr.dataset.ausencia   = sel.selectedOptions[0]?.textContent || '';
+
+    // Mostrar/ocultar input de minutos
+    const inpMin = tr.querySelector('.inp-min');
+    const showMin = __isParcialSel(sel) || __isRetrasoSel(sel);
+    if (inpMin) {
+      inpMin.style.display = showMin ? '' : 'none';
+      if (!showMin) inpMin.value = '';
+    }
+    tr.querySelector('.badge-delay')?.remove();
+
+    // Guardar ausencia en asignación
+    savePartial(tr, { ausencia_tipo_id: v }).catch(console.error);
+
+    // Enviar también minutos_perdidos a asistencias (limpiar si no procede)
+    const alumnoId = tr.dataset.alumno;
+    const minutos  = showMin ? (inpMin?.value?.trim() || null) : null;
+    const body = {
+      alumno_id: Number(alumnoId),
+      minutos_perdidos: minutos === null || minutos === '' ? null : Math.max(0, parseInt(minutos,10)||0)
     };
-  
-    async function fetchJSON(url, opts){
-      const r = await fetch(url, opts || {});
-      const ct = r.headers.get('content-type')||'';
-      const body = ct.includes('application/json') ? await r.json() : await r.text();
-      if (!r.ok) throw new Error(typeof body === 'string' ? body : JSON.stringify(body));
-      return body;
-    }
-  
-    const hhmm  = v => (v || '').slice(0,5);
-    const first = (...xs) => xs.find(v => v !== undefined && v !== null && v !== '');
-  
-    function nameOf(row){ return first(row?.nombre, row?.instrumento, row?.instrumento_key, row?.key, '(sin instrumento)'); }
-    function keyOf(row){  return first(row?.key, row?.instrumento_key, row?.instrumento, nameOf(row)); }
-    function iniOf(row){  return hhmm(first(row?.hora_inicio, row?.inicio, row?.hora_ini, row?.start_time, DEF_INI)); }
-    function finOf(row){  return hhmm(first(row?.hora_fin,   row?.fin,   row?.hora_fin,  row?.end_time,  DEF_FIN)); }
-  
-    // Catálogo de actividades (usa el precargado si existe)
-    let ACT_CACHE = window.__ACT_CAT__ || null;
-    async function ensureActividades(){
-      if (Array.isArray(ACT_CACHE)) return ACT_CACHE;
-      try{
-        const arr = await fetchJSON(ENDPOINTS.act);
-        ACT_CACHE = (arr || []).map(a => ({ id:a.id, texto:(a.nombre??a.tipo??a.texto??a.id) }));
-        window.__ACT_CAT__ = ACT_CACHE;
-        return ACT_CACHE;
-      }catch(e){ console.warn('No se pudieron cargar actividades', e); return (ACT_CACHE=[]); }
-    }
-    function fillSelect(sel, items, selectedId){
-      sel.innerHTML = '';
-      sel.append(new Option('—', '', true, selectedId==null || selectedId===''));
-      for (const a of items){
-        sel.append(new Option(String(a.texto ?? a.id), String(a.id), false, String(a.id) === String(selectedId)));
+    fetch(`/eventos/${eventoId}/firma_manual/ajax`, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(body)
+    }).catch(console.error);
+  });
+
+  // === Listener de input en MINUTOS PERDIDOS (bloque 2.3) ===
+  $tbody.addEventListener('input', ev => {
+    if (!ev.target.classList.contains('inp-min')) return;
+    const inp = ev.target;
+    const tr  = inp.closest('tr'); if (!tr) return;
+
+    const selAus = tr.querySelector('.sel-aus');
+    const showMin = __isParcialSel(selAus) || __isRetrasoSel(selAus);
+    const alumnoId = Number(tr.dataset.alumno);
+
+    const raw = (inp.value || '').trim();
+    const num = raw === '' ? null : Math.max(0, parseInt(raw, 10) || 0);
+    tr.dataset.minutos = num == null ? '' : String(num);
+
+    // Badge visual solo si es retraso
+    const isDelay = __isRetrasoSel(selAus) && num != null && num > 0;
+    let badge = tr.querySelector('.badge-delay');
+    if (isDelay) {
+      if (!badge) {
+        badge = document.createElement('span');
+        badge.className = 'badge-delay';
+        tr.querySelector('td:first-child strong')?.after(document.createTextNode(' '), badge);
       }
+      badge.textContent = `+${num} min`;
+    } else {
+      badge?.remove();
     }
-  
-    function renderInstrumentos(rows){
-      $instBody.innerHTML = '';
-      if (!rows || (Array.isArray(rows) && rows.length === 0)){
-        $instBody.innerHTML = `<tr><td colspan="6" class="text-muted">(Sin datos)</td></tr>`;
-        return;
-      }
-  
-      // Permite que el backend devuelva {items:[...]} o directamente [...]
-      const list = Array.isArray(rows) ? rows : (Array.isArray(rows?.items) ? rows.items : []);
-  
-      if (!list.length){
-        $instBody.innerHTML = `<tr><td colspan="6" class="text-muted">(Sin datos)</td></tr>`;
-        return;
-      }
-  
-      for (const r of list){
-        const tr = document.createElement('tr');
-        tr.dataset.key  = keyOf(r);
-        tr.dataset.name = (nameOf(r) || '').trim();
-        tr.innerHTML = `
-          <td><strong>${tr.dataset.name}</strong></td>
-          <td class="text-center"><input type="time" class="form-control form-control-sm inp-ini" value="${iniOf(r)}"></td>
-          <td class="text-center"><input type="time" class="form-control form-control-sm inp-fin" value="${finOf(r)}"></td>
-          <td><select class="form-select form-select-sm sel-act"></select></td>
-          <td><input type="text" class="form-control form-control-sm inp-notas" value="${r.notas ?? ''}"></td>
-          <td class="text-end"><button class="btn btn-sm btn-outline-danger btn-del">Eliminar</button></td>`;
-        $instBody.appendChild(tr);
-      }
-    }
-  
-    async function loadInstrumentos(){
-      try{
-        const rows = await fetchJSON(ENDPOINTS.list);
-        renderInstrumentos(rows);
-  
-        // Hidrata selects de actividades en segundo plano
-        const acts = await ensureActividades();
-        $instBody.querySelectorAll('select.sel-act').forEach(sel => {
-          if (!sel.options.length) fillSelect(sel, acts, '');
-        });
-      }catch(e){
-        console.error('Error cargando instrumentos:', e);
-        $instBody.innerHTML = `<tr><td colspan="6" class="text-danger">Error cargando instrumentos</td></tr>`;
-      }
-    }
-    window.__loadInstrumentos = loadInstrumentos;
-  
-    // localizar filas de alumnos afectadas
-    const strNorm = s => String(s||'').trim().toLowerCase();
-    const parseCSV = s => String(s||'').split(/[;,|]/).map(x=>strNorm(x)).filter(Boolean);
-    function findStudentRowsByInstrument(instrKey){
-      const keyNorm = strNorm(instrKey);
-      const rows = $alumBody?.querySelectorAll?.('tr[data-instrumento], tr[data-instrumentos]') || [];
-      return Array.from(rows).filter(tr => {
-        const unico = strNorm(tr.dataset.instrumento);
-        if (unico && unico === keyNorm) return true;
-        const lista = parseCSV(tr.dataset.instrumentos);
-        return lista.includes(keyNorm);
-      });
-    }
-  
-    async function applyVisualToStudents(trAlumnos, set){
-      let actividades = null;
-      if (set.actividad_complementaria_id !== undefined) {
-        actividades = await ensureActividades();
-      }
-      trAlumnos.forEach(tr => {
-        if (set.hora_inicio) {
-          const ini = tr.querySelector('.inp-ini'); if (ini) ini.value = hhmm(set.hora_inicio);
-        }
-        if (set.hora_fin) {
-          const fin = tr.querySelector('.inp-fin'); if (fin) fin.value = hhmm(set.hora_fin);
-        }
-        if (set.actividad_complementaria_id !== undefined) {
-          const sel = tr.querySelector('.sel-act');
-          if (sel) {
-            if (!sel.options.length && actividades) fillSelect(sel, actividades, set.actividad_complementaria_id);
-            sel.value = String(set.actividad_complementaria_id ?? '');
-          }
-        }
-        if (set.notas !== undefined) {
-          const inp = tr.querySelector('.inp-notas'); if (inp) inp.value = set.notas ?? '';
-        }
-        tr.classList.add('row-dirty');
-      });
-    }
-  
-    async function persistStudents(trAlumnos){
-      if (!trAlumnos.length) return;
-  
-      const items = trAlumnos.map(tr=>{
-        const alumno_id = Number(tr.dataset.alumno);
-        const hora_inicio = tr.querySelector('.inp-ini')?.value || null;
-        const hora_fin    = tr.querySelector('.inp-fin')?.value || null;
-        const selAct      = tr.querySelector('.sel-act');
-        const actividad_complementaria_id = selAct ? (selAct.value === '' ? null : Number(selAct.value)) : null;
-        const notas       = tr.querySelector('.inp-notas')?.value ?? null;
-        return { alumno_id, hora_inicio, hora_fin, actividad_complementaria_id, notas };
-      });
-  
-      // Intento bulk
-      let bulkOk = false;
-      try{
-        await fetchJSON(ENDPOINTS.bulk, {
-          method:'POST',
-          headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({ items })
-        });
-        bulkOk = true;
-      }catch(e){ bulkOk = false; }
-  
-      // Fallback por alumno
-      if (!bulkOk){
-        for (const it of items){
-          await fetchJSON(ENDPOINTS.putAsig(it.alumno_id), {
-            method:'PUT',
-            headers:{'Content-Type':'application/json'},
-            body: JSON.stringify({
-              hora_inicio: it.hora_inicio,
-              hora_fin: it.hora_fin,
-              actividad_complementaria_id: it.actividad_complementaria_id,
-              notas: it.notas
-            })
-          });
-        }
-      }
-  
-      trAlumnos.forEach(tr=>{
-        tr.classList.remove('row-dirty');
-        const ini = tr.querySelector('.inp-ini')?.value || '';
-        const fin = tr.querySelector('.inp-fin')?.value || '';
-        const sel = tr.querySelector('.sel-act');
-        const notas = tr.querySelector('.inp-notas')?.value ?? '';
-        if (ini) tr.dataset.inicio = ini;
-        if (fin) tr.dataset.fin    = fin;
-        if (sel) { tr.dataset.actividadId = sel.value || ''; tr.dataset.actividad = sel.selectedOptions[0]?.textContent || ''; }
-        tr.dataset.notas = notas;
-      });
-    }
-  
-    function collectSetFromInstrumentRow(tr){
-      const set = {};
-      const ini   = tr.querySelector('.inp-ini')?.value || '';
-      const fin   = tr.querySelector('.inp-fin')?.value || '';
-      const act   = tr.querySelector('.sel-act')?.value ?? '';
-      const notas = tr.querySelector('.inp-notas')?.value ?? '';
-      if (ini)      set.hora_inicio = ini;
-      if (fin)      set.hora_fin    = fin;
-      if (act!=='') set.actividad_complementaria_id = Number(act);
-      if (notas!=='') set.notas = notas;
-      return set;
-    }
-  
-    const pendingTimers = new WeakMap();
-    const debounced = (tr, fn) => { clearTimeout(pendingTimers.get(tr)); const t=setTimeout(fn, 350); pendingTimers.set(tr,t); };
-  
-    // Carga perezosa de actividades al enfocar select
-    $instBody.addEventListener('focusin', async ev => {
-      const sel = ev.target.closest('select.sel-act'); if (!sel) return;
-      const items = await ensureActividades();
-      if (!sel.options.length) fillSelect(sel, items, '');
-    });
-  
-    // Cambios → aplicar a alumnos y autoguardar (debounced)
-    $instBody.addEventListener('change', ev => {
-      if (!ev.target.matches('.inp-ini, .inp-fin, .sel-act')) return;
-      const trG = ev.target.closest('tr'); if (!trG) return;
-      const set = collectSetFromInstrumentRow(trG);
-      const alumnos = findStudentRowsByInstrument(trG.dataset.key);
-      (async () => {
-        await applyVisualToStudents(alumnos, set);
-        debounced(trG, () => persistStudents(alumnos).catch(e=>console.error(e)));
-      })();
-    });
-  
-    $instBody.addEventListener('blur', ev => {
-      if (!ev.target.matches('.inp-notas')) return;
-      const trG = ev.target.closest('tr'); if (!trG) return;
-      const set = collectSetFromInstrumentRow(trG);
-      const alumnos = findStudentRowsByInstrument(trG.dataset.key);
-      (async () => {
-        await applyVisualToStudents(alumnos, set);
-        debounced(trG, () => persistStudents(alumnos).catch(e=>console.error(e)));
-      })();
-    }, true);
-  
-    // Eliminar agrupación
-    $instBody.addEventListener('click', async ev => {
-      const btn = ev.target.closest('.btn-del'); if (!btn) return;
-      const tr = btn.closest('tr'); if (!tr) return;
-  
-      if (!confirm('¿Eliminar TODAS las asignaciones de este instrumento en el evento?')) return;
-  
-      const instrKey = tr.dataset.key;
-  
-      try{
-        await fetchJSON(ENDPOINTS.del, {
-          method:'DELETE',
-          headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({ instrumento_key: instrKey, key: instrKey })
-        });
-  
-        tr.remove();
-  
-        const afectados = findStudentRowsByInstrument(instrKey);
-        afectados.forEach(row => row.remove());
-  
-      }catch(e){
-        console.error('DELETE instrumentos falló', e);
-        alert('No se pudo eliminar la agrupación');
-      }
-    });
-  
-    // Si el switch de instrumentos ya está activo, cargar; si no, se cargará al activarlo.
-    const swInst = document.getElementById('swInst');
-    if (swInst?.checked) { window.__loadInstrumentos?.(); }
-  })();
-  </script>
-  
+
+    // Guardar minutos en asistencias
+    const payload = {
+      alumno_id: alumnoId,
+      minutos_perdidos: showMin ? num : null
+    };
+    fetch(`/eventos/${eventoId}/firma_manual/ajax`, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(payload)
+    }).catch(console.error);
+  });
+
+})();
+</script>
 
 <!-- ============ Backfill instrumento vacío tras repoblar ============ -->
 <script>

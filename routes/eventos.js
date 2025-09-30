@@ -747,217 +747,116 @@ ORDER BY apellidos NULLS LAST, nombre NULLS LAST, id;
     res.status(500).send('Error al cargar formulario de firmas');
   }
 });
+
 router.post('/:id/firma_manual/ajax', async (req, res) => {
-  const eventoId = Number(req.params.id);
-  const alumnoId = Number(req.body.alumno_id);
-  const firmado = String(req.body.firmado) === 'true';
+  const eventoId = parseInt(req.params.id, 10);
+  const alumnoId = parseInt(req.body?.alumno_id, 10);
 
-  if (!Number.isInteger(eventoId) || !Number.isInteger(alumnoId)) {
-    return res.status(400).json({ success: false, error: 'Parámetros inválidos' });
+  if (!eventoId || !alumnoId) {
+    return res.status(400).json({ ok: false, error: 'Parámetros inválidos' });
   }
 
-  try {
-    await db.query('BEGIN');
+  // Campos opcionales del body
+  const hasFirmado = Object.prototype.hasOwnProperty.call(req.body, 'firmado');
+  const firmado = hasFirmado ? !!req.body.firmado : undefined;
 
-    // Debe existir asignación
-    const asig = await db.query(
-      'SELECT 1 FROM evento_asignaciones WHERE evento_id = $1 AND alumno_id = $2',
-      [eventoId, alumnoId]
-    );
-    if (!asig.rows.length) {
-      await db.query('ROLLBACK');
-      return res.status(400).json({ success: false, error: 'Alumno no asignado a este evento' });
-    }
-
-    if (firmado) {
-      await db.query(
-        `INSERT INTO asistencias (evento_id, alumno_id)
-         SELECT $1, $2
-         WHERE NOT EXISTS (
-           SELECT 1 FROM asistencias WHERE evento_id = $1 AND alumno_id = $2
-         )`,
-        [eventoId, alumnoId]
-      );
-      await db.query(
-        `UPDATE evento_asignaciones
-            SET ausencia_tipo_id = NULL
-          WHERE evento_id = $1 AND alumno_id = $2`,
-        [eventoId, alumnoId]
-      );
+  const hasMinutos = Object.prototype.hasOwnProperty.call(req.body, 'minutos_perdidos');
+  let minutosVal = null;
+  if (hasMinutos) {
+    const raw = req.body.minutos_perdidos;
+    if (raw === null || raw === '' || typeof raw === 'undefined') {
+      minutosVal = null;
     } else {
-      await db.query(
-        'DELETE FROM asistencias WHERE evento_id = $1 AND alumno_id = $2',
-        [eventoId, alumnoId]
-      );
+      const n = Number.parseInt(raw, 10);
+      minutosVal = Number.isFinite(n) && n >= 0 ? n : 0;
     }
-
-    await db.query('COMMIT');
-    return res.json({ success: true });
-  } catch (err) {
-    await db.query('ROLLBACK');
-    console.error('Error actualizando firma AJAX:', err);
-    return res.status(500).json({ success: false, error: 'Error actualizando firma' });
   }
-});
-router.get('/:id/firmas.pdf', async (req, res, next) => {
-  try {
-    const eventoId = Number(req.params.id);
-    if (!Number.isInteger(eventoId)) return res.status(400).send('ID no válido');
-    await pdfControlAsistencia(db, res, eventoId);
-  } catch (err) {
-    next(err);
-  }
-});
-router.get('/:id/asignaciones', async (req, res) => {
-  const eventoId = Number(req.params.id);
-  if (!Number.isInteger(eventoId)) return res.status(400).json({ error: 'ID inválido' });
-
-  const sql = `
-    SELECT
-      ea.evento_id,
-      ea.alumno_id,
-      a.nombre,
-      a.apellidos,
-      ea.hora_inicio,
-      ea.hora_fin,
-      COALESCE(ea.hora_inicio, e.hora_inicio) AS hora_inicio_efectiva,
-      COALESCE(ea.hora_fin,    e.hora_fin)    AS hora_fin_efectiva,
-      ea.instrumento,
-      ea.notas,
-      ea.ausencia_tipo_id,
-      au.tipo  AS ausencia_tipo,
-      ea.actividad_complementaria_id,
-      ac.tipo  AS actividad_complementaria
-    FROM evento_asignaciones ea
-    JOIN alumnos a  ON a.id = ea.alumno_id
-    JOIN eventos e  ON e.id = ea.evento_id
-    LEFT JOIN ausencias au ON au.id = ea.ausencia_tipo_id
-    LEFT JOIN actividades_complementarias ac ON ac.id = ea.actividad_complementaria_id
-    WHERE ea.evento_id = $1
-    ORDER BY a.apellidos NULLS LAST, a.nombre NULLS LAST, a.id
-  `;
-  try {
-    const { rows } = await db.query(sql, [eventoId]);
-    res.json(rows);
-  } catch (err) {
-    console.error('Error obteniendo asignaciones:', err);
-    res.status(500).json({ error: 'Error obteniendo asignaciones' });
-  }
-});
-router.post('/:id/asignaciones/refresh', async (req, res) => {
-  const eventoId = Number(req.params.id);
-  const e = (await db.query('SELECT grupo_id, fecha_inicio FROM eventos WHERE id = $1', [eventoId])).rows[0];
-  if (!e) return res.status(404).json({ error: 'Evento no encontrado' });
-
-  const fechaISO = String(e.fecha_inicio).slice(0, 10);
-
-  try {
-    await asignarAlumnosAEvento(db, eventoId, e.grupo_id, fechaISO); // arg extra ignorado
-    return res.json({ ok: true });
-  } catch (err) {
-    console.error('Error refrescando asignaciones:', err);
-    return res.status(500).json({ error: 'Error refrescando asignaciones' });
-  }
-});
-router.put('/:id/asignaciones/:alumnoId', async (req, res) => {
-  const eventoId = Number(req.params.id);
-  const alumnoId = Number(req.params.alumnoId);
-  if (!Number.isInteger(eventoId) || !Number.isInteger(alumnoId)) {
-    return res.status(400).json({ error: 'IDs inválidos' });
-  }
-
-  // Campos que podríamos aceptar del front
-  const {
-    hora_inicio,
-    hora_fin,
-    instrumento,                   // <- el importante
-    notas,
-    ausencia_tipo_id,
-    actividad_complementaria_id
-  } = req.body || {};
 
   const client = await db.connect();
   try {
-    await client.query('BEGIN');
-
-    // 1) Garantiza que exista la fila
-    await client.query(
-      `INSERT INTO evento_asignaciones (evento_id, alumno_id)
-       VALUES ($1, $2)
-       ON CONFLICT (evento_id, alumno_id) DO NOTHING`,
-      [eventoId, alumnoId]
-    );
-
-    // 2) Construye UPDATE dinámico (solo setea lo que venga en el body)
-    const sets = [];
-    const params = [eventoId, alumnoId];
-    let i = 3;
-
-    // Importante: usamos hasOwnProperty para saber si el campo vino en el JSON,
-    // aunque sea '' (string vacío). Así puedes borrar con "" -> NULLIF(...).
-    if (Object.prototype.hasOwnProperty.call(req.body, 'hora_inicio')) {
-      sets.push(`hora_inicio = $${i}::time`);
-      params.push(hora_inicio || null);
-      i++;
-    }
-    if (Object.prototype.hasOwnProperty.call(req.body, 'hora_fin')) {
-      sets.push(`hora_fin = $${i}::time`);
-      params.push(hora_fin || null);
-      i++;
-    }
-    if (Object.prototype.hasOwnProperty.call(req.body, 'instrumento')) {
-      // Guarda NULL si llega "" o solo espacios
-      sets.push(`instrumento = NULLIF(btrim($${i}::text), '')`);
-      params.push(instrumento ?? null);
-      i++;
-    }
-    if (Object.prototype.hasOwnProperty.call(req.body, 'notas')) {
-      sets.push(`notas = $${i}::text`);
-      params.push(notas ?? null);
-      i++;
-    }
-    if (Object.prototype.hasOwnProperty.call(req.body, 'ausencia_tipo_id')) {
-      sets.push(`ausencia_tipo_id = $${i}::int`);
-      params.push(ausencia_tipo_id ?? null);
-      i++;
-    }
-    if (Object.prototype.hasOwnProperty.call(req.body, 'actividad_complementaria_id')) {
-      sets.push(`actividad_complementaria_id = $${i}::int`);
-      params.push(actividad_complementaria_id ?? null);
-      i++;
+    // —— Caso 1: firmado explícito false → eliminamos
+    if (hasFirmado && !firmado) {
+      await client.query('DELETE FROM asistencias WHERE evento_id = $1 AND alumno_id = $2', [eventoId, alumnoId]);
+      return res.json({ ok: true, deleted: true });
     }
 
-    // Si no hay nada que actualizar, devolvemos la fila actual
-    let row;
-    if (sets.length) {
-      const { rows } = await client.query(
-        `UPDATE evento_asignaciones
-           SET ${sets.join(', ')}
-         WHERE evento_id = $1 AND alumno_id = $2
-         RETURNING evento_id, alumno_id, hora_inicio, hora_fin, instrumento, notas, ausencia_tipo_id, actividad_complementaria_id`,
-        params
+    // —— Caso 2: firmado explícito true → upsert con fecha/hora/tipo manual
+    if (hasFirmado && firmado) {
+      if (hasMinutos) {
+        // set minutos si viene; si no, dejamos lo que hubiera
+        await client.query(
+          `
+          INSERT INTO asistencias (evento_id, alumno_id, fecha, hora, tipo, minutos_perdidos)
+          VALUES ($1, $2, (now() at time zone 'Europe/Madrid')::date,
+                        (now() at time zone 'Europe/Madrid')::time, 'manual', $3)
+          ON CONFLICT (evento_id, alumno_id)
+          DO UPDATE SET
+            fecha = EXCLUDED.fecha,
+            hora  = EXCLUDED.hora,
+            tipo  = 'manual',
+            minutos_perdidos = EXCLUDED.minutos_perdidos
+          `,
+          [eventoId, alumnoId, minutosVal]
+        );
+      } else {
+        // no tocar minutos_perdidos si no vino
+        await client.query(
+          `
+          INSERT INTO asistencias (evento_id, alumno_id, fecha, hora, tipo)
+          VALUES ($1, $2, (now() at time zone 'Europe/Madrid')::date,
+                        (now() at time zone 'Europe/Madrid')::time, 'manual')
+          ON CONFLICT (evento_id, alumno_id)
+          DO UPDATE SET
+            fecha = EXCLUDED.fecha,
+            hora  = EXCLUDED.hora,
+            tipo  = 'manual'
+          `,
+          [eventoId, alumnoId]
+        );
+      }
+      return res.json({ ok: true, upsert: true });
+    }
+
+    // —— Caso 3: solo vienen minutos_perdidos (no tocar fecha/hora/tipo si ya existe)
+    if (hasMinutos) {
+      // Intentamos UPDATE primero para no tocar nada más
+      const upd = await client.query(
+        'UPDATE asistencias SET minutos_perdidos = $3 WHERE evento_id = $1 AND alumno_id = $2',
+        [eventoId, alumnoId, minutosVal]
       );
-      row = rows[0];
-    } else {
-      const { rows } = await client.query(
-        `SELECT evento_id, alumno_id, hora_inicio, hora_fin, instrumento, notas, ausencia_tipo_id, actividad_complementaria_id
-           FROM evento_asignaciones
-          WHERE evento_id = $1 AND alumno_id = $2`,
-        [eventoId, alumnoId]
+
+      if (upd.rowCount > 0) {
+        return res.json({ ok: true, updated: true });
+      }
+
+      // Si no existe la fila y minutos es NULL → no creamos nada
+      if (minutosVal === null) {
+        return res.json({ ok: true, noop: true });
+      }
+
+      // Si no existe y hay número → creamos fila nueva con tipo manual y fecha/hora actuales
+      await client.query(
+        `
+        INSERT INTO asistencias (evento_id, alumno_id, fecha, hora, tipo, minutos_perdidos)
+        VALUES ($1, $2, (now() at time zone 'Europe/Madrid')::date,
+                      (now() at time zone 'Europe/Madrid')::time, 'manual', $3)
+        `,
+        [eventoId, alumnoId, minutosVal]
       );
-      row = rows[0];
+      return res.json({ ok: true, inserted: true });
     }
 
-    await client.query('COMMIT');
-    return res.json(row || { ok: true });
+    // Si no vino ni firmado ni minutos → nada que hacer
+    return res.status(400).json({ ok: false, error: 'Nada que actualizar' });
   } catch (err) {
-    await client.query('ROLLBACK');
-    console.error('PUT asignación:', err);
-    return res.status(500).json({ error: 'Error guardando asignación' });
+    console.error('[firma_manual/ajax] error:', err);
+    return res.status(500).json({ ok: false, error: 'internal' });
   } finally {
     client.release();
   }
 });
+
+
 router.get('/:id/asignaciones/resumen', async (req, res) => {
   const eventoId = Number(req.params.id);
   if (!Number.isInteger(eventoId)) return res.status(400).json({ error: 'ID inválido' });
