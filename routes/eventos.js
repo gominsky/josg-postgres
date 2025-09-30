@@ -747,7 +747,6 @@ ORDER BY apellidos NULLS LAST, nombre NULLS LAST, id;
     res.status(500).send('Error al cargar formulario de firmas');
   }
 });
-
 router.post('/:id/firma_manual/ajax', async (req, res) => {
   const eventoId = parseInt(req.params.id, 10);
   const alumnoId = parseInt(req.body?.alumno_id, 10);
@@ -855,8 +854,6 @@ router.post('/:id/firma_manual/ajax', async (req, res) => {
     client.release();
   }
 });
-
-
 router.get('/:id/asignaciones/resumen', async (req, res) => {
   const eventoId = Number(req.params.id);
   if (!Number.isInteger(eventoId)) return res.status(400).json({ error: 'ID inválido' });
@@ -878,27 +875,167 @@ router.get('/:id/asignaciones/resumen', async (req, res) => {
     res.status(500).json({ error: 'Error en resumen de asignaciones' });
   }
 });
+router.put('/:id/asignaciones/:alumnoId', async (req, res) => {
+  const eventoId = parseInt(req.params.id, 10);
+  const alumnoId = parseInt(req.params.alumnoId, 10);
+  if (!eventoId || !alumnoId) return res.status(400).send('Parámetros inválidos');
+
+  const {
+    hora_inicio,
+    hora_fin,
+    instrumento,
+    ausencia_tipo_id,
+    actividad_complementaria_id,
+    notas
+  } = req.body || {};
+
+  const S = v => (v === undefined || v === null) ? null : String(v).trim();
+  const I = v => { if (v === undefined || v === null || v === '') return null;
+    const n = Number(v); return Number.isFinite(n) ? Math.trunc(n) : null; };
+  const isHHMM = v => typeof v === 'string' && /^[0-9]{1,2}:[0-5][0-9](?::[0-5][0-9])?$/.test(v);
+
+  const tIni = S(hora_inicio);
+  const tFin = S(hora_fin);
+
+  const client = await db.connect();
+  try {
+    await client.query('BEGIN');
+
+    await client.query(
+      `INSERT INTO evento_asignaciones (evento_id, alumno_id)
+       VALUES ($1, $2)
+       ON CONFLICT (evento_id, alumno_id) DO NOTHING`,
+      [eventoId, alumnoId]
+    );
+
+    const sets = [];
+    const params = [eventoId, alumnoId];
+
+    if (Object.prototype.hasOwnProperty.call(req.body, 'hora_inicio')) {
+      if (tIni === null || tIni === '') sets.push('hora_inicio = NULL');
+      else if (isHHMM(tIni)) { params.push(tIni); sets.push(`hora_inicio = $${params.length}::time`); }
+    }
+    if (Object.prototype.hasOwnProperty.call(req.body, 'hora_fin')) {
+      if (tFin === null || tFin === '') sets.push('hora_fin = NULL');
+      else if (isHHMM(tFin)) { params.push(tFin); sets.push(`hora_fin = $${params.length}::time`); }
+    }
+    if (Object.prototype.hasOwnProperty.call(req.body, 'instrumento')) {
+      params.push(S(instrumento)); sets.push(`instrumento = $${params.length}`);
+    }
+    if (Object.prototype.hasOwnProperty.call(req.body, 'notas')) {
+      params.push(S(notas)); sets.push(`notas = $${params.length}`);
+    }
+    if (Object.prototype.hasOwnProperty.call(req.body, 'ausencia_tipo_id')) {
+      params.push(I(ausencia_tipo_id)); sets.push(`ausencia_tipo_id = $${params.length}`);
+    }
+    if (Object.prototype.hasOwnProperty.call(req.body, 'actividad_complementaria_id')) {
+      params.push(I(actividad_complementaria_id)); sets.push(`actividad_complementaria_id = $${params.length}`);
+    }
+
+    if (sets.length > 0) {
+      const sqlUpd = `
+        UPDATE evento_asignaciones
+           SET ${sets.join(', ')}
+         WHERE evento_id = $1 AND alumno_id = $2
+      `;
+      await client.query(sqlUpd, params);
+    } else {
+      console.log('[PUT ea SET] (nada que actualizar)');
+    }
+
+    await client.query('COMMIT');
+    res.json({ ok: true, updated: sets.length > 0 });
+  } catch (e) {
+    try { await client.query('ROLLBACK'); } catch {}
+    console.error('[PUT evento_asignaciones] error:', e);
+    res.status(500).send('Error guardando asignación');
+  } finally {
+    client.release();
+  }
+});
 router.delete('/:id/asignaciones/:alumnoId', async (req, res) => {
   const eventoId = Number(req.params.id);
   const alumnoId = Number(req.params.alumnoId);
   if (!Number.isInteger(eventoId) || !Number.isInteger(alumnoId)) {
-    return res.status(400).json({ error: 'IDs inválidos' });
+    return res.status(400).json({ ok:false, error:'Parámetros inválidos' });
   }
 
   const client = await db.connect();
   try {
     await client.query('BEGIN');
-    await client.query('DELETE FROM asistencias WHERE evento_id = $1 AND alumno_id = $2', [eventoId, alumnoId]);
-    const r = await client.query(
-      'DELETE FROM evento_asignaciones WHERE evento_id = $1 AND alumno_id = $2',
+
+    // Borra asistencias primero (si existen)
+    const delAsis = await client.query(
+      `DELETE FROM asistencias
+        WHERE evento_id = $1 AND alumno_id = $2`,
       [eventoId, alumnoId]
     );
+
+    // Borra la asignación
+    const delEA = await client.query(
+      `DELETE FROM evento_asignaciones
+        WHERE evento_id = $1 AND alumno_id = $2`,
+      [eventoId, alumnoId]
+    );
+
     await client.query('COMMIT');
-    res.json({ ok: true, deleted: r.rowCount > 0 });
+    return res.json({
+      ok: true,
+      removed: {
+        asistencias: delAsis.rowCount|0,
+        asignaciones: delEA.rowCount|0
+      }
+    });
+  } catch (err) {
+    try { await client.query('ROLLBACK'); } catch {}
+    console.error('[DEL asignación] error:', err);
+    return res.status(500).json({ ok:false, error:'Error eliminando asignación' });
+  } finally {
+    client.release();
+  }
+});
+
+router.post('/:id/asignaciones/refresh', async (req, res) => {
+  const eventoId = Number(req.params.id);
+  if (!Number.isInteger(eventoId)) {
+    return res.status(400).json({ ok:false, error:'ID inválido' });
+  }
+
+  // Permite { mode: 'reset' } desde el front
+  const mode = (req.body?.mode || '').toString().toLowerCase();
+
+  // Trae grupo y fecha del evento
+  const ev = await db.query(
+    'SELECT grupo_id, fecha_inicio FROM eventos WHERE id = $1',
+    [eventoId]
+  );
+  const e = ev.rows[0];
+  if (!e) return res.status(404).json({ ok:false, error:'Evento no encontrado' });
+
+  const fechaISO = String(e.fecha_inicio).slice(0,10);
+
+  const client = await db.connect();
+  try {
+    await client.query('BEGIN');
+
+    let deletedEA = 0, deletedAS = 0;
+    if (mode === 'reset') {
+      // Borra asistencias y asignaciones actuales del evento
+      const r1 = await client.query('DELETE FROM asistencias WHERE evento_id = $1', [eventoId]);
+      const r2 = await client.query('DELETE FROM evento_asignaciones WHERE evento_id = $1', [eventoId]);
+      deletedAS = r1.rowCount|0;
+      deletedEA = r2.rowCount|0;
+    }
+
+    // Vuelve a poblar desde el grupo (tu helper existente)
+    await asignarAlumnosAEvento(client, eventoId, e.grupo_id, fechaISO);
+
+    await client.query('COMMIT');
+    return res.json({ ok:true, mode: mode || 'append', deleted_asistencias: deletedAS, deleted_asignaciones: deletedEA });
   } catch (err) {
     await client.query('ROLLBACK');
-    console.error('DELETE asignación:', err);
-    res.status(500).json({ error: 'Error eliminando asignación' });
+    console.error('Error refrescando asignaciones:', err);
+    return res.status(500).json({ ok:false, error: 'Error refrescando asignaciones' });
   } finally {
     client.release();
   }
