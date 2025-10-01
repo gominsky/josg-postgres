@@ -19,7 +19,21 @@
       </div>
       <span id="tplInfo" class="tpl-info small"></span>
     </div>
-    <div class="evt-right"><!-- vacío a propósito --></div>
+    <div class="evt-right">
+  <div class="evt-meta">
+    <div class="evt-title">
+      <%= (evento?.nombre || evento?.titulo || 'Evento sin título') %>
+    </div>
+    <div
+      id="evtDate"
+      class="evt-date"
+      data-date="<%= (evento?.fecha || evento?.fecha_evento || evento?.fecha_inicio || '') %>"
+      data-hini="<%= (typeof hIni !== 'undefined' ? hIni : '') %>"
+      data-hfin="<%= (typeof hFin !== 'undefined' ? hFin : '') %>"
+    ></div>
+  </div>
+</div>
+
   </div>
 
   <!-- Fila 2: Configuración (switches + utilidades + guardar plantilla) -->
@@ -269,10 +283,29 @@
 
 /* Acerca el select a los botones */
 .evt-left{ gap: .5rem; }    /* si quieres aún más pegado, usa .4rem */
-
+.evt-meta{
+  display:flex; flex-direction:column; align-items:flex-end;
+  gap:2px; line-height:1.15;
+}
+.evt-title{
+  font-weight: 700; color:#111; font-size: 1rem;
+  max-width: 420px; text-align:right; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.evt-date{
+  color:#6b7280; font-weight:600; font-size:.92rem;
+}
+@media (max-width: 640px){
+  .evt-meta{ align-items:flex-start; }
+  .evt-title, .evt-date{ text-align:left; }
+}
 </style>
 <script>
 (() => {
+   // === Etiqueta de grupo para prefijar nombre de plantilla al guardar ===
+  // (define una sola vez; si no hay grupo, queda cadena vacía)
+  window.__TPL_GROUP_LABEL__ = <%- JSON.stringify(
+    (evento && (evento.grupo_nombre || evento.grupo || evento.nombre_grupo || evento.grupoKey || '')) || ''
+  ) %>;
   // ⛑️ Evita registrar dos veces si la vista reinyecta scripts
   if (window.__TPL_SAVE_UI_BOUND__) return;
   window.__TPL_SAVE_UI_BOUND__ = true;
@@ -325,38 +358,68 @@
 
   // Contador descripción (si existe)
   $desc?.addEventListener('input', ()=> { if ($count) $count.textContent = `${$desc.value.length}/120`; });
+    // === HORAS en plantilla (opcional, no rompe nada) ===
+const TPL_HORAS_ENABLED = false; // ← déjalo false hasta que el backend lo acepte
 
-  // 🛡️ Mutex global para evitar doble envío
-  async function doSave(nombre, descripcion){
-    if (window.__TPL_SAVE_IN_FLIGHT__) return;  // ya se está guardando
-    window.__TPL_SAVE_IN_FLIGHT__ = true;
-    $btnSubmit?.setAttribute('disabled','disabled');
+function __collectTemplateTimes(){
+  const fam = [];
+  document.querySelectorAll('#famBody tr').forEach(tr => {
+    const key = tr.dataset.key || tr.cells?.[0]?.textContent?.trim();
+    if (!key) return;
+    const inicio = tr.querySelector('.inp-ini')?.value || '';
+    const fin    = tr.querySelector('.inp-fin')?.value || '';
+    if (inicio || fin) fam.push({ key, inicio: inicio || null, fin: fin || null });
+  });
 
-    try{
-      const r = await fetch(`/plantillas/from-event/${eventoId}`, {
-        method:'POST',
-        headers:{ 'Content-Type':'application/json' },
-        body: JSON.stringify({ nombre, descripcion })
-      });
-      const ct = r.headers.get('content-type')||'';
-      const data = ct.includes('application/json') ? await r.json() : {};
-      if (!r.ok || data?.ok === false) throw new Error(data?.error || `HTTP ${r.status}`);
+  const inst = [];
+  document.querySelectorAll('#instBody tr[data-key]').forEach(tr => {
+    const key = tr.dataset.key || '';
+    if (!key) return;
+    const inicio = tr.querySelector('.inp-ini')?.value || '';
+    const fin    = tr.querySelector('.inp-fin')?.value || '';
+    if (inicio || fin) inst.push({ key, inicio: inicio || null, fin: fin || null });
+  });
 
-      $msg.textContent = '✓ Guardada';
-
-      // refresca el select y selecciona la nueva si devuelves id
-      if (window.__reloadTplSel) {
-        window.__reloadTplSel({ selectNewId: data?.id }).catch(console.error);
-      }
-      setTimeout(closeForm, 400);
-    } catch (e) {
-      console.error(e);
-      $msg.textContent = 'Error guardando';
-    } finally {
-      window.__TPL_SAVE_IN_FLIGHT__ = false;
-      $btnSubmit?.removeAttribute('disabled');
+  return { familias: fam, instrumentos: inst };
+}
+async function doSave(nombre, descripcion){
+  if (window.__TPL_SAVE_IN_FLIGHT__) return;
+      // Prefijo de grupo (evita duplicarlo si ya existe)
+    const g = (window.__TPL_GROUP_LABEL__ || '').trim();
+    let nombreFinal = nombre;
+    if (g) {
+      const esc = g.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const re = new RegExp(`^\\s*\\[${esc}\\]\\s`);
+      if (!re.test(nombreFinal)) nombreFinal = `[${g}] ${nombreFinal}`;
     }
+  window.__TPL_SAVE_IN_FLIGHT__ = true;
+  $btnSubmit?.setAttribute('disabled','disabled');
+
+  try{
+    const r = await fetch(`/plantillas/from-event/${eventoId}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(
+        TPL_HORAS_ENABLED
+          ? { nombre: nombreFinal, descripcion, horas: __collectTemplateTimes() }
+          : { nombre: nombreFinal, descripcion }
+      )
+    });
+    const ct = r.headers.get('content-type')||'';
+    const data = ct.includes('application/json') ? await r.json() : {};
+    if (!r.ok || data?.ok === false) throw new Error(data?.error || `HTTP ${r.status}`);
+
+    $msg.textContent = '✓ Guardada';
+    if (window.__reloadTplSel) { window.__reloadTplSel({ selectNewId: data?.id }).catch(console.error); }
+    setTimeout(closeForm, 400);
+  } catch (e) {
+    console.error(e);
+    $msg.textContent = 'Error guardando';
+  } finally {
+    window.__TPL_SAVE_IN_FLIGHT__ = false;
+    $btnSubmit?.removeAttribute('disabled');
   }
+}
 
   // Envío del form (único)
   $form?.addEventListener('submit', (ev) => {
@@ -483,11 +546,11 @@
                     style="width:6.5rem; display:none;">
                   <span class="minutos-show" style="display:none;"></span>
                 </div>
-              </td>           
+              </td>         
               <td><select class="form-select form-select-sm sel-act"></select></td>
               <td><input type="text" class="form-control form-control-sm inp-notas"
                 value="<%= row.notas || '' %>"></td>
-              <td><button type="button" class="btn btn-outline-danger btn-sm btn-del">&times;</button></td>
+              <td><button type="button" class="btn btn-outline-danger btn-sm btn-del" aria-label="Quitar músico">&times;</button></td>
             </tr>
           <% }) %>
         </tbody>
@@ -606,7 +669,7 @@
   font-size: 0.85rem;
   color: #6b7280;
 }
-
+.badge-delay{ display: none !important; }
 </style>
 
 <!-- ============ Utils compartidas ============ -->
@@ -708,24 +771,22 @@
       $tbody.querySelectorAll('tr').forEach(tr => {
         const selAus = tr.querySelector('.sel-aus');
         const inpMin = tr.querySelector('.inp-min');
-        const badge  = tr.querySelector('.badge-delay');
-        if (!selAus || !inpMin) return;
+        const span   = tr.querySelector('.minutos-show');
+        if (!selAus || !inpMin || !span) return;
 
-        const showMin = __isParcialSel(selAus);
-        inpMin.style.display = showMin ? '' : 'none';
+        const txtSel = (selAus.selectedOptions[0]?.textContent || tr.dataset.ausencia || '').toLowerCase();
+        const showMin = /parcial|retras/.test(txtSel);
 
         if (showMin) {
-          // cargar valor inicial si venía en data-minutos
-          const init = tr.dataset.minutos || '';
-          inpMin.value = init;
-          // si mostramos input por "Parcial", ocultamos el badge de "Retraso" si existe
-          if (badge) badge.style.display = 'none';
+          if (!inpMin.value) inpMin.value = tr.dataset.minutos || '';
+          inpMin.style.display  = '';
+          span.style.display    = 'none'; // no duplicar junto al input
         } else {
-          // si NO es parcial y hay badge de retraso, lo dejamos visible (si existía)
-          if (badge) badge.style.display = '';
+          inpMin.style.display  = 'none';
+          const valNow = inpMin.value || tr.dataset.minutos || '';
+          setMinutesCell(tr, valNow);     // solo número en la celda
         }
       });
-
     } catch (e) {
       console.error('[preload selects] No se pudieron hidratar los selects de alumnos', e);
     }
@@ -833,21 +894,19 @@ function setMinutesCell(tr, val){
       // a) por ausencia textual (select)
       const sel = tr.querySelector('.sel-aus');
       const txt = (sel?.selectedOptions?.[0]?.textContent || tr.dataset.ausencia || '').toLowerCase();
-      const esParcial = /parcial|retras/.test(txt);
-      if (esParcial) return true;
-  
-      // b) por valor existente de minutos
-      const inp = tr.querySelector('.inp-min');
-      const vInp = toIntOrNull(inp?.value);
+      if (/parcial|retras/.test(txt)) return true;
+
+      // b) por valor en el input
+      const vInp = toIntOrNull(tr.querySelector('.inp-min')?.value);
       if (vInp && vInp > 0) return true;
-  
-      // c) por dato ya renderizado (data-minutos en el TR, si lo tienes)
+
+      // c) por dato ya renderizado (dataset)
       const vData = toIntOrNull(tr.dataset.minutos);
       if (vData && vData > 0) return true;
-  
+
       return false;
     }
-  
+
     // 4) Recalcular visibilidad global de la columna
     function recomputeMinutesColumn(){
       if (MIN_COL_IDX < 0) return;
@@ -857,29 +916,32 @@ function setMinutesCell(tr, val){
   
     // 5) Mostrar/ocultar el INPUT de minutos en una fila concreta (y limpiar badge si toca)
     function toggleMinutosUI(tr){
-      const sel = tr.querySelector('.sel-aus');
-      const inp = tr.querySelector('.inp-min');
-      if (!sel || !inp) return;
-  
-      const txt = (sel.selectedOptions[0]?.textContent || tr.dataset.ausencia || '').toLowerCase();
-      const esParcial = /parcial|retras/.test(txt);
-      inp.style.display = esParcial ? '' : 'none';
-      if (!esParcial) {
-        inp.value = '';
-        const badge = tr.querySelector('.badge-delay');
-        badge?.remove();
-      }
-    }
-  
+  const sel  = tr.querySelector('.sel-aus');
+  const inp  = tr.querySelector('.inp-min');
+  const span = tr.querySelector('.minutos-show');
+  if (!sel || !inp || !span) return;
+
+  const txt = (sel.selectedOptions[0]?.textContent || tr.dataset.ausencia || '').toLowerCase();
+  const esEditable = /parcial|retras/.test(txt); // si quieres solo “Parcial”, usa /\bparcial\b/i
+
+  if (esEditable) {
+    if (!inp.value) inp.value = tr.dataset.minutos || '';
+    inp.style.display  = '';
+    span.style.display = 'none';   // evita duplicado junto al input
+  } else {
+    inp.style.display  = 'none';
+    const valNow = inp.value || tr.dataset.minutos || '';
+    setMinutesCell(tr, valNow);    // solo número en la celda
+  }
+
+  recomputeMinutesColumn();
+}
+
     // ---------- Carga inicial ----------
-    Array.from($tbody.querySelectorAll('tr[data-alumno]')).forEach(tr => {
-  const seed = tr.dataset.minutos || tr.querySelector('.inp-min')?.value || '';
-  // si el input está oculto (no es parcial/retraso) y hay valor, lo mostramos en el hueco
-  const sel = tr.querySelector('.sel-aus');
-  const txt = (sel?.selectedOptions?.[0]?.textContent || tr.dataset.ausencia || '').toLowerCase();
-  const esParcial = /parcial|retras/.test(txt);
-  if (!esParcial) setMinutesCell(tr, seed);
-});
+      Array.from($tbody.querySelectorAll('tr[data-alumno]')).forEach(tr => {
+   // Reutiliza la lógica correcta que ya tienes definida
+   toggleMinutosUI(tr);
+  });
 
   
     // ---------- Firmado (asistencias) ----------
@@ -892,9 +954,6 @@ function setMinutesCell(tr, val){
         await updateAsistencia(alumnoId, { firmado });
         if (firmado) {
           const inpMin = tr.querySelector('.inp-min');
-          const badge  = tr.querySelector('.badge-delay');
-          if (inpMin) { inpMin.value = ''; inpMin.style.display = 'none'; }
-          badge?.remove();
           setMinutesCell(tr, null);
           recomputeMinutesColumn();
         }
@@ -915,24 +974,7 @@ function setMinutesCell(tr, val){
     const v = toIntOrNull(inp.value);
     try {
       await updateAsistencia(alumnoId, { minutos_perdidos: v });
-      // actualiza badge
-      let badge = tr.querySelector('.badge-delay');
-      if (v !== null && v > 0) {
-        if (!badge) {
-          badge = document.createElement('span');
-          badge.className = 'badge-delay';
-          const nameNode = tr.querySelector('td:first-child strong');
-          if (nameNode) { nameNode.insertAdjacentElement('afterend', badge); }
-          else { tr.querySelector('td:first-child')?.appendChild(badge); }
-        }
-        badge.textContent = ` +${v} min`;
-      } else {
-        badge?.remove();
-      }
-
-      // 👉 2.3: pintar el valor en su celda “minutos-show”
       setMinutesCell(tr, v);
-
       recomputeMinutesColumn();
     } catch (e) {
       console.error(e);
@@ -941,8 +983,7 @@ function setMinutesCell(tr, val){
   }, 350);
 });
     // ---------- Ausencia (evento_asignaciones) ----------
-    // ---------- Cambios en evento_asignaciones (ausencia / horas / actividad) ----------
-$tbody.addEventListener('change', (ev) => {
+    $tbody.addEventListener('change', (ev) => {
   const tr = ev.target.closest('tr'); 
   if (!tr) return;
 
@@ -951,17 +992,18 @@ $tbody.addEventListener('change', (ev) => {
     const sel = ev.target;
     const v = sel.value === '' ? null : Number(sel.value);
 
+    // muestra/oculta y precarga minutos según Parcial/Retra.
     toggleMinutosUI(tr);
 
-    // (2.4) si deja de ser parcial/retraso, pinta el valor (si existe) en el visor
+    // reflejo en visor y columna global
     const valNow = tr.querySelector('.inp-min')?.value || tr.dataset.minutos || '';
     setMinutesCell(tr, valNow);
-
     recomputeMinutesColumn();
 
+    // persiste tipo de ausencia
     updateAsignacion(tr, { ausencia_tipo_id: v })
       .catch(e => { console.error(e); alert('No se pudo guardar la ausencia'); });
-    return; // importante: no seguir evaluando el resto
+    return;
   }
 
   // HORA INICIO
@@ -1156,53 +1198,49 @@ $tbody.addEventListener('change', (ev) => {
 </script>
 
 <!-- ============ Tabla INSTRUMENTOS: editor visual + autoguardado alumnos ============ -->
-
 <script>
   (() => {
-    const eventoId  = <%= evento.id %>;
-    const $instWrap = document.getElementById('instWrap');
+    const eventoId = <%= evento.id %>;
     const $instBody = document.getElementById('instBody');
     const $alumBody = document.getElementById('asigBody');
   
-    // Endpoints
+    const DEF_INI = '<%= hIni %>';
+    const DEF_FIN = '<%= hFin %>';
+  
     const ENDPOINTS = {
-      list : (id)=> `/eventos/${id}/instrumentos`,
-      del  : (id)=> `/eventos/${id}/instrumentos`,
+      list : `/eventos/${eventoId}/instrumentos`,
+      del  : `/eventos/${eventoId}/instrumentos`,
       act  : `/actividades/api`,
-      bulk : (id)=> `/eventos/${id}/asignaciones/bulk`,
-      putAsig: (id, alId)=> `/eventos/${id}/asignaciones/${alId}`
+      bulk : window.ROUTES.asignaciones.bulk(eventoId),
+      putAsig: (alId)=> window.ROUTES.asignaciones.base(eventoId, alId)
     };
   
-    // Utils fetch
     async function fetchJSON(url, opts){
-      const r = await fetch(url, opts||{});
+      const r = await fetch(url, opts || {});
       const ct = r.headers.get('content-type')||'';
       const body = ct.includes('application/json') ? await r.json() : await r.text();
-      if (!r.ok) throw new Error(typeof body==='string' ? body : JSON.stringify(body));
+      if (!r.ok) throw new Error(typeof body === 'string' ? body : JSON.stringify(body));
       return body;
     }
   
-    // Helpers
     const hhmm  = v => (v || '').slice(0,5);
     const first = (...xs) => xs.find(v => v !== undefined && v !== null && v !== '');
-    const strNorm = s => String(s||'').trim().toLowerCase();
-    const parseCSV = s => String(s||'').split(/[;,|]/).map(x=>strNorm(x)).filter(Boolean);
   
     function nameOf(row){ return first(row?.nombre, row?.instrumento, row?.instrumento_key, row?.key, '(sin instrumento)'); }
     function keyOf(row){  return first(row?.key, row?.instrumento_key, row?.instrumento, nameOf(row)); }
-    function iniOf(row){  return hhmm(first(row?.hora_inicio, row?.inicio, row?.hora_ini)); }
-    function finOf(row){  return hhmm(first(row?.hora_fin,   row?.fin,   row?.hora_fin)); }
+    function iniOf(row){  return hhmm(first(row?.hora_inicio, row?.inicio, row?.hora_ini, row?.start_time, DEF_INI)); }
+    function finOf(row){  return hhmm(first(row?.hora_fin,   row?.fin,   row?.hora_fin,  row?.end_time,  DEF_FIN)); }
   
-    // Catálogo de actividades (reutiliza si ya está cargado)
+    // Catálogo de actividades (usa el precargado si existe)
     let ACT_CACHE = window.__ACT_CAT__ || null;
     async function ensureActividades(){
       if (Array.isArray(ACT_CACHE)) return ACT_CACHE;
       try{
         const arr = await fetchJSON(ENDPOINTS.act);
-        ACT_CACHE = (arr||[]).map(a => ({ id:a.id, texto:(a.nombre ?? a.tipo ?? a.texto ?? a.id) }));
+        ACT_CACHE = (arr || []).map(a => ({ id:a.id, texto:(a.nombre??a.tipo??a.texto??a.id) }));
         window.__ACT_CAT__ = ACT_CACHE;
         return ACT_CACHE;
-      }catch(e){ console.warn('[inst] actividades no disponibles', e); return (ACT_CACHE=[]); }
+      }catch(e){ console.warn('No se pudieron cargar actividades', e); return (ACT_CACHE=[]); }
     }
     function fillSelect(sel, items, selectedId){
       sel.innerHTML = '';
@@ -1212,22 +1250,29 @@ $tbody.addEventListener('change', (ev) => {
       }
     }
   
-    // Render instrumentos en #instBody
     function renderInstrumentos(rows){
       $instBody.innerHTML = '';
+      if (!rows || (Array.isArray(rows) && rows.length === 0)){
+        $instBody.innerHTML = `<tr><td colspan="6" class="text-muted">(Sin datos)</td></tr>`;
+        return;
+      }
+  
+      // Permite que el backend devuelva {items:[...]} o directamente [...]
       const list = Array.isArray(rows) ? rows : (Array.isArray(rows?.items) ? rows.items : []);
+  
       if (!list.length){
         $instBody.innerHTML = `<tr><td colspan="6" class="text-muted">(Sin datos)</td></tr>`;
         return;
       }
+  
       for (const r of list){
         const tr = document.createElement('tr');
         tr.dataset.key  = keyOf(r);
         tr.dataset.name = (nameOf(r) || '').trim();
         tr.innerHTML = `
           <td><strong>${tr.dataset.name}</strong></td>
-          <td class="text-center"><input type="time" class="form-control form-control-sm inp-ini" value="${iniOf(r) || ''}"></td>
-          <td class="text-center"><input type="time" class="form-control form-control-sm inp-fin" value="${finOf(r) || ''}"></td>
+          <td class="text-center"><input type="time" class="form-control form-control-sm inp-ini" value="${iniOf(r)}"></td>
+          <td class="text-center"><input type="time" class="form-control form-control-sm inp-fin" value="${finOf(r)}"></td>
           <td><select class="form-select form-select-sm sel-act"></select></td>
           <td><input type="text" class="form-control form-control-sm inp-notas" value="${r.notas ?? ''}"></td>
           <td class="text-end"><button class="btn btn-sm btn-outline-danger btn-del">Eliminar</button></td>`;
@@ -1235,46 +1280,47 @@ $tbody.addEventListener('change', (ev) => {
       }
     }
   
-    // Cargar y “hidratar” selects
     async function loadInstrumentos(){
       try{
-        const rows = await fetchJSON(ENDPOINTS.list(eventoId));
+        const rows = await fetchJSON(ENDPOINTS.list);
         renderInstrumentos(rows);
+  
+        // Hidrata selects de actividades en segundo plano
         const acts = await ensureActividades();
         $instBody.querySelectorAll('select.sel-act').forEach(sel => {
           if (!sel.options.length) fillSelect(sel, acts, '');
         });
       }catch(e){
-        console.error('[inst] Error cargando instrumentos:', e);
+        console.error('Error cargando instrumentos:', e);
         $instBody.innerHTML = `<tr><td colspan="6" class="text-danger">Error cargando instrumentos</td></tr>`;
       }
     }
-    // Exponer loader para el switch
     window.__loadInstrumentos = loadInstrumentos;
   
-    // Localizar filas de alumnos por instrumento
+    // localizar filas de alumnos afectadas
+    const strNorm = s => String(s||'').trim().toLowerCase();
+    const parseCSV = s => String(s||'').split(/[;,|]/).map(x=>strNorm(x)).filter(Boolean);
     function findStudentRowsByInstrument(instrKey){
       const keyNorm = strNorm(instrKey);
       const rows = $alumBody?.querySelectorAll?.('tr[data-instrumento], tr[data-instrumentos]') || [];
       return Array.from(rows).filter(tr => {
         const unico = strNorm(tr.dataset.instrumento);
-        if (unico && unico === keyNorm) return true;
+        if (unico && (unico === keyNorm || unico.startsWith(keyNorm))) return true;
         const lista = parseCSV(tr.dataset.instrumentos);
-        return lista.includes(keyNorm);
+        return lista.some(k => k === keyNorm || k.startsWith(keyNorm));
       });
     }
   
-    // Pintar a alumnos y marcar sucia la fila
     async function applyVisualToStudents(trAlumnos, set){
       let actividades = null;
       if (set.actividad_complementaria_id !== undefined) {
         actividades = await ensureActividades();
       }
       trAlumnos.forEach(tr => {
-        if (set.hora_inicio !== undefined) {
+        if (set.hora_inicio) {
           const ini = tr.querySelector('.inp-ini'); if (ini) ini.value = hhmm(set.hora_inicio);
         }
-        if (set.hora_fin !== undefined) {
+        if (set.hora_fin) {
           const fin = tr.querySelector('.inp-fin'); if (fin) fin.value = hhmm(set.hora_fin);
         }
         if (set.actividad_complementaria_id !== undefined) {
@@ -1288,13 +1334,12 @@ $tbody.addEventListener('change', (ev) => {
           const inp = tr.querySelector('.inp-notas'); if (inp) inp.value = set.notas ?? '';
         }
         tr.classList.add('row-dirty');
-        setTimeout(()=>tr.classList.remove('row-dirty'), 250);
       });
     }
   
-    // Persistir alumnos (bulk → fallback por alumno)
     async function persistStudents(trAlumnos){
       if (!trAlumnos.length) return;
+  
       const items = trAlumnos.map(tr=>{
         const alumno_id = Number(tr.dataset.alumno);
         const hora_inicio = tr.querySelector('.inp-ini')?.value || null;
@@ -1305,10 +1350,10 @@ $tbody.addEventListener('change', (ev) => {
         return { alumno_id, hora_inicio, hora_fin, actividad_complementaria_id, notas };
       });
   
-      // bulk
+      // Intento bulk
       let bulkOk = false;
       try{
-        await fetchJSON(ENDPOINTS.bulk(eventoId), {
+        await fetchJSON(ENDPOINTS.bulk, {
           method:'POST',
           headers:{'Content-Type':'application/json'},
           body: JSON.stringify({ items })
@@ -1316,10 +1361,10 @@ $tbody.addEventListener('change', (ev) => {
         bulkOk = true;
       }catch(e){ bulkOk = false; }
   
-      // fallback por alumno
+      // Fallback por alumno
       if (!bulkOk){
         for (const it of items){
-          await fetchJSON(ENDPOINTS.putAsig(eventoId, it.alumno_id), {
+          await fetchJSON(ENDPOINTS.putAsig(it.alumno_id), {
             method:'PUT',
             headers:{'Content-Type':'application/json'},
             body: JSON.stringify({
@@ -1332,8 +1377,8 @@ $tbody.addEventListener('change', (ev) => {
         }
       }
   
-      // Sincroniza data-* después de guardar
       trAlumnos.forEach(tr=>{
+        tr.classList.remove('row-dirty');
         const ini = tr.querySelector('.inp-ini')?.value || '';
         const fin = tr.querySelector('.inp-fin')?.value || '';
         const sel = tr.querySelector('.sel-act');
@@ -1351,25 +1396,24 @@ $tbody.addEventListener('change', (ev) => {
       const fin   = tr.querySelector('.inp-fin')?.value || '';
       const act   = tr.querySelector('.sel-act')?.value ?? '';
       const notas = tr.querySelector('.inp-notas')?.value ?? '';
-      if (ini !== '')      set.hora_inicio = ini;
-      if (fin !== '')      set.hora_fin    = fin;
-      if (act !== '')      set.actividad_complementaria_id = Number(act);
-      if (notas !== '')    set.notas = notas;
+      if (ini)      set.hora_inicio = ini;
+      if (fin)      set.hora_fin    = fin;
+      if (act!=='') set.actividad_complementaria_id = Number(act);
+      if (notas!=='') set.notas = notas;
       return set;
     }
   
-    // debounce por fila
     const pendingTimers = new WeakMap();
-    const debounced = (tr, fn, ms=350) => { clearTimeout(pendingTimers.get(tr)); const t=setTimeout(fn, ms); pendingTimers.set(tr,t); };
+    const debounced = (tr, fn) => { clearTimeout(pendingTimers.get(tr)); const t=setTimeout(fn, 350); pendingTimers.set(tr,t); };
   
-    // Lazy-hydrate de actividades al enfocar select
+    // Carga perezosa de actividades al enfocar select
     $instBody.addEventListener('focusin', async ev => {
       const sel = ev.target.closest('select.sel-act'); if (!sel) return;
       const items = await ensureActividades();
-      if (!sel.options.length) fillSelect(sel, items, sel.value || '');
+      if (!sel.options.length) fillSelect(sel, items, '');
     });
   
-    // Cambios → aplicar a alumnos y autoguardar
+    // Cambios → aplicar a alumnos y autoguardar (debounced)
     $instBody.addEventListener('change', ev => {
       if (!ev.target.matches('.inp-ini, .inp-fin, .sel-act')) return;
       const trG = ev.target.closest('tr'); if (!trG) return;
@@ -1377,7 +1421,7 @@ $tbody.addEventListener('change', (ev) => {
       const alumnos = findStudentRowsByInstrument(trG.dataset.key);
       (async () => {
         await applyVisualToStudents(alumnos, set);
-        debounced(trG, () => persistStudents(alumnos).catch(e=>console.error('[inst persist]', e)));
+        debounced(trG, () => persistStudents(alumnos).catch(e=>console.error(e)));
       })();
     });
   
@@ -1388,11 +1432,11 @@ $tbody.addEventListener('change', (ev) => {
       const alumnos = findStudentRowsByInstrument(trG.dataset.key);
       (async () => {
         await applyVisualToStudents(alumnos, set);
-        debounced(trG, () => persistStudents(alumnos).catch(e=>console.error('[inst persist notas]', e)));
+        debounced(trG, () => persistStudents(alumnos).catch(e=>console.error(e)));
       })();
     }, true);
   
-    // Eliminar agrupación de instrumento
+    // Eliminar agrupación
     $instBody.addEventListener('click', async ev => {
       const btn = ev.target.closest('.btn-del'); if (!btn) return;
       const tr = btn.closest('tr'); if (!tr) return;
@@ -1400,28 +1444,31 @@ $tbody.addEventListener('change', (ev) => {
       if (!confirm('¿Eliminar TODAS las asignaciones de este instrumento en el evento?')) return;
   
       const instrKey = tr.dataset.key;
+  
       try{
-        await fetchJSON(ENDPOINTS.del(eventoId), {
+        await fetchJSON(ENDPOINTS.del, {
           method:'DELETE',
           headers:{'Content-Type':'application/json'},
           body: JSON.stringify({ instrumento_key: instrKey, key: instrKey })
         });
-        // quita la fila de instrumentos
+  
         tr.remove();
-        // quita también las filas de alumnos afectadas
+  
         const afectados = findStudentRowsByInstrument(instrKey);
         afectados.forEach(row => row.remove());
+  
       }catch(e){
-        console.error('[inst delete] ', e);
+        console.error('DELETE instrumentos falló', e);
         alert('No se pudo eliminar la agrupación');
       }
     });
   
-    // Si el switch de instrumentos está activo al cargar, pinta
+    // Si el switch de instrumentos ya está activo, cargar; si no, se cargará al activarlo.
     const swInst = document.getElementById('swInst');
-    if (swInst?.checked) { $instWrap.style.display=''; loadInstrumentos(); }
+    if (swInst?.checked) { window.__loadInstrumentos?.(); }
   })();
-  </script>  
+  </script>
+  
 
 <!-- ============ Backfill instrumento vacío tras repoblar ============ -->
 <script>
@@ -1612,7 +1659,8 @@ $tbody.addEventListener('change', (ev) => {
     const rows = Array.from($alumBody?.querySelectorAll('tr[data-alumno]') || []);
     return rows.filter(tr => {
       const vis = (tr.querySelector('.td-instrumento')?.textContent?.trim() || tr.dataset.instrumento || '').trim();
-      if (vis && set.has(norm(vis))) return true;
+      const visNorm = norm(vis);
+      if (vis && set.has(visNorm)) return true;
       const lista = String(tr.dataset.instrumentos||'').split(/[;,|]/).map(s=>s.trim()).filter(Boolean);
       return lista.some(k => set.has(norm(k)));
     });
@@ -1761,219 +1809,290 @@ $tbody.addEventListener('change', (ev) => {
 
 <!-- === Plantillas: select auto-recargable + aplicar/quitar filtro === -->
 <script>
-(() => {
-  const $sel   = document.getElementById('tplSel');
-  const $btnA  = document.getElementById('tplApply');
-  const $btnC  = document.getElementById('tplClear');
-  const $info  = document.getElementById('tplInfo');
-  const eventoId = <%= evento.id %>;
-
-  const $asigBody = document.getElementById('asigBody');
-  const $instBody = document.getElementById('instBody');
-  const $famBody  = document.getElementById('famBody');
-  const $instWrap = document.getElementById('instWrap');
-  const $famWrap  = document.getElementById('famWrap');
-  const $alumWrap = document.getElementById('alumWrap');
-
-  const norm = s => String(s||'')
-    .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
-    .trim().toLowerCase();
-
-  async function fetchJSON(url, opts) {
-    const r = await fetch(url, opts || {});
-    const ct = r.headers.get('content-type') || '';
-    const body = ct.includes('application/json') ? await r.json() : await r.text();
-    if (!r.ok) throw new Error(typeof body === 'string' ? body : JSON.stringify(body));
-    return body;
-  }
-
-  async function loadTemplates(){
-    $sel.innerHTML = '<option value="">— Selecciona una plantilla —</option>';
-    const rows = await fetchJSON('/plantillas');
-    (rows||[]).forEach(p => {
-      const opt = document.createElement('option');
-      opt.value = p.id;
-      opt.textContent = `${p.nombre} · ${p.familias} fam · ${p.instrumentos} inst`;
-      $sel.appendChild(opt);
-    });
-    return rows;
-  }
-
-  // Recargador público (lo usa el form al guardar)
-  window.__reloadTplSel = async ({ selectNewId } = {}) => {
-    const rows = await loadTemplates();
-    if (selectNewId) {
-      const exists = rows?.some(r => String(r.id) === String(selectNewId));
-      if (exists) $sel.value = String(selectNewId);
-    }
-  };
-
-  // Recarga automática: al cargar y al enfocar el select
-  window.__reloadTplSel().catch(console.error);
-  let _tplReloadTimer = null;
-  $sel.addEventListener('focus', () => {
-    clearTimeout(_tplReloadTimer);
-    _tplReloadTimer = setTimeout(() => window.__reloadTplSel().catch(console.error), 120);
-  });
-
-  function getInstrVisible(tr) {
-    const vis = tr.querySelector('.td-instrumento')?.textContent?.trim();
-    if (vis) return vis;
-    if (tr.dataset.instrumento) return tr.dataset.instrumento;
-    const first = String(tr.dataset.instrumentos||'')
-      .split(/[;,|]/).map(s=>s.trim()).filter(Boolean)[0];
-    return first || '';
-  }
-
-  function applyFilter({ famSet, instSet, total, match }) {
-    // — Alumnos
-    if ($asigBody) {
-      Array.from($asigBody.querySelectorAll('tr[data-alumno]')).forEach(tr => {
-        const fam   = norm(tr.dataset.familia || '');
-        const instr = norm(getInstrVisible(tr));
-        const fOk = fam && famSet.size ? famSet.has(fam) : false;
-        const iOk = instr && instSet.size ? instSet.has(instr) : false;
-
-        let visible;
-        if (instSet.size) {        // prioridad instrumento
-          visible = iOk;
-        } else if (famSet.size) {
-          visible = fOk;
-        } else {
-          visible = true;
-        }
-        tr.classList.toggle('tpl-hidden', !visible);
-      });
-    }
-
-    // — Instrumentos
-    if ($instBody) {
-      Array.from($instBody.querySelectorAll('tr[data-key]')).forEach(tr => {
-        const key = norm(tr.dataset.key || '');
-        const visible = instSet.size ? instSet.has(key) : true;
-        tr.classList.toggle('tpl-hidden', !visible);
-      });
-    }
-
-    // — Familias
-    if ($famBody) {
-      Array.from($famBody.querySelectorAll('tr')).forEach(tr => {
-        const key = norm(tr.dataset.key || tr.cells?.[0]?.textContent || '');
-        const visible = famSet.size ? famSet.has(key) : true;
-        tr.classList.toggle('tpl-hidden', !visible);
-      });
-    }
-
-    if ($info) $info.textContent = `Filtrado: ${match}/${total} alumnos`;
-  }
-
-  function clearFilter() {
-    [$asigBody, $instBody, $famBody].forEach(tbody => {
-      if (!tbody) return;
-      tbody.querySelectorAll('.tpl-hidden').forEach(tr => tr.classList.remove('tpl-hidden'));
-    });
-    if ($info) $info.textContent = '';
-    window.__TPL_FILTER__ = null;
-  }
-
-  async function ensureBlocksVisible() {
-    const swFam  = document.getElementById('swFam');
-    const swInst = document.getElementById('swInst');
-    const swAlu  = document.getElementById('swAlu');
-    if (swFam && !swFam.checked)  { swFam.checked = true;  window.__openFamilias?.(); }
-    if (swInst && !swInst.checked){ swInst.checked = true; window.__loadInstrumentos?.(); }
-    if (swAlu && !swAlu.checked)  { swAlu.checked = true;  }
-    if ($famWrap)  $famWrap.style.display  = '';
-    if ($instWrap) $instWrap.style.display = '';
-    if ($alumWrap) $alumWrap.style.display = '';
-    await new Promise(r => setTimeout(r, 200));
-  }
-
-  async function applyTemplate() {
-    const pid = Number($sel.value);
-    if (!pid) return alert('Selecciona una plantilla');
-
-    await ensureBlocksVisible();
-
-    const prev = await fetchJSON(`/plantillas/${pid}/preview?eventoId=${eventoId}`);
-    const tpl  = await fetchJSON(`/plantillas/${pid}`);
-
-    const famSet  = new Set((tpl.familias_incluir     || []).map(s => norm(s)));
-    const instSet = new Set((tpl.instrumentos_incluir || []).map(s => norm(s)));
-
-    if (famSet.size === 0)  prev.alumnos.forEach(a => { if (a.familia) famSet.add(norm(a.familia)); });
-    if (instSet.size === 0) prev.alumnos.forEach(a => { if (a.instrumento) instSet.add(norm(a.instrumento)); });
-
-    window.__TPL_FILTER__ = { famSet, instSet };
-    applyFilter({ famSet, instSet, total: prev.total_candidatos, match: prev.total_match });
-
-    // Reaplica por si las tablas tardan en estar listas
-    setTimeout(() => applyFilter({ famSet, instSet, total: prev.total_candidatos, match: prev.total_match }), 300);
-    setTimeout(() => applyFilter({ famSet, instSet, total: prev.total_candidatos, match: prev.total_match }), 800);
-  }
-
-  $btnA?.addEventListener('click', () => applyTemplate().catch(err => {
-    console.error(err);
-    alert('No se pudo aplicar la plantilla');
-  }));
-  $btnC?.addEventListener('click', clearFilter);
-
-})();
-</script>
-
-<!-- === Guardar como plantilla (enlace + formulario inline) === -->
-<script>
-(() => {
-  const eventoId = <%= evento.id %>;
-  const $link   = document.getElementById('linkSaveTpl');   // enlace “Guardar como plantilla”
-  const $form   = document.getElementById('saveTplForm');   // formulario inline
-  const $name   = document.getElementById('tplName');
-  const $desc   = document.getElementById('tplDesc');
-  const $msg    = document.getElementById('saveTplMsg');
-  const $cancel = document.getElementById('cancelSaveTpl');
-
-  const openForm  = () => { $form?.classList.remove('tpl-hidden'); $name?.focus(); };
-  const closeForm = () => {
-    $form?.classList.add('tpl-hidden');
-    if ($name) $name.value = '';
-    if ($desc) $desc.value = '';
-    if ($msg)  $msg.textContent = '';
-  };
-
-  $link?.addEventListener('click', (ev) => { ev.preventDefault(); openForm(); });
-  $cancel?.addEventListener('click', closeForm);
-
-  $form?.addEventListener('submit', async (ev) => {
-    ev.preventDefault();
-    const nombre = ($name?.value || '').trim();
-    const descripcion = ($desc?.value || '').trim() || null;
-    if (!nombre) { $name?.focus(); return; }
-
-    $msg.textContent = 'Guardando…';
-    try {
-      const r = await fetch(`/plantillas/from-event/${eventoId}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nombre, descripcion })
-      });
+  (() => {
+    const $sel   = document.getElementById('tplSel');
+    const $btnA  = document.getElementById('tplApply');
+    const $btnC  = document.getElementById('tplClear');
+    const $info  = document.getElementById('tplInfo');
+    const eventoId = <%= evento.id %>;
+  
+    const $asigBody = document.getElementById('asigBody');
+    const $instBody = document.getElementById('instBody');
+    const $famBody  = document.getElementById('famBody');
+    const $instWrap = document.getElementById('instWrap');
+    const $famWrap  = document.getElementById('famWrap');
+    const $alumWrap = document.getElementById('alumWrap');
+  
+    // Normalizador
+    const norm = s => String(s||'')
+      .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+      .trim().toLowerCase();
+  
+    // Utilidad fetch
+    async function fetchJSON(url, opts) {
+      const r = await fetch(url, opts || {});
       const ct = r.headers.get('content-type') || '';
-      const data = ct.includes('application/json') ? await r.json() : {};
-      if (!r.ok || data?.ok === false) throw new Error(data?.error || `HTTP ${r.status}`);
-
-      $msg.textContent = '✓ Guardada';
-      setTimeout(closeForm, 500);
-
-      // Recargar el select automáticamente y seleccionar la nueva
-      if (typeof window.__reloadTplSel === 'function') {
-        await window.__reloadTplSel({ selectNewId: data?.id });
-      }
-    } catch (e) {
-      console.error(e);
-      $msg.textContent = 'Error guardando';
+      const body = ct.includes('application/json') ? await r.json() : await r.text();
+      if (!r.ok) throw new Error(typeof body === 'string' ? body : JSON.stringify(body));
+      return body;
     }
-  });
-})();
-</script>
+  
+    // Cargar combo de plantillas
+    async function loadTemplates(){
+      $sel.innerHTML = '<option value="">— Selecciona una plantilla —</option>';
+      const rows = await fetchJSON('/plantillas');
+      (rows||[]).forEach(p => {
+        const opt = document.createElement('option');
+        opt.value = p.id;
+        opt.textContent = `${p.nombre} · ${p.familias} fam · ${p.instrumentos} inst`;
+        $sel.appendChild(opt);
+      });
+      return rows;
+    }
+  
+    // Recargador público (lo usa el form de guardado)
+    window.__reloadTplSel = async ({ selectNewId } = {}) => {
+      const rows = await loadTemplates();
+      if (selectNewId) {
+        const exists = rows?.some(r => String(r.id) === String(selectNewId));
+        if (exists) $sel.value = String(selectNewId);
+      }
+    };
+  
+    // Recarga automática
+    window.__reloadTplSel().catch(console.error);
+    let _tplReloadTimer = null;
+    $sel.addEventListener('focus', () => {
+      clearTimeout(_tplReloadTimer);
+      _tplReloadTimer = setTimeout(() => window.__reloadTplSel().catch(console.error), 120);
+    });
+  
+    // Instrumento visible en fila de alumno
+    function getInstrVisible(tr) {
+      const vis = tr.querySelector('.td-instrumento')?.textContent?.trim();
+      if (vis) return vis;
+      if (tr.dataset.instrumento) return tr.dataset.instrumento;
+      const first = String(tr.dataset.instrumentos||'')
+        .split(/[;,|]/).map(s=>s.trim()).filter(Boolean)[0];
+      return first || '';
+    }
+
+    // Coincidencia flexible de instrumento (exacto o prefijo)
+    function instMatches(instrNorm, set){
+      if (!set || set.size === 0) return false;
+      for (const k of set){
+        if (instrNorm === k) return true;
+        if (instrNorm.startsWith(k)) return true; // "violin" → "violin i/ii"
+      }
+      return false;
+    }
+  
+    // Filtro visual por familia/instrumento
+    function applyFilter({ famSet, instSet, total, match }) {
+      // — Alumnos
+      if ($asigBody) {
+        Array.from($asigBody.querySelectorAll('tr[data-alumno]')).forEach(tr => {
+          const fam   = norm(tr.dataset.familia || '');
+          const instr = norm(getInstrVisible(tr));
+          const fOk = fam && famSet.size ? famSet.has(fam) : false;
+          const iOk = instr && instSet.size ? instMatches(instr, instSet) : false;
+  
+          let visible;
+          if (instSet.size) { visible = iOk; }
+          else if (famSet.size) { visible = fOk; }
+          else { visible = true; }
+  
+          tr.classList.toggle('tpl-hidden', !visible);
+        });
+      }
+  
+      // — Instrumentos
+      if ($instBody) {
+        Array.from($instBody.querySelectorAll('tr[data-key]')).forEach(tr => {
+          const key = norm(tr.dataset.key || '');
+          const visible = instSet.size ? instMatches(key, instSet) : true;
+          tr.classList.toggle('tpl-hidden', !visible);
+        });
+      }
+  
+      // — Familias
+      if ($famBody) {
+        Array.from($famBody.querySelectorAll('tr')).forEach(tr => {
+          const key = norm(tr.dataset.key || tr.cells?.[0]?.textContent || '');
+          const visible = famSet.size ? famSet.has(key) : true;
+          tr.classList.toggle('tpl-hidden', !visible);
+        });
+      }
+  
+      if ($info) $info.textContent = `Filtrado: ${match}/${total} alumnos`;
+    }
+  
+    // Quitar filtro
+    function clearFilter() {
+      [$asigBody, $instBody, $famBody].forEach(tbody => {
+        if (!tbody) return;
+        tbody.querySelectorAll('.tpl-hidden').forEach(tr => tr.classList.remove('tpl-hidden'));
+      });
+      if ($info) $info.textContent = '';
+      window.__TPL_FILTER__ = null;
+    }
+  
+    // Asegurar visibilidad de bloques antes de aplicar
+    async function ensureBlocksVisible() {
+      const swFam  = document.getElementById('swFam');
+      const swInst = document.getElementById('swInst');
+      const swAlu  = document.getElementById('swAlu');
+      if (swFam && !swFam.checked)  { swFam.checked = true;  window.__openFamilias?.(); }
+      if (swInst && !swInst.checked){ swInst.checked = true; window.__loadInstrumentos?.(); }
+      if (swAlu && !swAlu.checked)  { swAlu.checked = true;  }
+      if ($famWrap)  $famWrap.style.display  = '';
+      if ($instWrap) $instWrap.style.display = '';
+      if ($alumWrap) $alumWrap.style.display = '';
+      await new Promise(r => setTimeout(r, 200));
+    }
+  
+    // HH:MM helper
+    const hhmm = v => (v || '').slice(0,5);
+  
+    // --- Aplicar HORAS a tablas de Familias / Instrumentos desde tpl.horas ---
+    function applySavedTimesToGroups(tpl){
+      const horas = tpl?.horas || tpl?.horarios || null;
+      if (!horas) return; // si la plantilla no trae horas, no tocamos nada
+  
+      // Familias
+      try {
+        const famArr = Array.isArray(horas.familias) ? horas.familias : [];
+        if (famArr.length) {
+          const famMap = new Map(
+            famArr.map(o => [ norm(String(o.key ?? o.familia ?? o.familia_key ?? '')),
+                              { inicio: o.inicio ?? o.ini ?? '', fin: o.fin ?? '' } ])
+          );
+          document.querySelectorAll('#famBody tr').forEach(tr => {
+            const key = norm(tr.dataset.key || tr.cells?.[0]?.textContent || '');
+            const t = famMap.get(key);
+            if (!t) return;
+            const i = tr.querySelector('.inp-ini');
+            const f = tr.querySelector('.inp-fin');
+            if (i && t.inicio) i.value = hhmm(t.inicio);
+            if (f && t.fin)    f.value = hhmm(t.fin);
+            tr.classList.add('row-dirty'); setTimeout(()=>tr.classList.remove('row-dirty'), 180);
+          });
+        }
+      } catch(e){ console.warn('[tpl] aplicar horas familias:', e); }
+  
+      // Instrumentos
+      try {
+        const instArr = Array.isArray(horas.instrumentos) ? horas.instrumentos : [];
+        if (instArr.length) {
+          const instMap = new Map(
+            instArr.map(o => [ norm(String(o.key ?? o.instrumento ?? o.instrumento_key ?? '')),
+                               { inicio: o.inicio ?? o.ini ?? '', fin: o.fin ?? '' } ])
+          );
+          document.querySelectorAll('#instBody tr[data-key]').forEach(tr => {
+            const key = norm(tr.dataset.key || '');
+            const t = instMap.get(key) || [...instMap].find(([k]) => key.startsWith(k))?.[1];
+            if (!t) return;
+            const i = tr.querySelector('.inp-ini');
+            const f = tr.querySelector('.inp-fin');
+            if (i && t.inicio) i.value = hhmm(t.inicio);
+            if (f && t.fin)    f.value = hhmm(t.fin);
+            tr.classList.add('row-dirty'); setTimeout(()=>tr.classList.remove('row-dirty'), 180);
+          });
+        }
+      } catch(e){ console.warn('[tpl] aplicar horas instrumentos:', e); }
+    }
+  
+    // --- Aplicar HORAS a alumnos incluidos (preferencia instrumento > familia) ---
+    function setRowTimes(tr, { inicio, fin }){
+      const i = tr.querySelector('.inp-ini');
+      const f = tr.querySelector('.inp-fin');
+      if (inicio) { if (i) i.value = hhmm(inicio); tr.dataset.inicio = hhmm(inicio); }
+      if (fin)    { if (f) f.value = hhmm(fin);    tr.dataset.fin    = hhmm(fin); }
+      tr.classList.add('row-dirty'); setTimeout(()=>tr.classList.remove('row-dirty'), 220);
+    }
+  
+    function applySavedTimesToStudents(tpl, { famSet, instSet }){
+      const horas = tpl?.horas || tpl?.horarios || null;
+      if (!horas) return;
+  
+      const famArr  = Array.isArray(horas.familias)     ? horas.familias     : [];
+      const instArr = Array.isArray(horas.instrumentos) ? horas.instrumentos : [];
+  
+      const famMap  = new Map(famArr.map(o => [ norm(String(o.key||o.familia||o.familia_key||'')),
+                                                { inicio:o.inicio||o.ini||'', fin:o.fin||'' } ]));
+      const instMap = new Map(instArr.map(o => [ norm(String(o.key||o.instrumento||o.instrumento_key||'')),
+                                                { inicio:o.inicio||o.ini||'', fin:o.fin||'' } ]));
+  
+      const rows = Array.from($asigBody?.querySelectorAll('tr[data-alumno]') || []);
+      for (const tr of rows){
+        // ¿Incluida por filtro?
+        let included = true;
+        if (instSet?.size) {
+          included = instMatches(norm(getInstrVisible(tr)), instSet);
+        } else if (famSet?.size) {
+          included = famSet.has(norm(tr.dataset.familia || ''));
+        }
+        if (!included) continue;
+  
+        // Preferencia: instrumento > familia (con fallback por prefijo)
+        const kInst = norm(getInstrVisible(tr));
+        const tInst = instMap.get(kInst) || [...instMap].find(([k]) => kInst.startsWith(k))?.[1];
+        if (tInst) { setRowTimes(tr, tInst); continue; }
+  
+        const kFam = norm(tr.dataset.familia || '');
+        if (famMap.has(kFam))  { setRowTimes(tr, famMap.get(kFam)); }
+      }
+    }
+  
+    // Aplicar plantilla
+    async function applyTemplate() {
+      const pid = Number($sel.value);
+      if (!pid) return alert('Selecciona una plantilla');
+  
+      await ensureBlocksVisible();
+  
+      // 1) Carga preview (conteos) y la plantilla completa
+      const prev = await fetchJSON(`/plantillas/${pid}/preview?eventoId=${eventoId}`);
+      const tpl  = await fetchJSON(`/plantillas/${pid}`);
+  
+      // 2) Conjunto de familias/instrumentos a filtrar
+      const famSet  = new Set((tpl.familias_incluir     || []).map(s => norm(s)));
+      const instSet = new Set((tpl.instrumentos_incluir || []).map(s => norm(s)));
+  
+      // Si no viene nada en la plantilla, usa lo del preview
+      if (famSet.size === 0)  prev.alumnos.forEach(a => { if (a.familia)     famSet.add(norm(a.familia)); });
+      if (instSet.size === 0) prev.alumnos.forEach(a => { if (a.instrumento) instSet.add(norm(a.instrumento)); });
+  
+      // 3) Aplicar filtro visual
+      window.__TPL_FILTER__ = { famSet, instSet };
+      applyFilter({ famSet, instSet, total: prev.total_candidatos, match: prev.total_match });
+  
+      // 4) Aplicar horas guardadas (si las hay)
+      applySavedTimesToGroups(tpl);
+      applySavedTimesToStudents(tpl, { famSet, instSet });
+  
+      // 5) Reintentos por si las tablas/DOM entran más tarde
+      setTimeout(() => {
+        applyFilter({ famSet, instSet, total: prev.total_candidatos, match: prev.total_match });
+        applySavedTimesToGroups(tpl);
+        applySavedTimesToStudents(tpl, { famSet, instSet });
+      }, 300);
+  
+      setTimeout(() => {
+        applyFilter({ famSet, instSet, total: prev.total_candidatos, match: prev.total_match });
+        applySavedTimesToGroups(tpl);
+        applySavedTimesToStudents(tpl, { famSet, instSet });
+      }, 800);
+    }
+  
+    // Botones
+    $btnA?.addEventListener('click', () => applyTemplate().catch(err => {
+      console.error(err);
+      alert('No se pudo aplicar la plantilla');
+    }));
+    $btnC?.addEventListener('click', clearFilter);
+  })();
+  </script>  
 
 <!-- === Aplicar y guardar (persistir filas visibles) === -->
 <script>
@@ -2082,4 +2201,34 @@ $tbody.addEventListener('change', (ev) => {
   })();
   </script>
   
-    
+   <script>
+(() => {
+  const el = document.getElementById('evtDate');
+  if (!el) return;
+
+  const iso = (el.dataset.date || '').trim();      // p.ej. "2025-10-07"
+  const hIni = (el.dataset.hini || '').slice(0,5); // "HH:MM"
+  const hFin = (el.dataset.hfin || '').slice(0,5); // "HH:MM"
+
+  let fechaTxt = '';
+  if (iso) {
+    // Permite "YYYY-MM-DD" o iso con tiempo
+    const ymd = /^\d{4}-\d{2}-\d{2}$/.test(iso) ? iso + 'T00:00:00' : iso;
+    const d = new Date(ymd);
+    if (!isNaN(d.getTime())) {
+      fechaTxt = d.toLocaleDateString('es-ES', {
+        weekday: 'short', day: '2-digit', month: 'long', year: 'numeric'
+      });
+      // Capitaliza el primer carácter (opcional)
+      fechaTxt = fechaTxt.charAt(0).toUpperCase() + fechaTxt.slice(1);
+    }
+  }
+
+  // Construye "mar, 07 de octubre de 2025 — 18:00–20:00"
+  const horas =
+    (hIni && hFin) ? ` — ${hIni}–${hFin}` :
+    (hIni ? ` — ${hIni}` : '');
+
+  el.textContent = (fechaTxt || 'Fecha sin definir') + horas;
+})();
+</script>

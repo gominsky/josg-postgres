@@ -622,6 +622,7 @@ WITH base AS (
     string_agg(DISTINCT ins.nombre, ', ' ORDER BY ins.nombre) AS instrumentos,
     bool_or(ins.nombre ~* '^\\s*viol(í|i)n\\s*$') AS has_violin_puro,
     CASE WHEN asi.alumno_id IS NOT NULL THEN TRUE ELSE FALSE END AS firmado,
+    MAX(asi.minutos_perdidos)::int AS minutos_perdidos,
     ea.hora_inicio,
     ea.hora_fin,
     ea.instrumento AS instrumento,
@@ -674,6 +675,7 @@ SELECT
   id, nombre, apellidos, dni,
   instrumentos,
   instrumento_mostrado,
+  minutos_perdidos,
   CASE
     WHEN LOWER(instrumento_mostrado) ~ '(viol[ií]n|viola|violonchelo|chelo|contrabajo)' THEN 'Cuerda'
     WHEN LOWER(instrumento_mostrado) ~ '(flauta|clarinete|oboe|fagot|saxof[oó]n|saxo)' THEN 'Viento madera'
