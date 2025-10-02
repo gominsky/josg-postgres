@@ -1664,5 +1664,136 @@ router.delete('/:id/familias', async (req, res) => {
     client.release();
   }
 });
+// ── Helpers ──────────────────────────────────────────────
+async function grupoIdPorTipo(client, tipo /* 'invitados' | 'reservas' */) {
+  const { rows } = await client.query(
+    `SELECT id FROM grupos WHERE lower(nombre) = lower($1) LIMIT 1`,
+    [tipo]
+  );
+  return rows[0]?.id || null;
+}
+
+// ✅ Rutas simples (sin paréntesis)
+router.get('/:id/extras/:tipo', async (req, res) => {
+  const eventoId = Number(req.params.id);
+  const tipo = (req.params.tipo || '').toLowerCase();
+  if (!Number.isInteger(eventoId)) return res.status(400).json({ error: 'ID inválido' });
+  if (!['invitados', 'reservas'].includes(tipo)) return res.status(404).json({ error: 'Tipo no válido' });
+
+  const client = await db.connect();
+  try {
+    const gId = await grupoIdPorTipo(client, tipo.toUpperCase());
+    if (!gId) return res.json([]);
+    const { rows } = await client.query(`
+      SELECT a.id, a.nombre, a.apellidos,
+             string_agg(DISTINCT ins.nombre, ', ' ORDER BY ins.nombre) AS instrumentos
+      FROM alumno_grupo ag
+      JOIN alumnos a ON a.id = ag.alumno_id
+      LEFT JOIN alumno_instrumento ai ON ai.alumno_id = a.id
+      LEFT JOIN instrumentos ins ON ins.id = ai.instrumento_id
+      WHERE ag.grupo_id = $1
+        AND COALESCE(a.activo, TRUE) IS TRUE
+        AND NOT EXISTS (
+          SELECT 1 FROM evento_asignaciones ea
+          WHERE ea.evento_id = $2 AND ea.alumno_id = a.id
+        )
+      GROUP BY a.id, a.nombre, a.apellidos
+      ORDER BY a.apellidos NULLS LAST, a.nombre NULLS LAST, a.id
+    `, [gId, eventoId]);
+    res.json(rows);
+  } catch (e) {
+    console.error('[extras list]', e);
+    res.status(500).json({ error: 'Error listando extras' });
+  } finally {
+    client.release();
+  }
+});
+
+
+router.post('/:id/extras/:tipo/add', async (req, res) => {
+  const eventoId = Number(req.params.id);
+  const tipo = (req.params.tipo || '').toLowerCase();
+  const { alumnos } = req.body || {};
+
+  if (!Number.isInteger(eventoId)) return res.status(400).json({ error: 'ID inválido' });
+  if (!['invitados','reservas'].includes(tipo)) return res.status(404).json({ error: 'Tipo no válido' });
+  if (!Array.isArray(alumnos)) return res.status(400).json({ error: 'Petición inválida' });
+
+  const client = await db.connect();
+  try {
+    await client.query('BEGIN');
+
+    // Insert-only. No modifica filas existentes del mismo alumno.
+    const sqlInsert = `
+      INSERT INTO evento_asignaciones (evento_id, alumno_id, hora_inicio, hora_fin, instrumento, notas)
+      VALUES ($1,$2,$3,$4,$5,$6)
+      ON CONFLICT (evento_id, alumno_id) DO NOTHING
+    `;
+
+    let added = 0;
+    for (const it of alumnos) {
+      const alumnoId = Number(it.alumno_id);
+      if (!Number.isInteger(alumnoId)) continue;
+      const r = await client.query(sqlInsert, [
+        eventoId,
+        alumnoId,
+        it.hora_inicio ?? null,
+        it.hora_fin ?? null,
+        it.instrumento ?? null,
+        it.notas ?? null
+      ]);
+      // r.rowCount será 1 si insertó, 0 si ya existía
+      added += r.rowCount || 0;
+    }
+
+    await client.query('COMMIT');
+    res.json({ ok: true, added });
+  } catch (e) {
+    try { await client.query('ROLLBACK'); } catch {}
+    console.error('[extras add selected]', e);
+    res.status(500).json({ error: 'Error añadiendo seleccionados' });
+  } finally {
+    client.release();
+  }
+});
+
+
+router.get('/:id/extras/tags', async (req, res) => {
+  const eventoId = Number(req.params.id);
+  if (!Number.isInteger(eventoId)) return res.status(400).json({ error: 'ID inválido' });
+
+  const client = await db.connect();
+  try {
+    const { rows: gRows } = await client.query(
+      `SELECT id, upper(nombre) AS nombre
+         FROM grupos
+        WHERE upper(nombre) IN ('INVITADOS','RESERVAS')`
+    );
+    const idInv = gRows.find(r => r.nombre === 'INVITADOS')?.id || null;
+    const idRes = gRows.find(r => r.nombre === 'RESERVAS')?.id || null;
+
+    const out = { invitados: [], reservas: [] };
+
+    if (idInv) {
+      const { rows } = await client.query(
+        `SELECT alumno_id AS id FROM alumno_grupo WHERE grupo_id = $1`, [idInv]
+      );
+      out.invitados = rows.map(r => r.id);
+    }
+    if (idRes) {
+      const { rows } = await client.query(
+        `SELECT alumno_id AS id FROM alumno_grupo WHERE grupo_id = $1`, [idRes]
+      );
+      out.reservas = rows.map(r => r.id);
+    }
+    res.json(out);
+  } catch (e) {
+    console.error('[extras tags]', e);
+    res.status(500).json({ error: 'Error obteniendo tags' });
+  } finally {
+    client.release();
+  }
+});
+
 module.exports = router;
 

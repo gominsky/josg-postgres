@@ -1,5 +1,6 @@
 <% title = 'Configuración de evento' %>
 <% hero = false %>
+<link rel="stylesheet" href="/eventos/styles/estilos.css">
 <!-- ================== TOOLBAR COMPACTA (2 FILAS) ================== -->
 <div class="evt-toolbar">
   <!-- Fila 1: Plantillas -->
@@ -93,8 +94,319 @@
     </div>
   </div>
 </div>
+<script>
+(() => {
+   // === Etiqueta de grupo para prefijar nombre de plantilla al guardar ===
+  // (define una sola vez; si no hay grupo, queda cadena vacía)
+  window.__TPL_GROUP_LABEL__ = <%- JSON.stringify(
+    (evento && (evento.grupo_nombre || evento.grupo || evento.nombre_grupo || evento.grupoKey || '')) || ''
+  ) %>;
+  // ⛑️ Evita registrar dos veces si la vista reinyecta scripts
+  if (window.__TPL_SAVE_UI_BOUND__) return;
+  window.__TPL_SAVE_UI_BOUND__ = true;
+
+  const $link = document.getElementById('linkSaveTpl');
+  const $form = document.getElementById('saveTplForm');
+  const $name = document.getElementById('tplName');
+  const $desc = document.getElementById('tplDesc');
+  const $count= document.getElementById('tplDescCount');   // opcional: si no existe, no pasa nada
+  const $msg  = document.getElementById('saveTplMsg');
+  const $btnX = document.getElementById('tplCloseX');      // opcional
+  const $btnCancel = document.getElementById('cancelSaveTpl');
+  const $btnSubmit = document.getElementById('tplSubmit'); // opcional
+  const eventoId = <%= evento.id %>;
+
+  function openForm(){
+    $form.classList.remove('tpl-hidden');
+    requestAnimationFrame(()=> $name?.focus());
+  }
+  function resetForm(){
+    $msg.textContent = '';
+    if ($name) $name.value = '';
+    if ($desc) $desc.value = '';
+    if ($count) $count.textContent = '0/120';
+  }
+  function closeForm(){
+    $form.classList.add('tpl-hidden');
+    resetForm();
+  }
+
+  // Abrir / cerrar
+  $link?.addEventListener('click', (e) => {
+    e.preventDefault();
+    ($form.classList.contains('tpl-hidden') ? openForm() : closeForm());
+  });
+  $btnCancel?.addEventListener('click', (e)=>{ e.preventDefault(); closeForm(); });
+  $btnX?.addEventListener('click', (e)=>{ e.preventDefault(); closeForm(); });
+
+  // Cerrar con ESC
+  document.addEventListener('keydown', (ev) => {
+    if (ev.key === 'Escape' && !$form.classList.contains('tpl-hidden')) closeForm();
+  });
+
+  // Cerrar haciendo click fuera
+  document.addEventListener('click', (ev) => {
+    if ($form.classList.contains('tpl-hidden')) return;
+    const inside = ev.target.closest('#saveTplForm') || ev.target.closest('#linkSaveTpl');
+    if (!inside) closeForm();
+  });
+
+  // Contador descripción (si existe)
+  $desc?.addEventListener('input', ()=> { if ($count) $count.textContent = `${$desc.value.length}/120`; });
+    // === HORAS en plantilla (opcional, no rompe nada) ===
+const TPL_HORAS_ENABLED = false; // ← déjalo false hasta que el backend lo acepte
+
+function __collectTemplateTimes(){
+  const fam = [];
+  document.querySelectorAll('#famBody tr').forEach(tr => {
+    const key = tr.dataset.key || tr.cells?.[0]?.textContent?.trim();
+    if (!key) return;
+    const inicio = tr.querySelector('.inp-ini')?.value || '';
+    const fin    = tr.querySelector('.inp-fin')?.value || '';
+    if (inicio || fin) fam.push({ key, inicio: inicio || null, fin: fin || null });
+  });
+
+  const inst = [];
+  document.querySelectorAll('#instBody tr[data-key]').forEach(tr => {
+    const key = tr.dataset.key || '';
+    if (!key) return;
+    const inicio = tr.querySelector('.inp-ini')?.value || '';
+    const fin    = tr.querySelector('.inp-fin')?.value || '';
+    if (inicio || fin) inst.push({ key, inicio: inicio || null, fin: fin || null });
+  });
+
+  return { familias: fam, instrumentos: inst };
+}
+async function doSave(nombre, descripcion){
+  if (window.__TPL_SAVE_IN_FLIGHT__) return;
+      // Prefijo de grupo (evita duplicarlo si ya existe)
+    const g = (window.__TPL_GROUP_LABEL__ || '').trim();
+    let nombreFinal = nombre;
+    if (g) {
+      const esc = g.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const re = new RegExp(`^\\s*\\[${esc}\\]\\s`);
+      if (!re.test(nombreFinal)) nombreFinal = `[${g}] ${nombreFinal}`;
+    }
+  window.__TPL_SAVE_IN_FLIGHT__ = true;
+  $btnSubmit?.setAttribute('disabled','disabled');
+
+  try{
+    const r = await fetch(`/plantillas/from-event/${eventoId}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(
+        TPL_HORAS_ENABLED
+          ? { nombre: nombreFinal, descripcion, horas: __collectTemplateTimes() }
+          : { nombre: nombreFinal, descripcion }
+      )
+    });
+    const ct = r.headers.get('content-type')||'';
+    const data = ct.includes('application/json') ? await r.json() : {};
+    if (!r.ok || data?.ok === false) throw new Error(data?.error || `HTTP ${r.status}`);
+
+    $msg.textContent = '✓ Guardada';
+    if (window.__reloadTplSel) { window.__reloadTplSel({ selectNewId: data?.id }).catch(console.error); }
+    setTimeout(closeForm, 400);
+  } catch (e) {
+    console.error(e);
+    $msg.textContent = 'Error guardando';
+  } finally {
+    window.__TPL_SAVE_IN_FLIGHT__ = false;
+    $btnSubmit?.removeAttribute('disabled');
+  }
+}
+
+  // Envío del form (único)
+  $form?.addEventListener('submit', (ev) => {
+    ev.preventDefault();
+    ev.stopPropagation();
+    ev.stopImmediatePropagation(); // por si quedó algún handler viejo
+    const nombre = ($name?.value||'').trim();
+    const descripcion = ($desc?.value||'').trim() || null;
+    if (!nombre) { $name?.focus(); return; }
+    $msg.textContent = 'Guardando…';
+    doSave(nombre, descripcion);
+  });
+})();
+</script>
+  <!-- ========= BLOQUE FAMILIAS ========= -->
+  <div id="famWrap" style="display:none">
+    <h5 class="mb-2">Agrupación por familias</h5>
+    <div class="table-responsive">
+      <table class="table table-striped tabla-estilizada">
+        <thead>
+          <tr>
+            <th>Familia</th>
+            <th class="text-center">Inicio</th>
+            <th class="text-center">Fin</th>
+            <th>Actividad</th>
+            <th>Notas</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="famBody">
+          <tr><td colspan="6" class="text-muted">(Se cargará al activar el switch)</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <!-- ========= BLOQUE INSTRUMENTOS ========= -->
+  <div id="instWrap" style="display:none">
+    <h5 class="mb-2">Agrupación por instrumentos</h5>
+    <div class="table-responsive">
+      <table class="table table-striped tabla-estilizada">
+        <thead>
+          <tr>
+            <th>Instrumento</th>
+            <th class="text-center">Inicio</th>
+            <th class="text-center">Fin</th>
+            <th>Actividad</th>
+            <th>Notas</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="instBody">
+          <tr><td colspan="6" class="text-muted">(Se cargará al activar el switch)</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <!-- ========= BLOQUE INDIVIDUAL ========= -->
+  <div id="alumWrap">
+    <h5 class="mb-2">Asignaciones individuales</h5>
+    <div class="table-responsive">
+      <table class="table table-striped tabla-estilizada">
+        <thead>
+          <tr>
+            <th class="th-sort" data-key="apellidos">Músico</th>
+            <th class="th-sort" data-key="instrumento">Instrumento</th>
+            <th class="text-center th-sort" data-key="firmado">Firmado</th>
+            <th class="th-sort" data-key="inicio">Inicio</th>
+            <th class="th-sort" data-key="fin">Fin</th>
+            <th class="th-sort" data-key="ausencia">Ausencia</th>
+            <th class="th-sort">Min. perdidos</th>
+            <th class="th-sort" data-key="actividad">Actividad</th>
+            <th class="th-sort" data-key="notas">Notas</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="asigBody">
+          <% (alumnos||[]).forEach(row => { %>
+           <tr
+              data-alumno="<%= row.id %>"
+              data-apellidos="<%= (row.apellidos || '') + ' ' + (row.nombre || '') %>"
+              data-instrumento="<%= row.instrumento || row.instrumento_mostrado || ((row.instrumentos||'').split(',')[0]||'') %>"
+              data-instrumentos="<%= row.instrumentos || '' %>"
+              data-instr-empty="<%= (!row.instrumento || String(row.instrumento).trim()==='') ? '1' : '0' %>"
+              data-inicio="<%= (row.hora_inicio || '') %>"
+              data-fin="<%= (row.hora_fin || '') %>"
+              data-ausencia-id="<%= row.ausencia_tipo_id || '' %>"
+              data-ausencia="<%= row.ausencia_tipo || '' %>"
+              data-actividad-id="<%= row.actividad_complementaria_id || '' %>"
+              data-actividad="<%= row.actividad_complementaria || '' %>"
+              data-notas="<%= row.notas || '' %>"
+              data-familia="<%= row.familia_mostrada || '' %>"
+              data-minutos="<%= row.minutos_perdidos || '' %>"
+            >
+            <td>
+              <strong><%= (row.apellidos||'') %>, <%= (row.nombre||'') %></strong>
+              <div class="text-muted small">
+                <%= (row.instrumentos || '') %>
+              </div>
+            </td>
+            <td>
+              <div class="td-instrumento" contenteditable="true">
+                <%= row.instrumento || row.instrumento_mostrado || (row.instrumentos||'').split(',')[0] || '' %>
+              </div>
+            </td>            
+              <td class="text-center">
+                <input class="form-check-input chk-firmado" type="checkbox" value="<%= row.id %>"
+                  <%= firmados.includes(row.id) ? 'checked' : '' %>>
+              </td>
+              <td><input type="time" class="form-control form-control-sm inp-ini"
+                value="<%= (row.hora_inicio || '').slice(0,5) %>"></td>
+              <td><input type="time" class="form-control form-control-sm inp-fin"
+                value="<%= (row.hora_fin || '').slice(0,5) %>"></td>
+              <td><select class="form-select form-select-sm sel-aus"></select></td>
+              <td class="text-center min-col">
+                <div class="minutos-wrap" style="display:flex;align-items:center;justify-content:center;gap:.35rem;">
+                  <input
+                    type="number" min="0" step="1"
+                    class="form-control form-control-sm inp-min"
+                    value="<%= row.minutos_perdidos || '' %>"
+                    style="width:6.5rem; display:none;">
+                  <span class="minutos-show" style="display:none;"></span>
+                </div>
+              </td>         
+              <td><select class="form-select form-select-sm sel-act"></select></td>
+              <td><input type="text" class="form-control form-control-sm inp-notas"
+                value="<%= row.notas || '' %>"></td>
+              <td><button type="button" class="btn btn-outline-danger btn-sm btn-del" aria-label="Quitar músico">&times;</button></td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+   
+</div>
+<div id="extrasWrap" class="card mt-4">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <strong>Extras</strong>
+    <span id="legendExtras" class="text-muted" style="font-size:.85rem">
+      <span style="display:inline-block;width:10px;height:10px;background:#2b6cb0;border-radius:2px;margin-right:6px"></span> Invitado
+      &nbsp;&nbsp;
+      <span style="display:inline-block;width:10px;height:10px;background:#4a5568;border-radius:2px;margin-right:6px"></span> Reserva
+    </span>
+  </div>
+
+  <div class="card-body">
+    <!-- INVITADOS -->
+    <div id="panelInvitados" class="extras-panel" data-tipo="invitados">
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <div class="d-flex align-items-center" style="gap:.5rem">
+          <h6 class="m-0">Invitados</h6>
+          <button type="button" class="btn btn-sm btn-outline-dark panel-toggle" data-panel="#panelInvitados" aria-expanded="true">Ocultar</button>
+        </div>
+        <div class="btn-group">
+          <button class="btn btn-sm btn-outline-dark" data-action="add-sel">Añadir seleccionados</button>
+        </div>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-sm extras-table" data-tipo="invitados">
+          <thead><tr><th style="width:32px;"></th><th>Nombre</th><th>Instrumentos</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- RESERVAS -->
+    <div id="panelReservas" class="extras-panel" data-tipo="reservas">
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <div class="d-flex align-items-center" style="gap:.5rem">
+          <h6 class="m-0">Reservas</h6>
+          <button type="button" class="btn btn-sm btn-outline-dark panel-toggle" data-panel="#panelReservas" aria-expanded="true">Ocultar</button>
+        </div>
+        <div class="btn-group">
+          <button class="btn btn-sm btn-outline-dark" data-action="add-sel">Añadir seleccionados</button>
+        </div>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-sm extras-table" data-tipo="reservas">
+          <thead><tr><th style="width:32px;"></th><th>Nombre</th><th>Instrumentos</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+ <div class="volver-bloque-izquierda mt-4">
+      <a href="/eventos" class="enlace-final">← Volver al calendario</a>
+  </div>
+</div>
+
 <style>
-.tpl-sel {
+  .tpl-sel {
   width: 50% !important;    /* antes 32%, ahora un poco más ancho */
   max-width: 500px;         /* permite crecer un poco más en pantallas grandes */
   min-width: 180px;         /* sigue siendo razonable en pantallas pequeñas */
@@ -298,271 +610,6 @@
   .evt-meta{ align-items:flex-start; }
   .evt-title, .evt-date{ text-align:left; }
 }
-</style>
-<script>
-(() => {
-   // === Etiqueta de grupo para prefijar nombre de plantilla al guardar ===
-  // (define una sola vez; si no hay grupo, queda cadena vacía)
-  window.__TPL_GROUP_LABEL__ = <%- JSON.stringify(
-    (evento && (evento.grupo_nombre || evento.grupo || evento.nombre_grupo || evento.grupoKey || '')) || ''
-  ) %>;
-  // ⛑️ Evita registrar dos veces si la vista reinyecta scripts
-  if (window.__TPL_SAVE_UI_BOUND__) return;
-  window.__TPL_SAVE_UI_BOUND__ = true;
-
-  const $link = document.getElementById('linkSaveTpl');
-  const $form = document.getElementById('saveTplForm');
-  const $name = document.getElementById('tplName');
-  const $desc = document.getElementById('tplDesc');
-  const $count= document.getElementById('tplDescCount');   // opcional: si no existe, no pasa nada
-  const $msg  = document.getElementById('saveTplMsg');
-  const $btnX = document.getElementById('tplCloseX');      // opcional
-  const $btnCancel = document.getElementById('cancelSaveTpl');
-  const $btnSubmit = document.getElementById('tplSubmit'); // opcional
-  const eventoId = <%= evento.id %>;
-
-  function openForm(){
-    $form.classList.remove('tpl-hidden');
-    requestAnimationFrame(()=> $name?.focus());
-  }
-  function resetForm(){
-    $msg.textContent = '';
-    if ($name) $name.value = '';
-    if ($desc) $desc.value = '';
-    if ($count) $count.textContent = '0/120';
-  }
-  function closeForm(){
-    $form.classList.add('tpl-hidden');
-    resetForm();
-  }
-
-  // Abrir / cerrar
-  $link?.addEventListener('click', (e) => {
-    e.preventDefault();
-    ($form.classList.contains('tpl-hidden') ? openForm() : closeForm());
-  });
-  $btnCancel?.addEventListener('click', (e)=>{ e.preventDefault(); closeForm(); });
-  $btnX?.addEventListener('click', (e)=>{ e.preventDefault(); closeForm(); });
-
-  // Cerrar con ESC
-  document.addEventListener('keydown', (ev) => {
-    if (ev.key === 'Escape' && !$form.classList.contains('tpl-hidden')) closeForm();
-  });
-
-  // Cerrar haciendo click fuera
-  document.addEventListener('click', (ev) => {
-    if ($form.classList.contains('tpl-hidden')) return;
-    const inside = ev.target.closest('#saveTplForm') || ev.target.closest('#linkSaveTpl');
-    if (!inside) closeForm();
-  });
-
-  // Contador descripción (si existe)
-  $desc?.addEventListener('input', ()=> { if ($count) $count.textContent = `${$desc.value.length}/120`; });
-    // === HORAS en plantilla (opcional, no rompe nada) ===
-const TPL_HORAS_ENABLED = false; // ← déjalo false hasta que el backend lo acepte
-
-function __collectTemplateTimes(){
-  const fam = [];
-  document.querySelectorAll('#famBody tr').forEach(tr => {
-    const key = tr.dataset.key || tr.cells?.[0]?.textContent?.trim();
-    if (!key) return;
-    const inicio = tr.querySelector('.inp-ini')?.value || '';
-    const fin    = tr.querySelector('.inp-fin')?.value || '';
-    if (inicio || fin) fam.push({ key, inicio: inicio || null, fin: fin || null });
-  });
-
-  const inst = [];
-  document.querySelectorAll('#instBody tr[data-key]').forEach(tr => {
-    const key = tr.dataset.key || '';
-    if (!key) return;
-    const inicio = tr.querySelector('.inp-ini')?.value || '';
-    const fin    = tr.querySelector('.inp-fin')?.value || '';
-    if (inicio || fin) inst.push({ key, inicio: inicio || null, fin: fin || null });
-  });
-
-  return { familias: fam, instrumentos: inst };
-}
-async function doSave(nombre, descripcion){
-  if (window.__TPL_SAVE_IN_FLIGHT__) return;
-      // Prefijo de grupo (evita duplicarlo si ya existe)
-    const g = (window.__TPL_GROUP_LABEL__ || '').trim();
-    let nombreFinal = nombre;
-    if (g) {
-      const esc = g.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      const re = new RegExp(`^\\s*\\[${esc}\\]\\s`);
-      if (!re.test(nombreFinal)) nombreFinal = `[${g}] ${nombreFinal}`;
-    }
-  window.__TPL_SAVE_IN_FLIGHT__ = true;
-  $btnSubmit?.setAttribute('disabled','disabled');
-
-  try{
-    const r = await fetch(`/plantillas/from-event/${eventoId}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(
-        TPL_HORAS_ENABLED
-          ? { nombre: nombreFinal, descripcion, horas: __collectTemplateTimes() }
-          : { nombre: nombreFinal, descripcion }
-      )
-    });
-    const ct = r.headers.get('content-type')||'';
-    const data = ct.includes('application/json') ? await r.json() : {};
-    if (!r.ok || data?.ok === false) throw new Error(data?.error || `HTTP ${r.status}`);
-
-    $msg.textContent = '✓ Guardada';
-    if (window.__reloadTplSel) { window.__reloadTplSel({ selectNewId: data?.id }).catch(console.error); }
-    setTimeout(closeForm, 400);
-  } catch (e) {
-    console.error(e);
-    $msg.textContent = 'Error guardando';
-  } finally {
-    window.__TPL_SAVE_IN_FLIGHT__ = false;
-    $btnSubmit?.removeAttribute('disabled');
-  }
-}
-
-  // Envío del form (único)
-  $form?.addEventListener('submit', (ev) => {
-    ev.preventDefault();
-    ev.stopPropagation();
-    ev.stopImmediatePropagation(); // por si quedó algún handler viejo
-    const nombre = ($name?.value||'').trim();
-    const descripcion = ($desc?.value||'').trim() || null;
-    if (!nombre) { $name?.focus(); return; }
-    $msg.textContent = 'Guardando…';
-    doSave(nombre, descripcion);
-  });
-})();
-</script>
-
-
-  <!-- ========= BLOQUE FAMILIAS ========= -->
-  <div id="famWrap" style="display:none">
-    <h5 class="mb-2">Agrupación por familias</h5>
-    <div class="table-responsive">
-      <table class="table table-striped tabla-estilizada">
-        <thead>
-          <tr>
-            <th>Familia</th>
-            <th class="text-center">Inicio</th>
-            <th class="text-center">Fin</th>
-            <th>Actividad</th>
-            <th>Notas</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody id="famBody">
-          <tr><td colspan="6" class="text-muted">(Se cargará al activar el switch)</td></tr>
-        </tbody>
-      </table>
-    </div>
-  </div>
-
-  <!-- ========= BLOQUE INSTRUMENTOS ========= -->
-  <div id="instWrap" style="display:none">
-    <h5 class="mb-2">Agrupación por instrumentos</h5>
-    <div class="table-responsive">
-      <table class="table table-striped tabla-estilizada">
-        <thead>
-          <tr>
-            <th>Instrumento</th>
-            <th class="text-center">Inicio</th>
-            <th class="text-center">Fin</th>
-            <th>Actividad</th>
-            <th>Notas</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody id="instBody">
-          <tr><td colspan="6" class="text-muted">(Se cargará al activar el switch)</td></tr>
-        </tbody>
-      </table>
-    </div>
-  </div>
-
-  <!-- ========= BLOQUE INDIVIDUAL ========= -->
-  <div id="alumWrap">
-    <h5 class="mb-2">Asignaciones individuales</h5>
-    <div class="table-responsive">
-      <table class="table table-striped tabla-estilizada">
-        <thead>
-          <tr>
-            <th class="th-sort" data-key="apellidos">Músico</th>
-            <th class="th-sort" data-key="instrumento">Instrumento</th>
-            <th class="text-center th-sort" data-key="firmado">Firmado</th>
-            <th class="th-sort" data-key="inicio">Inicio</th>
-            <th class="th-sort" data-key="fin">Fin</th>
-            <th class="th-sort" data-key="ausencia">Ausencia</th>
-            <th class="th-sort">Min. perdidos</th>
-            <th class="th-sort" data-key="actividad">Actividad</th>
-            <th class="th-sort" data-key="notas">Notas</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody id="asigBody">
-          <% (alumnos||[]).forEach(row => { %>
-           <tr
-              data-alumno="<%= row.id %>"
-              data-apellidos="<%= (row.apellidos || '') + ' ' + (row.nombre || '') %>"
-              data-instrumento="<%= row.instrumento || row.instrumento_mostrado || ((row.instrumentos||'').split(',')[0]||'') %>"
-              data-instrumentos="<%= row.instrumentos || '' %>"
-              data-instr-empty="<%= (!row.instrumento || String(row.instrumento).trim()==='') ? '1' : '0' %>"
-              data-inicio="<%= (row.hora_inicio || '') %>"
-              data-fin="<%= (row.hora_fin || '') %>"
-              data-ausencia-id="<%= row.ausencia_tipo_id || '' %>"
-              data-ausencia="<%= row.ausencia_tipo || '' %>"
-              data-actividad-id="<%= row.actividad_complementaria_id || '' %>"
-              data-actividad="<%= row.actividad_complementaria || '' %>"
-              data-notas="<%= row.notas || '' %>"
-              data-familia="<%= row.familia_mostrada || '' %>"
-              data-minutos="<%= row.minutos_perdidos || '' %>"
-            >
-            <td>
-              <strong><%= (row.apellidos||'') %>, <%= (row.nombre||'') %></strong>
-              <div class="text-muted small">
-                <%= (row.instrumentos || '') %>
-              </div>
-            </td>
-            <td>
-              <div class="td-instrumento" contenteditable="true">
-                <%= row.instrumento || row.instrumento_mostrado || (row.instrumentos||'').split(',')[0] || '' %>
-              </div>
-            </td>            
-              <td class="text-center">
-                <input class="form-check-input chk-firmado" type="checkbox" value="<%= row.id %>"
-                  <%= firmados.includes(row.id) ? 'checked' : '' %>>
-              </td>
-              <td><input type="time" class="form-control form-control-sm inp-ini"
-                value="<%= (row.hora_inicio || '').slice(0,5) %>"></td>
-              <td><input type="time" class="form-control form-control-sm inp-fin"
-                value="<%= (row.hora_fin || '').slice(0,5) %>"></td>
-              <td><select class="form-select form-select-sm sel-aus"></select></td>
-              <td class="text-center min-col">
-                <div class="minutos-wrap" style="display:flex;align-items:center;justify-content:center;gap:.35rem;">
-                  <input
-                    type="number" min="0" step="1"
-                    class="form-control form-control-sm inp-min"
-                    value="<%= row.minutos_perdidos || '' %>"
-                    style="width:6.5rem; display:none;">
-                  <span class="minutos-show" style="display:none;"></span>
-                </div>
-              </td>         
-              <td><select class="form-select form-select-sm sel-act"></select></td>
-              <td><input type="text" class="form-control form-control-sm inp-notas"
-                value="<%= row.notas || '' %>"></td>
-              <td><button type="button" class="btn btn-outline-danger btn-sm btn-del" aria-label="Quitar músico">&times;</button></td>
-            </tr>
-          <% }) %>
-        </tbody>
-      </table>
-    </div>
-    <div class="volver-bloque-izquierda mt-4">
-      <a href="/eventos" class="enlace-final">← Volver al calendario</a>
-    </div>
-  </div>
-</div>
-
-<style>
   /* Estilos tabla existentes */
   .tabla-estilizada td, .tabla-estilizada th { padding: 10px 12px; vertical-align: middle; }
   .tabla-estilizada input.form-control, .tabla-estilizada select.form-select {
@@ -670,6 +717,135 @@ async function doSave(nombre, descripcion){
   color: #6b7280;
 }
 .badge-delay{ display: none !important; }
+ #extrasWrap table[data-tipo="invitados"] tbody tr {
+    background-color: #e8f7ff; /* azul claro */
+  }
+
+  /* Color de fondo para reservas */
+  #extrasWrap table[data-tipo="reservas"] tbody tr {
+    background-color: #fff7e6; /* naranja claro */
+  }
+
+  /* Opcional: hover más oscuro para mejorar la lectura */
+  #extrasWrap table[data-tipo="invitados"] tbody tr:hover {
+    background-color: #d6f0ff;
+  }
+
+  #extrasWrap table[data-tipo="reservas"] tbody tr:hover {
+    background-color: #ffeacc;
+  }
+
+  /* Botonera corporativa (grises/negros) */
+  #extrasWrap .btn-link.text-dark { text-decoration: none; }
+
+  /* Opción A: Diferenciar por color suave (mejor escaneabilidad) */
+  #extrasWrap table[data-tipo="invitados"] tbody tr { background-color: #f7f9fc; } /* gris azulado muy suave */
+  #extrasWrap table[data-tipo="reservas"]  tbody tr { background-color: #faf7f2; } /* gris cálido muy suave */
+  #extrasWrap .extras-table tbody tr:hover { filter: brightness(0.98); }
+
+  /* Opción B (alternativa 100% grises, si la A no te encaja):
+  #extrasWrap table[data-tipo="invitados"] tbody tr { background-color: #f6f6f6; }
+  #extrasWrap table[data-tipo="reservas"]  tbody tr { background-color: #eeeeee; }
+  */
+
+  /* Estado colapsado */
+  .extras-panel.is-collapsed .table-responsive { display: none; }
+  .extras-panel.is-collapsed [data-action="toggle"][aria-expanded="false"]::after { content: ' (oculto)'; font-weight: normal; }
+
+  /* Botonera corporativa en grises/negros con separación */
+  #extrasWrap .btn-group { gap: .5rem; }
+
+  /* Paneles más delimitados y en vertical */
+  #extrasWrap .extras-panel{
+    border: 1px solid #e6e6e6;
+    border-radius: 10px;
+    padding: .9rem;
+    background: #fff;
+    box-shadow: 0 1px 0 rgba(0,0,0,.05);
+    margin-bottom: 1rem;
+  }
+
+  /* Diferenciación suave por tipo en los listados Extras */
+  #extrasWrap table[data-tipo="invitados"] tbody tr { background-color:#f5f7fa; }
+  #extrasWrap table[data-tipo="reservas"]  tbody tr { background-color:#f3f2f0; }
+  #extrasWrap .extras-table tbody tr:hover { filter: brightness(0.98); }
+
+  /* === MARCAS EN LA TABLA PRINCIPAL (asignaciones) === */
+  /* Fila invitado/reserva: una banda lateral y badge en el nombre */
+  #asigBody tr.is-invitado { border-left: 4px solid #2b6cb0; background-image: linear-gradient(to right, rgba(43,108,176,.06), transparent); }
+  #asigBody tr.is-reserva  { border-left: 4px solid #4a5568; background-image: linear-gradient(to right, rgba(74,85,104,.06), transparent); }
+
+  #asigBody .tag-chip{
+    display:inline-block; font-size:.75rem; line-height:1; padding:.25rem .4rem;
+    border-radius: 999px; margin-left:.35rem; vertical-align: middle;
+    background:#eee; color:#333; font-weight:600;
+  }
+  #asigBody .tag-chip.inv { background:#e6eef8; color:#2b6cb0; }
+  #asigBody .tag-chip.res { background:#e9eaec; color:#4a5568; }
+
+  /* Leyenda compacta */
+  #legendExtras { font-size:.85rem; color:#666; }
+  #legendExtras .swatch { display:inline-block; width:10px; height:10px; border-radius:2px; margin-right:6px; vertical-align:middle; }
+  #legendExtras .sw-inv { background:#2b6cb0; }
+  #legendExtras .sw-res { background:#4a5568; }
+
+  /* Margen lateral del bloque Extras */
+  #extrasWrap { margin: 0 12px; }
+
+  /* Paneles apilados y delimitados */
+  #extrasWrap .extras-panel{
+    border: 1px solid #e6e6e6; border-radius: 10px; padding: .9rem;
+    background: #fff; box-shadow: 0 1px 0 rgba(0,0,0,.05);
+    margin-bottom: 1rem;
+  }
+
+  /* Botonera corporativa separada */
+  #extrasWrap .btn-group { gap: .5rem; }
+
+  /* Diferenciación en listados de Extras (suave) */
+  #extrasWrap table[data-tipo="invitados"] tbody tr { background-color:#f5f7fa; }
+  #extrasWrap table[data-tipo="reservas"]  tbody tr { background-color:#f3f2f0; }
+  #extrasWrap .extras-table tbody tr:hover { filter: brightness(0.98); }
+
+  /* === MARCAS EN TABLA PRINCIPAL === */
+  #asigBody tr.is-invitado {
+    border-left: 4px solid #2b6cb0;
+    background-image: linear-gradient(to right, rgba(43,108,176,.06), transparent);
+  }
+  #asigBody tr.is-reserva {
+    border-left: 4px solid #4a5568;
+    background-image: linear-gradient(to right, rgba(74,85,104,.06), transparent);
+  }
+  #asigBody .tag-chip{
+    display:inline-block; font-size:.75rem; line-height:1; padding:.25rem .45rem;
+    border-radius: 999px; margin-left:.35rem; vertical-align: middle;
+    background:#eee; color:#333; font-weight:600;
+  }
+  #asigBody .tag-chip.inv { background:#e6eef8; color:#2b6cb0; }
+  #asigBody .tag-chip.res { background:#e9eaec; color:#4a5568; }
+
+  /* Botón de ocultar/mostrar por panel (no el global) */
+  .panel-toggle.btn { padding: .15rem .5rem; }
+  .extras-panel.is-collapsed .table-responsive { display:none; }
+/* Chips compactos en la celda del nombre, sin aumentar altura ni romper línea */
+#asigBody .tag-chip{
+  display: inline-block;
+  font-size: .70rem;          /* un pelín más pequeño */
+  line-height: 1;             /* compacto */
+  padding: .18rem .38rem;     /* menos padding */
+  border-radius: 999px;
+  margin-left: .35rem;
+  vertical-align: baseline;   /* para ir a la línea del nombre */
+  white-space: nowrap;        /* no parte */
+}
+#asigBody .tag-chip.inv { background:#e6eef8; color:#2b6cb0; }
+#asigBody .tag-chip.res { background:#e9eaec; color:#4a5568; }
+
+/* Bandas laterales (suaves, no aumentan altura) */
+#asigBody tr.is-invitado { border-left: 4px solid #2b6cb0; background-image: linear-gradient(to right, rgba(43,108,176,.06), transparent); }
+#asigBody tr.is-reserva  { border-left: 4px solid #4a5568; background-image: linear-gradient(to right, rgba(74,85,104,.06), transparent); }
+
+
 </style>
 
 <!-- ============ Utils compartidas ============ -->
@@ -707,6 +883,102 @@ async function doSave(nombre, descripcion){
       del : (eventoId) => `/eventos/${eventoId}/familias`
     }
   };
+    const extras = {
+    list:   (eventoId, tipo) => `/eventos/${eventoId}/extras/${tipo}`,              // GET
+    addAll: (eventoId, tipo) => `/eventos/${eventoId}/extras/${tipo}/add_all`,      // POST
+    addSel: (eventoId, tipo) => `/eventos/${eventoId}/extras/${tipo}/add`           // POST
+  };
+  window.ROUTES = window.ROUTES || {};
+  window.ROUTES.extras = extras;
+})();
+</script>
+
+<script>
+(() => {
+  const eventoId = <%= evento.id %>;
+  const $wrap = document.getElementById('extrasWrap');
+
+  const tipos = ['invitados','reservas'];
+  const dataCache = { invitados: [], reservas: [] };
+
+  async function load(tipo){
+    const url = window.ROUTES.extras.list(eventoId, tipo);
+    dataCache[tipo] = await __fetchJSON(url);
+    render(tipo);
+  }
+
+  function render(tipo){
+  if (!$wrap) return; // por si no existe el contenedor
+
+  const rows = dataCache[tipo] || [];
+  const html = rows.map(r => `
+    <tr data-alumno="${r.id}">
+      <td><input type="checkbox" class="sel"></td>
+      <td><strong>${r.apellidos||''}, ${r.nombre||''}</strong> <small class="text-muted">#${r.id}</small></td>
+      <td>${r.instrumentos||''}</td>
+    </tr>
+  `).join('');
+
+  let tbody = $wrap.querySelector(`table[data-tipo="${tipo}"] tbody`);
+  if (!tbody) {
+    // fallback por si $wrap no está aún en DOM
+    tbody = document.querySelector(`#extrasWrap table[data-tipo="${tipo}"] tbody`);
+  }
+  if (tbody) tbody.innerHTML = html;
+}
+
+  // — Si mantienes “Añadir todos” en Invitados, seguirá funcionando
+  async function addAll(tipo){
+    await __fetchJSON(window.ROUTES.extras.addAll(eventoId, tipo), { method:'POST' });
+    window.location.reload();
+  }
+
+  // — Horas del evento → HH:MM:SS
+  const evtDateEl = document.getElementById('evtDate');
+  const toHHMMSS = v => {
+    const t = String(v||'').slice(0,5);
+    return /^\d{2}:\d{2}$/.test(t) ? (t + ':00') : null;
+  };
+  const H_INI = toHHMMSS(evtDateEl?.dataset?.hini);
+  const H_FIN = toHHMMSS(evtDateEl?.dataset?.hfin);
+
+  async function addSelected(tipo){
+    const tbody = document.querySelector(`#extrasWrap table[data-tipo="${tipo}"] tbody`);
+    const ids = Array.from(tbody.querySelectorAll('.sel:checked'))
+      .map(chk => Number(chk.closest('tr').dataset.alumno))
+      .filter(Number.isInteger);
+
+    if (!ids.length) return;
+
+    for (const alumnoId of ids) {
+      const body = { hora_inicio: H_INI, hora_fin: H_FIN }; // se envía null si no hay
+      const res = await fetch(`/eventos/${eventoId}/asignaciones/${alumnoId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type':'application/json' },
+        body: JSON.stringify(body)
+      });
+      if (!res.ok) {
+        console.error('Fallo añadiendo', alumnoId, await res.text().catch(()=>res.status));
+      }
+    }
+    window.location.reload();
+  }
+
+  // Delegación de clicks
+  $wrap.addEventListener('click', ev => {
+    const btn = ev.target.closest('[data-action]');
+    if (!btn) return;
+    const tipo = btn.closest('[data-tipo]')?.dataset.tipo;
+    if (!tipo) return;
+
+    if (btn.dataset.action === 'add-all') addAll(tipo);
+    if (btn.dataset.action === 'add-sel') addSelected(tipo);
+  });
+
+  // Init
+  (async () => {
+    for (const t of tipos) await load(t);
+  })();
 })();
 </script>
 
@@ -734,7 +1006,21 @@ async function doSave(nombre, descripcion){
   if (swInst?.checked) { instWrap.style.display=''; window.__loadInstrumentos?.(); }
 })();
 </script>
-
+<script>
+// Shim global para poder usarlo antes de su definición original
+window.setMinutesCell = window.setMinutesCell || function(tr, val){
+  const span = tr?.querySelector?.('.minutos-show');
+  if (!span) return;
+  const n = (val == null ? null : Number(val));
+  if (Number.isFinite(n) && n > 0) {
+    span.textContent = String(n);
+    span.style.display = '';
+  } else {
+    span.textContent = '';
+    span.style.display = 'none';
+  }
+};
+</script>
 <!-- ============ Precarga catálogos para la tabla individual ============ -->
 <script>
 (() => {
@@ -2200,7 +2486,6 @@ function setMinutesCell(tr, val){
     });
   })();
   </script>
-  
    <script>
 (() => {
   const el = document.getElementById('evtDate');
@@ -2232,3 +2517,128 @@ function setMinutesCell(tr, val){
   el.textContent = (fechaTxt || 'Fecha sin definir') + horas;
 })();
 </script>
+<script>
+(() => {
+  const eventoId = <%= evento.id %>;
+
+  // Rutas disponibles (sin add_all)
+  window.ROUTES = window.ROUTES || {};
+  window.ROUTES.extras = {
+    list:   (id, tipo) => `/eventos/${id}/extras/${tipo}`,
+    addSel: (id, tipo) => `/eventos/${id}/extras/${tipo}/add`,
+    tags:   (id)       => `/eventos/${id}/extras/tags` // si algún día existe, se usará
+  };
+   // Leer horas del evento de #evtDate
+  const evtDateEl = document.getElementById('evtDate');
+ const H_INI = (evtDateEl?.dataset?.hini || '').slice(0,5) || null;
+  const H_FIN = (evtDateEl?.dataset?.hfin || '').slice(0,5) || null;
+  // Fallback y “memoria” local
+  const FALLBACK = { invitados: new Set(), reservas: new Set() };
+  const LS_INV = `evt${eventoId}:extras:inv`;
+  const LS_RES = `evt${eventoId}:extras:res`;
+  const addedInv = new Set(JSON.parse(localStorage.getItem(LS_INV) || '[]'));
+  const addedRes = new Set(JSON.parse(localStorage.getItem(LS_RES) || '[]'));
+  const saveAdded = () => {
+    localStorage.setItem(LS_INV, JSON.stringify([...addedInv]));
+    localStorage.setItem(LS_RES, JSON.stringify([...addedRes]));
+  };
+
+  // Carga tabla de un tipo (rellena fallback)
+  async function load(tipo){
+    const rows = await __fetchJSON(window.ROUTES.extras.list(eventoId, tipo));
+    const tbody = document.querySelector(`#extrasWrap table[data-tipo="${tipo}"] tbody`);
+    tbody.innerHTML = rows.map(r => `
+      <tr data-alumno="${r.id}">
+        <td><input type="checkbox" class="sel"></td>
+        <td><strong>${r.apellidos||''}, ${r.nombre||''}</strong><br><small class="text-muted">#${r.id}</small></td>
+        <td>${r.instrumentos||''}</td>
+      </tr>
+    `).join('');
+    FALLBACK[tipo].clear();
+    rows.forEach(r => FALLBACK[tipo].add(Number(r.id)));
+  }
+
+  // Añadir seleccionados → upsert fila + recordar en LS
+  async function addSelected(tipo){
+    const tbody = document.querySelector(`#extrasWrap table[data-tipo="${tipo}"] tbody`);
+    const ids = Array.from(tbody.querySelectorAll('.sel:checked'))
+      .map(chk => Number(chk.closest('tr').dataset.alumno))
+      .filter(Number.isInteger);
+    if (!ids.length) return;
+
+    for (const alumnoId of ids) {
+      await fetch(`/eventos/${eventoId}/asignaciones/${alumnoId}`, {
+        method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({})
+      });
+      (tipo === 'invitados' ? addedInv : addedRes).add(alumnoId);
+    }
+    saveAdded();
+    window.location.reload();
+  }
+
+  // Delegación: “Ocultar” independiente + “Añadir seleccionados”
+  document.getElementById('extrasWrap').addEventListener('click', (ev) => {
+    const btn = ev.target.closest('[data-action], .panel-toggle');
+    if (!btn) return;
+
+    // ⛔ cancela cualquier “add-all” residual
+    if (btn.dataset?.action === 'add-all') return;
+
+    // Mostrar/ocultar propio panel
+    if (btn.classList.contains('panel-toggle')) {
+      const panel = btn.closest('.extras-panel');
+      const collapsed = panel.classList.toggle('is-collapsed');
+      btn.textContent = collapsed ? 'Mostrar' : 'Ocultar';
+      btn.setAttribute('aria-expanded', String(!collapsed));
+      return;
+    }
+
+    const tipo = btn.closest('.extras-panel')?.dataset?.tipo;
+    if (!tipo) return;
+    if (btn.dataset.action === 'add-sel') addSelected(tipo);
+  });
+
+  // Marcado INV/RES
+  async function fetchTagsSafe(){
+    try { return await __fetchJSON(window.ROUTES.extras.tags(eventoId)); }
+    catch { // 404 → combina fallback + lo añadido en esta sesión
+      return {
+        invitados: [...new Set([...FALLBACK.invitados, ...addedInv])],
+        reservas : [...new Set([...FALLBACK.reservas , ...addedRes])]
+      };
+    }
+  }
+  async function marcarAsignacionesConTags(){
+    const tags = await fetchTagsSafe();
+    const setInv = new Set(tags.invitados || []);
+    const setRes = new Set(tags.reservas  || []);
+    const body = document.getElementById('asigBody'); if (!body) return;
+
+    body.querySelectorAll('tr[data-alumno]').forEach(tr => {
+      const id = Number(tr.dataset.alumno);
+      if (!Number.isInteger(id)) return;
+
+      tr.classList.remove('is-invitado', 'is-reserva');
+      tr.querySelectorAll('.tag-chip').forEach(n => n.remove());
+
+      let chip = '';
+      if (setInv.has(id)) { tr.classList.add('is-invitado'); chip = '<span class="tag-chip inv">INV</span>'; }
+      else if (setRes.has(id)) { tr.classList.add('is-reserva'); chip = '<span class="tag-chip res">RES</span>'; }
+
+      if (chip) {
+         const strong = tr.querySelector('td:first-child strong');
+        if (strong) strong.insertAdjacentHTML('afterend', ' ' + chip);
+      }
+    });
+  }
+
+  // Carga inicial y observer robusto
+  (async () => {
+    await load('invitados');
+    await load('reservas');
+    marcarAsignacionesConTags();
+    __initAsignObserver(marcarAsignacionesConTags);
+  })();
+})();
+</script>
+

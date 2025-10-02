@@ -10,7 +10,7 @@ const expressLayouts = require('express-ejs-layouts');
 const methodOverride = require('method-override');
 require('dotenv').config();
 
-
+app.use('/eventos/styles', express.static(path.join(__dirname, 'public', 'styles')));
 
 // --- Logs de proceso (como tenías) ---
 process.on('beforeExit', (code) => console.log('[proc] beforeExit code=', code));
