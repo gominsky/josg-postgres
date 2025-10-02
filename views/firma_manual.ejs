@@ -341,7 +341,7 @@ async function doSave(nombre, descripcion){
               <td><select class="form-select form-select-sm sel-act"></select></td>
               <td><input type="text" class="form-control form-control-sm inp-notas"
                 value="<%= row.notas || '' %>"></td>
-              <td><button type="button" class="btn btn-outline-danger btn-sm btn-del" aria-label="Quitar músico">&times;</button></td>
+              <td><button type="button" class="btn btn-sm btn-outline-danger btn-del">Eliminar</button></td>
             </tr>
           <% }) %>
         </tbody>
@@ -372,8 +372,11 @@ async function doSave(nombre, descripcion){
         </div>
       </div>
       <div class="table-responsive">
+        <!-- INVITADOS -->
         <table class="table table-sm extras-table" data-tipo="invitados">
-          <thead><tr><th style="width:32px;"></th><th>Nombre</th><th>Instrumentos</th></tr></thead>
+          <thead>
+            <tr><th style="width:32px;"></th><th>Nombre</th></tr>
+          </thead>
           <tbody></tbody>
         </table>
       </div>
@@ -392,7 +395,9 @@ async function doSave(nombre, descripcion){
       </div>
       <div class="table-responsive">
         <table class="table table-sm extras-table" data-tipo="reservas">
-          <thead><tr><th style="width:32px;"></th><th>Nombre</th><th>Instrumentos</th></tr></thead>
+          <thead>
+            <tr><th style="width:32px;"></th><th>Nombre</th></tr>
+          </thead>
           <tbody></tbody>
         </table>
       </div>
@@ -844,7 +849,78 @@ async function doSave(nombre, descripcion){
 /* Bandas laterales (suaves, no aumentan altura) */
 #asigBody tr.is-invitado { border-left: 4px solid #2b6cb0; background-image: linear-gradient(to right, rgba(43,108,176,.06), transparent); }
 #asigBody tr.is-reserva  { border-left: 4px solid #4a5568; background-image: linear-gradient(to right, rgba(74,85,104,.06), transparent); }
+/* Margen lateral suave en la tabla principal (alumnos) */
+#alumWrap .table-responsive { padding: 0 12px}
+#extrasWrap .extras-table td .text-muted { font-size:.9em; margin-top:2px; }
+/* ===== MODO COMPACTO PARA EXTRAS ===== */
+#extrasWrap.extras-compact {
+  margin: 0 8px !important;
+}
 
+/* Panel menos “acolchado” */
+#extrasWrap.extras-compact .extras-panel{
+  padding: .55rem !important;
+  border-radius: 8px !important;
+}
+
+/* Cabeceras más bajas y tipografía más pequeña */
+#extrasWrap.extras-compact h6 { 
+  font-size: .95rem !important; 
+  margin: 0 !important;
+}
+#extrasWrap.extras-compact .btn-group .btn,
+#extrasWrap.extras-compact .panel-toggle.btn{
+  padding: .15rem .45rem !important;
+  font-size: .8rem !important;
+}
+
+/* Mesas compactas */
+#extrasWrap.extras-compact .table { 
+  margin-bottom: .35rem !important;
+}
+#extrasWrap.extras-compact .table thead th{
+  padding: .28rem .5rem !important;
+  font-size: .85rem !important;
+  line-height: 1.1 !important;
+}
+#extrasWrap.extras-compact .table tbody td{
+  padding: .28rem .5rem !important;
+  line-height: 1.15 !important;
+  vertical-align: middle !important;
+}
+
+/* Nombre + instrumento (línea secundaria aún más sutil) */
+#extrasWrap.extras-compact .extras-table td .text-muted{
+  font-size: .82em !important;
+  margin-top: 1px !important;
+  opacity: .85;
+}
+
+/* Leyenda más discreta */
+#extrasWrap.extras-compact #legendExtras{
+  font-size: .78rem !important;
+  opacity: .8 !important;
+}
+
+/* (Opcional) límite de altura por panel con scroll interno */
+#extrasWrap.extras-compact .extras-panel .table-responsive{
+  max-height: 260px;          /* ajusta a 220–320 según gusto */
+  overflow: auto;
+  scrollbar-gutter: stable;
+}
+
+/* Reduce separaciones verticales entre paneles */
+#extrasWrap.extras-compact .extras-panel + .extras-panel{
+  margin-top: .6rem !important;
+}
+
+/* Reduce el espacio del header del card */
+#extrasWrap.extras-compact .card-header{
+  padding: .45rem .6rem !important;
+}
+#extrasWrap.extras-compact .card-body{
+  padding: .6rem .6rem !important;
+}
 
 </style>
 
@@ -908,26 +984,52 @@ async function doSave(nombre, descripcion){
   }
 
   function render(tipo){
-  if (!$wrap) return; // por si no existe el contenedor
-
   const rows = dataCache[tipo] || [];
-  const html = rows.map(r => `
-    <tr data-alumno="${r.id}">
-      <td><input type="checkbox" class="sel"></td>
-      <td><strong>${r.apellidos||''}, ${r.nombre||''}</strong> <small class="text-muted">#${r.id}</small></td>
-      <td>${r.instrumentos||''}</td>
-    </tr>
-  `).join('');
+  const tbody = document.querySelector(`#extrasWrap table[data-tipo="${tipo}"] tbody`);
+  if (!tbody) return;
 
-  let tbody = $wrap.querySelector(`table[data-tipo="${tipo}"] tbody`);
-  if (!tbody) {
-    // fallback por si $wrap no está aún en DOM
-    tbody = document.querySelector(`#extrasWrap table[data-tipo="${tipo}"] tbody`);
+  // Limpia el cuerpo
+  tbody.textContent = '';
+
+  if (!rows.length) return;
+
+  for (const r of rows) {
+    const tr = document.createElement('tr');
+    tr.dataset.alumno = String(r.id);
+
+    // Columna check
+    const tdChk = document.createElement('td');
+    const chk = document.createElement('input');
+    chk.type = 'checkbox';
+    chk.className = 'sel';
+    tdChk.appendChild(chk);
+
+    // Columna nombre (línea 1: nombre; línea 2: instrumento)
+    const tdNom = document.createElement('td');
+
+    const lineaNombre = document.createElement('div');
+    const strong = document.createElement('strong');
+    strong.textContent = `${r.apellidos || ''}, ${r.nombre || ''}`.replace(/\s+,/g, ',');
+    lineaNombre.appendChild(strong);
+
+    const lineaInstr = document.createElement('div');
+    lineaInstr.className = 'text-muted small';
+    const instrumentos = (r.instrumento || r.instrumentos || '').toString().trim();
+    if (instrumentos) {
+      lineaInstr.textContent = instrumentos;
+    } else {
+      // Si prefieres no mostrar nada, comenta las dos siguientes líneas:
+      lineaInstr.textContent = '—';
+      lineaInstr.style.opacity = '0.6';
+    }
+
+    tdNom.append(lineaNombre, lineaInstr);
+
+    tr.append(tdChk, tdNom);
+    tbody.appendChild(tr);
   }
-  if (tbody) tbody.innerHTML = html;
 }
 
-  // — Si mantienes “Añadir todos” en Invitados, seguirá funcionando
   async function addAll(tipo){
     await __fetchJSON(window.ROUTES.extras.addAll(eventoId, tipo), { method:'POST' });
     window.location.reload();
@@ -2545,18 +2647,46 @@ function setMinutesCell(tr, val){
 
   // Carga tabla de un tipo (rellena fallback)
   async function load(tipo){
-    const rows = await __fetchJSON(window.ROUTES.extras.list(eventoId, tipo));
-    const tbody = document.querySelector(`#extrasWrap table[data-tipo="${tipo}"] tbody`);
-    tbody.innerHTML = rows.map(r => `
-      <tr data-alumno="${r.id}">
-        <td><input type="checkbox" class="sel"></td>
-        <td><strong>${r.apellidos||''}, ${r.nombre||''}</strong><br><small class="text-muted">#${r.id}</small></td>
-        <td>${r.instrumentos||''}</td>
-      </tr>
-    `).join('');
-    FALLBACK[tipo].clear();
-    rows.forEach(r => FALLBACK[tipo].add(Number(r.id)));
+  const rows = await __fetchJSON(window.ROUTES.extras.list(eventoId, tipo));
+  const tbody = document.querySelector(`#extrasWrap table[data-tipo="${tipo}"] tbody`);
+  if (!tbody) return;
+
+  tbody.textContent = '';
+
+  for (const r of (rows || [])) {
+    const tr = document.createElement('tr');
+    tr.dataset.alumno = String(r.id);
+
+    // ✓
+    const tdChk = document.createElement('td');
+    const chk = document.createElement('input');
+    chk.type = 'checkbox';
+    chk.className = 'sel';
+    tdChk.appendChild(chk);
+
+    // Nombre + instrumento (debajo)
+    const tdNom = document.createElement('td');
+
+    const lineaNombre = document.createElement('div');
+    const strong = document.createElement('strong');
+    strong.textContent = `${r.apellidos || ''}, ${r.nombre || ''}`.replace(/\s+,/g, ',');
+    lineaNombre.appendChild(strong);
+
+    const lineaInstr = document.createElement('div');
+    lineaInstr.className = 'text-muted';
+    const instrumentos = (r.instrumento || r.instrumentos || '').toString().trim();
+    lineaInstr.textContent = instrumentos || '—';
+
+    tdNom.append(lineaNombre, lineaInstr);
+
+    tr.append(tdChk, tdNom);
+    tbody.appendChild(tr);
   }
+
+  // Fallbacks (mantén tu lógica)
+  FALLBACK[tipo].clear();
+  (rows || []).forEach(r => FALLBACK[tipo].add(Number(r.id)));
+}
 
   // Añadir seleccionados → upsert fila + recordar en LS
   async function addSelected(tipo){
@@ -2641,4 +2771,7 @@ function setMinutesCell(tr, val){
   })();
 })();
 </script>
-
+<script>
+  // Activa el modo compacto de Extras
+  document.getElementById('extrasWrap')?.classList.add('extras-compact');
+</script>

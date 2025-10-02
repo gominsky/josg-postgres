@@ -366,6 +366,7 @@ async function init({ reset = false } = {}) {
         instrumentos_incluir TEXT[] NOT NULL DEFAULT '{}',
         created_at TIMESTAMP DEFAULT now()
       );
+      ALTER TABLE plantillas_evento ADD COLUMN IF NOT EXISTS horas JSONB DEFAULT '{}'::jsonb;
 
       CREATE TABLE IF NOT EXISTS guardias (
         id          INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -1055,7 +1056,7 @@ async function init({ reset = false } = {}) {
     }
 
     // Grupos base (idempotente)
-    const gruposBase = ['OEG','JOSG','Violín I','Violín II','Música de Cámara'];
+    const gruposBase = ['OEG','JOSG','Violín I','Violín II','Reservas','Invitados'];
     for (const g of gruposBase) {
       await run(
         `INSERT INTO grupos (nombre)

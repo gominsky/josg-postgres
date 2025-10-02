@@ -75,25 +75,142 @@ const instrumentosSQL = `
 
 /* ---------- Crear plantilla desde evento ---------- */
 async function crearPlantillaDesdeEvento(eventoId, { nombre, descripcion }) {
+  // 1) Claves (como ya hacías)
   const famRows = (await db.query(familiasSQL, [eventoId])).rows;
   const familias_incluir = famRows.map(r => r.familia_key);
 
   const instRows = (await db.query(instrumentosSQL, [eventoId])).rows;
   const instrumentos_incluir = instRows.map(r => r.instrumento_key);
 
+  // 2) Horas por FAMILIA (modo de (hora_inicio,hora_fin))
+  const horasFamiliasSQL = `
+    WITH asig AS (
+      SELECT ea.alumno_id, ea.hora_inicio, ea.hora_fin, NULLIF(ea.instrumento,'') AS instrumento_key
+      FROM evento_asignaciones ea
+      WHERE ea.evento_id = $1
+    ),
+    fam_res AS (
+      SELECT
+        a.alumno_id,
+        COALESCE(ins.familia, i1.familia) AS familia_final
+      FROM asig a
+      LEFT JOIN instrumentos ins ON ins.nombre = a.instrumento_key
+      LEFT JOIN LATERAL (
+        SELECT i.familia
+        FROM alumno_instrumento ai
+        JOIN instrumentos i ON i.id = ai.instrumento_id
+        WHERE ai.alumno_id = a.alumno_id
+        ORDER BY i.nombre
+        LIMIT 1
+      ) AS i1 ON TRUE
+    ),
+    pair_counts AS (
+      SELECT
+        fr.familia_final,
+        a.hora_inicio,
+        a.hora_fin,
+        COUNT(*) AS c
+      FROM fam_res fr
+      JOIN asig a ON a.alumno_id = fr.alumno_id
+      WHERE NULLIF(BTRIM(fr.familia_final),'') IS NOT NULL
+      GROUP BY fr.familia_final, a.hora_inicio, a.hora_fin
+    ),
+    best AS (
+      SELECT DISTINCT ON (familia_final)
+        familia_final, hora_inicio, hora_fin, c
+      FROM pair_counts
+      ORDER BY familia_final, c DESC, hora_inicio NULLS LAST, hora_fin NULLS LAST
+    )
+    SELECT
+      familia_final AS key,
+      CASE WHEN hora_inicio IS NULL THEN NULL ELSE to_char(hora_inicio,'HH24:MI') END AS inicio,
+      CASE WHEN hora_fin    IS NULL THEN NULL ELSE to_char(hora_fin   ,'HH24:MI') END AS fin
+    FROM best
+    ORDER BY key;
+  `;
+
+  const horasInstrumentosSQL = `
+    WITH base AS (
+      SELECT
+        a.id AS alumno_id, ea.instrumento,
+        string_agg(DISTINCT ins.nombre, ', ' ORDER BY ins.nombre) AS instrumentos,
+        bool_or(ins.nombre ~* '^\\s*viol(í|i)n\\s*$') AS has_violin_puro
+      FROM evento_asignaciones ea
+      JOIN alumnos a ON a.id = ea.alumno_id
+      LEFT JOIN alumno_instrumento ai ON ai.alumno_id = a.id
+      LEFT JOIN instrumentos ins      ON ins.id = ai.instrumento_id
+      WHERE ea.evento_id = $1
+      GROUP BY a.id, ea.instrumento
+    ),
+    gi AS (
+      SELECT
+        b.alumno_id,
+        COUNT(DISTINCT ag2.grupo_id) AS grupos_count,
+        bool_or(LOWER(g2.nombre) ~ '(viol[ií]n\\s*i)(\\b|\\s|$)')      AS en_violin_i,
+        bool_or(LOWER(g2.nombre) ~ '(viol[ií]n\\s*(ii|2))(\\b|\\s|$)') AS en_violin_ii
+      FROM base b
+      LEFT JOIN alumno_grupo ag2 ON ag2.alumno_id = b.alumno_id
+      LEFT JOIN grupos g2        ON g2.id = ag2.grupo_id
+      GROUP BY b.alumno_id
+    ),
+    etiquetado AS (
+      SELECT
+        b.alumno_id,
+        CASE
+          WHEN b.instrumento IS NOT NULL AND b.instrumento <> '' THEN b.instrumento
+          WHEN b.has_violin_puro AND gi.grupos_count > 1 AND (gi.en_violin_i OR gi.en_violin_ii)
+               THEN CASE WHEN gi.en_violin_i THEN 'Violín I' ELSE 'Violín II' END
+          ELSE COALESCE(split_part(b.instrumentos, ', ', 1), '')
+        END AS instrumento_key
+      FROM base b
+      LEFT JOIN gi ON gi.alumno_id = b.alumno_id
+    ),
+    pair_counts AS (
+      SELECT
+        e.instrumento_key,
+        ea.hora_inicio,
+        ea.hora_fin,
+        COUNT(*) AS c
+      FROM etiquetado e
+      JOIN evento_asignaciones ea
+        ON ea.evento_id = $1 AND ea.alumno_id = e.alumno_id
+      WHERE NULLIF(BTRIM(e.instrumento_key),'') IS NOT NULL
+      GROUP BY e.instrumento_key, ea.hora_inicio, ea.hora_fin
+    ),
+    best AS (
+      SELECT DISTINCT ON (instrumento_key)
+        instrumento_key, hora_inicio, hora_fin, c
+      FROM pair_counts
+      ORDER BY instrumento_key, c DESC, hora_inicio NULLS LAST, hora_fin NULLS LAST
+    )
+    SELECT
+      instrumento_key AS key,
+      CASE WHEN hora_inicio IS NULL THEN NULL ELSE to_char(hora_inicio,'HH24:MI') END AS inicio,
+      CASE WHEN hora_fin    IS NULL THEN NULL ELSE to_char(hora_fin   ,'HH24:MI') END AS fin
+    FROM best
+    ORDER BY key;
+  `;
+
+  const horasFamilias = (await db.query(horasFamiliasSQL, [eventoId])).rows;
+  const horasInstrumentos = (await db.query(horasInstrumentosSQL, [eventoId])).rows;
+
+  const horas = { familias: horasFamilias, instrumentos: horasInstrumentos };
+
+  // 3) Inserción incluyendo horas
   const insSQL = `
-    INSERT INTO plantillas_evento (nombre, descripcion, familias_incluir, instrumentos_incluir)
-    VALUES ($1, $2, $3::text[], $4::text[])
+    INSERT INTO plantillas_evento (nombre, descripcion, familias_incluir, instrumentos_incluir, horas)
+    VALUES ($1, $2, $3::text[], $4::text[], $5::jsonb)
     RETURNING id
   `;
   const { rows } = await db.query(insSQL, [
     nombre.trim(),
     descripcion || null,
     familias_incluir,
-    instrumentos_incluir
+    instrumentos_incluir,
+    horas
   ]);
 
-  return { id: rows[0].id, familias_incluir, instrumentos_incluir };
+  return { id: rows[0].id, familias_incluir, instrumentos_incluir, horas };
 }
 
 /* ---------- POST /  (crear plantilla manual) ---------- */
@@ -103,6 +220,7 @@ router.post('/', async (req, res) => {
     let familias_incluir = Array.isArray(req.body?.familias_incluir) ? req.body.familias_incluir : [];
     let instrumentos_incluir = Array.isArray(req.body?.instrumentos_incluir) ? req.body.instrumentos_incluir : [];
     const descripcion = req.body?.descripcion || null;
+    const horas = sanitizeHoras(req.body?.horas);
 
     if (!nombre) return res.status(400).json({ ok:false, error:'Nombre requerido' });
 
@@ -115,15 +233,14 @@ router.post('/', async (req, res) => {
     }
 
     const sql = `
-      INSERT INTO plantillas_evento (nombre, descripcion, familias_incluir, instrumentos_incluir)
-      VALUES ($1, $2, $3::text[], $4::text[])
+      INSERT INTO plantillas_evento (nombre, descripcion, familias_incluir, instrumentos_incluir, horas)
+      VALUES ($1, $2, $3::text[], $4::text[], $5::jsonb)
       RETURNING id
     `;
-    const { rows } = await db.query(sql, [nombre, descripcion, familias_incluir, instrumentos_incluir]);
-    return res.json({ ok:true, id: rows[0].id });
+    const { rows } = await db.query(sql, [nombre, descripcion, familias_incluir, instrumentos_incluir, horas]);
+    return res.json({ ok:true, id: rows[0].id, horas });
 
   } catch (err) {
-    // Si añades UNIQUE (lower(nombre)): captura 23505
     if (err.code === '23505') {
       return res.status(409).json({ ok:false, error:'Ya existe una plantilla con ese nombre' });
     }
@@ -131,6 +248,17 @@ router.post('/', async (req, res) => {
     return res.status(500).json({ ok:false, error:'Error guardando la plantilla' });
   }
 });
+
+function sanitizeHoras(horas) {
+  const isHHMM = v => typeof v === 'string' && /^\d{2}:\d{2}$/.test(v);
+  const fix = a => Array.isArray(a) ? a.map(x => ({
+    key: String(x?.key || '').trim(),
+    inicio: isHHMM(x?.inicio) ? x.inicio : null,
+    fin:    isHHMM(x?.fin)    ? x.fin    : null
+  })).filter(x => x.key) : [];
+  if (!horas || typeof horas !== 'object') return { familias: [], instrumentos: [] };
+  return { familias: fix(horas.familias), instrumentos: fix(horas.instrumentos) };
+}
 
 /* ---------- POST /from-event/:eventoId ---------- */
 router.post('/from-event/:eventoId', async (req, res) => {
@@ -141,7 +269,7 @@ router.post('/from-event/:eventoId', async (req, res) => {
   }
   try {
     const out = await crearPlantillaDesdeEvento(eventoId, { nombre, descripcion });
-    res.json({ ok: true, ...out });
+    res.json({ ok: true, ...out }); // ahora incluye horas
   } catch (err) {
     console.error('POST /from-event/:eventoId', err);
     res.status(500).json({ error: 'Error creando plantilla' });
@@ -152,7 +280,7 @@ router.post('/from-event/:eventoId', async (req, res) => {
 router.get('/', async (_req, res) => {
   try {
     const { rows } = await db.query(`
-      SELECT id, nombre, descripcion,
+      SELECT id, nombre, descripcion, horas,
              cardinality(familias_incluir)     AS familias,
              cardinality(instrumentos_incluir) AS instrumentos,
              created_at
@@ -323,21 +451,6 @@ router.delete('/:pid', async (req, res) => {
   }
 });
 
-// ===============================
-// POST /plantillas/:pid/apply
-// Aplica una plantilla a un evento concreto
-// ===============================
-// ... arriba tu require('express')/db y demás rutas ...
-
-// Guarda el resultado filtrado de una plantilla en un evento:
-// BODY:
-//   {
-//     "eventoId": 123,
-//     "items": [
-//       { "alumno_id": 1, "hora_inicio": "18:00", "hora_fin": "19:00", "actividad_complementaria_id": 2, "notas": "X" },
-//       ...
-//     ]
-//   }
 router.post('/:pid/apply', async (req, res) => {
     const pid = Number(req.params.pid);
     const eventoId = Number(req.body?.eventoId);
@@ -447,8 +560,30 @@ router.post('/:pid/apply', async (req, res) => {
       client.release();
     }
   });
-  
-  
-module.exports = router;
+  /* ---------- PUT /:pid (editar + horas) ---------- */
+router.put('/:pid', async (req, res) => {
+  const pid = Number(req.params.pid);
+  const { nombre, descripcion, familias_incluir, instrumentos_incluir } = req.body || {};
+  const horas = sanitizeHoras(req.body?.horas);
+  if (!Number.isInteger(pid)) return res.status(400).json({ error: 'ID inválido' });
+  try {
+    const { rows } = await db.query(
+      `UPDATE plantillas_evento
+         SET nombre                 = COALESCE($2, nombre),
+             descripcion            = COALESCE($3, descripcion),
+             familias_incluir       = COALESCE($4::text[], familias_incluir),
+             instrumentos_incluir   = COALESCE($5::text[], instrumentos_incluir),
+             horas                  = COALESCE($6::jsonb, horas)
+       WHERE id=$1
+       RETURNING *`,
+      [pid, nombre ?? null, descripcion ?? null, familias_incluir ?? null, instrumentos_incluir ?? null, horas ?? null]
+    );
+    if (!rows.length) return res.status(404).json({ error: 'No encontrada' });
+    res.json({ ok:true, plantilla: rows[0] });
+  } catch (err) {
+    console.error('PUT /:pid', err);
+    res.status(500).json({ error: 'Error actualizando' });
+  }
+});
 
-
+  module.exports = router;

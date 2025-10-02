@@ -4,7 +4,14 @@ const db = require('../database/db');
 const QRCode = require('qrcode');
 const { toISODate } = require('../utils/fechas');
 const { pdfControlAsistencia } = require('../utils/pdfControlAsistencia');
-
+// ── Helpers ──────────────────────────────────────────────
+async function grupoIdPorTipo(client, tipo /* 'invitados' | 'reservas' */) {
+  const { rows } = await client.query(
+    `SELECT id FROM grupos WHERE lower(nombre) = lower($1) LIMIT 1`,
+    [tipo]
+  );
+  return rows[0]?.id || null;
+}
 function splitISODateTime(input) {
   if (!input) return { fechaISO: null, horaHHMM: null };
   if (typeof input === 'string' && input.includes('T')) {
@@ -996,7 +1003,6 @@ router.delete('/:id/asignaciones/:alumnoId', async (req, res) => {
     client.release();
   }
 });
-
 router.post('/:id/asignaciones/refresh', async (req, res) => {
   const eventoId = Number(req.params.id);
   if (!Number.isInteger(eventoId)) {
@@ -1664,16 +1670,6 @@ router.delete('/:id/familias', async (req, res) => {
     client.release();
   }
 });
-// ── Helpers ──────────────────────────────────────────────
-async function grupoIdPorTipo(client, tipo /* 'invitados' | 'reservas' */) {
-  const { rows } = await client.query(
-    `SELECT id FROM grupos WHERE lower(nombre) = lower($1) LIMIT 1`,
-    [tipo]
-  );
-  return rows[0]?.id || null;
-}
-
-// ✅ Rutas simples (sin paréntesis)
 router.get('/:id/extras/:tipo', async (req, res) => {
   const eventoId = Number(req.params.id);
   const tipo = (req.params.tipo || '').toLowerCase();
@@ -1708,8 +1704,6 @@ router.get('/:id/extras/:tipo', async (req, res) => {
     client.release();
   }
 });
-
-
 router.post('/:id/extras/:tipo/add', async (req, res) => {
   const eventoId = Number(req.params.id);
   const tipo = (req.params.tipo || '').toLowerCase();
@@ -1756,8 +1750,6 @@ router.post('/:id/extras/:tipo/add', async (req, res) => {
     client.release();
   }
 });
-
-
 router.get('/:id/extras/tags', async (req, res) => {
   const eventoId = Number(req.params.id);
   if (!Number.isInteger(eventoId)) return res.status(400).json({ error: 'ID inválido' });
@@ -1794,6 +1786,5 @@ router.get('/:id/extras/tags', async (req, res) => {
     client.release();
   }
 });
-
 module.exports = router;
 
