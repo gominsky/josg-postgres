@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>JOSG Maestro - Eventos</title>
+  <title>JOSG ¡En tu mano! - Eventos</title>
   <link rel="stylesheet" href="../styles/estilos_app.css" />
 
   <!-- ✅ Añade el CSS de FullCalendar -->
@@ -42,8 +42,12 @@
 </head>
 <body>
   <div class="container">
-    <h2>Agenda de eventos</h2>
-    <div id="user-box" class="muted" style="margin:4px 0 10px; font-weight:600;"></div>
+    <div class="header">
+      <h2>Agenda de eventos</h2>
+      <div id="user-pill" class="user-pill" style="display:none;">
+        <span class="avatar"></span><span class="name"></span>
+      </div>
+    </div>
     <div id="calendar" class="calendar-container"></div>
     <button class="btn btn-accent" onclick="location.href='portal_maestro.html'">&larr; Inicio</button>
   </div>
@@ -116,7 +120,29 @@
       calendar.render();
     });
   </script> 
-
+<script>
+  /* Carga la pill con nombre del usuario (localStorage o /josgmaestro/api/yo) */
+  (function(){
+    async function cargarUsuarioPill(){
+      const pill = document.getElementById('user-pill');
+      if(!pill) return;
+      let nombre = localStorage.getItem('usuario_nombre') || '';
+      try{
+        const r = await fetch('/josgmaestro/api/yo', { credentials:'same-origin' });
+        if (r.ok) {
+          const me = await r.json();
+          if (me && me.nombre) nombre = me.nombre;
+        }
+      }catch(e){}
+      if(!nombre){ pill.style.display='none'; return; }
+      pill.querySelector('.avatar').textContent = (nombre.trim()[0]||'U').toUpperCase();
+      pill.querySelector('.name').textContent   = nombre;
+      pill.style.display = 'inline-flex';
+    }
+    document.addEventListener('DOMContentLoaded', cargarUsuarioPill);
+  })();
+  </script>
+  
 </body>
 </html>
 

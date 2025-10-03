@@ -234,22 +234,11 @@
       const titulo = (p.titulo || 'Sin título').trim();
       const dur    = (p.duracion || '').toString().trim();
 
-            // Preferimos enlace DIRECTO (público): http(s) o ruta /partituras/...
-      const raw = (p.enlace_partitura || '').toString().trim();
-      let hrefPart = '';
-      if (raw) {
-        const s = safeUrl(raw);                // añade https:// si falta, respeta /ruta
-        if (s.startsWith('http') || s.startsWith('/')) {
-          hrefPart = s;
-        }
-      }
-      // Si no tenemos enlace público usable, caemos al endpoint protegido con JWT
-      if (!hrefPart) {
-        const base = `${API_BASE}/api/alumno/${encodeURIComponent(alumno_id)}/partituras/${encodeURIComponent(p.id)}/archivo`;
-        hrefPart = `${base}?tipo=partitura&jwt=${encodeURIComponent(token)}`;
-      }
-      const linkPart = raw
-        ? `<a class="chip-link" href="${hrefPart}" target="_blank" rel="noopener noreferrer">Partitura</a>`
+      // Enlace a partitura (PDF) vía backend con JWT en query
+      const base = `${API_BASE}/api/alumno/${encodeURIComponent(alumno_id)}/partituras/${encodeURIComponent(p.id)}/archivo`;
+      const hasPart = !!(p.enlace_partitura && String(p.enlace_partitura).trim().length);
+      const linkPart = hasPart
+        ? `<a class="chip-link" href="${base}?tipo=partitura&jwt=${encodeURIComponent(token)}" target="_blank" rel="noopener noreferrer">Partitura</a>`
         : '';
 
       // Enlace externo único (audio/vídeo)

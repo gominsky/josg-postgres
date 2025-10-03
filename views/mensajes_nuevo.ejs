@@ -49,7 +49,22 @@
         <div class="help">Puedes añadir hasta 2 enlaces extra (además del campo “Enlace” de arriba).</div>
       </div>
     </div>
+      <!-- Adjuntos -->
+    <div id="adjuntosSection" class="section-block section-adjuntos">
+      <div class="section-head">
+        <span class="icon">📎</span>
+        <strong>Adjuntos</strong>
+        <small class="muted">hasta 5 archivos</small>
+      </div>
 
+      <div class="row">
+        <input id="files" name="adjuntos" type="file" class="form-control" multiple>
+        <div class="help">Se almacenan en /public/mensajes. Tamaño máx. 10MB c/u.</div>
+      </div>
+
+      <!-- Vista previa como “chips” (todos los archivos) -->
+      <ul id="files-preview" class="files-preview"></ul>
+    </div>
     <!-- Destinatarios -->
     <div class="row">
       <div>
@@ -274,6 +289,51 @@
   .groups-list input.i2-check:checked + span{
     font-weight:700;
   }
+/* ===== Bloques diferenciados ===== */
+.section-block{
+  border:1px solid #eee;
+  border-radius:12px;
+  padding:12px;
+  background:#fafafa;
+  margin-top:14px;
+}
+.section-block .section-head{
+  display:flex; align-items:center; gap:.5rem;
+  margin-bottom:8px;
+  color:#444;
+}
+.section-block .section-head .icon{ font-size:1.05rem; }
+.section-block .section-head .muted{ color:#808080; margin-left:auto; }
+
+/* Bloque de adjuntos con tono propio (distinto a Enlaces) */
+.section-adjuntos{
+  background:#fff8f3;              /* tono suave “naranja papel” */
+  border-color:#ffe2d0;
+}
+.section-adjuntos .section-head{ color:#7a4a30; }
+
+/* Chips de archivos */
+.files-preview{
+  display:flex; flex-wrap:wrap; gap:8px; list-style:none; margin:10px 0 0; padding:0;
+}
+.file-chip{
+  display:flex; align-items:center; gap:8px;
+  border:1px solid #ffd2b8;
+  background:#fff;
+  border-radius:999px;
+  padding:6px 10px;
+  box-shadow:0 2px 8px rgba(0,0,0,.04);
+}
+.file-chip .name{ font-weight:600; color:#7a4a30; max-width:40ch; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.file-chip .meta{ color:#9c6a4c; font-size:.85rem; }
+.file-chip .remove{
+  border:none; background:transparent; cursor:pointer;
+  font-weight:700; line-height:1; padding:2px 6px; border-radius:6px;
+}
+.file-chip .remove:hover{ background:#fff0e8; }
+
+/* Mantener el input limpio y separado visualmente */
+#files.form-control{ background:#fff; }
 
 </style>
 
@@ -449,54 +509,81 @@
 
   // Envío AJAX
   form.addEventListener('submit', async (ev)=>{
-    ev.preventDefault();
+  ev.preventDefault();
 
-    const body = {
-      titulo: titulo.value.trim(),
-      cuerpo: cuerpo.value.trim(),
-      url: url.value.trim() || null,
-      broadcast: state.mode === 'todos',
-      grupos: [],
-      instrumentos: [],
-      links: Array.from(document.querySelectorAll('.link-input')).map(i => i.value.trim()).filter(Boolean)
-    };
+  const body = {
+    titulo: titulo.value.trim(),
+    cuerpo: cuerpo.value.trim(),
+    url: url.value.trim() || null,
+    broadcast: state.mode === 'todos',
+    grupos: [],
+    instrumentos: [],
+    links: Array.from(document.querySelectorAll('.link-input')).map(i => i.value.trim()).filter(Boolean)
+  };
 
-    if (!body.titulo || !body.cuerpo){ showToast('Completa título y mensaje', false); return; }
+  if (!body.titulo || !body.cuerpo){ showToast('Completa título y mensaje', false); return; }
 
-    if (state.mode === 'grupos'){
-      body.grupos = Array.from(state.groupsChecked.values());
-      if (!body.grupos.length){ showToast('Selecciona al menos un grupo', false); return; }
+  if (state.mode === 'grupos'){
+    body.grupos = Array.from(state.groupsChecked.values());
+    if (!body.grupos.length){ showToast('Selecciona al menos un grupo', false); return; }
+  }
+  if (state.mode === 'instrumento'){
+    body.instrumentos = Array.from(state.instrumentosChecked.values());
+    if (!body.instrumentos.length){ showToast('Elige al menos un instrumento', false); return; }
+  }
+  if (state.mode === 'grupo_instrumento'){
+    body.instrumentos = Array.from(state.instrumentosChecked2.values());
+    body.grupos = Array.from(state.groupsChecked2.values());
+    if (!body.instrumentos.length || !body.grupos.length){
+      showToast('Elige instrumentos y al menos un grupo', false); return;
     }
-    if (state.mode === 'instrumento'){
-      body.instrumentos = Array.from(state.instrumentosChecked.values());
-      if (!body.instrumentos.length){ showToast('Elige al menos un instrumento', false); return; }
-    }
-    if (state.mode === 'grupo_instrumento'){
-      body.instrumentos = Array.from(state.instrumentosChecked2.values());
-      body.grupos = Array.from(state.groupsChecked2.values());
-      if (!body.instrumentos.length || !body.grupos.length){
-        showToast('Elige instrumentos y al menos un grupo', false); return;
-      }
-    }
+  }
 
-    btnEnviar.disabled = true; const old = btnEnviar.textContent; btnEnviar.textContent = 'Enviando…';
-    try{
-      const r = await fetch('/mensajes', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
-      const j = await r.json();
-      if(!r.ok || !j.success) throw new Error(j.error || 'No se pudo enviar');
+  // === FormData ===
+  const fd = new FormData();
+  fd.append('titulo', body.titulo);
+  fd.append('cuerpo', body.cuerpo);
+  if (body.url) fd.append('url', body.url);
+  fd.append('broadcast', String(body.broadcast));
+  if (body.grupos.length) fd.append('grupos', body.grupos.join(','));         // tu toIntArray entiende "1,2,3"
+  if (body.instrumentos.length) fd.append('instrumentos', body.instrumentos.join(','));
+  for (const l of body.links) fd.append('links', l);
+  // Ficheros
+  const files = document.getElementById('files')?.files || [];
+  for (const f of files) fd.append('adjuntos', f);
 
-      showToast(`✅ Enviado (id ${j.mensaje_id}) a ${j.enviados} alumno(s).`, true);
+  btnEnviar.disabled = true; const old = btnEnviar.textContent; btnEnviar.textContent = 'Enviando…';
+  try{
+    const r = await fetch('/mensajes', { method:'POST', body: fd });
+    const j = await r.json();
+    if(!r.ok || !j.success) throw new Error(j.error || 'No se pudo enviar');
 
-      // refrescar panel (página 1)
-      fetchPage(1);
+    showToast(`✅ Enviado (id ${j.mensaje_id}) a ${j.enviados} alumno(s).`, true);
 
-      // limpiar campos
-      cuerpo.value=''; url.value=''; titulo.value=''; linksWrap.innerHTML = '';
-      updateCounters(); updatePreview();
-    }catch(e){ showToast('❌ ' + (e.message || 'Error al enviar'), false); }
-    finally{ btnEnviar.disabled=false; btnEnviar.textContent = old; }
-  });
+    fetchPage(1); // refresca “últimos”
 
+    // limpiar
+    cuerpo.value=''; url.value=''; titulo.value='';
+    linksWrap.innerHTML = '';
+    // DESPUÉS
+    const fi = document.getElementById('files');
+    const ul = document.getElementById('files-preview');
+    if (fi) fi.value = '';
+    if (ul) ul.innerHTML = '';
+    // si usamos DataTransfer en la preview, resetea también su estado
+    if (window.__resetFilesDT) window.__resetFilesDT();
+
+        updateCounters(); updatePreview();
+      }catch(e){ showToast('❌ ' + (e.message || 'Error al enviar'), false); }
+      finally{ btnEnviar.disabled=false; btnEnviar.textContent = old; }
+    });
+
+const $files = document.getElementById('files');
+const $filesList = document.getElementById('files-list');
+$files?.addEventListener('change', ()=>{
+  const names = Array.from($files.files||[]).map(f => `${f.name} (${Math.round(f.size/1024)} KB)`);
+  $filesList.textContent = names.length ? 'Adjuntos: ' + names.join(' · ') : '';
+});
   // Limpiar
   btnReset.addEventListener('click', ()=>{
     form.reset(); setMode('todos');
@@ -664,4 +751,72 @@ async function onDeleteClick(ev){
 // Carga inicial
 fetchPage(1);
 </script>
+<script>
+  // === Gestión de selección de adjuntos (soporta quitar individuales) ===
+  (function(){
+    const input = document.getElementById('files');
+    const ul    = document.getElementById('files-preview');
+    if (!input || !ul) return;
+  
+    // Mantendremos los elegidos en un DataTransfer para poder quitar
+    let dt = new DataTransfer();
+  
+    function fmtSize(bytes){
+      if (!bytes && bytes !== 0) return '';
+      const kb = Math.round(bytes/1024);
+      if (kb < 1024) return `${kb} KB`;
+      const mb = (bytes/1024/1024);
+      return `${mb.toFixed(mb >= 10 ? 0 : 1)} MB`;
+    }
+  
+    function render(){
+      ul.innerHTML = '';
+      Array.from(dt.files).forEach((f, idx) => {
+        const li = document.createElement('li');
+        li.className = 'file-chip';
+        li.innerHTML = `
+          <span class="icon">📄</span>
+          <span class="name" title="${f.name}">${f.name}</span>
+          <span class="meta">· ${fmtSize(f.size)}</span>
+          <button type="button" class="remove" aria-label="Quitar" data-idx="${idx}">×</button>
+        `;
+        ul.appendChild(li);
+      });
+      input.files = dt.files; // IMPORTANT: sincroniza el input real
+    }
+    // dentro del IIFE de la preview, tras definir render()
+window.__resetFilesDT = function(){
+  dt = new DataTransfer();
+  render();
+};
 
+    // Al seleccionar ficheros en el input
+    input.addEventListener('change', () => {
+      const incoming = Array.from(input.files || []);
+      // Fusiona con los actuales, sin pasar de 5
+      for (const f of incoming) {
+        if (dt.files.length >= 5) break;
+        dt.items.add(f);
+      }
+      render();
+    });
+  
+    // Quitar uno
+    ul.addEventListener('click', (ev) => {
+      const btn = ev.target.closest('.remove');
+      if (!btn) return;
+      const idx = parseInt(btn.dataset.idx, 10);
+      if (Number.isInteger(idx)){
+        const current = Array.from(dt.files);
+        current.splice(idx, 1);
+        dt = new DataTransfer();
+        current.forEach(f => dt.items.add(f));
+        render();
+      }
+    });
+  
+    // Render inicial (por si el navegador rehidrata el input)
+    render();
+  })();
+  </script>
+  

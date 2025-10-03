@@ -837,6 +837,17 @@ async function init({ reset = false } = {}) {
         auth            TEXT NOT NULL,
         created_at      TIMESTAMP NOT NULL DEFAULT NOW()
       );
+      CREATE TABLE IF NOT EXISTS mensaje_adjuntos (
+          id            INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+          mensaje_id    INTEGER NOT NULL REFERENCES mensajes(id) ON DELETE CASCADE,
+          filename      TEXT NOT NULL,        -- nombre físico en /uploads
+          original_name TEXT,                 -- nombre original
+          mime          TEXT,
+          size_bytes    INTEGER,
+          uploaded_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        );
+        
+        CREATE INDEX IF NOT EXISTS idx_adjuntos_mensaje ON mensaje_adjuntos(mensaje_id);
   `);
       // Índices/uniques para MENSAJES (evitan duplicados y aceleran lecturas)
     await run(`

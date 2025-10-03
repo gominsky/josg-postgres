@@ -61,20 +61,31 @@
   <div class="container">
     <div class="topbar">
             <img src="/../imagenes/logoJOSG.png" alt="Logo JOSG" style="max-width:140px; margin-bottom:10px;">
-            <div style="display:flex; flex-direction:column; align-items:flex-end;">
-              <div id="user-box" class="muted" style="margin-bottom:4px; font-weight:600;"></div>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <div id="user-pill" class="user-pill" style="display:none; position:static;">
+                <span class="avatar"></span><span class="name"></span>
+              </div>
               <button id="btn-logout" class="icon-btn" title="Cerrar sesión" aria-label="Cerrar sesión">⎋</button>
             </div>
+            
           </div>
     <div class="hero">
       <h1>Maestro</h1>
     </div>
-
     <div class="grid-actions">
       <a class="action action--orange" href="mensajes_movil.html">Mensajes</a>
       <a class="action action--accent" href="eventos.html">Eventos</a>
+    
+      <!-- NUEVAS FICHAS -->
+      <a class="action action--orange" href="https://www.josg.org" target="_blank" rel="noopener">
+        JOSG.ORG
+      </a>
+      <a class="action action--accent"
+      href="public/documentos/info%20guardias%2024-25.pdf"
+      target="_blank" rel="noopener">
+     Info Guardias
+   </a>
     </div>
-
     <h3 class="section-title">Próximos eventos</h3>
     <div id="upcoming" class="upcoming"></div>
     <div id="no-events" class="muted" style="display:none;">No tienes eventos próximos.</div>
@@ -202,7 +213,29 @@
     document.addEventListener('DOMContentLoaded', cargarProximos);
   })();
 </script>
-
+<script>
+  /* Carga la pill con nombre del usuario (localStorage o /josgmaestro/api/yo) */
+  (function(){
+    async function cargarUsuarioPill(){
+      const pill = document.getElementById('user-pill');
+      if(!pill) return;
+      let nombre = localStorage.getItem('usuario_nombre') || '';
+      try{
+        const r = await fetch('/josgmaestro/api/yo', { credentials:'same-origin' });
+        if (r.ok) {
+          const me = await r.json();
+          if (me && me.nombre) nombre = me.nombre;
+        }
+      }catch(e){}
+      if(!nombre){ pill.style.display='none'; return; }
+      pill.querySelector('.avatar').textContent = (nombre.trim()[0]||'U').toUpperCase();
+      pill.querySelector('.name').textContent   = nombre;
+      pill.style.display = 'inline-flex';
+    }
+    document.addEventListener('DOMContentLoaded', cargarUsuarioPill);
+  })();
+  </script>
+  
 </body>
 </html>
 

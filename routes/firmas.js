@@ -425,7 +425,7 @@ router.get('/api/alumno/:alumnoId/mensajes', mustMatchAlumnoParam, async (req,re
     // una sola url
     const selUrl   = sch.M.has('url') ? 'm.url' : 'NULL';
 
-    // urls: no asumimos JSON válido (si es texto, devolvemos array con ese texto; si parece JSON array, lo casteamos)
+    // urls: robusto (forzamos JSON array)
     const selUrls  = sch.M.has('urls')
       ? `CASE
            WHEN m.urls IS NULL THEN '[]'::jsonb
@@ -462,6 +462,20 @@ router.get('/api/alumno/:alumnoId/mensajes', mustMatchAlumnoParam, async (req,re
     const orderExpr = createdExpr ? `${createdExpr} DESC NULLS LAST, m.id DESC`
                                   : `m.id DESC`;
 
+    // 🔗 Adjuntos: LATERAL para no duplicar filas; siempre disponible (mensaje_adjuntos)
+    const leftJoinAdj = `
+      LEFT JOIN LATERAL (
+        SELECT json_agg(json_build_object(
+          'filename', ma.filename,
+          'original_name', ma.original_name,
+          'mime', ma.mime,
+          'size', ma.size_bytes
+        ) ORDER BY ma.id ASC) AS adjuntos
+        FROM mensaje_adjuntos ma
+        WHERE ma.mensaje_id = m.id
+      ) a ON true
+    `;
+
     const sql = `
       SELECT m.id,
              ${selTitulo} AS titulo,
@@ -471,10 +485,12 @@ router.get('/api/alumno/:alumnoId/mensajes', mustMatchAlumnoParam, async (req,re
              ${createdExpr ? `${createdExpr} AS created_at` : 'NULL::timestamp AS created_at'},
              ${selAutor} AS autor,
              ${selLeido},
-             ${selGrupo}
+             ${selGrupo},
+             COALESCE(a.adjuntos, '[]'::json) AS adjuntos
         FROM mensajes m
         JOIN ${sch.dest} d ON d.${sch.msgCol} = m.id AND d.${sch.alumCol} = $1
         ${leftJoinU}
+        ${leftJoinAdj}
        ORDER BY ${orderExpr}
        LIMIT 200;
     `;

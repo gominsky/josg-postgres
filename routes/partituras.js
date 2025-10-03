@@ -72,7 +72,6 @@ router.get('/', async (req, res) => {
 });
 
 // ====== CREAR ======
-// ====== CREAR ======
 router.post('/', upload.single('archivo_partitura'), async (req, res) => {
   // helpers locales
   const normalizeUrl = (u) => {
@@ -271,6 +270,14 @@ router.put('/:id', upload.single('archivo_partitura'), async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id)) return res.status(400).send('ID inválido');
 
+    // mismas utilidades que en POST
+  const normalizeUrl = (u) => {
+    let s = String(u || '').trim();
+    if (!s) return null;
+    if (!/^[a-zA-Z][\w+.-]*:\/\//.test(s)) s = 'https://' + s;
+    try { new URL(s); return s; } catch { return null; }
+  };
+
   const {
     titulo, autor, arreglista, grupo_id,
     activo, duracion, genero,
@@ -278,8 +285,12 @@ router.put('/:id', upload.single('archivo_partitura'), async (req, res) => {
     enlace_audio, descripcion, tags
   } = req.body;
 
-  let enlace_partitura = (enlace_input || '').trim() || null;
-  if (req.file) enlace_partitura = '/partituras/' + req.file.filename;
+  let enlace_partitura = null;
+  if (req.file) {
+    enlace_partitura = '/partituras/' + req.file.filename;   // subido a /public/partituras
+  } else {
+    enlace_partitura = normalizeUrl(enlace_input);            // externa (https://…)
+  }
 
   const tagsArr = parseTags(tags);
   const instrumentosIds = normIds(req.body.instrumentos || req.body['instrumentos[]']);

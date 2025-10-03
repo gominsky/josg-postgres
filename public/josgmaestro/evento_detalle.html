@@ -5,8 +5,42 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>JOSG Maestro - Firma manual</title>
   <link rel="stylesheet" href="../styles/estilos_app.css" />
+
+  <!-- Librería QR -->
   <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
+
   <style>
+    /* -------- Cabecera: pill dentro y título centrado -------- */
+    .header{
+      position: relative;
+      padding-top: 56px;   /* espacio entre pill y título */
+      margin-bottom: 4px;
+      text-align: center;
+    }
+    .header h2{ margin: 0; }
+
+    /* Usuario logado: DENTRO del header (no se sale del contenedor) y compacto */
+    .user-pill{
+      position: absolute;
+      right: 8px;
+      top: 6px;
+      z-index: 5;
+      display:inline-flex; align-items:center; gap:6px;
+      padding:4px 8px;
+      border-radius:999px;
+      background:#f3f4f6; color:#111; border:1px solid #e5e7eb;
+      font-weight:600; font-size:.85rem;
+    }
+    .user-pill .avatar{
+      width:18px; height:18px;
+      border-radius:999px; background:#ffb24a; display:inline-block;
+      color:#fff; font-size:.72rem; line-height:18px; text-align:center; font-weight:800;
+    }
+
+    /* Un pelín de aire bajo la cabecera para todo lo demás */
+    .after-header{ margin-top: 10px; }
+
+    /* -------- Botones clásicos (solo Volver y Guardar) -------- */
     .btn {
       display: inline-block;
       padding: 0.6rem 1.4rem;
@@ -21,235 +55,428 @@
       text-decoration: none;
       min-width: 110px;
     }
-    .btn:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 6px 16px rgba(0,0,0,.2);
-    }
-    .btn:active {
-      transform: translateY(0);
-      box-shadow: 0 2px 8px rgba(0,0,0,.1);
-    }
-  
-    /* Azul/verde */
-    .btn-primary {
-      background: linear-gradient(180deg,#ffb24a,#f59e0b);
-      border:1px solid #f59e0b;
-    }
-  
-    /* Naranja (igual a Eventos portal) */
-    .btn-accent {
-      background: linear-gradient(180deg,#f28d63,#ea6b38);
-      border: 1px solid #cc5c2f;
-    }
-    .btn-tertiary {
-  background: linear-gradient(180deg, #444, #000);
-  border: 1px solid #222;
-}
-  .badge-delay{
-    display:inline-block; margin-left:.5rem; padding:.1rem .45rem;
-    border-radius:999px; font-size:.78rem; font-weight:700; line-height:1;
-    background:#111; color:#fff;
-  }
-</style> 
-<style>
-  .badge-delay {
-    display: inline-block;
-    margin-left: .5rem;
-    padding: .1rem .45rem;
-    border-radius: 999px;
-    font-size: .78rem;
-    font-weight: 700;
-    line-height: 1;
-    background: #111;
-    color: #fff;
-  }
-</style>
+    .btn:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(0,0,0,.2); }
+    .btn:active { transform: translateY(0); box-shadow: 0 2px 8px rgba(0,0,0,.1); }
+    .btn-primary { background: linear-gradient(180deg,#ffb24a,#f59e0b); border:1px solid #f59e0b; }
+    .btn-accent  { background: linear-gradient(180deg,#f28d63,#ea6b38); border:1px solid #cc5c2f; }
 
+    .badge-delay{
+      display:inline-block; margin-left:.5rem; padding:.1rem .45rem;
+      border-radius:999px; font-size:.78rem; font-weight:700; line-height:1;
+      background:#111; color:#fff;
+    }
+
+    /* -------- Ficha espacio (Maps) -------- */
+    .space-card{
+      display:inline-flex; align-items:center; gap:8px;
+      padding:8px 10px; border-radius:12px;
+      border:1px solid #e6eefb; background:linear-gradient(180deg,#ffffff,#f5f9ff 85%);
+      box-shadow:0 3px 10px rgba(0,0,0,.08);
+      text-decoration:none; color:#f59e0b; max-width:100%;
+      transition: transform .12s ease, box-shadow .12s ease;
+      margin:.25rem 0 .5rem;
+    }
+    .space-card:hover{ transform:translateY(-1px); box-shadow:0 8px 16px rgba(0,0,0,.12); }
+    .space-card svg{ width:14px; height:14px; fill:currentColor; opacity:.9; }
+    .space-card .meta{ font-weight:700; line-height:1.2; }
+
+    /* -------- Cards grandes -------- */
+    .grid-actions{
+      display:grid; grid-template-columns: repeat(2, 1fr);
+      gap:14px; margin:12px 0 18px;
+    }
+    .action{
+      display:flex; align-items:center; justify-content:center;
+      min-height:96px; border-radius:18px; text-decoration:none;
+      font-weight:700; color:#fff; user-select:none;
+      box-shadow:0 6px 18px rgba(0,0,0,.12);
+      transition: transform .12s ease, box-shadow .12s ease;
+      padding: 1rem 1.25rem;
+      position: relative; /* para badge interno */
+    }
+    .action:hover{ transform: translateY(-2px); box-shadow:0 10px 24px rgba(0,0,0,.16); }
+    .action:active{ transform: translateY(0); }
+    .action .content{ display:flex; align-items:center; justify-content:center; width:100%; }
+    .action .title{ font-size:1.05rem; font-weight:800; }
+    .action--orange{ background: linear-gradient(180deg,#ffb24a,#f59e0b); border:1px solid #f59e0b; }
+    .action--red   { background: linear-gradient(180deg,#ef4444,#b91c1c); border:1px solid #b91c1c; }
+    .action--accent{ background: linear-gradient(180deg,#f28d63,#ea6b38); border:1px solid #cc5c2f; }
+    @media (max-width: 420px){ .grid-actions{ grid-template-columns:1fr; } }
+
+    /* Badge dentro de la card de alumnos */
+    .count-badge{
+      position:absolute; top:8px; right:10px;
+      display:inline-block; background:#111; color:#fff; border:1px solid #000;
+      padding:.1rem .5rem; border-radius:999px; font-size:.82rem; font-weight:800; line-height:1.1;
+    }
+
+    /* -------- Info grupo -------- */
+    .grupo-head{ margin:.2rem 0 .4rem; }
+    .grupo-valor{ font-weight:800; font-size:1.15rem; }
+
+    /* -------- Lista firmas -------- */
+    .firma-header, .item-firma{ display:grid; grid-template-columns: 56px 1fr; gap:10px; align-items:center; }
+    .firma-header{ padding:.35rem .25rem; border-bottom:1px solid #eee; margin-top:.25rem; }
+    .item-firma{ padding:.4rem .25rem; border-bottom:1px dashed #eee; }
+    .firma-check{ display:flex; justify-content:center; }
+  </style>
+
+  <!-- Estado de cards + usuario -->
+  <script>
+    /* === Estado dinámico de las cards (naranja/rojo) === */
+    (function(){
+      function setCard(el, titleEl, text, onClass, offClass, isOn){
+        if(titleEl) titleEl.textContent = text;
+        if(!el) return;
+        el.classList.remove('action--orange','action--red','action--accent');
+        el.classList.add(isOn ? onClass : offClass);
+      }
+      function syncCards(){
+        const active  = !!window.__qrActivo;
+        const visible = !!window.__qrVisible;
+        const listVis = !window.__alumnosOcultos;
+
+        setCard(document.getElementById('card-toggle-qr'),
+                document.getElementById('label-toggle-qr'),
+                active ? 'Desactivar QR' : 'Activar QR',
+                'action--orange', 'action--red', active);
+
+        setCard(document.getElementById('card-show-qr'),
+                document.getElementById('label-show-qr'),
+                visible ? 'Ocultar QR' : 'Mostrar QR',
+                'action--red', 'action--orange', visible);
+
+        setCard(document.getElementById('card-toggle-alumnos'),
+                document.getElementById('label-toggle-alumnos'),
+                listVis ? 'Ocultar músicos' : 'Mostrar músicos',
+                'action--red', 'action--orange', listVis);
+      }
+      window.syncCards = syncCards;
+      document.addEventListener('DOMContentLoaded', syncCards);
+      window.addEventListener('load', syncCards);
+      setInterval(syncCards, 600);
+    })();
+
+    /* === Usuario logado (arriba derecha, dentro del header) === */
+    (function(){
+      async function cargarUsuario(){
+        const pill = document.getElementById('user-pill');
+        if(!pill) return;
+        let nombre = localStorage.getItem('usuario_nombre') || '';
+        try{
+          const r = await fetch('/josgmaestro/api/yo', { credentials:'same-origin' });
+          if(r.ok){ const me = await r.json(); if(me && me.nombre) nombre = me.nombre; }
+        }catch(e){}
+        if(!nombre) return;
+        const ini = (nombre.trim()[0]||'U').toUpperCase();
+        pill.querySelector('.avatar').textContent = ini;
+        pill.querySelector('.name').textContent = nombre;
+        pill.style.display = 'inline-flex';
+      }
+      document.addEventListener('DOMContentLoaded', cargarUsuario);
+    })();
+  </script>
 </head>
+
 <body>
   <div class="container">
-    <h2 id="titulo">Firmar asistencia</h2>
-    <div id="info-evento"></div>
 
-    <p id="qr-estado" class="subtitulo"></p>
-    <button id="btn-toggle-qr" type="button" onclick="toggleQR()" class="btn btn-tertiary" style="display:none">Activar QR</button>
-    <button id="btn-qr" type="button" onclick="mostrarQR()" class="btn btn-primary">Mostrar QR</button>
-    <div id="qr-container" style="margin-top: 1rem; display: none;"></div>
-
-    <!-- Toolbar de alumnos -->
-    <div class="alumnos-toolbar" style="display:flex;align-items:center;gap:.75rem;margin:.5rem 0 0.75rem;">
-      <button id="toggle-alumnos" type="button" class="btn btn-accent">Ocultar músicos</button>
-      <span id="alumnos-count" class="subtitulo" style="opacity:.8;"></span>
+    <!-- Cabecera: título centrado; usuario arriba derecha dentro -->
+    <div class="header">
+      <h2 id="titulo">JOSG ¡En tu mano! - Firmar asistencia</h2>
+      <div id="user-pill" class="user-pill" style="display:none;">
+        <span class="avatar"></span>
+        <span class="name"></span>
+      </div>
     </div>
 
-    <form id="form-asistencias">
-      <div id="lista-alumnos">
-        <div class="firma-header">
-          <div class="firma-check"><strong>Firma</strong></div>
-          <div class="firma-nombre"><strong>Nombre</strong></div>
+    <div class="after-header">
+      <!-- Info del evento -->
+      <div id="info-evento"></div>
+
+      <!-- Ficha espacio / Google Maps -->
+      <a id="space-card" class="space-card" href="#" target="_blank" rel="noopener" style="display:none;">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5z"/>
+        </svg>
+        <span class="meta" id="space-name"></span>
+      </a>
+
+      <!-- Estado QR (encima de las cards) -->
+      <p id="qr-estado" class="subtitulo" style="margin:.25rem 0 .25rem;"></p>
+
+      <!-- Cards grandes -->
+      <div class="grid-actions" id="quick-actions">
+        <a href="#" class="action action--orange" id="card-toggle-qr"
+           onclick="toggleQR(); if(window.syncCards) syncCards(); return false;">
+          <div class="content"><div class="title" id="label-toggle-qr">Activar QR</div></div>
+        </a>
+
+        <a href="#" class="action action--orange" id="card-show-qr"
+           onclick="mostrarQR(); if(window.syncCards) syncCards(); return false;">
+          <div class="content"><div class="title" id="label-show-qr">Mostrar QR</div></div>
+        </a>
+
+        <a href="#" class="action action--orange" id="card-toggle-alumnos"
+           onclick="toggleAlumnos(); if(window.syncCards) syncCards(); return false;">
+          <div class="content"><div class="title" id="label-toggle-alumnos">Ocultar músicos</div></div>
+          <span id="badge-alumnos-card" class="count-badge" style="display:none;"></span>
+        </a>
+
+        <a href="#" class="action action--accent" id="card-ver-asistencias"
+           onclick="verAsistencias(); return false;">
+          <div class="content"><div class="title">Ver registro de firmas</div></div>
+        </a>
+      </div>
+
+      <!-- Contenedor QR -->
+      <div id="qr-container" style="margin-top: 0.25rem; display: none;"></div>
+
+      <!-- Lista firmas -->
+      <form id="form-asistencias">
+        <div id="lista-alumnos"></div>
+
+        <div style="margin-top: 1rem;">
+          <label for="observaciones_generales"><strong>Observaciones generales:</strong></label><br>
+          <!-- MÁS GRANDE -->
+          <textarea id="observaciones_generales" rows="8" style="width: 100%; font-size:1rem; min-height:180px;"></textarea>
         </div>
-      </div>
+      </form>
 
-      <div style="margin-top: 1rem;">
-        <label for="observaciones_generales"><strong>Observaciones generales:</strong></label><br>
-        <textarea id="observaciones_generales" rows="4" style="width: 100%;"></textarea>
-      </div>
+      <p id="mensaje"></p>
 
-      <button type="submit" class="btn btn-primary">Guardar cambios</button>
-    </form>
-
-    <p id="mensaje"></p>
-    <button onclick="verAsistencias()" class="btn btn-accent">Ver registro de firmas</button>
-    <button onclick="location.href='eventos.html'" class="btn btn-tertiary">← Volver</button>
+      <!-- Botones clásicos abajo -->
+      <button id="btn-guardar" class="btn btn-primary" style="margin: .75rem 0 .35rem;"
+              onclick="document.getElementById('form-asistencias').requestSubmit();">Guardar cambios</button>
+      <button onclick="location.href='eventos.html'" class="btn btn-accent">← Volver</button>
+    </div>
   </div>
+
+  <!-- Lógica de la página -->
   <script>
     const API_BASE = '/josgmaestro/api';
-    let evento_id = new URLSearchParams(location.search).get('id');
+    let evento_id = new URLSearchParams(location.search).get('id') || '';
     let tokenQR = '';
-    let qrActivo = false;
-  
-    // === NUEVO: estado y helpers del toggle ===
-    let alumnosOcultos = true;
 
-    function applyToggleState() {
-      const lista = document.getElementById('lista-alumnos');
-      const btn = document.getElementById('toggle-alumnos');
-      if (!lista || !btn) return;
-      lista.style.display = alumnosOcultos ? 'none' : '';
-      btn.textContent = alumnosOcultos ? 'Mostrar músicos' : 'Ocultar músicos';
-    }
-    // ==========================================
+    // Estados globales para cards
+    window.__qrActivo = false;
+    window.__qrVisible = false;
+    window.__alumnosOcultos = true; // por defecto oculto
+
+    // Estado inicial de casillas para enviar SOLO cambios
+    const estadoInicial = new Map();
 
     document.addEventListener('DOMContentLoaded', () => {
       cargarEventoYAlumnos();
       document.getElementById('form-asistencias').addEventListener('submit', guardarAsistencias);
-
-      // Recupera preferencia si existe, pero default es oculto
-      const saved = localStorage.getItem(`ocultar_alumnos_${evento_id}`);
-      if (saved !== null) {
-        alumnosOcultos = saved === '1';
-      }
-
-      const btnToggle = document.getElementById('toggle-alumnos');
-      if (btnToggle) {
-        btnToggle.addEventListener('click', () => {
-          alumnosOcultos = !alumnosOcultos;
-          localStorage.setItem(`ocultar_alumnos_${evento_id}`, alumnosOcultos ? '1' : '0');
-          applyToggleState();
-        });
-      }
-      applyToggleState();
     });
 
-    function verAsistencias() {
-      location.href = `asistencias_evento.html?id=${evento_id}`;
+    function verAsistencias(){ location.href = `asistencias_evento.html?id=${evento_id}`; }
+
+    function toggleAlumnos(){
+      window.__alumnosOcultos = !window.__alumnosOcultos;
+      applyToggleState();
+      if(window.syncCards) syncCards();
     }
-  
+    function applyToggleState() {
+      const lista=document.getElementById('lista-alumnos');
+      if(lista) lista.style.display = window.__alumnosOcultos ? 'none' : '';
+    }
+
     async function cargarEventoYAlumnos() {
-      try {
-        const eventoRes = await fetch(`${API_BASE}/eventos/${evento_id}`, {
-          credentials:'same-origin'
-        });
+      try{
+        const eventoRes = await fetch(`${API_BASE}/eventos/${evento_id}`, { credentials:'same-origin' });
         const evento = await eventoRes.json();
-  
-        document.getElementById('titulo').innerText = evento.titulo;
-        const inicioLinea = `${normalizarFecha(evento.fecha_inicio)} ${normalizarHora(evento.hora_inicio)}${
-          evento.fecha_fin ? '-' + normalizarHora(evento.hora_fin) : ''
-        }`;
-  
+
+        // Título
+        document.getElementById('titulo').innerText = evento.titulo || 'Firmar asistencia';
+
+        // Fecha/Hora robusta
+        const f  = normalizarFecha(evento.fecha_inicio);
+        const h1 = normalizarHora(evento.hora_inicio);
+        const h2 = normalizarHora(evento.hora_fin);
+        const partes = [];
+        if (f)  partes.push(f);
+        if (h1) partes.push(h1);
+        const inicioLinea = partes.join(' ') + (h2 ? ' - ' + h2 : '');
+
+        // Grupo sin etiqueta
         document.getElementById('info-evento').innerHTML = `
-          <p><strong>Grupo:</strong> ${evento.grupo_nombre}</p>
+          <p class="grupo-head"><strong class="grupo-valor">${(evento.grupo_nombre||'').toString()}</strong></p>
           <p><strong>Inicio:</strong> ${inicioLinea}</p>
         `;
-  
+
+        // Observaciones
         document.getElementById('observaciones_generales').value = evento.observaciones || '';
-  
-        tokenQR = evento.token;
-        qrActivo = Boolean(evento.activo);
-  
-        document.getElementById('qr-estado').innerText = qrActivo ? 'QR activo' : 'QR desactivado';
-        document.getElementById('btn-qr').style.display = qrActivo ? 'inline-block' : 'none';
-        document.getElementById('btn-toggle-qr').style.display = 'inline-block';
-        document.getElementById('btn-toggle-qr').innerText = qrActivo ? 'Desactivar QR' : 'Activar QR';
-  
-        if (!qrActivo) {
-          document.getElementById('qr-container').style.display = 'none';
+
+        // Space card (Maps)
+        const espacioNombre = (evento.espacio || evento.espacio_nombre || evento.lugar || evento.sala || '').toString().trim();
+        const rawUbic = (evento.espacio_ubicacion || evento.ubicacion || evento.espacio_url || evento.ubicacion_url || '').toString().trim();
+        const mapsHref = mapsHrefFrom(rawUbic, espacioNombre);
+        const sc = document.getElementById('space-card');
+        const sn = document.getElementById('space-name');
+        if (sc && sn) {
+          if (mapsHref) { sc.href = mapsHref; sc.style.display = ''; sc.setAttribute('target','_blank'); sc.setAttribute('rel','noopener'); }
+          else { sc.removeAttribute('href'); sc.removeAttribute('target'); sc.removeAttribute('rel'); sc.style.display = espacioNombre ? '' : 'none'; }
+          sn.textContent = espacioNombre || 'Ver ubicación';
         }
-  
-        actualizarListaAlumnos();
-      } catch (error) {
-        console.error('Error al cargar evento o alumnos', error);
+
+        // Estado QR desde API
+        tokenQR = evento.token || '';
+        window.__qrActivo = Boolean(evento.activo);
+        document.getElementById('qr-estado').innerText = window.__qrActivo ? 'QR activo' : 'QR desactivado';
+        if (!window.__qrActivo) document.getElementById('qr-container').style.display = 'none';
+        window.__qrVisible = false;
+
+        await actualizarListaAlumnos();
+        if(window.syncCards) syncCards();
+      }catch(e){
+        console.error('Error al cargar evento o alumnos', e);
       }
     }
-    async function actualizarListaAlumnos() {
-  const alumnosRes = await fetch(`${API_BASE}/eventos/${evento_id}/alumnos`, {
-    credentials: 'same-origin'
-  });
-  if (!alumnosRes.ok) {
-    console.error('No se pudieron cargar alumnos:', alumnosRes.status, alumnosRes.statusText);
-    return;
-  }
-  const alumnos = await alumnosRes.json();
 
-  const lista = alumnos.map(a => {
-    const delay = Number.isFinite(a.minutos_perdidos) && a.minutos_perdidos > 0
-      ? `<span class="badge-delay">+${a.minutos_perdidos} min</span>`
-      : '';
-    return `
-      <div class="item-firma">
-        <div class="firma-check">
-          <input type="checkbox" name="alumno_id" value="${a.id}" ${a.asistio ? 'checked' : ''} />
+    async function actualizarListaAlumnos(){
+      const res = await fetch(`${API_BASE}/eventos/${evento_id}/alumnos`, { credentials:'same-origin' });
+      if(!res.ok){ console.error('No se pudieron cargar alumnos'); return; }
+      const alumnos = await res.json();
+
+      const lista = alumnos.map(a => {
+        const delay = Number.isFinite(a.minutos_perdidos) && a.minutos_perdidos > 0 ? `<span class="badge-delay">+${a.minutos_perdidos} min</span>` : '';
+        return `
+          <div class="item-firma">
+            <div class="firma-check">
+              <input type="checkbox" name="alumno_id" value="${a.id}" ${a.asistio ? 'checked' : ''} />
+            </div>
+            <div class="firma-nombre">${a.nombre} ${a.apellidos}${delay}</div>
+          </div>
+        `;
+      }).join('');
+      document.getElementById('lista-alumnos').innerHTML = `
+        <div class="firma-header">
+          <div class="firma-check"><strong>Firma</strong></div>
+          <div class="firma-nombre"><strong>Nombre</strong></div>
         </div>
-        <div class="firma-nombre">
-          ${a.nombre} ${a.apellidos}
-          ${delay}
-        </div>
-      </div>
-    `;
-  }).join('');
+        ${lista}
+      `;
 
-  document.getElementById('lista-alumnos').innerHTML = `
-    <div class="firma-header">
-      <div class="firma-check"><strong>Firma</strong></div>
-      <div class="firma-nombre"><strong>Nombre</strong></div>
-    </div>
-    ${lista}
-  `;
+      // Estado inicial para detectar cambios
+      estadoInicial.clear();
+      document.querySelectorAll('#lista-alumnos input[type=checkbox][name="alumno_id"]').forEach(ch => {
+        estadoInicial.set(ch.value, ch.checked);
+      });
 
-  // contador y toggle
-  const countEl = document.getElementById('alumnos-count');
-  if (countEl) countEl.textContent = `${alumnos.length} alumno(s)`;
-  applyToggleState();
-}
+      // Badge en la card de alumnos (siempre visible)
+      const badge = document.getElementById('badge-alumnos-card');
+      if (badge) { badge.textContent = String(alumnos.length); badge.style.display = 'inline-block'; }
 
+      applyToggleState();
+    }
+
+    function mostrarQR() {
+      const container = document.getElementById('qr-container');
+      if (container.style.display === 'block') {
+        container.style.display = 'none';
+        window.__qrVisible = false;
+      } else {
+        container.innerHTML = '';
+        const datosQR = { evento_id: evento_id, token: tokenQR };
+        QRCode.toCanvas(JSON.stringify(datosQR), { width: 200 }, function (err, canvas) {
+          if (!err) container.appendChild(canvas);
+          else container.textContent = 'Error generando QR';
+        });
+        container.style.display = 'block';
+        window.__qrVisible = true;
+      }
+      if(window.syncCards) syncCards();
+    }
+
+    async function toggleQR() {
+      // Conmutación local inmediata (si quieres persistir en servidor, aplica PATCH aquí)
+      window.__qrActivo = !window.__qrActivo;
+      document.getElementById('qr-estado').innerText = window.__qrActivo ? 'QR activo' : 'QR desactivado';
+      if (!window.__qrActivo) {
+        document.getElementById('qr-container').style.display = 'none';
+        window.__qrVisible = false;
+      }
+      if(window.syncCards) syncCards();
+    }
+
+    /* --- PATCH helper: evento_asignaciones. Ajusta la URL exacta si tu backend tiene una sola ruta --- */
+    async function updateAusenciaAsignacion(alumnoId, ausenciaTipoId /* null para limpiar */){
+      const payload = { ausencia_tipo_id: ausenciaTipoId };
+      const opts = {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify(payload)
+      };
+      const urls = [
+        `${API_BASE}/eventos/${evento_id}/asignaciones/${alumnoId}`,
+        `${API_BASE}/asignaciones/${alumnoId}`,
+        `${API_BASE}/evento-asignaciones/${alumnoId}`
+      ];
+      for (const u of urls){
+        try {
+          const r = await fetch(u, opts);
+          if (r.ok) return true;
+        } catch(_) {}
+      }
+      return false;
+    }
+
+    /* === GUARDAR (versión final con recarga) === */
     async function guardarAsistencias(e) {
       e.preventDefault();
       const mensaje = document.getElementById('mensaje');
       mensaje.innerText = '';
       mensaje.className = '';
-  
-      const form = e.target;
-      const alumnos = form.querySelectorAll('input[type=checkbox]');
+
+      // Solo enviamos alumnos cuyo check cambió
+      const checks = document.querySelectorAll('#lista-alumnos input[type=checkbox][name="alumno_id"]');
       const registros = [];
-  
-      alumnos.forEach(check => {
-        registros.push({
-          alumno_id: check.value,
-          evento_id,
-          asistio: check.checked,
-          observaciones: ''
-        });
+      const tareasAusencia = []; // PATCHs explícitos a evento_asignaciones
+
+      checks.forEach(ch => {
+        const id = ch.value;
+        const antes = estadoInicial.get(id);
+        const ahora = ch.checked;
+
+        if (antes !== ahora) {
+          const rec = {
+            alumno_id: id,
+            evento_id: evento_id,
+            asistio: ahora,
+            observaciones: '',
+            // Seguridad: limpiamos ausencia en payload principal (si el endpoint lo soporta)
+            ausencia_tipo_id: null
+          };
+          // Y si se desmarca la firma, además lanzamos PATCH directo a evento_asignaciones
+          if (ahora === false) {
+            tareasAusencia.push(updateAusenciaAsignacion(id, null));
+          }
+          registros.push(rec);
+        }
       });
-  
-      const res = await fetch(`${API_BASE}/firmar-alumnos`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials:'same-origin',
-        body: JSON.stringify({ registros })
-      });
-  
-      const data = await res.json();
-      if (data.success) {
+
+      try{
+        // 1) Guardar firmas (si hay cambios)
+        if (registros.length) {
+          const res = await fetch(`${API_BASE}/firmar-alumnos`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials:'same-origin',
+            body: JSON.stringify({ registros })
+          });
+          const data = await res.json();
+          if (!data || !data.success) throw new Error((data && data.error) || 'Error al guardar firmas.');
+        }
+
+        // 2) Limpiar ausencia_tipo_id en evento_asignaciones (para los desmarcados)
+        if (tareasAusencia.length) {
+          await Promise.allSettled(tareasAusencia);
+        }
+
+        // 3) Observaciones generales
         const observacionesGenerales = document.getElementById('observaciones_generales').value;
         await fetch(`${API_BASE}/eventos/${evento_id}/observaciones-generales`, {
           method: 'PATCH',
@@ -257,92 +484,50 @@
           credentials:'same-origin',
           body: JSON.stringify({ observaciones: observacionesGenerales })
         });
-  
+
+        // Refresca estado inicial
+        checks.forEach(ch => estadoInicial.set(ch.value, ch.checked));
+
+        // Éxito + RECARGA
         mensaje.className = 'success';
         mensaje.innerText = 'Firmas actualizadas.';
-      } else {
+        setTimeout(() => window.location.reload(), 650);
+
+      }catch(e){
         mensaje.className = 'error';
-        mensaje.innerText = data.error || 'Error al guardar firmas.';
+        mensaje.innerText = e.message || 'Error al guardar firmas.';
       }
     }
-  
-    function mostrarQR() {
-      const container = document.getElementById('qr-container');
-      const boton = document.getElementById('btn-qr');
-  
-      if (container.style.display === 'block') {
-        container.style.display = 'none';
-        boton.innerText = 'Mostrar QR';
-      } else {
-        container.innerHTML = '';
-        const datosQR = { evento_id: evento_id, token: tokenQR };
-  
-        QRCode.toCanvas(JSON.stringify(datosQR), { width: 200 }, function (err, canvas) {
-          if (err) {
-            container.innerText = 'Error generando QR';
-          } else {
-            container.appendChild(canvas);
-          }
-        });
-  
-        container.style.display = 'block';
-        boton.innerText = 'Ocultar QR';
-      }
-    }
-  
-    async function toggleQR() {
-      const nuevoEstado = !qrActivo;
-      const res = await fetch(`${API_BASE}/eventos/${evento_id}/activar`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        credentials:'same-origin',
-        body: JSON.stringify({ activo: nuevoEstado })
-      });
-  
-      const data = await res.json();
-      if (data.success) {
-        qrActivo = nuevoEstado;
-        document.getElementById('qr-estado').innerText = qrActivo ? 'QR activo' : 'QR desactivado';
-        document.getElementById('btn-qr').style.display = qrActivo ? 'inline-block' : 'none';
-        document.getElementById('btn-toggle-qr').style.display = 'inline-block';
-        document.getElementById('btn-toggle-qr').innerText = qrActivo ? 'Desactivar QR' : 'Activar QR';
-  
-        if (!qrActivo) {
-          document.getElementById('qr-container').style.display = 'none';
+
+    /* ------- Helpers fecha/hora robustos ------- */
+    function normalizarFecha(val){
+      if(!val) return '';
+      try{
+        if(typeof val === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(val)){
+          const [y,m,d] = val.split('-'); return `${d}/${m}/${y}`;
         }
-      } else {
-        alert('Error al actualizar el estado del QR');
-      }
-    }
-  
-    // Helpers de formato de fecha/hora
-    function normalizarFecha(val) {
-      if (!val) return '';
-      if (typeof val === 'string' && val.includes('T')) {
         const d = new Date(val);
+        if(isNaN(d.getTime())) return '';
         return d.toLocaleDateString('es-ES');
-      }
-      if (typeof val === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(val)) {
-        const [y, m, d] = val.split('-');
-        return `${d}/${m}/${y}`;
-      }
-      const d = new Date(val);
-      return d.toLocaleDateString('es-ES');
+      }catch(_){ return ''; }
     }
-    function normalizarHora(val) {
-      if (!val) return '';
-      if (typeof val === 'string' && val.includes('T')) {
+    function normalizarHora(val){
+      if(!val) return '';
+      try{
+        if(typeof val === 'string' && /^\d{2}:\d{2}(:\d{2})?$/.test(val)){
+          const [h,m] = val.split(':'); return `${h.padStart(2,'0')}:${m.padStart(2,'0')}`;
+        }
         const d = new Date(val);
-        return d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
-      }
-      if (typeof val === 'string') {
-        const [h = '00', m = '00'] = val.split(':');
-        return `${h.padStart(2, '0')}:${m.padStart(2, '0')}`;
-      }
-      const d = new Date(val);
-      return d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+        if(isNaN(d.getTime())) return '';
+        return d.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'});
+      }catch(_){ return ''; }
+    }
+    function mapsHrefFrom(rawUbic,fallbackName){
+      const raw=(rawUbic||'').trim();
+      if (raw) return /^https?:\/\//i.test(raw) ? raw : `https://www.google.com/maps?q=${encodeURIComponent(raw)}`;
+      if ((fallbackName||'').trim()) return `https://www.google.com/maps?q=${encodeURIComponent(fallbackName.trim())}`;
+      return '';
     }
   </script>
 </body>
 </html>
-

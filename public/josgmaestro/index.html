@@ -31,7 +31,12 @@
       <img src="/../imagenes/logoJOSG.png" alt="Logo JOSG" class="logo logo-grande logo-right">
     </div>
 
-    <h2>JOSG Maestro</h2>
+    <div class="header">
+      <h2>JOSG Maestro</h2>
+      <div id="user-pill" class="user-pill" style="display:none;">
+        <span class="avatar"></span><span class="name"></span>
+      </div>
+    </div>
 
     <form id="loginForm" style="display:flex; flex-direction:column; gap:8px;">
       <input type="email" id="email" placeholder="Email" required autocomplete="username" />
@@ -102,5 +107,28 @@
       }
     }
   </script>
+  <script>
+    /* Carga la pill con nombre del usuario (localStorage o /josgmaestro/api/yo) */
+    (function(){
+      async function cargarUsuarioPill(){
+        const pill = document.getElementById('user-pill');
+        if(!pill) return;
+        let nombre = localStorage.getItem('usuario_nombre') || '';
+        try{
+          const r = await fetch('/josgmaestro/api/yo', { credentials:'same-origin' });
+          if (r.ok) {
+            const me = await r.json();
+            if (me && me.nombre) nombre = me.nombre;
+          }
+        }catch(e){}
+        if(!nombre){ pill.style.display='none'; return; }
+        pill.querySelector('.avatar').textContent = (nombre.trim()[0]||'U').toUpperCase();
+        pill.querySelector('.name').textContent   = nombre;
+        pill.style.display = 'inline-flex';
+      }
+      document.addEventListener('DOMContentLoaded', cargarUsuarioPill);
+    })();
+    </script>
+    
 </body>
 </html>
