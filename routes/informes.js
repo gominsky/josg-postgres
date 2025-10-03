@@ -800,37 +800,19 @@ router.get('/horas', isAuthenticated, async (req, res) => {
   const toParam   = fechaFinISO ? `${fechaFinISO} 23:59:59`: null;
 
   try {
-    const params = [];
-    let where   = `WHERE asi.tipo IN ('manual','qr')`;
-
-    if (fromParam) {
-      params.push(fromParam);
-      where += ` AND ea.start_ts >= $${params.length}`;
-    }
-    if (toParam) {
-      params.push(toParam);
-      where += ` AND ea.end_ts <= $${params.length}`;
-    }
-    if (grupo && grupo !== 'todos' && grupo !== '') {
-      params.push(grupo);
-      where += ` AND ea.grupo_id = $${params.length}`;
-    }
-
-    let instrumentoJoin = '';
-    if (instrumento && instrumento !== 'todos' && instrumento !== '') {
-      params.push(instrumento);
-      instrumentoJoin = `
-        JOIN alumno_instrumento ai
-          ON ai.alumno_id = a.id
-         AND ai.instrumento_id = $${params.length}`;
-    }
-
+    // Normaliza SIEMPRE 4 parámetros (aunque sean null)
+    const fromParam       = fechaISO    ? `${fechaISO} 00:00:00`    : null;          // $1
+    const toParam         = fechaFinISO ? `${fechaFinISO} 23:59:59` : null;          // $2
+    const grupoParam      = (grupo && grupo !== 'todos' && grupo !== '') ? Number(grupo) : null;          // $3
+    const instrumentoParam= (instrumento && instrumento !== 'todos' && instrumento !== '') ? Number(instrumento) : null; // $4
+    const params = [fromParam, toParam, grupoParam, instrumentoParam];
+  
     const sql = `
       WITH ea AS (
         SELECT
-          asig.alumno_id  AS alumno_id,
-          ev.id           AS evento_id,
-          ev.grupo_id     AS grupo_id,
+          asig.alumno_id AS alumno_id,
+          ev.id          AS evento_id,
+          ev.grupo_id    AS grupo_id,
           (
             ev.fecha_inicio::date
             + COALESCE(
@@ -849,31 +831,78 @@ router.get('/horas', isAuthenticated, async (req, res) => {
           )::timestamp AS end_ts
         FROM evento_asignaciones asig
         JOIN eventos ev ON ev.id = asig.evento_id
+      ),
+      base AS (
+        SELECT
+          ea.alumno_id,
+          ea.evento_id,
+          ea.grupo_id,
+          EXTRACT(EPOCH FROM (ea.end_ts - ea.start_ts)) / 3600.0 AS horas_evento
+        FROM ea
+        WHERE
+          ($1::timestamp IS NULL OR ea.start_ts >= $1::timestamp)
+          AND ($2::timestamp IS NULL OR ea.end_ts   <= $2::timestamp)
+          AND ($3::int       IS NULL OR ea.grupo_id  = $3::int)
+      ),
+      agregados AS (
+        SELECT
+          b.alumno_id,
+          SUM(b.horas_evento) AS total_horas,  -- 100%
+          GREATEST(
+            COALESCE(SUM(CASE
+              -- Se considera asistido si hay fila de asistencia válida
+              WHEN asi.id IS NOT NULL AND asi.tipo IN ('manual','qr') THEN b.horas_evento
+              ELSE 0
+            END), 0)
+            - COALESCE(SUM(CASE
+              WHEN asi.id IS NOT NULL AND asi.tipo IN ('manual','qr') THEN asi.minutos_perdidos
+              ELSE 0
+            END), 0) / 60.0,                  -- minutos → horas
+            0
+          ) AS horas_asistidas
+        FROM base b
+        JOIN alumnos a ON a.id = b.alumno_id AND a.activo = TRUE
+        LEFT JOIN asistencias asi
+               ON asi.alumno_id = b.alumno_id
+              AND asi.evento_id = b.evento_id
+        WHERE
+          ($4::int IS NULL OR EXISTS (
+            SELECT 1
+            FROM alumno_instrumento ai
+            WHERE ai.alumno_id = b.alumno_id
+              AND ai.instrumento_id = $4::int
+          ))
+        GROUP BY b.alumno_id
+        HAVING SUM(b.horas_evento) > 0
       )
       SELECT
-        a.id,
-        a.nombre || ' ' || a.apellidos AS alumno,
-        ROUND(SUM(EXTRACT(EPOCH FROM (ea.end_ts - ea.start_ts)) / 3600.0)::numeric,2) AS horas
-      FROM asistencias asi
-      JOIN alumnos a ON a.id = asi.alumno_id AND a.activo = TRUE
-      JOIN ea        ON ea.evento_id = asi.evento_id AND ea.alumno_id = asi.alumno_id
-      ${instrumentoJoin}
-      ${where}
-      GROUP BY a.id, a.nombre, a.apellidos
-      HAVING SUM(EXTRACT(EPOCH FROM (ea.end_ts - ea.start_ts)) / 3600.0) > 0
-      ORDER BY alumno;
+        a.id                                         AS alumno_id,
+        a.nombre || ' ' || a.apellidos               AS alumno,
+        ROUND(ag.total_horas::numeric, 2)            AS total_horas,
+        ROUND(ag.horas_asistidas::numeric, 2)        AS horas_asistidas,
+        ROUND(
+          CASE WHEN ag.total_horas > 0
+               THEN (ag.horas_asistidas / ag.total_horas) * 100
+               ELSE 0 END
+          ::numeric, 1
+        )                                            AS porcentaje_asistencia
+      FROM agregados ag
+      JOIN alumnos a ON a.id = ag.alumno_id
+      ORDER BY porcentaje_asistencia DESC, alumno;
     `;
-
+  
     const result = await db.query(sql, params);
-
-    // Cada alumno usa su propio total, así que porcentaje = 100%
+  
+    // Lo que muestra la vista:
+    // - "Horas" = horas_asistidas
+    // - "% sobre total" = porcentaje_asistencia
     const resultados = result.rows.map(r => ({
-      id: r.id,
+      id: r.alumno_id,
       alumno: r.alumno,
-      horas: parseFloat(r.horas).toFixed(2),
-      porcentaje: '100.0'
+      horas: Number(r.horas_asistidas).toFixed(2),
+      porcentaje: Number(r.porcentaje_asistencia).toFixed(1)
     }));
-
+  
     res.render('informes_horas', {
       fecha: fechaISO || '',
       fecha_fin: fechaFinISO || '',
@@ -881,11 +910,12 @@ router.get('/horas', isAuthenticated, async (req, res) => {
       instrumento,
       resultados
     });
-
+  
   } catch (err) {
     console.error('❌ Error calculando informe de horas (asignaciones):', err);
     res.status(500).send('Error calculando informe de horas');
   }
+  
 });
 
 router.post('/horas/guardar', isAuthenticated, async (req, res) => {

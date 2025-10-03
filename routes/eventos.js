@@ -707,6 +707,23 @@ ORDER BY apellidos NULLS LAST, nombre NULLS LAST, id;
 
     const evento = eventoRows[0];
     const fechaISO = toISO10(evento.fecha_inicio);
+    // --- AUTOFIX: si hay minutos_perdidos>0 y ausencia vacía → poner "Retraso"
+    await db.query(`
+      WITH ret AS (
+        SELECT id AS retraso_id
+        FROM ausencias
+        WHERE lower(tipo) = 'retraso'
+        LIMIT 1
+      )
+      UPDATE evento_asignaciones ea
+      SET ausencia_tipo_id = ret.retraso_id
+      FROM asistencias s, ret
+      WHERE ea.evento_id = $1
+        AND s.evento_id = ea.evento_id
+        AND s.alumno_id = ea.alumno_id
+        AND COALESCE(s.minutos_perdidos, 0) > 0
+        AND ea.ausencia_tipo_id IS NULL
+    `, [eventoId]);
 
     // Cargar asignaciones
     let { rows: alumnos } = await db.query(asignacionesSQL, [eventoId]);
