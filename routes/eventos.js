@@ -823,6 +823,24 @@ router.post('/:id/firma_manual/ajax', async (req, res) => {
           `,
           [eventoId, alumnoId, minutosVal]
         );
+
+        // AUTO: si minutos > 0 y ausencia vacía → marcar "Retraso"
+        if (minutosVal !== null && minutosVal > 0) {
+          await client.query(`
+            WITH ret AS (
+              SELECT id AS retraso_id
+              FROM ausencias
+              WHERE lower(tipo) = 'retraso'
+              LIMIT 1
+            )
+            UPDATE evento_asignaciones ea
+            SET ausencia_tipo_id = ret.retraso_id
+            FROM ret
+            WHERE ea.evento_id = $1
+              AND ea.alumno_id = $2
+              AND ea.ausencia_tipo_id IS NULL
+          `, [eventoId, alumnoId]);
+        }
       } else {
         // no tocar minutos_perdidos si no vino
         await client.query(
@@ -838,6 +856,7 @@ router.post('/:id/firma_manual/ajax', async (req, res) => {
           `,
           [eventoId, alumnoId]
         );
+        // En esta rama no sabemos si hay minutos > 0, así que no forzamos ausencia.
       }
       return res.json({ ok: true, upsert: true });
     }
@@ -849,6 +868,24 @@ router.post('/:id/firma_manual/ajax', async (req, res) => {
         'UPDATE asistencias SET minutos_perdidos = $3 WHERE evento_id = $1 AND alumno_id = $2',
         [eventoId, alumnoId, minutosVal]
       );
+
+      // AUTO: si minutos > 0 y ausencia vacía → marcar "Retraso"
+      if (minutosVal !== null && minutosVal > 0) {
+        await client.query(`
+          WITH ret AS (
+            SELECT id AS retraso_id
+            FROM ausencias
+            WHERE lower(tipo) = 'retraso'
+            LIMIT 1
+          )
+          UPDATE evento_asignaciones ea
+          SET ausencia_tipo_id = ret.retraso_id
+          FROM ret
+          WHERE ea.evento_id = $1
+            AND ea.alumno_id = $2
+            AND ea.ausencia_tipo_id IS NULL
+        `, [eventoId, alumnoId]);
+      }
 
       if (upd.rowCount > 0) {
         return res.json({ ok: true, updated: true });
@@ -868,6 +905,25 @@ router.post('/:id/firma_manual/ajax', async (req, res) => {
         `,
         [eventoId, alumnoId, minutosVal]
       );
+
+      // AUTO: si minutos > 0 y ausencia vacía → marcar "Retraso"
+      if (minutosVal > 0) {
+        await client.query(`
+          WITH ret AS (
+            SELECT id AS retraso_id
+            FROM ausencias
+            WHERE lower(tipo) = 'retraso'
+            LIMIT 1
+          )
+          UPDATE evento_asignaciones ea
+          SET ausencia_tipo_id = ret.retraso_id
+          FROM ret
+          WHERE ea.evento_id = $1
+            AND ea.alumno_id = $2
+            AND ea.ausencia_tipo_id IS NULL
+        `, [eventoId, alumnoId]);
+      }
+
       return res.json({ ok: true, inserted: true });
     }
 

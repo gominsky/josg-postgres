@@ -53,7 +53,10 @@
         <input class="form-check-input" type="checkbox" id="swAlu" checked>
         <span>Individual</span>
       </label>
-
+      <label class="pill-switch">
+        <input class="form-check-input" type="checkbox" id="swExtras" checked>
+        <span>Extras</span>
+      </label>
       <!-- Enlace Guardar plantilla (mismo sitio visual, pero en la fila de abajo) -->
       <div class="tpl-popwrap">
         <a id="linkSaveTpl" href="#" class="evt-link-add">＋ Guardar configuración actual como plantilla</a>
@@ -349,7 +352,8 @@ async function doSave(nombre, descripcion){
     </div>
    
 </div>
-<div id="extrasWrap" class="card mt-4">
+<!-- DESPUÉS -->
+<div id="extrasWrap" class="card mt-4 extras-narrow">
   <div class="card-header d-flex justify-content-between align-items-center">
     <strong>Extras</strong>
     <span id="legendExtras" class="text-muted" style="font-size:.85rem">
@@ -921,6 +925,24 @@ async function doSave(nombre, descripcion){
 #extrasWrap.extras-compact .card-body{
   padding: .6rem .6rem !important;
 }
+#asigBody .min-col .minutos-show { display: none !important; }
+/* === Ancho más estrecho para EXTRAS === */
+#extrasWrap.extras-narrow{
+  width: 100%;
+  max-width: 620px;         /* ~algo más de la mitad en pantallas grandes */
+  margin: 0 auto;           /* céntralo; cámbialo por 0 si lo quieres a la izquierda */
+}
+
+/* Opcional: aún más estrecho en súper anchas */
+@media (min-width: 1400px){
+  #extrasWrap.extras-narrow{ max-width: 560px; }
+}
+
+/* Asegurar que la tabla no fuerce el ancho */
+#extrasWrap.extras-narrow .extras-table{
+  width: 100%;
+  table-layout: auto;
+}
 
 </style>
 
@@ -1090,9 +1112,11 @@ async function doSave(nombre, descripcion){
   const swFam = document.getElementById('swFam');
   const swInst = document.getElementById('swInst');
   const swAlu = document.getElementById('swAlu');
+  const swExtras = document.getElementById('swExtras');
   const famWrap = document.getElementById('famWrap');
   const instWrap = document.getElementById('instWrap');
   const alumWrap = document.getElementById('alumWrap');
+  const extrasWrap = document.getElementById('extrasWrap');
 
   swFam?.addEventListener('change', () => {
     if (swFam.checked) { window.__openFamilias?.(); }
@@ -1106,6 +1130,12 @@ async function doSave(nombre, descripcion){
 
   // Si arranca marcado instrumentos, cargar
   if (swInst?.checked) { instWrap.style.display=''; window.__loadInstrumentos?.(); }
+  swExtras?.addEventListener('change', ()=> {
+    if (extrasWrap) extrasWrap.style.display = swExtras.checked ? '' : 'none';
+  });
+
+  // ⬅️ Estado inicial coherente
+  if (extrasWrap) extrasWrap.style.display = swExtras?.checked ? '' : 'none';
 })();
 </script>
 <script>
@@ -2330,12 +2360,17 @@ function setMinutesCell(tr, val){
       const swFam  = document.getElementById('swFam');
       const swInst = document.getElementById('swInst');
       const swAlu  = document.getElementById('swAlu');
+      const swExtras = document.getElementById('swExtras');
+
       if (swFam && !swFam.checked)  { swFam.checked = true;  window.__openFamilias?.(); }
       if (swInst && !swInst.checked){ swInst.checked = true; window.__loadInstrumentos?.(); }
       if (swAlu && !swAlu.checked)  { swAlu.checked = true;  }
+      if (swExtras && !swExtras.checked) { swExtras.checked = true; } 
       if ($famWrap)  $famWrap.style.display  = '';
       if ($instWrap) $instWrap.style.display = '';
       if ($alumWrap) $alumWrap.style.display = '';
+      const $extrasWrap = document.getElementById('extrasWrap');     
+      if ($extrasWrap) $extrasWrap.style.display = '';  
       await new Promise(r => setTimeout(r, 200));
     }
   
