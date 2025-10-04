@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Asistencias del Evento</title>
+  <title>¡En tu mano! - Registro de asistencia</title>
   <link rel="stylesheet" href="../styles/estilos_app.css" />
   <style>
     .btn {
@@ -15,81 +15,100 @@
     }
     .btn:hover { transform:translateY(-1px); box-shadow:0 6px 16px rgba(0,0,0,.2); }
     .btn:active { transform:translateY(0); box-shadow:0 2px 8px rgba(0,0,0,.1); }
-  
-    /* NARANJA igual que “Eventos” del portal */
-    .btn-accent {
-      background: linear-gradient(180deg,#f28d63,#ea6b38);
-      border: 1px solid #cc5c2f;
-    }
+    .btn-accent { background: linear-gradient(180deg,#f28d63,#ea6b38); border: 1px solid #cc5c2f; }
+
+    .asistencia-item{ padding:.5rem 0; border-bottom:1px dashed #eee; }
+    .asistencia-nombre{ font-weight:800; }
+    .asistencia-detalle{ color:#6b7280; font-size:.92rem; display:flex; gap:.5rem; flex-wrap:wrap; }
   </style>
 </head>
 <body>
   <div class="container">
-    <div class="header">
-      <h2>JOSG ¡EN TU MANO! - Registro de firmas</h2>
+    <!-- Topbar unificada -->
+    <div class="topbar">
       <div id="user-pill" class="user-pill" style="display:none;">
         <span class="avatar"></span><span class="name"></span>
       </div>
+      <button id="btn-logout" class="icon-btn" title="Cerrar sesión" aria-label="Cerrar sesión">⎋</button>
     </div>
-    
-    <div id="info-evento"></div>
-    <div id="lista-asistencias">
-      <!-- Asistencias se cargan aquí -->
+
+    <!-- Hero con pentagrama envolviendo el contenido -->
+    <div class="hero" aria-label="Asistencias del evento">
+      <div class="motifs-layer" aria-hidden="true"></div>
+      <img class="hero-logo" src="../imagenes/logoJOSG.png" alt="JOSG">
+      <h1>¡En tu mano!</h1>
+      <p>Registro de firmas</p>
+
+      <div class="panel">
+        <div id="info-evento" class="subtitulo" style="margin:.25rem 0 .35rem;"></div>
+        <div id="lista-asistencias"></div>
+
+        <div class="actions" style="margin-top:.9rem;">
+          <button class="btn btn-accent" onclick="window.history.back()">&larr; Volver</button>
+        </div>
+      </div>
     </div>
-    <button class="btn btn-accent" onclick="window.history.back()">&larr; Volver</button>
   </div>
 
+  <!-- Pill + logout -->
+  <script>
+    (function(){
+      async function cargarUsuarioPill(){
+        const pill = document.getElementById('user-pill'); if(!pill) return;
+        let nombre = localStorage.getItem('usuario_nombre') || '';
+        try{
+          const r = await fetch('/josgmaestro/api/yo', { credentials:'same-origin' });
+          if (r.ok) { const me = await r.json(); if (me?.nombre) nombre = me.nombre; }
+        }catch(e){}
+        if(!nombre){ pill.style.display='none'; return; }
+        pill.querySelector('.avatar').textContent = (nombre.trim()[0]||'U').toUpperCase();
+        pill.querySelector('.name').textContent   = nombre;
+        pill.style.display = 'inline-flex';
+      }
+      function bindLogout(){
+        const btn = document.getElementById('btn-logout');
+        if (!btn) return;
+        btn.addEventListener('click', ()=>{
+          fetch('/josgmaestro/logout', { method:'POST', credentials:'include' })
+            .finally(()=>{ localStorage.clear(); location.href='index.html'; });
+        });
+      }
+      document.addEventListener('DOMContentLoaded', cargarUsuarioPill);
+      document.addEventListener('DOMContentLoaded', bindLogout);
+    })();
+  </script>
+
+  <!-- Lógica asistencias -->
   <script>
     const evento_id = new URLSearchParams(location.search).get("id");
     const API_BASE = '/josgmaestro/api';
-  function formatearFecha(fechaStr) {
-    if (!fechaStr) return '';
-    // Caso 1: extrae siempre la parte YYYY-MM-DD aunque venga con T…Z
-    const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(fechaStr);
-    if (m) {
-      const [, y, mo, d] = m;
-      return `${d}/${mo}/${y}`;
-    }
-    // Caso 2: intenta parsear como Date de forma segura
-    const d = new Date(fechaStr);
-    if (!isNaN(d)) {
-      // Fuerza zona de Madrid para evitar desfases
-      const dd = String(d.getDate()).padStart(2, '0');
-      const mm = String(d.getMonth()+1).padStart(2, '0');
-      const yy = d.getFullYear();
-      return `${dd}/${mm}/${yy}`;
-    }
-    return fechaStr; // fallback
-  }
 
-  function formatearHora(horaStr) {
-    if (!horaStr) return '';
-    // Si viene solo "HH:MM" o "HH:MM:SS"
-    const hm = /^(\d{1,2}):(\d{2})(?::\d{2})?$/.exec(horaStr);
-    if (hm) {
-      const h = String(hm[1]).padStart(2, '0');
-      const m = String(hm[2]).padStart(2, '0');
-      return `${h}:${m}`;
+    function formatearFecha(fechaStr) {
+      if (!fechaStr) return '';
+      const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(fechaStr);
+      if (m) return `${m[3]}/${m[2]}/${m[1]}`;
+      const d = new Date(fechaStr);
+      if (!isNaN(d)) {
+        const dd = String(d.getDate()).padStart(2,'0');
+        const mm = String(d.getMonth()+1).padStart(2,'0');
+        const yy = d.getFullYear();
+        return `${dd}/${mm}/${yy}`;
+      }
+      return fechaStr;
     }
-    // Si viene un ISO con hora
-    const d = new Date(horaStr);
-    if (!isNaN(d)) {
-      const h = String(d.getHours()).padStart(2, '0');
-      const m = String(d.getMinutes()).padStart(2, '0');
-      return `${h}:${m}`;
+    function formatearHora(horaStr) {
+      if (!horaStr) return '';
+      const hm = /^(\d{1,2}):(\d{2})(?::\d{2})?$/.exec(horaStr);
+      if (hm) return `${String(hm[1]).padStart(2,'0')}:${hm[2]}`;
+      const d = new Date(horaStr);
+      return isNaN(d) ? horaStr : `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
     }
-    return horaStr; // fallback
-  }
 
     async function cargarAsistencias() {
       try {
         const url = `${API_BASE}/eventos/${evento_id}/asistencias?ts=${Date.now()}`;
         const res = await fetch(url, { cache: 'no-store', credentials:'same-origin' });
-
-        if (!res.ok) {
-          throw new Error(`Error HTTP: ${res.status}`);
-        }
-
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const asistencias = await res.json();
 
         const lista = asistencias.map(a => `
@@ -103,39 +122,58 @@
           </div>
         `).join("");
 
-        document.getElementById("lista-asistencias").innerHTML = lista;
+        document.getElementById("lista-asistencias").innerHTML = lista || '<p class="muted">Sin registros.</p>';
       } catch (error) {
         console.error("Error cargando asistencias:", error);
         document.getElementById("lista-asistencias").innerHTML = "<p class='error'>Error al cargar las asistencias</p>";
       }
     }
-
-    // Cargar inmediatamente
-    cargarAsistencias();
+    document.addEventListener('DOMContentLoaded', cargarAsistencias);
   </script>
+
+  <!-- Motivos musicales (maestro: tamaño pequeño) -->
   <script>
-    /* Carga la pill con nombre del usuario (localStorage o /josgmaestro/api/yo) */
     (function(){
-      async function cargarUsuarioPill(){
-        const pill = document.getElementById('user-pill');
-        if(!pill) return;
-        let nombre = localStorage.getItem('usuario_nombre') || '';
-        try{
-          const r = await fetch('/josgmaestro/api/yo', { credentials:'same-origin' });
-          if (r.ok) {
-            const me = await r.json();
-            if (me && me.nombre) nombre = me.nombre;
+      const SYMBOLS = ['♩','♪','♫','♬','♭','♯','♮','🎵','🎶','🎼'];
+      const COUNT_MIN = 7, COUNT_MAX = 10;
+      const SIZE_MIN = 30, SIZE_MAX = 40;  /* solicitado */
+      const ROT_MIN  = -16, ROT_MAX  = 16;
+      const PADDING  = 10, EDGE_PAD = 6, MAX_TRIES = 80;
+
+      const rInt=(a,b)=>Math.floor(Math.random()*(b-a+1))+a;
+      const pick=a=>a[Math.floor(Math.random()*a.length)];
+      const rel=(el,p)=>{const r=el.getBoundingClientRect(),b=p.getBoundingClientRect();return {x:r.left-b.left,y:r.top-b.top,w:r.width,h:r.height};};
+      const hit=(a,b,p)=>!(a.x+a.w+p<=b.x||b.x+b.w+p<=a.x||a.y+a.h+p<=b.y||b.y+b.h+p<=a.y);
+
+      function place(){
+        const hero=document.querySelector('.hero'), layer=document.querySelector('.motifs-layer'); if(!hero||!layer)return;
+        layer.innerHTML='';
+        const avoid=[]; ['.hero-logo','h1','p','.panel .actions'].forEach(sel=>{const el=hero.querySelector(sel); if(!el)return; const r=rel(el,hero); avoid.push({x:r.x-10,y:r.y-10,w:r.w+20,h:r.h+20});});
+        const placed=[]; const count=rInt(COUNT_MIN,COUNT_MAX);
+        for(let i=0;i<count;i++){
+          const s=document.createElement('span'); s.className='motif'; s.textContent=pick(SYMBOLS); s.style.opacity='0'; layer.appendChild(s);
+          let ok=false;
+          for(let t=0;t<MAX_TRIES;t++){
+            const size=rInt(SIZE_MIN,SIZE_MAX), rot=rInt(ROT_MIN,ROT_MAX);
+            s.style.fontSize=size+'px'; s.style.transform=`rotate(${rot}deg)`;
+            const left=rInt(EDGE_PAD, Math.max(EDGE_PAD, hero.clientWidth - size - EDGE_PAD));
+            const top =rInt(EDGE_PAD, Math.max(EDGE_PAD, hero.clientHeight - size - EDGE_PAD));
+            s.style.left=left+'px'; s.style.top=top+'px';
+            const rr=rel(s,hero);
+            if (rr.x<EDGE_PAD||rr.y<EDGE_PAD||rr.x+rr.w>hero.clientWidth-EDGE_PAD||rr.y+rr.h>hero.clientHeight-EDGE_PAD) continue;
+            if (avoid.some(av=>hit(rr,av,PADDING))) continue;
+            if (placed.some(pr=>hit(rr,pr,PADDING))) continue;
+            placed.push(rr); s.style.opacity=''; ok=true; break;
           }
-        }catch(e){}
-        if(!nombre){ pill.style.display='none'; return; }
-        pill.querySelector('.avatar').textContent = (nombre.trim()[0]||'U').toUpperCase();
-        pill.querySelector('.name').textContent   = nombre;
-        pill.style.display = 'inline-flex';
+          if(!ok) layer.removeChild(s);
+        }
       }
-      document.addEventListener('DOMContentLoaded', cargarUsuarioPill);
+      window.addEventListener('load',place);
+      window.addEventListener('pageshow',e=>{if(e.persisted)setTimeout(place,0);});
+      let tm=null; window.addEventListener('resize',()=>{clearTimeout(tm);tm=setTimeout(place,120);});
     })();
-    </script>
-    
+  </script>
 </body>
 </html>
+
 

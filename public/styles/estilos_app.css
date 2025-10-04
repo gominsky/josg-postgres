@@ -392,30 +392,214 @@ body.page-firma{ overflow-x:hidden; }
   bottom: -16px;
   opacity: .055;                /* igual que el resto del diseño */
 }
-/* ——— Pill de usuario y header compacto ——— */
-.header{
-  position: relative;
-  padding-top: 56px;   /* separa la pill del título */
-  margin-bottom: 4px;
-  text-align: center;
-}
-.header h2{ margin: 0; }
 
+/* NUEVO */
+/* ====== Variables y colores base (compat con lo existente) ====== */
+:root{
+  --ink:#0f172a; 
+  --muted:#6b7280; 
+  --brd:#e5e7eb;
+}
+
+/* ====== Tipografía/colores globales ====== */
+body{
+  color:var(--ink);
+  background:#fff; /* la hoja ya define fondo gris claro; si prefieres, elimina esta línea */
+}
+
+/* Contenedor genérico (ajusta ancho a tu gusto) */
+.container{ 
+  max-width:520px; 
+  margin:0 auto; 
+  padding:16px; 
+}
+
+/* ====== HERO con pentagrama y “marca de agua” ====== */
+.hero{
+  position:relative; margin:10px 0 14px; padding:28px 16px 24px;
+  border:1px solid #f3e7da; border-radius:22px; text-align:center; overflow:hidden;
+  background-image:
+    radial-gradient(1400px 380px at -10% -10%, rgba(255,229,209,.85) 0%, rgba(255,229,209,0) 60%),
+    radial-gradient(1200px 360px at 110% 0%, rgba(255,241,201,.85) 0%, rgba(255,241,201,0) 55%),
+    /* 5 líneas del pentagrama repetidas verticalmente */
+    linear-gradient(to bottom, rgba(0,0,0,.055) 0, rgba(0,0,0,.055) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(0,0,0,.055) 0, rgba(0,0,0,.055) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(0,0,0,.055) 0, rgba(0,0,0,.055) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(0,0,0,.055) 0, rgba(0,0,0,.055) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(0,0,0,.055) 0, rgba(0,0,0,.055) 1px, transparent 1px),
+    linear-gradient(180deg,#ffffff,#fff9f2 72%);
+  background-size:auto,auto,100% 60px,100% 60px,100% 60px,100% 60px,100% 60px,auto;
+  background-position:center,center,0 0,0 8px,0 16px,0 24px,0 32px,center;
+  background-repeat:no-repeat,no-repeat,repeat-y,repeat-y,repeat-y,repeat-y,repeat-y,no-repeat;
+  box-shadow:0 12px 36px rgba(0,0,0,.08);
+}
+.hero::before{
+  content:""; position:absolute; right:-28px; bottom:-28px; width:300px; height:180px; opacity:.055;
+  background:url("../imagenes/logoJOSG.png") no-repeat right bottom / contain;
+  pointer-events:none;
+}
+.motifs-layer{ position:absolute; inset:0; z-index:1; pointer-events:none; user-select:none; }
+.motif{
+  position:absolute; line-height:1; color:#000; opacity:.035; filter: blur(.15px);
+  mix-blend-mode:multiply; transform-origin:center; will-change:transform,left,top;
+  /* Fuentes con buenos glifos musicales + fallback emoji */
+  font-family:"Noto Music","Segoe UI Symbol","Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",system-ui,sans-serif;
+}
+.hero .hero-logo, .hero h1, .hero p{ position:relative; z-index:2; }
+.hero .hero-logo{ display:block; margin:0 auto 10px; max-height:112px; width:auto; filter: drop-shadow(0 4px 14px rgba(0,0,0,.10)); }
+.hero h1{
+  margin:0; font-weight:900; letter-spacing:.2px; font-size:clamp(28px, 6.2vw, 44px); line-height:1.02;
+  background: linear-gradient(180deg,#111,#744b00);
+  -webkit-background-clip:text; background-clip:text; color:transparent;
+}
+.hero p{ margin:6px 0 0; color:var(--muted); }
+
+/* ====== Panel/formulario ====== */
+.panel{ background:#fff; border:1px solid var(--brd); border-radius:16px; padding:14px; box-shadow:0 4px 16px rgba(0,0,0,.06); }
+.subtitulo{ color:var(--muted); font-weight:600; margin-top:0; }
+.field{ display:flex; flex-direction:column; gap:6px; margin:.5rem 0; }
+.field input{
+  width:100%; padding:.75rem .9rem; border:1px solid #e5e7eb; border-radius:12px; outline:0;
+  font-size:1rem; transition:border-color .12s ease, box-shadow .12s ease;
+}
+.field input:focus{ border-color:#f59e0b; box-shadow:0 0 0 4px rgba(245,158,11,.15); }
+
+/* ====== Botones ====== */
+.actions{ display:flex; gap:10px; flex-wrap:wrap; margin-top:.6rem; }
+.btn{
+  padding:.7rem 1rem; border-radius:12px; border:1px solid transparent; font-weight:800; cursor:pointer;
+  box-shadow:0 6px 18px rgba(0,0,0,.12); transition: transform .12s ease, box-shadow .12s ease, opacity .12s ease;
+}
+.btn:active{ transform:translateY(1px); }
+.btn-primary, .btn-secondary{
+  background:linear-gradient(180deg,#ffb24a,#f59e0b); border-color:#f59e0b; color:#fff;
+}
+.btn:hover{ filter:brightness(1.05); }
+
+/* Avisos */
+.notice{ display:none; margin-top:.75rem; padding:.6rem .8rem; border-radius:.6rem; font-weight:700; }
+.notice.ok{ display:block; background:#e9f7ef; color:#186a3b; border:1px solid #c8e6d1; }
+.notice.err{ display:block; background:#fdecea; color:#b71c1c; border:1px solid #f5c6cb; }
+button[disabled]{ opacity:.7; cursor:not-allowed; }
+
+/* ====== Topbar ====== */
+.topbar{ display:flex; justify-content:flex-end; align-items:center; min-height:48px; gap:8px; }
+#user-name{ color:var(--muted); font-weight:600; margin:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0; }
+.icon-btn{
+  border:1px solid #e5e7eb; background:transparent; color:#111;
+  width:36px; height:36px; border-radius:10px; font-size:18px; cursor:pointer;
+  display:flex; align-items:center; justify-content:center; flex:0 0 auto;
+}
+.icon-btn:hover{ background:#fff; }
+.icon-btn:focus{ outline:2px solid #e5e7eb; outline-offset:2px; }
+.icon-btn:active{ transform: translateY(1px); }
+
+/* ====== Acciones (index) ====== */
+.grid-actions{ display:grid; grid-template-columns: repeat(2, 1fr); gap:14px; margin:16px 0 18px; }
+.action{
+  display:flex; align-items:center; justify-content:center; text-align:center; min-height:96px;
+  border-radius:18px; text-decoration:none; position:relative; font-weight:700; letter-spacing:.1px; color:#fff; user-select:none;
+  box-shadow:0 6px 18px rgba(0,0,0,.12); transition: transform .12s ease, box-shadow .12s ease, filter .12s ease;
+}
+.action:hover{ transform: translateY(-2px); box-shadow:0 10px 24px rgba(0,0,0,.16); }
+.action--orange{ background: linear-gradient(180deg,#ffb24a,#f59e0b); border:1px solid #f59e0b; }
+.action--accent{ background: linear-gradient(180deg,#f28d63,#ea6b38); border:1px solid #cc5c2f; }
+.badge{
+  position:absolute; top:10px; right:10px; min-width:20px; height:20px; padding:0 6px;
+  background:#e11d48; color:#fff; border-radius:999px; font-size:12px; line-height:20px; display:none;
+}
+
+/* ====== Próximos eventos (index) ====== */
+.section-title{ margin:8px 0; font-weight:700; }
+.upcoming{ display:flex; gap:12px; overflow-x:auto; padding-bottom:6px; scrollbar-width:thin; }
+.poster{
+  flex:0 0 220px; background:linear-gradient(180deg,#fff,#fdf8f2);
+  border:1px solid #eee; border-radius:16px; box-shadow:0 2px 8px rgba(0,0,0,.06);
+  padding:12px; display:flex; flex-direction:column; justify-content:space-between;
+}
+.poster .date{ display:flex; align-items:baseline; gap:8px; }
+.poster .num{ font-size:54px; font-weight:800; line-height:1; letter-spacing:-1px; }
+.poster .meta{ display:flex; flex-direction:column; gap:2px; text-transform:uppercase; font-weight:700; color:#b45309; font-size:12px; }
+.poster .title{ margin-top:8px; font-weight:700; line-height:1.2; min-height:2.4em; }
+.poster .line{ height:2px; background:repeating-linear-gradient(90deg,#000 0 8px, transparent 8px 12px); opacity:.25; margin:6px 0; }
+.muted{ color:#6b7280; font-size:.9rem; }
+
+/* Pill de usuario */
 .user-pill{
-  position: absolute;   /* dentro del header/topbar contenedor */
-  right: 8px;
-  top: 6px;
-  z-index: 5;
-  display:inline-flex; align-items:center; gap:6px;
-  padding:4px 8px;
-  border-radius:999px;
-  background:#f3f4f6; color:#111; border:1px solid #e5e7eb;
-  font-weight:600; font-size:.85rem;
+  display:inline-flex; align-items:center; gap:8px;
+  background:linear-gradient(180deg,#fff7e6,#fff);
+  border:1px solid #f59e0b;
+  border-radius:999px; padding:4px 10px 4px 6px;
+  font-weight:600; color:#8a4b00;
+  box-shadow:0 2px 6px rgba(0,0,0,.08);
+  position:relative;
+  top:8px;   /* mueve la pill 1px hacia abajo */
 }
 .user-pill .avatar{
-  width:18px; height:18px;
-  border-radius:999px; background:#ffb24a; display:inline-block;
-  color:#fff; font-size:.72rem; line-height:18px; text-align:center; font-weight:800;
+  width:24px; height:24px; border-radius:50%; background:#f59e0b; color:#fff;
+  display:flex; align-items:center; justify-content:center; font-weight:700; font-size:.9rem;
+}
+.user-pill .name{
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  max-width:140px; font-size:.95rem;
+}
+/* ====== Contenedor base ====== */
+.container{
+  max-width:520px;
+  margin:0 auto;
+  padding:16px;
 }
 
+/* ====== Topbar ====== */
+.topbar{
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;   /* alinea todo a la derecha */
+  gap:8px;                    /* separación entre pill y botón */
+  min-height:48px;
+  padding:4px 0;
+  overflow:hidden;
+}
 
+.user-pill{
+  display:inline-flex; align-items:center; gap:8px;
+  background:linear-gradient(180deg,#fff7e6,#fff);
+  border:1px solid #f59e0b;
+  border-radius:999px; padding:4px 10px 4px 6px;
+  font-weight:600; color:#8a4b00;
+  box-shadow:0 2px 6px rgba(0,0,0,.08);
+
+  flex:0 1 auto;               /* ocupa lo necesario, permite encoger */
+  min-width:0;
+  max-width:200px;             /* límite de ancho para no romper diseño */
+}
+.user-pill .avatar{
+  width:24px; height:24px; border-radius:50%; background:#f59e0b; color:#fff;
+  display:flex; align-items:center; justify-content:center; font-weight:700; font-size:.9rem;
+  flex:0 0 auto;
+}
+.user-pill .name{
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  max-width:150px;
+  font-size:.95rem;
+}
+
+.icon-btn{
+  border:1px solid #e5e7eb; background:transparent; color:#111;
+  width:36px; height:36px; border-radius:10px; font-size:18px; cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+  flex:0 0 auto;               /* no crecer, no encoger */
+}
+
+/* Calendario */
+/* Agenda: título (mes/año) más pequeño en FullCalendar */
+.page-agenda .fc .fc-toolbar-title{
+  font-size: clamp(1rem, 3.2vw, 1.2rem);  /* antes ~1.75em */
+  line-height: 1.1;
+  font-weight: 800;                       /* opcional, en línea con la app */
+}
+
+/* (Opcional) un poco menos de aire en la barra */
+.page-agenda .fc .fc-toolbar{
+  margin-bottom: 8px;
+}

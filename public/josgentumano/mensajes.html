@@ -3,571 +3,344 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>JOSG en tu mano - Mensajes</title>
+  <title>¡JOSG en tu mano! · Mensajes</title>
   <link rel="stylesheet" href="../styles/estilos_app.css" />
   <style>
-    :root{
-      --accent:#ea6b38;
-      --muted:#6b7280;
-      --border:#e5e7eb;
-    }
-    body{ color:#0f172a; background:#fff; }
-    h2{ margin:6px 0 10px; }
-
-    .muted{ color:var(--muted); }
+    /* Específico mínimo de esta página */
     .list{ display:grid; gap:12px; }
     .card{
-      border:1px solid var(--border); border-radius:14px; padding:12px;
-      background:#fff; box-shadow:0 1px 2px rgba(0,0,0,.04);
+      border:1px solid #e5e7eb; border-left:4px solid #ea6b38; border-radius:14px;
+      padding:12px 12px 12px 14px; background:linear-gradient(180deg,#fff,#fff9f5);
+      box-shadow:0 4px 14px rgba(16,24,40,.06);
     }
     .card h3{ margin:.1rem 0 .25rem; font-size:1.05rem; }
-    .card p{ margin:.25rem 0; }
-    .meta{ font-size:.85rem; color:var(--muted); }
-    .msg-body{ white-space:pre-wrap; word-break:break-word; display:block; }
-
-    /* Chips de enlaces */
-    .chips{
-      display:flex; justify-content:center; gap:.5rem; flex-wrap:wrap;
-      margin-top:.4rem;
-    }
-    .chip{
-      display:inline-block; padding:.38rem .7rem; border:1px solid var(--border);
-      border-radius:999px; background:#fff;
-      font-weight:700; font-size:.9rem; color:#ea6b38; text-decoration:none;
-      white-space:nowrap;
-    }
-    .chip:active{ transform: translateY(1px); }
-
-    /* Botoncitos secundarios (Marcar leído / Ver más) */
+    .meta{ font-size:.85rem; color:#6b7280; }
+    .msg-body{ display:block; margin:.35rem 0 .2rem; padding:.6rem .7rem; background:#fff4ea; border:1px solid #f2f2f2; border-radius:10px; white-space:pre-wrap; word-break:break-word; }
+    .chips{ display:flex; justify-content:center; gap:.5rem; flex-wrap:wrap; margin-top:.4rem; }
+    .chip{ display:inline-block; padding:.38rem .7rem; border:1px solid #eee; border-radius:999px; background:#ffffff; font-weight:700; font-size:.9rem; color:#ea6b38; text-decoration:none; white-space:nowrap; }
     .mark-wrap{ margin-top:.35rem; display:flex; gap:.4rem; flex-wrap:wrap; }
-    .btn-ghost{
-      padding:.4rem .6rem; font-size:.85rem; background:#fff;
-      border:1px solid var(--border); border-radius:999px; color:#374151;
-      cursor:pointer; user-select:none;
-    }
-    .btn-ghost:hover{ background:#f9fafb; }
-    .btn-ghost:active{ transform: translateY(1px); }
-
-    /* Paginación tipo Google, compacta */
-    .pager{
-      display:flex; align-items:center; justify-content:center;
-      gap:6px; flex-wrap:wrap; margin:14px 0 4px;
-    }
-    .pager-btn{
-      all: unset;
-      display:inline-flex; align-items:center; justify-content:center;
-      padding:.35rem .6rem; min-width:2.2rem; text-align:center;
-      border:1px solid var(--border); border-radius:8px; background:#fff;
-      font-size:.9rem; line-height:1; cursor:pointer; user-select:none;
-    }
-    .pager-btn:hover{ background:#fafafa; }
-    .pager-btn:active{ transform: translateY(1px); }
-    .pager-btn[disabled]{ opacity:.5; cursor:default; }
-    .pager-btn.active{ font-weight:700; border-color:#ffb554; box-shadow:0 0 0 3px #fff6e8; color:#ea6b38; }
-
-    /* Botón Inicio (naranja) */
-    .back{ margin:16px 0 6px; }
-    .btn-home{
-      display:inline-block; padding:.6rem 1.2rem; min-width:110px;
-      border-radius:12px; font-weight:600; color:#fff; text-decoration:none; border:0;
-      background:linear-gradient(180deg,#ffb24a,#f59e0b); border-color:#f59e0b; color:#fff; 
-      box-shadow:0 4px 12px rgba(0,0,0,.15);
-      cursor:pointer; text-align:center;
-    }
-    .btn-home:hover{ transform:translateY(-1px); box-shadow:0 6px 16px rgba(0,0,0,.2); }
-    .btn-home:active{ transform:translateY(0); box-shadow:0 2px 8px rgba(0,0,0,.1); }
-    /* === Toquecillo elegante: fondo del mensaje + botones combinados === */
-:root{
-  /* Mantén tu naranja; si quieres "gris", cambia --accent a #6b7280 */
-  --accent: #ea6b38;
-  --accent-soft: rgba(234,107,56,.08);
-  --accent-strong: #d85f2b;
-  --surface: #fff9f5;         /* papel suave */
-  --surface-strong: #fff4ea;  /* un pelín más marcado */
-  --ring: rgba(234,107,56,.20);
-}
-
-/* Tarjeta más cuidada y con guiño lateral */
-.card{
-  border:1px solid var(--border);
-  border-left:4px solid var(--accent);
-  border-radius:14px;
-  padding:12px 12px 12px 14px;
-  background:linear-gradient(180deg,#fff,var(--surface));
-  box-shadow:0 4px 14px rgba(16,24,40,.06);
-}
-
-/* Cuerpo del mensaje con “papel” */
-.msg-body{
-  display:block;
-  margin:.35rem 0 .2rem;
-  padding:.6rem .7rem;
-  background:var(--surface-strong);
-  border:1px solid #f2f2f2;
-  border-radius:10px;
-}
-
-/* Chips (enlaces) a juego */
-.chip{
-  border-color:transparent;
-  background:var(--accent-soft);
-  color:var(--accent);
-}
-.chip:hover{ filter:brightness(0.98); }
-
-/* Botón “fantasma” más integrado */
-.btn-ghost{
-  border-color: #f0f0f0;
-  color: var(--accent);
-  background:#fff;
-}
-.btn-ghost:hover{
-  background:var(--accent-soft);
-}
-.btn-ghost:focus{
-  outline: none;
-  box-shadow: 0 0 0 4px var(--ring);
-}
-
-/* Paginación activa con mismo lenguaje visual */
-.pager-btn.active{
-  font-weight:700;
-  border-color:var(--accent);
-  box-shadow:0 0 0 4px var(--ring);
-  color:var(--accent);
-}
-
-/* Botón Inicio (naranja) modernizado para que case con el resto) */
-.btn-home{
-  background:linear-gradient(180deg,#ff915a,var(--accent));
-  border-color:var(--accent);
-  color:#fff;
-}
-.btn-home:hover{ transform:translateY(-1px); box-shadow:0 6px 16px rgba(0,0,0,.2); }
-.btn-home:focus{ outline:none; box-shadow:0 0 0 4px var(--ring), 0 4px 12px rgba(0,0,0,.15); }
-
-/* Accesibilidad: foco en la tarjeta (por si haces focus visible en JS) */
-.card:focus-within{
-  box-shadow:0 0 0 4px var(--ring), 0 4px 14px rgba(16,24,40,.08);
-  transition: box-shadow .15s ease;
-}
-/* ===== Tarjeta naranja completa ===== */
-.orange-cards .card{
-  border:1px solid var(--border);
-  border-left:4px solid var(--accent);
-  border-radius:14px;
-  padding:12px 12px 12px 14px;
-  /* naranja suave en toda la tarjeta */
-  background:linear-gradient(180deg, #fff4ea, #ffe8d7);
-  box-shadow:0 4px 14px rgba(16,24,40,.06);
-}
-
-/* el cuerpo ya no lleva “papel”, hereda el fondo naranja de la card */
-.orange-cards .msg-body{
-  background:transparent;
-  border:1px dashed rgba(234,107,56,.35);
-  border-radius:10px;
-}
-
-/* meta (fecha/autor) un pelín más marcada sobre el naranja */
-.orange-cards .meta{ color:#7a4a30; }
-/* ===== Adjuntos (imperdible + lista) ===== */
-.attach{
-  display:flex; align-items:flex-start; gap:.5rem;
-  margin:.4rem 0 .1rem;
-}
-.attach-icon{ font-size:1.05rem; line-height:1.1; }
-.attach-list{
-  margin:0; padding:0; list-style:none; 
-}
-.attach-list li{
-  margin:.1rem 0;
-}
-.attach-list a{
-  text-decoration:none; font-weight:600; color:var(--accent);
-}
-.attach-list a:hover{ text-decoration:underline; }
-.attach-list .size{ color:#6b7280; font-weight:500; margin-left:.25rem; }
-
+    .btn-ghost{ padding:.4rem .6rem; font-size:.85rem; background:#fff; border:1px solid #e5e7eb; border-radius:999px; color:#ea6b38; cursor:pointer; user-select:none; }
+    .btn-ghost:hover{ background:#fffaf3; }
+    .pager{ display:flex; align-items:center; justify-content:center; gap:6px; flex-wrap:wrap; margin:14px 0 4px; }
+    .pager-btn{ all: unset; display:inline-flex; align-items:center; justify-content:center; padding:.35rem .6rem; min-width:2.2rem; text-align:center; border:1px solid #e5e7eb; border-radius:8px; background:#fff; font-size:.9rem; line-height:1; cursor:pointer; user-select:none; }
+    .pager-btn.active{ font-weight:700; border-color:#ea6b38; box-shadow:0 0 0 4px rgba(234,107,56,.20); color:#ea6b38; }
   </style>
 </head>
-  <body class="orange-cards">
+<body data-page="mensajes" class="orange-cards">
   <div class="container">
-    <!-- Topbar: solo nombre -->
+    <!-- Topbar unificada: pill + logout a la derecha -->
     <div class="topbar">
-      <div id="user-name"></div>
+      <div id="user-pill" class="user-pill" style="display:none;">
+        <span class="avatar"></span><span class="name"></span>
+      </div>
+      <button id="btn-logout" class="icon-btn" title="Cerrar sesión" aria-label="Cerrar sesión">⎋</button>
     </div>
 
-    <!-- Hero musical -->
-    <div class="hero" aria-label="Bienvenida">
+    <!-- HERO con pentagrama que ENVUELVE el contenido -->
+    <div class="hero" aria-label="Avisos y notificaciones">
       <div class="motifs-layer" aria-hidden="true"></div>
       <img class="hero-logo" src="../imagenes/logoJOSG.png" alt="JOSG">
       <h1>¡En tu mano!</h1>
       <p>Avisos y notificaciones.</p>
-    </div>
 
-    <div id="empty" class="muted" style="display:none;">No tienes mensajes aún.</div>
-    <div id="list" class="list"></div>
-    <div id="pager" class="pager"></div>
+      <div class="panel">
+        <div id="empty" class="muted" style="display:none;">No tienes mensajes aún.</div>
+        <div id="list" class="list"></div>
+        <div id="pager" class="pager"></div>
 
-    <div class="back">
-      <button class="btn-home" onclick="location.href='index.html'">&larr; Inicio</button>
+        <div class="actions" style="margin-top:.9rem;">
+          <button class="btn btn-primary" onclick="location.href='index.html'">&larr; Inicio</button>
+        </div>
+      </div>
     </div>
   </div>
 
-<script>
-/* =================== Persistencia de “leídos” en local =================== */
-const LS_KEY = `mensajes_leidos_${localStorage.getItem('alumno_id')||'anon'}`;
-const getReadSet = () => new Set(JSON.parse(localStorage.getItem(LS_KEY) || '[]'));
-const saveReadSet = (set) => localStorage.setItem(LS_KEY, JSON.stringify([...set]));
-const isRead = (m, readSet) => (
-  !!(m.leido || m.leído || m.read || m.read_at || m.fecha_leido || m.f_leido || m.visto || m.visto_el)
-  || readSet.has(String(m.id))
-);
-
-/* =============================== Página ================================ */
-(function(){
-  const alumno_id = localStorage.getItem('alumno_id');
-  if (!alumno_id) { location.href = 'index.html'; return; }
-
-  // Nombre
-  const nombre = localStorage.getItem('alumno_nombre') || localStorage.getItem('usuario_nombre') || '';
-  if (nombre) document.getElementById('user-name').textContent = `Hola, ${nombre}`;
-
-  const $list  = document.getElementById('list');
-  const $empty = document.getElementById('empty');
-  const $pager = document.getElementById('pager');
-
-  const PAGE_SIZE = 5;
-  const MAX_CHARS = 320;                 // umbral “Ver más”
-  let DATA = [];
-  let currentPage = 1;
-  let totalPages  = 1;
-
-  const esc = s => String(s)
-    .replace(/&/g,"&amp;").replace(/</g,"&lt;")
-    .replace(/>/g,"&gt;").replace(/"/g,"&quot;")
-    .replace(/'/g,"&#39;");
-
-  const safeHref = (u)=>{
-    if (!u) return '';
-    const s = String(u).trim();
-    if (/^[a-zA-Z][\w.+-]*:/.test(s) || s.startsWith('//') || s.startsWith('/')) return s;
-    return 'https://' + s;
-  };
-
-  function fmtFecha(iso){
-    if (!iso) return '';
-    const d = new Date(iso);
-    const dd = String(d.getDate()).padStart(2,'0');
-    const mm = String(d.getMonth()+1).padStart(2,'0');
-    const aa = String(d.getFullYear()).slice(-2);
-    const hh = String(d.getHours()).padStart(2,'0');
-    const mi = String(d.getMinutes()).padStart(2,'0');
-    return `${dd}/${mm}/${aa} ${hh}:${mi}`;
-  }
-
-  function linksDe(m){
-    const out = [];
-    const seen = new Set();
-    let arr = null;
-
-    if (Array.isArray(m.urls)) arr = m.urls;
-    else if (typeof m.urls === 'string'){
-      try{ const j = JSON.parse(m.urls); if (Array.isArray(j)) arr = j; }catch{}
-    }
-
-    if (!arr && m.url){
-      const parts = String(m.url).split(/[,;\s]+/).filter(Boolean);
-      arr = parts;
-    }
-
-    (arr||[]).forEach(raw=>{
-      const href = safeHref(raw);
-      if (!href || seen.has(href)) return;
-      seen.add(href);
-      out.push(href);
-    });
-    return out;
-  }
-
-  // --- Body robusto: prueba claves típicas y, si falla, busca el string más largo en el objeto ---
-  function getBody(m){
-    const keysPrefer = [
-      'mensaje','texto','contenido','descripcion','descripcion_larga',
-      'body','content','msg','message','observaciones','nota','notas'
-    ];
-    for (const k of keysPrefer){
-      if (m[k] != null && String(m[k]).trim().length) return String(m[k]);
-    }
-    // Fallback: toma el string más largo de todas las propiedades (excluye títulos/fechas/urls)
-    const exclude = new Set(['titulo','title','urls','url','id','fecha','created_at','f_creacion','updated_at']);
-    let best = '';
-    for (const [k,v] of Object.entries(m)){
-      if (exclude.has(k)) continue;
-      if (v != null && typeof v === 'string' && v.trim().length > best.length){
-        best = v.trim();
+  <!-- Pill + botón -->
+  <script>
+    (function(){
+      function mostrarPill(){
+        const pill = document.getElementById('user-pill');
+        if(!pill) return;
+        const nombre = (localStorage.getItem('alumno_nombre') || localStorage.getItem('usuario_nombre') || '').trim();
+        if(!nombre){ pill.style.display='none'; return; }
+        pill.querySelector('.avatar').textContent = (nombre[0] || 'U').toUpperCase();
+        pill.querySelector('.name').textContent   = nombre;
+        pill.style.display = 'inline-flex';
+        const btn = document.getElementById('btn-logout');
+        if (btn && localStorage.getItem('token')) btn.style.display = 'flex';
       }
-    }
-    return best;
-  }
+      document.addEventListener('DOMContentLoaded', mostrarPill);
+      window.addEventListener('pageshow', mostrarPill);
+    })();
+  </script>
 
-  function clampForCard(text){
-    const raw = String(text || '');
-    if (!raw) return { short: '', full: '', truncated:false };
-    if (raw.length <= MAX_CHARS) {
-      const escFull = esc(raw);
-      return { short: escFull, full: escFull, truncated:false };
-    }
-    const cut = raw.slice(0, MAX_CHARS);
-    const lastSpace = cut.lastIndexOf(' ');
-    const shortRaw = (lastSpace > 40 ? cut.slice(0,lastSpace) : cut).trim() + '…';
-    return { short: esc(shortRaw), full: esc(raw), truncated:true };
-  }
-
-  function cardHTML(m, readSet){
-  const titulo = esc(m.titulo || m.title || 'Mensaje');
-
-  // Fecha
-  const fecha  = fmtFecha(m.fecha || m.created_at || m.f_creacion);
-
-  // Autor (viene como 'autor' en el API; si no, intenta alternativas)
-  const autor  = esc(m.autor || m.autor_nombre || m.creado_por_nombre || '');
-
-  // Cuerpo
-  const bodyRaw = getBody(m);
-  const { short, full, truncated } = clampForCard(bodyRaw);
-  const visibleText = short || '—';
-
-  // Enlaces “chips”
-  const links  = linksDe(m);
-  const chips  = links.map((href,i)=>`<a class="chip" href="${href}" target="_blank" rel="noopener">Enlace ${i+1}</a>`).join('');
-
-  // Adjuntos (array de objetos con {filename, original_name, mime, size})
-  function adjuntosDe(msg){
-    let arr = [];
-    if (Array.isArray(msg.adjuntos)) arr = msg.adjuntos;
-    else if (typeof msg.adjuntos === 'string'){
-      try{ const j = JSON.parse(msg.adjuntos); if (Array.isArray(j)) arr = j; }catch{}
-    }
-    return arr
-      .filter(x => x && (x.filename || x.file || x.url))
-      .map(x => ({
-        href: safeHref(x.filename || x.file || x.url),
-        name: esc(x.original_name || x.name || (String(x.filename||'').split('/').pop() || 'Archivo')),
-        size: Number(x.size || x.size_bytes || x.bytes || 0)
-      }));
-  }
-  const adj = adjuntosDe(m);
-  const adjHTML = adj.length ? `
-    <div class="attach">
-      <span class="attach-icon" aria-label="Adjuntos">📎</span>
-      <ul class="attach-list">
-        ${adj.map(a => `<li>
-          <a href="${a.href}" target="_blank" rel="noopener">${a.name}</a>
-          ${a.size ? `<span class="size">(${Math.round(a.size/1024)} KB)</span>` : ``}
-        </li>`).join('')}
-      </ul>
-    </div>
-  ` : '';
-
-  // Leído
-  const read   = isRead(m, readSet);
-  const idStr  = String(m.id || '');
-
-  // Meta: fecha · autor · leído
-  const metaPieces = [];
-  if (fecha) metaPieces.push(fecha);
-  if (autor) metaPieces.push(autor);
-  if (read)  metaPieces.push('leído');
-  const meta = metaPieces.join(' · ');
-
-  return `
-    <article class="card" data-id="${idStr}">
-      <h3>${titulo}</h3>
-      <p class="meta">${meta}</p>
-      <p class="msg-body"
-         data-expanded="false"
-         data-full="${full.replace(/"/g,'&quot;')}"
-         data-short="${visibleText.replace(/"/g,'&quot;')}">${visibleText}</p>
-      ${adjHTML}
-      ${chips ? `<div class="chips">${chips}</div>`:''}
-      <div class="mark-wrap">
-        ${truncated ? `<button class="btn-ghost" data-toggle="${idStr}">Ver más</button>`:''}
-        ${!read ? `<button class="btn-ghost" data-mark="${idStr}">Marcar como leído</button>`:''}
-      </div>
-    </article>
-  `;
-}
-  function renderPage(page=1){
-    const READ = getReadSet();
-    currentPage = Math.min(Math.max(1,page), totalPages);
-    if (DATA.length === 0){
-      $list.innerHTML = '';
-      $pager.innerHTML = '';
-      $empty.style.display = 'block';
-      return;
-    }
-    $empty.style.display = 'none';
-    const start = (currentPage-1)*PAGE_SIZE;
-    const slice = DATA.slice(start, start+PAGE_SIZE);
-    $list.innerHTML = slice.map(m => cardHTML(m, READ)).join('');
-    renderPager();
-  }
-
-  function renderPager(){
-    $pager.innerHTML = '';
-    if (totalPages <= 1) return;
-
-    const addBtn = (label, page, opts={})=>{
-      const b = document.createElement('button');
-      b.className = 'pager-btn' + (opts.active ? ' active' : '');
-      b.textContent = label;
-      if (!opts.disabled){
-        b.addEventListener('click', ()=>renderPage(page));
-      } else {
-        b.setAttribute('disabled','');
+  <!-- Logout universal (activo en esta página) -->
+  <script>
+    (function () {
+      const btn = document.getElementById('btn-logout');
+      function doLogout(){
+        try{
+          localStorage.removeItem('token');
+          localStorage.removeItem('alumno_id');
+          localStorage.removeItem('alumno_nombre');
+        }catch(e){}
+        location.href = 'login.html';
       }
-      $pager.appendChild(b);
+      if (btn){
+        btn.addEventListener('click', doLogout);
+        btn.style.display = localStorage.getItem('token') ? 'flex' : 'none';
+      }
+    })();
+  </script>
+
+  <!-- Lógica de mensajes (lista, pager, marcar leído) -->
+  <script>
+  (function(){
+    const alumno_id = localStorage.getItem('alumno_id');
+    if (!alumno_id) { location.href = 'index.html'; return; }
+
+    const $list  = document.getElementById('list');
+    const $empty = document.getElementById('empty');
+    const $pager = document.getElementById('pager');
+
+    const PAGE_SIZE = 5;
+    const MAX_CHARS = 320;  // umbral “Ver más”
+    let DATA = [];
+    let currentPage = 1;
+    let totalPages  = 1;
+
+    const LS_KEY = `mensajes_leidos_${alumno_id}`;
+    const getReadSet = () => new Set(JSON.parse(localStorage.getItem(LS_KEY) || '[]'));
+    const saveReadSet = (set) => localStorage.setItem(LS_KEY, JSON.stringify([...set]));
+    const isRead = (m, readSet) => (
+      !!(m.leido || m.leído || m.read || m.read_at || m.fecha_leido || m.f_leido || m.visto || m.visto_el)
+      || readSet.has(String(m.id))
+    );
+
+    const esc = s => String(s)
+      .replace(/&/g,"&amp;").replace(/</g,"&lt;")
+      .replace(/>/g,"&gt;").replace(/"/g,"&quot;")
+      .replace(/'/g,"&#39;");
+
+    const safeHref = (u)=>{
+      if (!u) return '';
+      const s = String(u).trim();
+      if (/^[a-zA-Z][\w.+-]*:/.test(s) || s.startsWith('//') || s.startsWith('/')) return s;
+      return 'https://' + s;
     };
 
-    addBtn('‹', Math.max(1, currentPage-1), { disabled: currentPage === 1 });
-
-    const win = 1;
-    let start = Math.max(1, currentPage - win);
-    let end   = Math.min(totalPages, currentPage + win);
-
-    if (start > 1){
-      addBtn('1', 1, { active: currentPage === 1 });
-      if (start > 2) addEllipsis();
-    }
-    for (let p = start; p <= end; p++) addBtn(String(p), p, { active: p === currentPage });
-    if (end < totalPages){
-      if (end < totalPages - 1) addEllipsis();
-      addBtn(String(totalPages), totalPages, { active: currentPage === totalPages });
+    function fmtFecha(iso){
+      if (!iso) return '';
+      const d = new Date(iso);
+      const dd = String(d.getDate()).padStart(2,'0');
+      const mm = String(d.getMonth()+1).padStart(2,'0');
+      const aa = String(d.getFullYear()).slice(-2);
+      const hh = String(d.getHours()).padStart(2,'0');
+      const mi = String(d.getMinutes()).padStart(2,'0');
+      return `${dd}/${mm}/${aa} ${hh}:${mi}`;
     }
 
-    addBtn('›', Math.min(totalPages, currentPage + 1), { disabled: currentPage === totalPages });
+    function cardHTML(m, readSet){
+      const idStr = String(m.id ?? '');
+      const titulo = esc(m.titulo || m.title || 'Aviso');
+      const cuerpo = String(m.cuerpo || m.mensaje || m.body || '').trim();
+      const fecha  = m.fecha || m.created_at || m.fecha_envio || m.sent_at || m.createdAt || '';
+      const when   = fmtFecha(fecha);
 
-    function addEllipsis(){
-      const s = document.createElement('span');
-      s.textContent = '…';
-      $pager.appendChild(s);
+      const enlaces = Array.isArray(m.enlaces) ? m.enlaces
+        : (m.links ? [].concat(m.links) : []);
+      const chips = enlaces.filter(Boolean).map(u => {
+        const href = safeHref(u);
+        return href ? `<a class="chip" href="${href}" target="_blank" rel="noopener noreferrer">Abrir</a>` : '';
+      }).join('');
+
+      const truncated = cuerpo.length > MAX_CHARS;
+      const shortHTML = esc(cuerpo.slice(0, MAX_CHARS)) + (truncated ? '…' : '');
+      const fullHTML  = esc(cuerpo);
+
+      const read = isRead(m, readSet);
+      const meta = [when, read ? 'leído' : 'no leído'].filter(Boolean).join(' · ');
+
+      return `
+        <article class="card">
+          <h3>${titulo}</h3>
+          <div class="meta">${meta}</div>
+          <div class="msg-body" data-expanded="false" data-short="${shortHTML}" data-full="${fullHTML}">${shortHTML}</div>
+          ${chips ? `<div class="chips">${chips}</div>`:''}
+          <div class="mark-wrap">
+            ${truncated ? `<button class="btn-ghost" data-toggle="${idStr}">Ver más</button>`:''}
+            ${!read ? `<button class="btn-ghost" data-mark="${idStr}">Marcar como leído</button>`:''}
+          </div>
+        </article>
+      `;
     }
-  }
 
-  async function cargar(){
-    try{
-      const url = `/firmas/api/alumno/${encodeURIComponent(alumno_id)}/mensajes?_ts=${Date.now()}`;
-      const token = localStorage.getItem('token');
-      const r = await fetch(url, { headers: token ? { 'Authorization': 'Bearer ' + token } : {} });
-      if (!r.ok) throw new Error('No se pudieron cargar los mensajes');
-      const j = await r.json();
-      if (!Array.isArray(j)) throw new Error('Formato inesperado');
-
-      DATA = j.slice().sort((a,b)=> Number(b.id||0) - Number(a.id||0));  // recientes primero
-      totalPages = Math.max(1, Math.ceil(DATA.length / PAGE_SIZE));
-      renderPage(1);
-
-      if ('Notification' in window && Notification.permission === 'default'){
-        try{ Notification.requestPermission(); }catch{}
-      }
-    }catch(e){
-      console.error(e);
-      $list.innerHTML = '';
+    function renderPager(){
       $pager.innerHTML = '';
-      $empty.textContent = 'No se pudieron cargar los mensajes.';
-      $empty.style.display = 'block';
-    }
-  }
+      if (totalPages <= 1) return;
 
-  // Delegación: Ver más / Ver menos y Marcar leído
-  $list.addEventListener('click', async (ev)=>{
-    const more = ev.target.closest('button[data-toggle]');
-    if (more){
-      const card = more.closest('.card');
-      const body = card.querySelector('.msg-body');
-      const expanded = body.getAttribute('data-expanded') === 'true';
-      if (expanded){
-        body.innerHTML = body.dataset.short;
-        body.setAttribute('data-expanded','false');
-        more.textContent = 'Ver más';
-      }else{
-        body.innerHTML = body.dataset.full || body.dataset.short;
-        body.setAttribute('data-expanded','true');
-        more.textContent = 'Ver menos';
+      const addBtn = (label, page, opts={})=>{
+        const b = document.createElement('button');
+        b.className = 'pager-btn' + (opts.active ? ' active' : '');
+        b.textContent = label;
+        if (!opts.disabled){ b.addEventListener('click', ()=>renderPage(page)); }
+        else { b.setAttribute('disabled',''); }
+        $pager.appendChild(b);
+      };
+
+      const addEllipsis = ()=>{ const s = document.createElement('span'); s.textContent = '…'; $pager.appendChild(s); };
+
+      addBtn('‹', Math.max(1, currentPage-1), { disabled: currentPage === 1 });
+
+      const win = 1;
+      let start = Math.max(1, currentPage - win);
+      let end   = Math.min(totalPages, currentPage + win);
+
+      if (start > 1){
+        addBtn('1', 1, { active: currentPage === 1 });
+        if (start > 2) addEllipsis();
       }
-      return;
+      for (let p = start; p <= end; p++) addBtn(String(p), p, { active: p === currentPage });
+      if (end < totalPages){
+        if (end < totalPages - 1) addEllipsis();
+        addBtn(String(totalPages), totalPages, { active: currentPage === totalPages });
+      }
+
+      addBtn('›', Math.min(totalPages, currentPage + 1), { disabled: currentPage === totalPages });
     }
 
-    const btn = ev.target.closest('button[data-mark]');
-    if (!btn) return;
-    const id = String(btn.getAttribute('data-mark'));
-    try{
-      const token = localStorage.getItem('token');
-      const r = await fetch(`/firmas/api/alumno/${encodeURIComponent(alumno_id)}/mensajes/${id}/leer`, {
-        method:'POST',
-        headers: Object.assign(
-          { 'Content-Type':'application/json' },
-          token ? { 'Authorization': 'Bearer ' + token } : {}
-        )
-      });
-      if (!r.ok) throw new Error('No se pudo marcar como leído');
-
-      const set = getReadSet(); set.add(id); saveReadSet(set);
-
-      btn.remove();
-      const meta = btn.closest('.card').querySelector('.meta');
-      if (meta && !/leído/.test(meta.textContent)) {
-        meta.textContent = (meta.textContent ? meta.textContent + ' · ' : '') + 'leído';
+    function renderPage(page=1){
+      const READ = getReadSet();
+      currentPage = Math.min(Math.max(1,page), totalPages);
+      if (DATA.length === 0){
+        $list.innerHTML = '';
+        $pager.innerHTML = '';
+        $empty.style.display = 'block';
+        return;
       }
-    }catch(e){ console.error(e); }
-  });
-
-  document.addEventListener('DOMContentLoaded', cargar);
-  window.addEventListener('pageshow', cargar);
-  document.addEventListener('visibilitychange', ()=>{ if (document.visibilityState === 'visible') cargar(); });
-})();
-</script>
-
-<script>
-/* Figuras musicales del HERO (marca de agua) */
-(function(){
-  const SYMBOLS=['♩','♪','♫','♬']; const COUNT_MIN=7,COUNT_MAX=10,SIZE_MIN=72,SIZE_MAX=160,ROT_MIN=-16,ROT_MAX=16;
-  const PADDING=10, EDGE_PAD=6, MAX_TRIES=80;
-  const rInt=(a,b)=>Math.floor(Math.random()*(b-a+1))+a, pick=a=>a[Math.floor(Math.random()*a.length)];
-  const rel=(el,p)=>{const r=el.getBoundingClientRect(),b=p.getBoundingClientRect();return {x:r.left-b.left,y:r.top-b.top,w:r.width,h:r.height};};
-  const hit=(a,b,p)=>!(a.x+a.w+p<=b.x||b.x+b.w+p<=a.x||a.y+a.h+p<=b.y||b.y+b.h+p<=a.y);
-  function place(){
-    const hero=document.querySelector('.hero'), layer=document.querySelector('.motifs-layer'); if(!hero||!layer)return;
-    layer.innerHTML='';
-    const avoid=[]; ['.hero-logo','h1','p'].forEach(sel=>{const el=hero.querySelector(sel); if(!el)return; const r=rel(el,hero); avoid.push({x:r.x-10,y:r.y-10,w:r.w+20,h:r.h+20});});
-    const placed=[]; const count=rInt(COUNT_MIN,COUNT_MAX);
-    for(let i=0;i<count;i++){
-      const s=document.createElement('span'); s.className='motif'; s.textContent=pick(SYMBOLS); s.style.opacity='0'; layer.appendChild(s);
-      let ok=false;
-      for(let t=0;t<MAX_TRIES;t++){
-        const size=rInt(SIZE_MIN,SIZE_MAX), rot=rInt(ROT_MIN,ROT_MAX);
-        s.style.fontSize=size+'px'; s.style.transform=`rotate(${rot}deg)`;
-        const left=rInt(EDGE_PAD, Math.max(EDGE_PAD, hero.clientWidth - size - EDGE_PAD));
-        const top =rInt(EDGE_PAD, Math.max(EDGE_PAD, hero.clientHeight - size - EDGE_PAD));
-        s.style.left=left+'px'; s.style.top=top+'px';
-        const rr=rel(s,hero);
-        if (rr.x<EDGE_PAD||rr.y<EDGE_PAD||rr.x+rr.w>hero.clientWidth-EDGE_PAD||rr.y+rr.h>hero.clientHeight-EDGE_PAD) continue;
-        if (avoid.some(av=>hit(rr,av,PADDING))) continue;
-        if (placed.some(pr=>hit(rr,pr,PADDING))) continue;
-        placed.push(rr); s.style.opacity=''; ok=true; break;
-      }
-      if(!ok) layer.removeChild(s);
+      $empty.style.display = 'none';
+      const start = (currentPage-1)*PAGE_SIZE;
+      const slice = DATA.slice(start, start+PAGE_SIZE);
+      $list.innerHTML = slice.map(m => cardHTML(m, READ)).join('');
+      renderPager();
     }
-  }
-  window.addEventListener('load', place);
-  window.addEventListener('pageshow', e=>{ if(e.persisted) setTimeout(place,0); });
-  let tm; window.addEventListener('resize', ()=>{ clearTimeout(tm); tm=setTimeout(place,120); });
-})();
-</script>
 
-<script src="app_alumno.js"></script>
+    async function cargar(){
+      try{
+        const url = `/firmas/api/alumno/${encodeURIComponent(alumno_id)}/mensajes?_ts=${Date.now()}`;
+        const token = localStorage.getItem('token');
+        const r = await fetch(url, { headers: token ? { 'Authorization': 'Bearer ' + token } : {} });
+        if (!r.ok) throw new Error('No se pudieron cargar los mensajes');
+        const j = await r.json();
+        if (!Array.isArray(j)) throw new Error('Formato inesperado');
+
+        DATA = j.slice().sort((a,b)=> Number(b.id||0) - Number(a.id||0));  // recientes primero
+        totalPages = Math.max(1, Math.ceil(DATA.length / PAGE_SIZE));
+        renderPage(1);
+
+        if ('Notification' in window && Notification.permission === 'default'){
+          try{ Notification.requestPermission(); }catch{}
+        }
+      }catch(e){
+        console.error(e);
+        $list.innerHTML = '';
+        $pager.innerHTML = '';
+        $empty.textContent = 'No se pudieron cargar los mensajes.';
+        $empty.style.display = 'block';
+      }
+    }
+
+    // Delegación: Ver más / Ver menos y Marcar leído
+    $list.addEventListener('click', async (ev)=>{
+      const more = ev.target.closest('button[data-toggle]');
+      if (more){
+        const card = more.closest('article');
+        const body = card.querySelector('.msg-body');
+        const expanded = body.getAttribute('data-expanded') === 'true';
+        if (expanded){
+          body.innerHTML = body.dataset.short;
+          body.setAttribute('data-expanded','false');
+          more.textContent = 'Ver más';
+        }else{
+          body.innerHTML = body.dataset.full || body.dataset.short;
+          body.setAttribute('data-expanded','true');
+          more.textContent = 'Ver menos';
+        }
+        return;
+      }
+
+      const btn = ev.target.closest('button[data-mark]');
+      if (!btn) return;
+      const id = String(btn.getAttribute('data-mark'));
+      try{
+        const token = localStorage.getItem('token');
+        const r = await fetch(`/firmas/api/alumno/${encodeURIComponent(alumno_id)}/mensajes/${id}/leer`, {
+          method:'POST',
+          headers: Object.assign(
+            { 'Content-Type':'application/json' },
+            token ? { 'Authorization': 'Bearer ' + token } : {}
+          )
+        });
+        if (!r.ok) throw new Error('No se pudo marcar como leído');
+
+        const set = getReadSet(); set.add(id); saveReadSet(set);
+        btn.remove();
+        const meta = btn.closest('.card').querySelector('.meta');
+        if (meta && !/leído/.test(meta.textContent)) {
+          meta.textContent = (meta.textContent ? meta.textContent + ' · ' : '') + 'leído';
+        }
+      }catch(e){ console.error(e); }
+    });
+
+    document.addEventListener('DOMContentLoaded', cargar);
+    window.addEventListener('pageshow', cargar);
+    document.addEventListener('visibilitychange', ()=>{ if (document.visibilityState === 'visible') cargar(); });
+  })();
+  </script>
+
+  <!-- Motivos musicales (símbolos compatibles + tamaño reducido) -->
+  <script>
+    (function(){
+      const SYMBOLS = ['♩','♪','♫','♬','♭','♯','♮','🎵','🎶','🎼'];
+      const COUNT_MIN = 7, COUNT_MAX = 10;
+      const SIZE_MIN = 30, SIZE_MAX = 40;
+      const ROT_MIN  = -16, ROT_MAX  = 16;
+      const PADDING  = 10, EDGE_PAD = 6, MAX_TRIES = 80;
+
+      const rInt=(a,b)=>Math.floor(Math.random()*(b-a+1))+a;
+      const pick=a=>a[Math.floor(Math.random()*a.length)];
+      const rel=(el,p)=>{const r=el.getBoundingClientRect(),b=p.getBoundingClientRect();return {x:r.left-b.left,y:r.top-b.top,w:r.width,h:r.height};};
+      const hit=(a,b,p)=>!(a.x+a.w+p<=b.x||b.x+b.w+p<=a.x||a.y+a.h+p<=b.y||b.y+b.h+p<=a.y);
+
+      function place(){
+        const hero=document.querySelector('.hero'), layer=document.querySelector('.motifs-layer'); if(!hero||!layer)return;
+        layer.innerHTML='';
+        const avoid=[]; ['.hero-logo','h1','p','.panel .actions'].forEach(sel=>{const el=hero.querySelector(sel); if(!el)return; const r=rel(el,hero); avoid.push({x:r.x-10,y:r.y-10,w:r.w+20,h:r.h+20});});
+        const placed=[]; const count=rInt(COUNT_MIN,COUNT_MAX);
+        for(let i=0;i<count;i++){
+          const s=document.createElement('span'); s.className='motif'; s.textContent=pick(SYMBOLS); s.style.opacity='0'; layer.appendChild(s);
+          let ok=false;
+          for(let t=0;t<MAX_TRIES;t++){
+            const size=rInt(SIZE_MIN,SIZE_MAX), rot=rInt(ROT_MIN,ROT_MAX);
+            s.style.fontSize=size+'px'; s.style.transform=`rotate(${rot}deg)`;
+            const left=rInt(EDGE_PAD, Math.max(EDGE_PAD, hero.clientWidth - size - EDGE_PAD));
+            const top =rInt(EDGE_PAD, Math.max(EDGE_PAD, hero.clientHeight - size - EDGE_PAD));
+            s.style.left=left+'px'; s.style.top=top+'px';
+            const rr=rel(s,hero);
+            if (rr.x<EDGE_PAD || rr.y<EDGE_PAD || rr.x+rr.w>hero.clientWidth-EDGE_PAD || rr.y+rr.h>hero.clientHeight-EDGE_PAD) continue;
+            if (avoid.some(av=>hit(rr,av,PADDING))) continue;
+            if (placed.some(pr=>hit(rr,pr,PADDING))) continue;
+            placed.push(rr); s.style.opacity=''; ok=true; break;
+          }
+          if(!ok) layer.removeChild(s);
+        }
+      }
+      window.addEventListener('load',place);
+      window.addEventListener('pageshow',e=>{if(e.persisted)setTimeout(place,0);});
+      let tm=null; window.addEventListener('resize',()=>{clearTimeout(tm);tm=setTimeout(place,120);});
+    })();
+  </script>
 </body>
 </html>
+
 

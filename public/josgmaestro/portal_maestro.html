@@ -3,19 +3,17 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>JOSG Maestro - Portal</title>
+  <title>¡En tu mano! - Portal</title>
   <link rel="stylesheet" href="../styles/estilos_app.css" />
   <style>
-    .topbar{ display:flex; justify-content:space-between; align-items:center; }
+    /* Asegura clics sobre el contenido dentro del hero */
+    .hero .panel{ position:relative; z-index:2; }
+    .hero .motifs-layer{ pointer-events:none; }
+
     .icon-btn{
       border:1px solid #e5e7eb; background:transparent; color:#111;
       width:36px; height:36px; border-radius:10px; font-size:18px; cursor:pointer;
       display:flex; align-items:center; justify-content:center;
-    }
-    .hero{ text-align:center; margin:16px 0 8px; }
-    .hero h1{
-      margin:0; font-weight:600; letter-spacing:.4px; line-height:1.05;
-      font-size: clamp(28px, 6.2vw, 44px);
     }
     .grid-actions{
       display:grid; grid-template-columns: repeat(2, 1fr);
@@ -27,216 +25,241 @@
       font-weight:600; letter-spacing:.1px; color:#fff; user-select:none;
       box-shadow:0 6px 18px rgba(0,0,0,.12);
       transition: transform .12s ease, box-shadow .12s ease, filter .12s ease;
+      padding: 1rem 1.25rem;
     }
     .action:hover{ transform: translateY(-2px); box-shadow:0 10px 24px rgba(0,0,0,.16); }
-    .action:active{ transform: translateY(0); }
-    .action--orange{
-      background: linear-gradient(180deg,#ffb24a,#f59e0b);
-      border:1px solid #f59e0b;
-    }
-    .action--accent{
-      background: linear-gradient(180deg,#f28d63,#ea6b38);
-      border:1px solid #cc5c2f;
-    }
+    .action--orange{ background: linear-gradient(180deg,#ffb24a,#f59e0b); border:1px solid #f59e0b; }
+    .action--accent{ background: linear-gradient(180deg,#f28d63,#ea6b38); border:1px solid #cc5c2f; }
+
     .section-title{ margin:8px 0; font-weight:700; }
-    .upcoming{
-      display:flex; gap:12px; overflow-x:auto; padding-bottom:6px; scrollbar-width:thin;
-    }
+
+    /* Posters de próximos eventos (clicables y con diseño mejorado) */
+    .upcoming{ display:flex; gap:12px; overflow-x:auto; padding-bottom:6px; scrollbar-width:thin; }
     .poster{
-      flex:0 0 220px; background:linear-gradient(180deg,#fff,#fdf8f2);
-      border:1px solid #eee; border-radius:16px; box-shadow:0 2px 8px rgba(0,0,0,.06);
-      padding:12px; display:flex; flex-direction:column; justify-content:space-between;
-      text-decoration:none; color:inherit;
+      display:block; position:relative; overflow:hidden; cursor:pointer;
+      flex:0 0 220px; border-radius:16px; text-decoration:none; color:#0b0b0b;
+      background:linear-gradient(180deg,#ffffff,#fdf8f2);
+      border:1px solid #eee; box-shadow:0 4px 14px rgba(16,24,40,.08);
+      padding:12px; transition: transform .12s ease, box-shadow .12s ease, filter .12s ease;
+    }
+    .poster:hover{ transform: translateY(-2px); box-shadow:0 10px 30px rgba(16,24,40,.16); }
+    .poster::before{
+      content:""; position:absolute; inset:0; pointer-events:none;
+      background:repeating-linear-gradient(180deg, rgba(0,0,0,.12) 0 1px, transparent 1px 8px);
+      opacity:.12;
+    }
+    .poster::after{
+      content:""; position:absolute; inset:0; pointer-events:none;
+      background:radial-gradient(60% 60% at 100% 100%, rgba(255,170,80,.18), transparent 60%),
+                 radial-gradient(60% 60% at 0% 0%, rgba(255,255,255,.6), transparent 60%);
+      mix-blend-mode: multiply; opacity:.6;
     }
     .poster .date{ display:flex; align-items:baseline; gap:8px; }
-    .poster .num{ font-size:54px; font-weight:800; line-height:1; letter-spacing:-1px; color:#000; }
-    .poster .meta{ display:flex; flex-direction:column; gap:2px; text-transform:uppercase; font-weight:700; color:#b45309; font-size:12px; }
-    .poster .title{ margin-top:8px; font-weight:700; line-height:1.2; min-height:2.4em; color:#000; }
-    .poster .line{ height:2px; background:repeating-linear-gradient(90deg,#000 0 8px, transparent 8px 12px); opacity:.25; margin:6px 0; }
-    .poster .venue{ color:#6b7280; font-size:.9rem; }
+    .poster .num{ font-size:54px; font-weight:800; line-height:1; letter-spacing:-1px; color:#000; text-shadow: 0 1px 0 rgba(255,255,255,.4); }
+    .poster .meta{ display:flex; flex-direction:column; gap:2px; text-transform:uppercase; font-weight:800; color:#b45309; font-size:12px; letter-spacing:.4px; }
+    .poster .title{ margin-top:8px; font-weight:800; line-height:1.2; min-height:2.4em; color:#111; }
+    .poster .line{ height:2px; background:repeating-linear-gradient(90deg,#111 0 8px, transparent 8px 12px); opacity:.25; margin:6px 0; }
+    .poster .venue{ color:#6b7280; font-size:.92rem; }
     .muted{ color:#6b7280; font-size:.9rem; }
+    .topbar #user-pill{
+  margin-top: 12px;   /* prueba con 2–3 px según tu ojo */
+}
   </style>
 </head>
 <body>
   <div class="container">
+    <!-- Topbar -->
     <div class="topbar">
-            <img src="/../imagenes/logoJOSG.png" alt="Logo JOSG" style="max-width:140px; margin-bottom:10px;">
-            <div style="display:flex; align-items:center; gap:8px;">
-              <div id="user-pill" class="user-pill" style="display:none; position:static;">
-                <span class="avatar"></span><span class="name"></span>
-              </div>
-              <button id="btn-logout" class="icon-btn" title="Cerrar sesión" aria-label="Cerrar sesión">⎋</button>
-            </div>
-            
-          </div>
-    <div class="hero">
-      <h1>Maestro</h1>
+      <div style="display:flex; align-items:center; gap:8px;">
+        <div id="user-pill" class="user-pill" style="display:none; position:static;">
+          <span class="avatar"></span><span class="name"></span>
+        </div>
+        <button id="btn-logout" class="icon-btn" title="Cerrar sesión" aria-label="Cerrar sesión">⎋</button>
+      </div>
     </div>
-    <div class="grid-actions">
-      <a class="action action--orange" href="mensajes_movil.html">Mensajes</a>
-      <a class="action action--accent" href="eventos.html">Eventos</a>
-    
-      <!-- NUEVAS FICHAS -->
-      <a class="action action--orange" href="https://www.josg.org" target="_blank" rel="noopener">
-        JOSG.ORG
-      </a>
-      <a class="action action--accent"
-      href="public/documentos/info%20guardias%2024-25.pdf"
-      target="_blank" rel="noopener">
-     Info Guardias
-   </a>
+
+    <!-- Hero con pentagrama envolviendo acciones y próximos -->
+    <div class="hero" aria-label="Portal maestro">
+      <div class="motifs-layer" aria-hidden="true"></div>
+      <img class="hero-logo" src="../imagenes/logoJOSG.png" alt="JOSG">
+      <h1>¡En tu mano!</h1>
+      <p>Panel de control</p>
+
+      <div class="panel">
+        <div class="grid-actions">
+          <a class="action action--orange" href="mensajes_movil.html">Mensajes</a>
+          <a class="action action--orange" href="eventos.html">Eventos</a>
+         <!-- Después (ruta absoluta) -->
+          <a class="action action--orange" href="/public/documentos/info%20guardias%2024-25.pdf" target="_blank" rel="noopener">Info Guardias</a>
+          <a class="action action--accent" href="https://www.josg.org" target="_blank" rel="noopener">josg.org</a>
+        </div>
+
+        <h3 class="section-title">Próximos eventos</h3>
+        <div id="upcoming" class="upcoming"></div>
+        <div id="no-events" class="muted" style="display:none;">No tienes eventos próximos.</div>
+      </div>
     </div>
-    <h3 class="section-title">Próximos eventos</h3>
-    <div id="upcoming" class="upcoming"></div>
-    <div id="no-events" class="muted" style="display:none;">No tienes eventos próximos.</div>
   </div>
-<script>
-  (function () {
-    const API_BASE = '/josgmaestro/api';
-    // Sesión
-    const usuario_id = localStorage.getItem('usuario_id');
-    if (!usuario_id) { location.href = 'index.html'; return; }
 
-    // Logout
-    const $logout = document.getElementById('btn-logout');
-    if ($logout) {
-      $logout.addEventListener('click', () => {
+  <!-- Lógica portal (pill + logout + próximos) -->
+  <script>
+    (function () {
+      const API_BASE = '/josgmaestro/api';
+      const usuario_id = localStorage.getItem('usuario_id');
+      if (!usuario_id) { location.href = 'index.html'; return; }
 
-        fetch('/josgmaestro/logout', { method: 'POST', credentials: 'include' })
-        .finally(() => {
-            localStorage.clear();
-            location.href = 'index.html';
+      const $logout = document.getElementById('btn-logout');
+      if ($logout) {
+        $logout.addEventListener('click', () => {
+          fetch('/josgmaestro/logout', { method: 'POST', credentials: 'include' })
+          .finally(() => { localStorage.clear(); location.href = 'index.html'; });
         });
-      });
-    }
-
-    // Nombre de usuario
-    const nombre = localStorage.getItem('usuario_nombre');
-    const box = document.getElementById('user-box');
-    if (box) box.textContent = nombre ? `Usuario: ${nombre}` : `Usuario #${usuario_id}`;
-
-    // *** RUTA CORRECTA (sin /api duplicado) ***
-    const API_EVENTOS = `${API_BASE}/eventos`;
-
-    const meses = ['ENE','FEB','MAR','ABR','MAY','JUN','JUL','AGO','SEP','OCT','NOV','DIC'];
-    const dias  = ['dom','lun','mar','mié','jue','vie','sáb'];
-
-    function posterHTML(ev){
-      const d = new Date(ev.start);
-      const diaNum = d.getDate();
-      const mesTxt = meses[d.getMonth()];
-      const dowTxt = dias[d.getDay()];
-      const hora   = d.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'});
-      const venue = ev.espacio || ev.lugar || ev.sala || ev.ubicacion || ev.grupo_nombre || '';
-      return `
-        <a class="poster" href="evento_detalle.html?id=${ev.id}">
-          <div>
-            <div class="date">
-              <div class="num">${diaNum}</div>
-              <div class="meta">
-                <span>${mesTxt}</span>
-                <span>${dowTxt} · ${hora}</span>
-              </div>
-            </div>
-            <div class="title">${ev.title || ev.titulo || 'Evento'}</div>
-            <div class="line"></div>
-          </div>
-          ${venue ? `<div class="venue">${venue}</div>` : ''}
-        </a>`;
-    }
-
-    function normalizarEventos(data){
-      const arr = Array.isArray(data) ? data : [];
-      return arr.map(e=>{
-        const id = e.id ?? e.ID ?? e.Id;
-        const start = e.start ?? e.fecha_inicio ?? e.inicio;
-        const end   = e.end   ?? e.fecha_fin   ?? e.fin;
-        const grupo_nombre = e.grupo_nombre ?? e.grupo ?? e.group_name ?? null;
-        const title = e.title ?? (e.titulo && grupo_nombre ? `${e.titulo} (${grupo_nombre})` : (e.titulo || 'Evento'));
-        const espacio = e.espacio ?? e.lugar ?? e.sala ?? e.ubicacion ?? e?.extendedProps?.espacio ?? null;
-        return { id, title, start, end, espacio, grupo_nombre };
-      }).filter(ev => ev.id != null && ev.start);
-    }
-
-    function filtrarProximos(eventos){
-      const hoy = new Date();
-      const hoy0 = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
-      // Próximos (>= hoy)
-      const futuros = eventos
-        .filter(ev => new Date(ev.start).getTime() >= hoy0.getTime())
-        .sort((a,b) => new Date(a.start) - new Date(b.start));
-      if (futuros.length) return futuros.slice(0, 8);
-      // Fallback: recientes (14 días hacia atrás)
-      const desde = new Date(hoy0); desde.setDate(desde.getDate() - 14);
-      const recientes = eventos
-        .filter(ev => {
-          const t = new Date(ev.start).getTime();
-          return t >= desde.getTime() && t < hoy0.getTime();
-        })
-        .sort((a,b) => new Date(b.start) - new Date(a.start));
-      return recientes.slice(0, 8);
-    }
-
-    async function cargarProximos(){
-      const wrap  = document.getElementById('upcoming');
-      const empty = document.getElementById('no-events');
-      if (!wrap || !empty) return;
-
-      wrap.innerHTML = '';
-      empty.style.display = 'none';
-
-      try{
-        const res = await fetch(`${API_EVENTOS}`, {
-          headers: { 'Accept': 'application/json' },
-          cache: 'no-store',
-          credentials: 'same-origin'
-        });
-        if (res.status === 401) {
-          localStorage.clear();
-          location.href = 'index.html';
-          return;
-        }
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const raw  = await res.json().catch(()=>[]);
-        const norm = normalizarEventos(raw);
-        const proximos = filtrarProximos(norm);
-
-        if (!proximos.length) { empty.style.display='block'; return; }
-        wrap.innerHTML = proximos.map(posterHTML).join('');
-      }catch(e){
-        console.error('No se pudieron cargar eventos', e);
-        empty.textContent = 'No se pudieron cargar los eventos.';
-        empty.style.display = 'block';
       }
-    }
 
-    document.addEventListener('DOMContentLoaded', cargarProximos);
-  })();
-</script>
-<script>
-  /* Carga la pill con nombre del usuario (localStorage o /josgmaestro/api/yo) */
-  (function(){
-    async function cargarUsuarioPill(){
-      const pill = document.getElementById('user-pill');
-      if(!pill) return;
-      let nombre = localStorage.getItem('usuario_nombre') || '';
-      try{
-        const r = await fetch('/josgmaestro/api/yo', { credentials:'same-origin' });
-        if (r.ok) {
-          const me = await r.json();
-          if (me && me.nombre) nombre = me.nombre;
+      async function cargarUsuarioPill(){
+        const pill = document.getElementById('user-pill'); if(!pill) return;
+        let nombre = localStorage.getItem('usuario_nombre') || '';
+        try{
+          const r = await fetch('/josgmaestro/api/yo', { credentials:'same-origin' });
+          if (r.ok) { const me = await r.json(); if (me?.nombre) nombre = me.nombre; }
+        }catch(e){}
+        if(!nombre){ pill.style.display='none'; return; }
+        pill.querySelector('.avatar').textContent = (nombre.trim()[0]||'U').toUpperCase();
+        pill.querySelector('.name').textContent   = nombre;
+        pill.style.display = 'inline-flex';
+      }
+      document.addEventListener('DOMContentLoaded', cargarUsuarioPill);
+
+      const API_EVENTOS = `${API_BASE}/eventos`;
+      const meses = ['ENE','FEB','MAR','ABR','MAY','JUN','JUL','AGO','SEP','OCT','NOV','DIC'];
+      const dias  = ['dom','lun','mar','mié','jue','vie','sáb'];
+
+      function posterHTML(ev){
+        const d = new Date(ev.start);
+        const diaNum = d.getDate();
+        const mesTxt = meses[d.getMonth()];
+        const dowTxt = dias[d.getDay()];
+        const hora   = d.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'});
+        const venue  = ev.espacio || ev.lugar || ev.sala || ev.ubicacion || ev.grupo_nombre || '';
+
+        const idParam = encodeURIComponent(String(ev.id));
+        const href = `evento_detalle.html?id=${idParam}`;
+
+        return `
+          <a class="poster" href="${href}" aria-label="Abrir ${ev.title || 'evento'}">
+            <div>
+              <div class="date">
+                <div class="num">${diaNum}</div>
+                <div class="meta">
+                  <span>${mesTxt}</span>
+                  <span>${dowTxt} · ${hora}</span>
+                </div>
+              </div>
+              <div class="title">${ev.title || ev.titulo || 'Evento'}</div>
+              <div class="line"></div>
+            </div>
+            ${venue ? `<div class="venue">${venue}</div>` : ''}
+          </a>`;
+      }
+
+      /* Normaliza muchas variantes posibles de clave */
+      function normalizarEventos(data){
+        const arr = Array.isArray(data) ? data : [];
+        return arr.map(e=>{
+          const id = e.id ?? e.ID ?? e.Id ?? e.evento_id ?? e.EventoId ?? e.EventID ?? e.EventoID;
+          const start = e.start ?? e.fecha_inicio ?? e.inicio ?? e.fecha ?? e.startDate ?? e.Start;
+          const end   = e.end   ?? e.fecha_fin   ?? e.fin    ?? e.endDate ?? e.End ?? null;
+          const grupo_nombre = e.grupo_nombre ?? e.grupo ?? e.group_name ?? e.Grupo ?? null;
+          const baseTitle = e.title ?? e.titulo ?? e.Title ?? 'Evento';
+          const title = (baseTitle && grupo_nombre) ? `${baseTitle} (${grupo_nombre})` : baseTitle;
+          const espacio = e.espacio ?? e.lugar ?? e.sala ?? e.ubicacion ?? e?.extendedProps?.espacio ?? null;
+          return { id, title, start, end, espacio, grupo_nombre };
+        }).filter(ev => ev.id != null && ev.start);
+      }
+
+      function filtrarProximos(eventos){
+        const hoy = new Date();
+        const hoy0 = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
+        const futuros = eventos
+          .filter(ev => new Date(ev.start).getTime() >= hoy0.getTime())
+          .sort((a,b) => new Date(a.start) - new Date(b.start));
+        if (futuros.length) return futuros.slice(0, 8);
+
+        const desde = new Date(hoy0); desde.setDate(desde.getDate() - 14);
+        const recientes = eventos
+          .filter(ev => { const t = new Date(ev.start).getTime(); return t >= desde.getTime() && t < hoy0.getTime(); })
+          .sort((a,b) => new Date(b.start) - new Date(a.start));
+        return recientes.slice(0, 8);
+      }
+
+      async function cargarProximos(){
+        const wrap  = document.getElementById('upcoming');
+        const empty = document.getElementById('no-events');
+        if (!wrap || !empty) return;
+        wrap.innerHTML = ''; empty.style.display = 'none';
+        try{
+          const res = await fetch(`${API_EVENTOS}`, { headers: { 'Accept': 'application/json' }, cache: 'no-store', credentials: 'same-origin' });
+          if (res.status === 401) { localStorage.clear(); location.href = 'index.html'; return; }
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+          const raw  = await res.json().catch(()=>[]);
+          const norm = normalizarEventos(raw);
+          const proximos = filtrarProximos(norm);
+          if (!proximos.length) { empty.style.display='block'; return; }
+          wrap.innerHTML = proximos.map(posterHTML).join('');
+        }catch(e){
+          console.error('No se pudieron cargar eventos', e);
+          empty.textContent = 'No se pudieron cargar los eventos.'; empty.style.display = 'block';
         }
-      }catch(e){}
-      if(!nombre){ pill.style.display='none'; return; }
-      pill.querySelector('.avatar').textContent = (nombre.trim()[0]||'U').toUpperCase();
-      pill.querySelector('.name').textContent   = nombre;
-      pill.style.display = 'inline-flex';
-    }
-    document.addEventListener('DOMContentLoaded', cargarUsuarioPill);
-  })();
+      }
+      document.addEventListener('DOMContentLoaded', cargarProximos);
+    })();
   </script>
-  
+
+  <!-- Motivos musicales tamaño pequeño -->
+  <script>
+    (function(){
+      const SYMBOLS = ['♩','♪','♫','♬','♭','♯','♮','🎵','🎶','🎼'];
+      const COUNT_MIN = 7, COUNT_MAX = 10;
+      const SIZE_MIN = 30, SIZE_MAX = 40;  /* solicitado */
+      const ROT_MIN  = -16, ROT_MAX  = 16;
+      const PADDING  = 10, EDGE_PAD = 6, MAX_TRIES = 80;
+
+      const rInt=(a,b)=>Math.floor(Math.random()*(b-a+1))+a;
+      const pick=a=>a[Math.floor(Math.random()*a.length)];
+      const rel=(el,p)=>{const r=el.getBoundingClientRect(),b=p.getBoundingClientRect();return {x:r.left-b.left,y:r.top-b.top,w:r.width,h:r.height};};
+      const hit=(a,b,p)=>!(a.x+a.w+p<=b.x||b.x+b.w+p<=a.x||a.y+a.h+p<=b.y||b.y+b.h+p<=a.y);
+
+      function place(){
+        const hero=document.querySelector('.hero'), layer=document.querySelector('.motifs-layer'); if(!hero||!layer)return;
+        layer.innerHTML='';
+        const avoid=[]; ['.hero-logo','h1','p','.grid-actions','#upcoming'].forEach(sel=>{const el=hero.querySelector(sel); if(!el)return; const r=rel(el,hero); avoid.push({x:r.x-10,y:r.y-10,w:r.w+20,h:r.h+20});});
+        const placed=[]; const count=rInt(COUNT_MIN,COUNT_MAX);
+        for(let i=0;i<count;i++){
+          const s=document.createElement('span'); s.className='motif'; s.textContent=pick(SYMBOLS); s.style.opacity='0'; layer.appendChild(s);
+          let ok=false;
+          for(let t=0;t<MAX_TRIES;t++){
+            const size=rInt(SIZE_MIN,SIZE_MAX), rot=rInt(ROT_MIN,ROT_MAX);
+            s.style.fontSize=size+'px'; s.style.transform=`rotate(${rot}deg)`;
+            const left=rInt(EDGE_PAD, Math.max(EDGE_PAD, hero.clientWidth - size - EDGE_PAD));
+            const top =rInt(EDGE_PAD, Math.max(EDGE_PAD, hero.clientHeight - size - EDGE_PAD));
+            s.style.left=left+'px'; s.style.top=top+'px';
+            const rr=rel(s,hero);
+            if (rr.x<EDGE_PAD||rr.y<EDGE_PAD||rr.x+rr.w>hero.clientWidth-EDGE_PAD||rr.y+rr.h>hero.clientHeight-EDGE_PAD) continue;
+            if (avoid.some(av=>hit(rr,av,PADDING))) continue;
+            if (placed.some(pr=>hit(rr,pr,PADDING))) continue;
+            placed.push(rr); s.style.opacity=''; ok=true; break;
+          }
+          if(!ok) layer.removeChild(s);
+        }
+      }
+      window.addEventListener('load',place);
+      window.addEventListener('pageshow',e=>{if(e.persisted)setTimeout(place,0);});
+      let tm=null; window.addEventListener('resize',()=>{clearTimeout(tm);tm=setTimeout(place,120);});
+    })();
+  </script>
 </body>
 </html>
+
 
 

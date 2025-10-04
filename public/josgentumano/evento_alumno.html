@@ -4,230 +4,226 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>¡JOSG en tu mano! · Detalle del evento</title>
-
   <link rel="stylesheet" href="../styles/estilos_app.css" />
-
   <style>
-    .container{ max-width:760px; margin:0 auto; padding:16px; }
-
-    /* Botones (nuevo diseño) */
-    .btn{
-      display:inline-block; padding:.6rem 1.4rem; border-radius:12px;
-      font-weight:600; color:#fff; border:none; cursor:pointer;
-      box-shadow:0 4px 12px rgba(0,0,0,.15);
-      transition:transform .12s ease, box-shadow .12s ease;
-      text-decoration:none; text-align:center; min-width:110px; user-select:none;
-    }
-    .btn:hover{ transform:translateY(-1px); box-shadow:0 6px 16px rgba(0,0,0,.2); }
-    .btn:active{ transform:translateY(0); box-shadow:0 2px 8px rgba(0,0,0,.1); }
-    .btn-accent{ background: linear-gradient(180deg,#f28d63,#ea6b38); border:1px solid #cc5c2f; }
-    .btn-tertiary{ background: linear-gradient(180deg,#ffb24a,#f59e0b); border:1px solid #f59e0b; }
-
-    /* Ficha de espacio: compacta, sin etiqueta */
+    /* Específico mínimo de esta página */
     .space-card{
       display:inline-flex; align-items:center; gap:8px;
       padding:8px 10px; border-radius:12px;
       border:1px solid #e6eefb; background:linear-gradient(180deg,#ffffff,#f5f9ff 85%);
       box-shadow:0 3px 10px rgba(0,0,0,.08);
-      text-decoration:none; color: #f59e0b; max-width:100%;
+      text-decoration:none; color:#f59e0b; max-width:100%;
       transition: transform .12s ease, box-shadow .12s ease;
     }
     .space-card:hover{ transform:translateY(-1px); box-shadow:0 8px 16px rgba(0,0,0,.12); }
-    .space-card:active{ transform:translateY(0); }
     .space-card svg{ width:14px; height:14px; flex:0 0 14px; fill:currentColor; opacity:.9; }
     .space-card .meta{ font-weight:700; line-height:1.2; }
-
-    /* Ancho compacto en desktop */
-    @media (min-width: 992px){
-      .page-evento .container{ max-width: 560px; }
-    }
-    body.page-evento{ overflow-x:hidden; }
-    .page-evento .hero::before{
-      width: clamp(150px, 22vw, 220px);
-      height: clamp(90px, 14vw, 130px);
-      right:-16px; bottom:-16px; opacity:.055;
-    }
   </style>
 </head>
-<body class="page-evento" data-page="evento">
+<body data-page="evento">
   <div class="container">
-    <!-- Topbar mínima -->
+    <!-- Topbar unificada -->
     <div class="topbar">
-      <div id="user-name" class="muted" style="font-weight:600;"></div>
+      <div id="user-pill" class="user-pill" style="display:none;">
+        <span class="avatar"></span><span class="name"></span>
+      </div>
+      <button id="btn-logout" class="icon-btn" title="Cerrar sesión" aria-label="Cerrar sesión">⎋</button>
     </div>
 
-    <!-- Hero musical -->
-    <div class="hero" aria-label="Cabecera">
+    <!-- HERO con pentagrama que AHORA envuelve el contenido -->
+    <div class="hero" aria-label="Cabecera evento">
       <div class="motifs-layer" aria-hidden="true"></div>
       <img class="hero-logo" src="../imagenes/logoJOSG.png" alt="JOSG">
       <h1>¡En tu mano!</h1>
       <p>Detalle del evento</p>
-    </div>
 
-    <h2 id="t">Evento</h2>
+      <!-- ⬇️ Contenido del evento dentro del hero -->
+      <div class="panel" role="region" aria-labelledby="tit-evento">
+        <h2 id="t">Evento</h2>
+        <p id="grupo" class="subtitulo" style="margin:.1rem 0 .4rem;"></p>
+        <p id="fechahora" class="subtitulo" style="margin:.1rem 0 .6rem;"></p>
 
-    <!-- Grupo (negrita, sin etiqueta) -->
-    <p id="grupo" style="font-weight:800; margin:.2rem 0 .2rem;"></p>
-    <!-- Fecha y hora como texto plano (sin chips) -->
-    <p id="fechahora" style="margin:.1rem 0 .6rem;"></p>
+        <a id="space-card" class="space-card" href="#" target="_blank" rel="noopener" style="display:none;">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5z"/>
+          </svg>
+          <span class="meta" id="space-name"></span>
+        </a>
 
-    <!-- Ficha de espacio (enlace Google Maps) -->
-    <a id="space-card" class="space-card" href="#" target="_blank" rel="noopener" style="display:none;">
-      <svg viewBox="0 0 24 24" aria-hidden="true">
-        <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5z"/>
-      </svg>
-      <span class="meta" id="space-name"></span>
-    </a>
+        <p id="desc" class="subtitulo" style="margin-top:.8rem;"></p>
 
-    <!-- Descripción -->
-    <p id="desc" class="subtitulo" style="margin-top:.8rem;"></p>
-
-    <div style="margin-top:1rem;">
-      <button class="btn btn-accent"   onclick="history.back()">&larr; Volver</button>
-      <button class="btn btn-tertiary" onclick="location.href='agenda.html'">Agenda</button>
+        <div class="actions" style="margin-top:.9rem;">
+          <button class="btn btn-primary" onclick="history.back()">&larr; Volver</button>
+          <button class="btn btn-secondary" onclick="location.href='agenda.html'">Agenda</button>
+        </div>
+      </div>
     </div>
   </div>
-
-<script>
-  // Helpers
-  function escapeHtml(str){
-    return String(str)
-      .replaceAll('&','&amp;').replaceAll('<','&lt;')
-      .replaceAll('>','&gt;').replaceAll('"','&quot;')
-      .replaceAll("'",'&#039;');
-  }
-  function mapsHrefFrom(rawUbic, fallbackName){
-    const raw = (rawUbic||'').trim();
-    if (raw) return /^https?:\/\//i.test(raw) ? raw : `https://www.google.com/maps?q=${encodeURIComponent(raw)}`;
-    if ((fallbackName||'').trim()) return `https://www.google.com/maps?q=${encodeURIComponent(fallbackName.trim())}`;
-    return '';
-  }
-  function formatearFecha(iso) {
-    if (!iso) return '';
-    const d = new Date(iso);
-    if (isNaN(d)) return iso;
-    const dd = String(d.getDate()).padStart(2,'0');
-    const mm = String(d.getMonth()+1).padStart(2,'0');
-    const yyyy = d.getFullYear();
-    return `${dd}/${mm}/${yyyy}`;
-  }
-  function formatearHora(hhmm) {
-    if (!hhmm) return '';
-    const m = /^(\d{1,2}):(\d{2})/.exec(hhmm);
-    if (!m) return hhmm;
-    return `${m[1].padStart(2,'0')}:${m[2]}`;
-  }
-
-  (async () => {
-    const params   = new URLSearchParams(location.search);
-    const eventoId = params.get("id");
-    const alumnoId = localStorage.getItem('alumno_id');
-    const API      = `${location.origin}/firmas/api`;
-    if (!eventoId || !alumnoId) { location.href = 'index.html'; return; }
-
-    // Nombre (Hola, …)
-    const nombre = localStorage.getItem('alumno_nombre') || localStorage.getItem('usuario_nombre') || '';
-    if (nombre) document.getElementById('user-name').textContent = `Hola, ${nombre}`;
-
-    try {
-      const token = localStorage.getItem('token');
-      const res = await fetch(
-        `${API}/alumno/${encodeURIComponent(alumnoId)}/eventos/${encodeURIComponent(eventoId)}`,
-        {
-          cache: "no-store",
-          headers: Object.assign(
-            { "Accept": "application/json" },
-            token ? { "Authorization": "Bearer " + token } : {}
-          )
-        }
-      );
-
-      if (res.status === 401) { location.href = 'index.html'; return; }
-      if (!res.ok) { throw new Error(`HTTP ${res.status}`); }
-
-      const ev = await res.json();
-
-      const grupoNombre   = (ev.grupo ?? ev.grupo_nombre ?? '').toString().trim();
-      const espacioNombre = (ev.espacio ?? ev.espacio_nombre ?? '').toString().trim();
-
-      // Grupo en texto
-      document.getElementById("grupo").textContent = grupoNombre || '';
-
-      // Fecha + hora en texto (mismo renglón)
-      const hIni = (ev.hora_asignada_inicio || ev.hora_inicio || '').toString();
-      const hFin = (ev.hora_asignada_fin    || ev.hora_fin    || '').toString();
-      const horaIni   = formatearHora(hIni);
-      const horaFin   = formatearHora(hFin);
-      const rangoHora = (horaIni && horaFin) ? `${horaIni} - ${horaFin}` : (horaIni || '');
-      const fechaStr  = ev.fecha_inicio ? formatearFecha(ev.fecha_inicio) : '';
-      const fh = [fechaStr, rangoHora].filter(Boolean).join(' · ');
-      document.getElementById("fechahora").textContent = fh;
-
-      // Ficha de espacio (enlace a Google Maps)
-      const rawUbic = (ev.espacio_ubicacion ?? ev.ubicacion ?? ev.espacio_url ?? ev.ubicacion_url ?? '').toString().trim();
-      const mapsHref = mapsHrefFrom(rawUbic, espacioNombre);
-      const $spaceCard = document.getElementById('space-card');
-      const $spaceName = document.getElementById('space-name');
-      if (mapsHref) {
-        $spaceCard.href = mapsHref;
-        $spaceName.textContent = espacioNombre || 'Ver ubicación';
-        $spaceCard.style.display = '';
-      } else if (espacioNombre) {
-        $spaceCard.removeAttribute('href'); $spaceCard.removeAttribute('target'); $spaceCard.removeAttribute('rel');
-        $spaceName.textContent = espacioNombre;
-        $spaceCard.style.display = '';
+  <script>
+    /* Logout universal: muestra el botón si hay token y limpia sesión al pulsar */
+    (function () {
+      const btn = document.getElementById('btn-logout');
+    
+      function doLogout() {
+        try {
+          localStorage.removeItem('token');
+          localStorage.removeItem('alumno_id');
+          localStorage.removeItem('alumno_nombre');
+        } catch(e) {}
+        // Redirige al inicio de sesión (ajusta si prefieres ir a index)
+        location.href = 'login.html';
       }
-
-      // Descripción
-      document.getElementById("t").textContent    = ev.titulo || "Evento";
-      document.getElementById("desc").textContent = ev.descripcion || "";
-    } catch (err) {
-      console.error("Error cargando evento:", err);
-      document.getElementById("desc").innerHTML =
-        "<span class='error'>No se pudo cargar el evento.</span>";
-    }
-  })();
-</script>
-
-<!-- Motivos musicales del HERO (marca de agua) -->
-<script>
-  (function(){
-    const SYMBOLS=['♩','♪','♫','♬'];
-    const COUNT_MIN=7, COUNT_MAX=10, SIZE_MIN=72, SIZE_MAX=160, ROT_MIN=-16, ROT_MAX=16;
-    const PADDING=10, EDGE_PAD=6, MAX_TRIES=80;
-    const rInt=(a,b)=>Math.floor(Math.random()*(b-a+1))+a, pick=a=>a[Math.floor(Math.random()*a.length)];
-    const rel=(el,p)=>{const r=el.getBoundingClientRect(),b=p.getBoundingClientRect();return {x:r.left-b.left,y:r.top-b.top,w:r.width,h:r.height};};
-    const hit=(a,b,p)=>!(a.x+a.w+p<=b.x||b.x+b.w+p<=a.x||a.y+a.h+p<=b.y||b.y+b.h+p<=a.y);
-    function place(){
-      const hero=document.querySelector('.hero'), layer=document.querySelector('.motifs-layer'); if(!hero||!layer)return;
-      layer.innerHTML='';
-      const avoid=[]; ['.hero-logo','h1','p'].forEach(sel=>{const el=hero.querySelector(sel); if(!el)return; const r=rel(el,hero); avoid.push({x:r.x-10,y:r.y-10,w:r.w+20,h:r.h+20});});
-      const placed=[]; const count=rInt(COUNT_MIN,COUNT_MAX);
-      for(let i=0;i<count;i++){
-        const s=document.createElement('span'); s.className='motif'; s.textContent=pick(SYMBOLS); s.style.opacity='0'; layer.appendChild(s);
-        let ok=false;
-        for(let t=0;t<MAX_TRIES;t++){
-          const size=rInt(SIZE_MIN,SIZE_MAX), rot=rInt(ROT_MIN,ROT_MAX);
-          s.style.fontSize=size+'px'; s.style.transform=`rotate(${rot}deg)`;
-          const left=rInt(EDGE_PAD, Math.max(EDGE_PAD, hero.clientWidth - size - EDGE_PAD));
-          const top =rInt(EDGE_PAD, Math.max(EDGE_PAD, hero.clientHeight - size - EDGE_PAD));
-          s.style.left=left+'px'; s.style.top=top+'px';
-          const rr=rel(s,hero);
-          if (rr.x<EDGE_PAD||rr.y<EDGE_PAD||rr.x+rr.w>hero.clientWidth-EDGE_PAD||rr.y+rr.h>hero.clientHeight-EDGE_PAD) continue;
-          if (avoid.some(av=>hit(rr,av,PADDING))) continue;
-          if (placed.some(pr=>hit(rr,pr,PADDING))) continue;
-          placed.push(rr); s.style.opacity=''; ok=true; break;
+    
+      if (btn) {
+        btn.addEventListener('click', doLogout);
+        // mostrar/ocultar según haya sesión
+        if (localStorage.getItem('token')) {
+          btn.style.display = 'flex';
+        } else {
+          btn.style.display = 'none';
         }
-        if(!ok) layer.removeChild(s);
       }
-    }
-    window.addEventListener('load', place);
-    window.addEventListener('pageshow', e=>{ if(e.persisted) setTimeout(place,0); });
-    let tm; window.addEventListener('resize', ()=>{ clearTimeout(tm); tm=setTimeout(place,120); });
-  })();
-</script>
+    })();
+    </script>
+    
+  <!-- Pill + botón -->
+  <script>
+    (function(){
+      function mostrarPill(){
+        const pill = document.getElementById('user-pill');
+        if(!pill) return;
+        const nombre = (localStorage.getItem('alumno_nombre') || localStorage.getItem('usuario_nombre') || '').trim();
+        if(!nombre){ pill.style.display='none'; return; }
+        pill.querySelector('.avatar').textContent = (nombre[0] || 'U').toUpperCase();
+        pill.querySelector('.name').textContent   = nombre;
+        pill.style.display = 'inline-flex';
+        const btn = document.getElementById('btn-logout');
+        if (btn && localStorage.getItem('token')) btn.style.display = 'flex';
+      }
+      document.addEventListener('DOMContentLoaded', mostrarPill);
+      window.addEventListener('pageshow', mostrarPill);
+    })();
+  </script>
 
-<script src="app_alumno.js"></script>
+  <!-- Carga de datos del evento -->
+  <script>
+    function formatearFecha(iso) {
+      if (!iso) return '';
+      const d = new Date(iso);
+      if (isNaN(d)) return iso;
+      const dd = String(d.getDate()).padStart(2,'0');
+      const mm = String(d.getMonth()+1).padStart(2,'0');
+      const yyyy = d.getFullYear();
+      return `${dd}/${mm}/${yyyy}`;
+    }
+    function formatearHora(hhmm) {
+      if (!hhmm) return '';
+      const m = /^(\d{1,2}):(\d{2})/.exec(hhmm);
+      if (!m) return hhmm;
+      return `${m[1].padStart(2,'0')}:${m[2]}`;
+    }
+    const mapsHrefFrom = (rawUbic, fallbackName)=>{
+      const raw = (rawUbic||'').trim();
+      if (raw) return /^https?:\/\//i.test(raw) ? raw : `https://www.google.com/maps?q=${encodeURIComponent(raw)}`;
+      if ((fallbackName||'').trim()) return `https://www.google.com/maps?q=${encodeURIComponent(fallbackName.trim())}`;
+      return '';
+    };
+
+    (async () => {
+      const params   = new URLSearchParams(location.search);
+      const eventoId = params.get("id");
+      const alumnoId = localStorage.getItem('alumno_id');
+      const API      = `${location.origin}/firmas/api`;
+      if (!eventoId || !alumnoId) { location.href = 'index.html'; return; }
+
+      try {
+        const token = localStorage.getItem('token');
+        const res = await fetch(
+          `${API}/alumno/${encodeURIComponent(alumnoId)}/eventos/${encodeURIComponent(eventoId)}`,
+          { headers: token ? { "Authorization": "Bearer " + token } : {} }
+        );
+
+        if (res.status === 401) { location.href = 'index.html'; return; }
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+        const ev = await res.json();
+        const grupoNombre   = (ev.grupo ?? ev.grupo_nombre ?? '').toString().trim();
+        const espacioNombre = (ev.espacio ?? ev.espacio_nombre ?? '').toString().trim();
+
+        document.getElementById("t").textContent     = ev.titulo || "Evento";
+        document.getElementById("grupo").textContent = grupoNombre || '';
+
+        const hIni = (ev.hora_asignada_inicio || ev.hora_inicio || '').toString();
+        const hFin = (ev.hora_asignada_fin    || ev.hora_fin    || '').toString();
+        const horaIni   = formatearHora(hIni);
+        const horaFin   = formatearHora(hFin);
+        const rangoHora = (horaIni && horaFin) ? `${horaIni} - ${horaFin}` : (horaIni || '');
+        const fechaStr  = ev.fecha_inicio ? formatearFecha(ev.fecha_inicio) : '';
+        document.getElementById("fechahora").textContent = [fechaStr, rangoHora].filter(Boolean).join(' · ');
+
+        const rawUbic = (ev.espacio_ubicacion ?? ev.ubicacion ?? ev.espacio_url ?? ev.ubicacion_url ?? '').toString().trim();
+        const mapsHref = mapsHrefFrom(rawUbic, espacioNombre);
+        const $spaceCard = document.getElementById('space-card');
+        const $spaceName = document.getElementById('space-name');
+        if (mapsHref) {
+          $spaceCard.href = mapsHref;
+          $spaceName.textContent = espacioNombre || 'Ver ubicación';
+          $spaceCard.style.display = '';
+        } else if (espacioNombre) {
+          $spaceCard.removeAttribute('href'); $spaceCard.removeAttribute('target'); $spaceCard.removeAttribute('rel');
+          $spaceName.textContent = espacioNombre;
+          $spaceCard.style.display = '';
+        }
+
+        document.getElementById("desc").textContent = ev.descripcion || "";
+      } catch (err) {
+        console.error("Error cargando evento:", err);
+        document.getElementById("desc").innerHTML = "<span class='error'>No se pudo cargar el evento.</span>";
+      }
+    })();
+  </script>
+
+  <!-- Motivos musicales (símbolos compatibles + tamaño reducido) -->
+  <script>
+    (function(){
+      const SYMBOLS = ['♩','♪','♫','♬','♭','♯','♮','🎵','🎶','🎼'];
+      const COUNT_MIN = 7, COUNT_MAX = 10;
+      const SIZE_MIN = 30, SIZE_MAX = 40;
+      const ROT_MIN  = -16, ROT_MAX  = 16;
+      const PADDING  = 10, EDGE_PAD = 6, MAX_TRIES = 80;
+
+      const rInt=(a,b)=>Math.floor(Math.random()*(b-a+1))+a;
+      const pick=a=>a[Math.floor(Math.random()*a.length)];
+      const rel=(el,p)=>{const r=el.getBoundingClientRect(),b=p.getBoundingClientRect();return {x:r.left-b.left,y:r.top-b.top,w:r.width,h:r.height};};
+      const hit=(a,b,p)=>!(a.x+a.w+p<=b.x||b.x+b.w+p<=a.x||a.y+a.h+p<=b.y||b.y+b.h+p<=a.y);
+
+      function place(){
+        const hero=document.querySelector('.hero'), layer=document.querySelector('.motifs-layer'); if(!hero||!layer)return;
+        layer.innerHTML='';
+        const avoid=[]; ['.hero-logo','h1','p'].forEach(sel=>{const el=hero.querySelector(sel); if(!el)return; const r=rel(el,hero); avoid.push({x:r.x-10,y:r.y-10,w:r.w+20,h:r.h+20});});
+        const placed=[]; const count=rInt(COUNT_MIN,COUNT_MAX);
+        for(let i=0;i<count;i++){
+          const s=document.createElement('span'); s.className='motif'; s.textContent=pick(SYMBOLS); s.style.opacity='0'; layer.appendChild(s);
+          let ok=false;
+          for(let t=0;t<MAX_TRIES;t++){
+            const size=rInt(SIZE_MIN,SIZE_MAX), rot=rInt(ROT_MIN,ROT_MAX);
+            s.style.fontSize=size+'px'; s.style.transform=`rotate(${rot}deg)`;
+            const left=rInt(EDGE_PAD, Math.max(EDGE_PAD, hero.clientWidth - size - EDGE_PAD));
+            const top =rInt(EDGE_PAD, Math.max(EDGE_PAD, hero.clientHeight - size - EDGE_PAD));
+            s.style.left=left+'px'; s.style.top=top+'px';
+            const rr=rel(s,hero);
+            if (rr.x<EDGE_PAD||rr.y<EDGE_PAD||rr.x+rr.w>hero.clientWidth-EDGE_PAD||rr.y+rr.h>hero.clientHeight-EDGE_PAD) continue;
+            if (avoid.some(av=>hit(rr,av,PADDING))) continue;
+            if (placed.some(pr=>hit(rr,pr,PADDING))) continue;
+            placed.push(rr); s.style.opacity=''; ok=true; break;
+          }
+          if(!ok) layer.removeChild(s);
+        }
+      }
+      window.addEventListener('load', place);
+      window.addEventListener('pageshow', e=>{ if(e.persisted) setTimeout(place,0); });
+      let tm; window.addEventListener('resize', ()=>{ clearTimeout(tm); tm=setTimeout(place,120); });
+    })();
+  </script>
 </body>
 </html>
-

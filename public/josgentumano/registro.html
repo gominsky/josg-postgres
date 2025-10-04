@@ -5,109 +5,36 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>¡JOSG en tu mano! · Registro</title>
   <link rel="stylesheet" href="../styles/estilos_app.css" />
-  <style>
-    :root{
-      --ink:#0f172a; --muted:#6b7280; --brd:#e5e7eb;
-    }
-    body{ color:var(--ink); background:#fff; }
-    .container{ max-width:520px; margin:0 auto; padding:16px; }
-
-    /* ========= HERO con pentagrama + figuras “marca de agua” ========= */
-    .hero{
-      position:relative; margin:10px 0 16px; padding:28px 16px 24px;
-      border:1px solid #f3e7da; border-radius:22px; text-align:center; overflow:hidden;
-      background-image:
-        radial-gradient(1400px 380px at -10% -10%, rgba(255,229,209,.85) 0%, rgba(255,229,209,0) 60%),
-        radial-gradient(1200px 360px at 110% 0%, rgba(255,241,201,.85) 0%, rgba(255,241,201,0) 55%),
-        linear-gradient(to bottom, rgba(0,0,0,.055) 0, rgba(0,0,0,.055) 1px, transparent 1px),
-        linear-gradient(to bottom, rgba(0,0,0,.055) 0, rgba(0,0,0,.055) 1px, transparent 1px),
-        linear-gradient(to bottom, rgba(0,0,0,.055) 0, rgba(0,0,0,.055) 1px, transparent 1px),
-        linear-gradient(to bottom, rgba(0,0,0,.055) 0, rgba(0,0,0,.055) 1px, transparent 1px),
-        linear-gradient(to bottom, rgba(0,0,0,.055) 0, rgba(0,0,0,.055) 1px, transparent 1px),
-        linear-gradient(180deg,#ffffff,#fff9f2 72%);
-      background-size: auto, auto, 100% 60px, 100% 60px, 100% 60px, 100% 60px, 100% 60px, auto;
-      background-position: center, center, 0 0, 0 8px, 0 16px, 0 24px, 0 32px, center;
-      background-repeat: no-repeat, no-repeat, repeat-y, repeat-y, repeat-y, repeat-y, repeat-y, no-repeat;
-      box-shadow:0 12px 36px rgba(0,0,0,.08);
-    }
-    .hero::after{ content:none !important; }
-    .hero::before{
-      content:""; position:absolute; right:-28px; bottom:-28px; width:300px; height:180px; opacity:.055;
-      background:url("../imagenes/logoJOSG.png") no-repeat right bottom / contain;
-      pointer-events:none;
-    }
-    .motifs-layer{ position:absolute; inset:0; z-index:1; pointer-events:none; user-select:none; }
-    .motif{
-      position:absolute; line-height:1; color:#000; opacity:.035; filter: blur(.15px);
-      mix-blend-mode: multiply; transform-origin:center; will-change: transform,left,top;
-    }
-    .hero .hero-logo, .hero h1, .hero p{ position:relative; z-index:2; }
-    .hero .hero-logo{ display:block; margin:0 auto 10px; max-height:112px; width:auto; filter: drop-shadow(0 4px 14px rgba(0,0,0,.10)); }
-    .hero h1{
-      margin:0; font-weight:900; letter-spacing:.2px; font-size:clamp(28px, 6.2vw, 44px); line-height:1.02;
-      background: linear-gradient(180deg,#111,#744b00); -webkit-background-clip:text; background-clip:text; color:transparent;
-    }
-    .hero p{ margin:6px 0 0; color:var(--muted); }
-
-    /* Formulario */
-    .panel{ background:#fff; border:1px solid var(--brd); border-radius:16px; padding:14px; box-shadow:0 4px 16px rgba(0,0,0,.06); }
-    .panel h2{ margin:.2rem 0 .4rem; }
-    .subtitulo{ color:var(--muted); font-weight:600; margin-top:0; }
-    .field{ display:flex; flex-direction:column; gap:6px; margin:.5rem 0; }
-    .field input{
-      width:100%; padding:.75rem .9rem; border:1px solid #e5e7eb; border-radius:12px; outline:0;
-      font-size:1rem; transition:border-color .12s ease, box-shadow .12s ease;
-    }
-    .field input:focus{ border-color:#f59e0b; box-shadow:0 0 0 4px rgba(245,158,11,.15); }
-
-    /* Botones (ambos naranjas) */
-    .actions{ display:flex; gap:10px; flex-wrap:wrap; margin-top:.6rem; }
-    .btn{
-      padding:.7rem 1rem; border-radius:12px; border:1px solid transparent; font-weight:800; cursor:pointer;
-      box-shadow:0 6px 18px rgba(0,0,0,.12); transition: transform .12s ease, box-shadow .12s ease, opacity .12s ease;
-    }
-    .btn:active{ transform:translateY(1px); }
-    .btn-primary,
-    .btn-secondary{ background:linear-gradient(180deg,#ffb24a,#f59e0b); border-color:#f59e0b; color:#fff; }
-    .btn:hover{ filter:brightness(1.05); }
-
-    /* Avisos */
-    .notice{ display:none; margin-top:.75rem; padding:.6rem .8rem; border-radius:.6rem; font-weight:700; }
-    .notice.ok{ display:block; background:#e9f7ef; color:#186a3b; border:1px solid #c8e6d1; }
-    .notice.err{ display:block; background:#fdecea; color:#b71c1c; border:1px solid #f5c6cb; }
-    button[disabled]{ opacity:.7; cursor:not-allowed; }
-  </style>
 </head>
 <body>
   <div class="container">
-    <!-- sin topbar -->
-
     <div class="hero" aria-label="Bienvenida">
       <div class="motifs-layer" aria-hidden="true"></div>
       <img class="hero-logo" src="../imagenes/logoJOSG.png" alt="JOSG">
       <h1>¡En tu mano!</h1>
       <p>Regístrate, introduce tu email, DNI y crea tu contraseña.</p>
 
-    <div class="panel" role="region" aria-labelledby="tit-reg">
-      <div class="field">
-        <input type="email" id="email" placeholder="Email" required autocomplete="username" />
-      </div>
-      <div class="field">
-        <input type="text" id="dni" placeholder="DNI" required />
-      </div>
-      <div class="field">
-        <input type="password" id="password" placeholder="Elegir contraseña" required autocomplete="new-password" />
-      </div>
-      <div class="field">
-        <input type="password" id="password2" placeholder="Repite la contraseña" required autocomplete="new-password" />
-      </div>
+      <div class="panel" role="region" aria-labelledby="tit-reg">
+        <div class="field">
+          <input type="email" id="email" placeholder="Email" required autocomplete="username" />
+        </div>
+        <div class="field">
+          <input type="text" id="dni" placeholder="DNI" required />
+        </div>
+        <div class="field">
+          <input type="password" id="password" placeholder="Elegir contraseña" required autocomplete="new-password" />
+        </div>
+        <div class="field">
+          <input type="password" id="password2" placeholder="Repite la contraseña" required autocomplete="new-password" />
+        </div>
 
-      <div class="actions">
-        <button id="btn-registrar" class="btn btn-primary" onclick="registrar()">Registrarme</button>
-        <button class="btn btn-secondary" onclick="location.href='login.html'">Ya tengo cuenta</button>
-      </div>
+        <div class="actions">
+          <button id="btn-registrar" class="btn btn-primary" onclick="registrar()">Registrarme</button>
+          <button class="btn btn-secondary" onclick="location.href='login.html'">Ya tengo cuenta</button>
+        </div>
 
-      <p id="mensaje" class="notice" role="status" aria-live="polite"></p>
+        <p id="mensaje" class="notice" role="status" aria-live="polite"></p>
+      </div>
     </div>
   </div>
 
@@ -155,7 +82,6 @@
         if (res.ok && (data.success ?? true)) {
           if (data.token) {
             localStorage.setItem('token', data.token);
-
             const alumnoId =
               data.alumno_id ??
               data.id ??
@@ -190,12 +116,12 @@
     }
   </script>
 
-  <!-- Motivos musicales aleatorios sin solaparse -->
+  <!-- Motivos musicales -->
   <script>
   (function(){
-    const SYMBOLS = ['♩','♪','♫','♬'];
+    const SYMBOLS = ['♩','♪','♫','♬','♭','♯','♮','🎵','🎶','🎼'];
     const COUNT_MIN = 7, COUNT_MAX = 10;
-    const SIZE_MIN = 72, SIZE_MAX = 160;
+    const SIZE_MIN = 36, SIZE_MAX = 50;
     const ROT_MIN  = -16, ROT_MAX  = 16;
     const PADDING  = 10;
     const EDGE_PAD = 6;
@@ -203,7 +129,6 @@
 
     const randInt = (a,b)=> Math.floor(Math.random()*(b-a+1))+a;
     const pick = (arr)=> arr[Math.floor(Math.random()*arr.length)];
-
     const getRectRelative = (el, parent)=>{
       const r = el.getBoundingClientRect(), p = parent.getBoundingClientRect();
       return { x:r.left-p.left, y:r.top-p.top, w:r.width, h:r.height };
@@ -262,4 +187,3 @@
   </script>
 </body>
 </html>
-

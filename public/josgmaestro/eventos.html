@@ -3,27 +3,20 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>JOSG ¡En tu mano! - Eventos</title>
+  <title>¡En tu mano!- Eventos</title>
   <link rel="stylesheet" href="../styles/estilos_app.css" />
-
-  <!-- ✅ Añade el CSS de FullCalendar -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/main.min.css" />
-
-  <!-- JS de FullCalendar -->
   <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/locales-all.global.min.js"></script>
-
-  <!-- ✅ Estilo compacto para que no se solapen título y botones -->
   <style>
     .calendar-container{ min-height:60vh; }
-    /* Cabecera más compacta y botones pequeños (como agenda.html) */
     .fc .fc-toolbar { flex-wrap: wrap; gap: 6px; }
     .fc .fc-toolbar-title { font-size: 1rem; line-height: 1.2; }
     .fc .fc-button { padding: .28rem .55rem; font-size: .9rem; border-radius: 8px; }
     .fc .fc-today-button { padding: .24rem .5rem; font-size: .85rem; }
     .fc .fc-button-group > .fc-button { padding: .24rem .5rem; }
     .fc .fc-header-toolbar { margin-bottom: 8px; }
-      .btn {
+    .btn {
       display:inline-block; padding:0.6rem 1.4rem; border-radius:12px;
       font-weight:600; color:#fff; border:none; cursor:pointer;
       box-shadow:0 4px 12px rgba(0,0,0,.15);
@@ -32,36 +25,75 @@
     }
     .btn:hover { transform:translateY(-1px); box-shadow:0 6px 16px rgba(0,0,0,.2); }
     .btn:active { transform:translateY(0); box-shadow:0 2px 8px rgba(0,0,0,.1); }
-  
-    /* NARANJA igual que “Eventos” del portal */
-    .btn-accent {
-      background: linear-gradient(180deg,#ffb24a,#f59e0b);
-      border:1px solid #f59e0b;
-    }
+    .btn-accent { background: linear-gradient(180deg,#ffb24a,#f59e0b); border:1px solid #f59e0b; }
   </style>
 </head>
 <body>
   <div class="container">
-    <div class="header">
-      <h2>Agenda de eventos</h2>
+    <!-- Topbar -->
+    <div class="topbar">
       <div id="user-pill" class="user-pill" style="display:none;">
         <span class="avatar"></span><span class="name"></span>
       </div>
+      <button id="btn-logout" class="icon-btn" title="Cerrar sesión" aria-label="Cerrar sesión">⎋</button>
     </div>
-    <div id="calendar" class="calendar-container"></div>
-    <button class="btn btn-accent" onclick="location.href='portal_maestro.html'">&larr; Inicio</button>
+
+    <!-- Hero con calendario dentro -->
+    <div class="hero" aria-label="Agenda de eventos">
+      <div class="motifs-layer" aria-hidden="true"></div>
+      <img class="hero-logo" src="../imagenes/logoJOSG.png" alt="JOSG">
+      <h1>¡En tu mano!</h1>
+      <p>Agenda de eventos</p>
+
+      <div class="panel">
+        <div id="calendar" class="calendar-container"></div>
+        <div class="actions" style="margin-top:.9rem;">
+          <button class="btn btn-accent" onclick="location.href='portal_maestro.html'">&larr; Inicio</button>
+        </div>
+      </div>
+    </div>
   </div>
+
+  <!-- Pill + logout -->
+  <script>
+    (function(){
+      async function cargarUsuarioPill(){
+        const pill = document.getElementById('user-pill'); if(!pill) return;
+        let nombre = localStorage.getItem('usuario_nombre') || '';
+        try{
+          const r = await fetch('/josgmaestro/api/yo', { credentials:'same-origin' });
+          if (r.ok) { const me = await r.json(); if (me?.nombre) nombre = me.nombre; }
+        }catch(e){}
+        if(!nombre){ pill.style.display='none'; return; }
+        pill.querySelector('.avatar').textContent = (nombre.trim()[0]||'U').toUpperCase();
+        pill.querySelector('.name').textContent   = nombre;
+        pill.style.display = 'inline-flex';
+      }
+      function bindLogout(){
+        const btn = document.getElementById('btn-logout');
+        if (!btn) return;
+        btn.addEventListener('click', ()=>{
+          fetch('/josgmaestro/logout', { method:'POST', credentials:'include' })
+            .finally(()=>{ localStorage.clear(); location.href = 'index.html'; });
+        });
+      }
+      document.addEventListener('DOMContentLoaded', cargarUsuarioPill);
+      document.addEventListener('DOMContentLoaded', bindLogout);
+    })();
+  </script>
+
+  <!-- FullCalendar -->
   <script>
     document.addEventListener('DOMContentLoaded', function () {
       const el = document.getElementById('calendar');
       if (!el) return;
-  
+
       const API = '/josgmaestro/api';
       const token = localStorage.getItem('token') || null;
-  
+
       const headers = { 'Accept': 'application/json' };
       if (token) headers['Authorization'] = `Bearer ${token}`;
-  
+
       const calendar = new FullCalendar.Calendar(el, {
         locale: 'es',
         firstDay: 1,
@@ -69,41 +101,26 @@
         headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth,listMonth' },
         buttonText: { today: 'Hoy', month: 'Mes', list: 'Agenda' },
         displayEventTime: false,
-  
-        // 🔧 clave: traemos nosotros los eventos con fetch (con headers correctos)
         events: async (info, success, failure) => {
           try {
-            // si tu backend filtra por rango, pásalo; si no, omite los query params
             const url = `${API}/eventos?start=${encodeURIComponent(info.startStr)}&end=${encodeURIComponent(info.endStr)}`;
             const res = await fetch(url, { headers, credentials: 'include' });
-  
-            if (res.status === 401) {
-              // sin sesión ni token → manda a login
-              window.location.href = '/josgmaestro/index.html';
-              return;
-            }
-            if (!res.ok) {
-              const text = await res.text();
-              console.error('Eventos HTTP error:', res.status, text);
-              failure(new Error(`HTTP ${res.status}`));
-              alert('No se pudieron cargar los eventos (HTTP ' + res.status + ').');
-              return;
-            }
-  
+
+            if (res.status === 401) { window.location.href = '/josgmaestro/index.html'; return; }
+            if (!res.ok) { failure(new Error(`HTTP ${res.status}`)); alert('No se pudieron cargar los eventos.'); return; }
+
             const data = await res.json();
-            // Asegurar formato mínimo para FullCalendar
             const events = (Array.isArray(data) ? data : []).map(e => ({
               id: String(e.id),
               title: e.title || e.titulo || '(sin título)',
-              start: e.start,                 // ISO String (YYYY-MM-DDTHH:MM:SS) — el backend ya lo da así
-              end: e.end || e["end"] || null, // ojo con la propiedad "end" si viene con comillas
+              start: e.start,
+              end: e.end || e["end"] || null,
               extendedProps: {
                 descripcion: e.descripcion || '',
                 grupo: e.grupo_nombre || '',
                 espacio: e.espacio || ''
               }
             }));
-  
             success(events);
           } catch (err) {
             console.error('Eventos fetch error:', err);
@@ -111,38 +128,55 @@
             alert('No se pudieron cargar los eventos (network error).');
           }
         },
-  
         eventClick(info) {
           window.location.href = `evento_detalle.html?id=${encodeURIComponent(info.event.id)}`;
         }
       });
-  
       calendar.render();
     });
-  </script> 
-<script>
-  /* Carga la pill con nombre del usuario (localStorage o /josgmaestro/api/yo) */
-  (function(){
-    async function cargarUsuarioPill(){
-      const pill = document.getElementById('user-pill');
-      if(!pill) return;
-      let nombre = localStorage.getItem('usuario_nombre') || '';
-      try{
-        const r = await fetch('/josgmaestro/api/yo', { credentials:'same-origin' });
-        if (r.ok) {
-          const me = await r.json();
-          if (me && me.nombre) nombre = me.nombre;
-        }
-      }catch(e){}
-      if(!nombre){ pill.style.display='none'; return; }
-      pill.querySelector('.avatar').textContent = (nombre.trim()[0]||'U').toUpperCase();
-      pill.querySelector('.name').textContent   = nombre;
-      pill.style.display = 'inline-flex';
-    }
-    document.addEventListener('DOMContentLoaded', cargarUsuarioPill);
-  })();
   </script>
-  
+
+  <!-- Motivos musicales tamaño pequeño -->
+  <script>
+    (function(){
+      const SYMBOLS = ['♩','♪','♫','♬','♭','♯','♮','🎵','🎶','🎼'];
+      const COUNT_MIN = 7, COUNT_MAX = 10;
+      const SIZE_MIN = 30, SIZE_MAX = 40;  /* solicitado */
+      const ROT_MIN  = -16, ROT_MAX  = 16;
+      const PADDING  = 10, EDGE_PAD = 6, MAX_TRIES = 80;
+
+      const rInt=(a,b)=>Math.floor(Math.random()*(b-a+1))+a;
+      const pick=a=>a[Math.floor(Math.random()*a.length)];
+      const rel=(el,p)=>{const r=el.getBoundingClientRect(),b=p.getBoundingClientRect();return {x:r.left-b.left,y:r.top-b.top,w:r.width,h:r.height};};
+      const hit=(a,b,p)=>!(a.x+a.w+p<=b.x||b.x+b.w+p<=a.x||a.y+a.h+p<=b.y||b.y+b.h+p<=a.y);
+
+      function place(){
+        const hero=document.querySelector('.hero'), layer=document.querySelector('.motifs-layer'); if(!hero||!layer)return;
+        layer.innerHTML='';
+        const avoid=[]; ['.hero-logo','h1','p','#calendar','.panel .actions'].forEach(sel=>{const el=hero.querySelector(sel); if(!el)return; const r=rel(el,hero); avoid.push({x:r.x-10,y:r.y-10,w:r.w+20,h:r.h+20});});
+        const placed=[]; const count=rInt(COUNT_MIN,COUNT_MAX);
+        for(let i=0;i<count;i++){
+          const s=document.createElement('span'); s.className='motif'; s.textContent=pick(SYMBOLS); s.style.opacity='0'; layer.appendChild(s);
+          let ok=false;
+          for(let t=0;t<MAX_TRIES;t++){
+            const size=rInt(SIZE_MIN,SIZE_MAX), rot=rInt(ROT_MIN,ROT_MAX);
+            s.style.fontSize=size+'px'; s.style.transform=`rotate(${rot}deg)`;
+            const left=rInt(EDGE_PAD, Math.max(EDGE_PAD, hero.clientWidth - size - EDGE_PAD));
+            const top =rInt(EDGE_PAD, Math.max(EDGE_PAD, hero.clientHeight - size - EDGE_PAD));
+            s.style.left=left+'px'; s.style.top=top+'px';
+            const rr=rel(s,hero);
+            if (rr.x<EDGE_PAD||rr.y<EDGE_PAD||rr.x+rr.w>hero.clientWidth-EDGE_PAD||rr.y+rr.h>hero.clientHeight-EDGE_PAD) continue;
+            if (avoid.some(av=>hit(rr,av,PADDING))) continue;
+            if (placed.some(pr=>hit(rr,pr,PADDING))) continue;
+            placed.push(rr); s.style.opacity=''; ok=true; break;
+          }
+          if(!ok) layer.removeChild(s);
+        }
+      }
+      window.addEventListener('load',place);
+      window.addEventListener('pageshow',e=>{if(e.persisted)setTimeout(place,0);});
+      let tm=null; window.addEventListener('resize',()=>{clearTimeout(tm);tm=setTimeout(place,120);});
+    })();
+  </script>
 </body>
 </html>
-
