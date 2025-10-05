@@ -6,16 +6,65 @@
   <title>¡En tu mano! - Mensajes</title>
   <link rel="stylesheet" href="../styles/estilos_app.css" />
   <style>
-    .hero .panel{ position:relative; z-index:2; }
-    .hero .motifs-layer{ pointer-events:none; }
-
-    .form-vertical { display:flex; flex-direction:column; gap:12px; }
-    .panel-blanco{
-      background:#fff; border:1px solid rgba(0,0,0,.08);
-      border-radius:16px; padding:16px 18px;
+    /* === ÚNICO CONTENEDOR CON PENTAGRAMA CLARO (vintage) === */
+    .container.with-staff{
+      position: relative;
+      min-height: 100vh;
+      border: 0 !important;            /* evita “marco” exterior */
+      box-shadow: none !important;
+      background:
+        radial-gradient(120% 70% at 50% -10%, rgba(209,145,62,.08), transparent 60%),
+        linear-gradient(180deg, #fffaf1 0%, #fffdfb 100%);
     }
+    .container.with-staff::before{
+      content:"";
+      position:absolute; inset:0;
+      pointer-events:none; z-index:0;
+      /* 5 líneas (pentagrama) + hueco; tono suave */
+      background:
+        repeating-linear-gradient(
+          180deg,
+          rgba(0,0,0,.13) 0 1px,  transparent 1px 7px,
+          rgba(0,0,0,.13) 7px 8px, transparent 8px 14px,
+          rgba(0,0,0,.13) 14px 15px, transparent 15px 21px,
+          rgba(0,0,0,.13) 21px 22px, transparent 22px 28px,
+          rgba(0,0,0,.13) 28px 29px, transparent 29px 53px
+        );
+      opacity:.24;
+    }
+
+    /* Capa de símbolos a nivel contenedor (única) */
+    .with-staff .motifs-layer{
+      position:absolute; inset:0; z-index:1; pointer-events:none;
+    }
+    .with-staff .motifs-layer .motif{
+      position:absolute; font-size:40px; line-height:1;
+      opacity:.16; filter: blur(.1px);
+    }
+
+    /* Todo el contenido por encima del fondo y símbolos */
+    .with-staff .topbar,
+    .with-staff .hero{ position:relative; z-index:2; }
+
+    /* ⛔️ Elimina cualquier fondo/caja que genere el “recuadro interior” */
+    .with-staff .hero,
+    .with-staff .hero-content{
+      background: transparent !important;
+      border: 0 !important;
+      box-shadow: none !important;
+    }
+    .with-staff .hero::before,
+    .with-staff .hero::after{ content:none !important; }
+    .with-staff .panel,
+    .with-staff .panel-blanco{ display:none !important; } /* por si quedara en el HTML */
+
+    /* ===== Estilos base del formulario (transparente) ===== */
+    .form-vertical { display:flex; flex-direction:column; gap:12px; }
     input.form-control, textarea.form-control { width:100%; box-sizing:border-box; }
-    textarea#cuerpo{ min-height:20vh; font-size:1rem; line-height:1.45; padding:.8rem 1rem; }
+    textarea#cuerpo{
+      min-height:20vh; font-size:1rem; line-height:1.45; padding:.8rem 1rem;
+      background: transparent;
+    }
 
     .chips{ display:flex; gap:.5rem; flex-wrap:wrap; }
     .chip{ padding:.5rem .8rem; border:1px solid #e6e6e6; border-radius:999px; background:#fafafa; cursor:pointer; user-select:none; }
@@ -38,10 +87,80 @@
     .button-base:active { transform: translateY(0); box-shadow:0 2px 8px rgba(0,0,0,.1); }
     .button-send { background: linear-gradient(180deg,#ffb24a,#f59e0b); border:1px solid #f59e0b; }
     .button-cancel { background: linear-gradient(180deg,#f28d63,#ea6b38); border: 1px solid #cc5c2f; }
+
+    /* — Línea única de separación entre cabecera y cuerpo — */
+    .page-sep{
+      height:1px; background: rgba(0,0,0,.28);
+      margin:8px 10px 10px;
+    }
+    /* ——— Modo compacto: todo más arriba, sin cambiar tipografías ——— */
+.compact .topbar{
+  margin-bottom: 4px !important;   /* reduce hueco bajo la topbar */
+}
+
+.compact .hero{
+  margin-top: 0 !important;
+  padding-top: 2px !important;     /* acerca logo/títulos a la topbar */
+  background: transparent !important;  /* por si quedaba algún fondo */
+  box-shadow: none !important;
+  border: 0 !important;
+}
+
+.compact .hero-logo{
+  /* no cambiamos tamaño, solo márgenes */
+  margin: 0 0 4px 0 !important;
+}
+
+.compact .hero h1,
+.compact .hero p{
+  margin: 0 0 2px 0 !important;    /* comprime títulos/subtítulo */
+}
+
+.compact .page-sep{
+  margin: 4px 10px 6px !important; /* la línea queda pegada a la cabecera */
+}
+
+.compact .hero-content{
+  padding-top: 6px !important;     /* acerca el cuerpo a la línea */
+}
+/* — Modo ultra-compacto: subir todo hacia arriba — */
+.compact.tight .topbar{ margin-bottom:2px !important; }
+.compact.tight .hero{
+  margin-top:0 !important;
+  padding-top:0 !important;
+  background:transparent !important;
+  box-shadow:none !important;
+  border:0 !important;
+}
+.compact.tight .hero-logo{ margin:0 0 2px 0 !important; }
+.compact.tight .hero h1,
+.compact.tight .hero p{ margin:0 0 1px 0 !important; }
+.compact.tight .page-sep{ margin:2px 10px 4px !important; }
+.compact.tight .hero-content{ padding-top:4px !important; }
+/* — Centrar el formulario de login y su acción — */
+.hero{ display:flex; flex-direction:column; align-items:center; }
+.hero .form-vertical{ width:100%; max-width:420px; margin:0 auto; }
+.form-actions{ justify-content:center; }
+/* Línea de separación entre cabecera y cuerpo */
+.page-sep{
+  height: 1px;
+  background: rgba(0,0,0,.28);
+  margin: 8px 10px 10px;
+}
+
+/* Ajustes cuando usamos los modos compactos */
+.compact .page-sep{ margin: 4px 10px 6px; }
+.compact.tight .page-sep{ margin: 2px 10px 4px; }
+
   </style>
 </head>
 <body>
-  <div class="container">
+  <div class="container with-staff compact tight">
+
+
+    <!-- Motivos musicales a nivel contenedor -->
+    <div class="motifs-layer" aria-hidden="true"></div>
+
     <!-- Topbar -->
     <div class="topbar">
       <div id="user-pill" class="user-pill" style="display:none;">
@@ -50,17 +169,18 @@
       <button id="btn-logout" class="icon-btn" title="Cerrar sesión" aria-label="Cerrar sesión">⎋</button>
     </div>
 
-    <!-- Hero con formulario dentro -->
+    <!-- Cabecera (sin contenedor interior) -->
     <div class="hero" aria-label="Mensajes">
-      <div class="motifs-layer" aria-hidden="true"></div>
       <img class="hero-logo" src="../imagenes/logoJOSG.png" alt="JOSG">
       <h1>¡En tu mano!</h1>
       <p>Enviar mensajes</p>
+      <div class="page-sep" aria-hidden="true"></div>
 
-      <div class="panel">
+      <!-- Cuerpo (formulario transparente) -->
+      <div class="hero-content" style="padding:8px 10px 12px;">
         <div id="toast" class="toast-fixed" role="status" aria-live="polite"></div>
 
-        <form id="msg-form" class="form-vertical panel-blanco" autocomplete="off">
+        <form id="msg-form" class="form-vertical" autocomplete="off">
           <label for="titulo"><strong>Título</strong></label>
           <input id="titulo" class="form-control" maxlength="80" placeholder="p. ej., Recordatorio de ensayo" required />
 
@@ -179,12 +299,10 @@
       const opts = {
         method: 'POST',
         headers: authHeaders(),
-        credentials: 'include',         // envía cookie/sesión
+        credentials: 'include',
         body: JSON.stringify(body)
       };
-      // API principal
       let res = await fetch('/josgmaestro/api/mensajes', opts).catch(() => null);
-      // Fallback legacy si no existe el endpoint o devuelve 404
       if (!res || res.status === 404) {
         res = await fetch('/mensajes', opts).catch(() => null);
       }
@@ -241,12 +359,16 @@
     });
   </script>
 
-  <!-- Motivos musicales (maestro: 30–40 px) -->
+  <!-- Motivos musicales (30–40 px) en el CONTENEDOR exterior (3–5 símbolos) -->
   <script>
     (function(){
+      const ROOT = document.querySelector('.container.with-staff');
+      if(!ROOT) return;
+      const LAYER = ROOT.querySelector('.motifs-layer');
+
       const SYMBOLS = ['♩','♪','♫','♬','♭','♯','♮','🎵','🎶','🎼'];
-      const COUNT_MIN = 7, COUNT_MAX = 10;
-      const SIZE_MIN = 30, SIZE_MAX = 40;  /* solicitado */
+      const COUNT_MIN = 3, COUNT_MAX = 5;   /* menos motivos */
+      const SIZE_MIN = 30, SIZE_MAX = 40;
       const ROT_MIN  = -16, ROT_MAX  = 16;
       const PADDING  = 10, EDGE_PAD = 6, MAX_TRIES = 80;
 
@@ -256,26 +378,34 @@
       const hit=(a,b,p)=>!(a.x+a.w+p<=b.x||b.x+b.w+p<=a.x||a.y+a.h+p<=b.y||b.y+b.h+p<=a.y);
 
       function place(){
-        const hero=document.querySelector('.hero'), layer=document.querySelector('.motifs-layer'); if(!hero||!layer)return;
-        layer.innerHTML='';
-        const avoid=[]; ['.hero-logo','h1','p','.panel .form-vertical','.panel .actions'].forEach(sel=>{const el=hero.querySelector(sel); if(!el)return; const r=rel(el,hero); avoid.push({x:r.x-10,y:r.y-10,w:r.w+20,h:r.h+20});});
+        if(!ROOT || !LAYER) return;
+        LAYER.innerHTML='';
+
+        /* Dejamos visibles en cabecera; solo evitamos el formulario/acciones */
+        const avoid=[];
+        ['form','.actions'].forEach(sel=>{
+          const el=ROOT.querySelector(sel); if(!el)return;
+          const r=rel(el,ROOT); avoid.push({x:r.x-12,y:r.y-12,w:r.w+24,h:r.h+24});
+        });
+
         const placed=[]; const count=rInt(COUNT_MIN,COUNT_MAX);
         for(let i=0;i<count;i++){
-          const s=document.createElement('span'); s.className='motif'; s.textContent=pick(SYMBOLS); s.style.opacity='0'; layer.appendChild(s);
+          const s=document.createElement('span'); s.className='motif'; s.textContent=pick(SYMBOLS);
+          s.style.opacity='0'; LAYER.appendChild(s);
           let ok=false;
           for(let t=0;t<MAX_TRIES;t++){
             const size=rInt(SIZE_MIN,SIZE_MAX), rot=rInt(ROT_MIN,ROT_MAX);
             s.style.fontSize=size+'px'; s.style.transform=`rotate(${rot}deg)`;
-            const left=rInt(EDGE_PAD, Math.max(EDGE_PAD, hero.clientWidth - size - EDGE_PAD));
-            const top =rInt(EDGE_PAD, Math.max(EDGE_PAD, hero.clientHeight - size - EDGE_PAD));
+            const left=rInt(EDGE_PAD, Math.max(EDGE_PAD, ROOT.clientWidth - size - EDGE_PAD));
+            const top =rInt(EDGE_PAD, Math.max(EDGE_PAD, ROOT.clientHeight - size - EDGE_PAD));
             s.style.left=left+'px'; s.style.top=top+'px';
-            const rr=rel(s,hero);
-            if (rr.x<EDGE_PAD||rr.y<EDGE_PAD||rr.x+rr.w>hero.clientWidth-EDGE_PAD||rr.y+rr.h>hero.clientHeight-EDGE_PAD) continue;
+            const rr=rel(s,ROOT);
+            if (rr.x<EDGE_PAD||rr.y<EDGE_PAD||rr.x+rr.w>ROOT.clientWidth-EDGE_PAD||rr.y+rr.h>ROOT.clientHeight-EDGE_PAD) continue;
             if (avoid.some(av=>hit(rr,av,PADDING))) continue;
             if (placed.some(pr=>hit(rr,pr,PADDING))) continue;
             placed.push(rr); s.style.opacity=''; ok=true; break;
           }
-          if(!ok) layer.removeChild(s);
+          if(!ok) LAYER.removeChild(s);
         }
       }
       window.addEventListener('load',place);
