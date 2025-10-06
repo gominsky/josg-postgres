@@ -1,5 +1,8 @@
 // routes/josgmaestro.js
 const express = require('express');
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
 const router  = express.Router();
 const db      = require('../database/db');
 const bcrypt  = require('bcrypt');
@@ -137,6 +140,53 @@ router.post('/token-login', async (req, res) => {
   }
 });
 
+
+// === Subida de archivos (adjuntos) ===
+const UPLOAD_ROOT = path.join(__dirname, 'uploads');
+function ensureDir(p){ if (!fs.existsSync(p)) fs.mkdirSync(p, { recursive:true }); }
+const uploadStorage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    const now = new Date();
+    const dir = path.join(UPLOAD_ROOT, String(now.getFullYear()), String(now.getMonth()+1).padStart(2,'0'));
+    ensureDir(dir);
+    cb(null, dir);
+  },
+  filename: function (req, file, cb) {
+    const safe = file.originalname.replace(/[^\w.\-]+/g, '_');
+    const stamp = Date.now();
+    cb(null, `${stamp}_${safe}`);
+  }
+});
+const upload = multer({
+  storage: uploadStorage,
+  limits: { fileSize: 10 * 1024 * 1024, files: 5 }, // 10 MB, máx. 5
+  fileFilter: (req, file, cb) => {
+    const ok = /^(application\/pdf|image\/|audio\/)/.test(file.mimetype || '');
+    cb(ok ? null : new Error('invalid_type'), ok);
+  }
+});
+// Servir estáticos si el host no lo hace arriba (router montado bajo /josgmaestro => /josgmaestro/uploads)
+router.use('/uploads', express.static(UPLOAD_ROOT));
+
+router.post('/api/uploads', (req, res) => {
+  const usuarioId = Number(getAuthUserId(req));
+  if (!usuarioId) return res.status(401).json({ error: 'auth_required' });
+  upload.array('files', 5)(req, res, function(err){
+    if (err) {
+      if (err.message === 'invalid_type') return res.status(400).json({ error:'invalid_type' });
+      if (err.code === 'LIMIT_FILE_SIZE') return res.status(400).json({ error:'file_too_big' });
+      if (err.code === 'LIMIT_FILE_COUNT') return res.status(400).json({ error:'too_many_files' });
+      return res.status(400).json({ error: String(err.message || err) });
+    }
+    const files = (req.files || []).map(f => {
+      // URL pública relativa al router montado (p. ej., /josgmaestro/uploads/aaaa/mm/archivo.ext)
+      const rel = f.path.substring(UPLOAD_ROOT.length).replace(/\\/g,'/');
+      const url = `/uploads${rel}`;
+      return { filename: f.filename, originalname: f.originalname, size: f.size, mimetype: f.mimetype, url };
+    });
+    res.json({ files });
+  });
+});
 /* ============ Eventos ============ */
 // Lista para portal y calendario. Filtra por permisos si es docente.
 router.get('/api/eventos', async (req, res) => {
@@ -194,6 +244,14 @@ router.get('/api/eventos', async (req, res) => {
       where.push(`${EVENT_START} IS NOT NULL`);
     }
 
+    else {
+      // Por defecto (portal): solo próximos eventos desde hoy y con fecha válida
+      where.push(`(${EVENT_END} >= CURRENT_DATE)`);
+      where.push(`${EVENT_START} IS NOT NULL`);
+    }
+    // Límite: calendario (con rango) hasta 1000; portal (sin rango) hasta ?limit o 5 por defecto
+    const limitRows = (start && end) ? 1000 : 5;
+
     const sql = `
       SELECT
         e.id,
@@ -242,7 +300,7 @@ router.get('/api/eventos', async (req, res) => {
         ${EVENT_START} NULLS LAST,
         ${HORA_INI}   NULLS LAST,
         e.id ASC
-      LIMIT 1000
+      LIMIT ${limitRows}
     `;
 
     const rs = await db.query(sql, args);

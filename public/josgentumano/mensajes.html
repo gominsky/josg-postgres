@@ -24,6 +24,35 @@
     .pager{ display:flex; align-items:center; justify-content:center; gap:6px; flex-wrap:wrap; margin:14px 0 4px; }
     .pager-btn{ all: unset; display:inline-flex; align-items:center; justify-content:center; padding:.35rem .6rem; min-width:2.2rem; text-align:center; border:1px solid #e5e7eb; border-radius:8px; background:#fff; font-size:.9rem; line-height:1; cursor:pointer; user-select:none; }
     .pager-btn.active{ font-weight:700; border-color:#ea6b38; box-shadow:0 0 0 4px rgba(234,107,56,.20); color:#ea6b38; }
+    /* === Adjuntos (clip) === */
+.clip-btn{
+  padding:.35rem .6rem; font-size:.85rem; background:#fff;
+  border:1px solid #e5e7eb; border-radius:999px; color:#374151;
+  cursor:pointer; user-select:none; display:inline-flex; align-items:center; gap:.4rem;
+}
+.clip-btn:hover{ background:#fffaf3; }
+.att-list{ list-style:none; margin:.35rem 0 0; padding:0; display:none; }
+.att-list li{
+  display:flex; align-items:center; justify-content:space-between; gap:.5rem;
+  border:1px solid #eee; border-radius:10px; padding:.45rem .6rem; background:#fff; margin-top:.4rem;
+}
+.att-list a{ text-decoration:none; color:#ea6b38; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.att-count{ font-weight:700; color:#ea6b38; }
+
+.clip-btn{
+  padding:.35rem .6rem; font-size:.85rem; background:#fff;
+  border:1px solid #e5e7eb; border-radius:999px; color:#374151;
+  cursor:pointer; user-select:none; display:inline-flex; align-items:center; gap:.4rem;
+}
+.clip-btn:hover{ background:#fffaf3; }
+.att-list{ list-style:none; margin:.35rem 0 0; padding:0; display:none; }
+.att-list li{
+  display:flex; align-items:center; justify-content:space-between; gap:.5rem;
+  border:1px solid #eee; border-radius:10px; padding:.45rem .6rem; background:#fff; margin-top:.4rem;
+}
+.att-list a{ text-decoration:none; color:#ea6b38; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.att-count{ font-weight:700; color:#ea6b38; }
+
   </style>
 </head>
 <body data-page="mensajes" class="orange-cards">
@@ -141,39 +170,58 @@
     }
 
     function cardHTML(m, readSet){
-      const idStr = String(m.id ?? '');
-      const titulo = esc(m.titulo || m.title || 'Aviso');
-      const cuerpo = String(m.cuerpo || m.mensaje || m.body || '').trim();
-      const fecha  = m.fecha || m.created_at || m.fecha_envio || m.sent_at || m.createdAt || '';
-      const when   = fmtFecha(fecha);
+  const idStr  = String(m.id ?? '');
+  const titulo = esc(m.titulo || m.title || 'Aviso');
+  const cuerpo = String(m.cuerpo || m.mensaje || m.body || '').trim();
+  const fecha  = m.fecha || m.created_at || m.fecha_envio || m.sent_at || m.createdAt || '';
+  const when   = fmtFecha(fecha);
 
-      const enlaces = Array.isArray(m.enlaces) ? m.enlaces
-        : (m.links ? [].concat(m.links) : []);
-      const chips = enlaces.filter(Boolean).map(u => {
-        const href = safeHref(u);
-        return href ? `<a class="chip" href="${href}" target="_blank" rel="noopener noreferrer">Abrir</a>` : '';
-      }).join('');
+  // Enlaces / adjuntos (array de strings o de objetos { url })
+  const enlaces = Array.isArray(m.enlaces) ? m.enlaces
+        : Array.isArray(m.links) ? m.links
+        : Array.isArray(m.urls)  ? m.urls
+        : (m.links ? [m.links] : (m.urls ? [m.urls] : []));
 
-      const truncated = cuerpo.length > MAX_CHARS;
-      const shortHTML = esc(cuerpo.slice(0, MAX_CHARS)) + (truncated ? '…' : '');
-      const fullHTML  = esc(cuerpo);
+  const truncated = cuerpo.length > MAX_CHARS;
+  const shortHTML = esc(cuerpo.slice(0, MAX_CHARS)) + (truncated ? '…' : '');
+  const fullHTML  = esc(cuerpo);
 
-      const read = isRead(m, readSet);
-      const meta = [when, read ? 'leído' : 'no leído'].filter(Boolean).join(' · ');
+  const read = isRead(m, readSet);
+  const meta = [when, read ? 'leído' : 'no leído'].filter(Boolean).join(' · ');
 
-      return `
-        <article class="card">
-          <h3>${titulo}</h3>
-          <div class="meta">${meta}</div>
-          <div class="msg-body" data-expanded="false" data-short="${shortHTML}" data-full="${fullHTML}">${shortHTML}</div>
-          ${chips ? `<div class="chips">${chips}</div>`:''}
-          <div class="mark-wrap">
-            ${truncated ? `<button class="btn-ghost" data-toggle="${idStr}">Ver más</button>`:''}
-            ${!read ? `<button class="btn-ghost" data-mark="${idStr}">Marcar como leído</button>`:''}
-          </div>
-        </article>
-      `;
-    }
+  // Construcción del bloque de adjuntos (clip)
+  const atts = (enlaces || []).filter(Boolean).map(it => {
+    const href = typeof it === 'string' ? it : (it?.url ?? it?.href ?? it?.link);
+    if (!href) return '';
+    const safe = (typeof safeHref === 'function') ? safeHref(href) : href;
+    if (!safe) return '';
+    // Nombre legible (quita querystrings si los hay)
+    const name = decodeURIComponent(String(href).split('/').pop() || 'archivo').replace(/\?.*$/, '');
+    return `<li><a href="${safe}" target="_blank" rel="noopener">${name}</a></li>`;
+  }).filter(Boolean);
+
+  const clipHTML = atts.length ? `
+    <div class="mark-wrap">
+      <button class="clip-btn" data-clip="${idStr}">📎 <span class="att-count">${atts.length}</span> adjunto${atts.length>1?'s':''}</button>
+    </div>
+    <ul class="att-list" id="att-${idStr}">${atts.join('')}</ul>
+  ` : '';
+
+  return `
+    <article class="card">
+      <h3>${titulo}</h3>
+      <div class="meta">${meta}</div>
+      <div class="msg-body" data-expanded="false" data-short="${shortHTML}" data-full="${fullHTML}">${shortHTML}</div>
+
+      ${clipHTML}
+
+      <div class="mark-wrap">
+        ${truncated ? `<button class="btn-ghost" data-toggle="${idStr}">Ver más</button>` : ``}
+        ${!read ? `<button class="btn-ghost" data-mark="${idStr}">Marcar como leído</button>` : ``}
+      </div>
+    </article>
+  `;
+}
 
     function renderPager(){
       $pager.innerHTML = '';
@@ -251,51 +299,76 @@
     }
 
     // Delegación: Ver más / Ver menos y Marcar leído
-    $list.addEventListener('click', async (ev)=>{
-      const more = ev.target.closest('button[data-toggle]');
-      if (more){
-        const card = more.closest('article');
-        const body = card.querySelector('.msg-body');
-        const expanded = body.getAttribute('data-expanded') === 'true';
-        if (expanded){
-          body.innerHTML = body.dataset.short;
-          body.setAttribute('data-expanded','false');
-          more.textContent = 'Ver más';
-        }else{
-          body.innerHTML = body.dataset.full || body.dataset.short;
-          body.setAttribute('data-expanded','true');
-          more.textContent = 'Ver menos';
-        }
-        return;
+// Delegación: Clip / Ver más / Marcar leído
+$list.addEventListener('click', async (ev) => {
+  // 1) Clip: mostrar/ocultar adjuntos
+  const clipBtn = ev.target.closest('button[data-clip]');
+  if (clipBtn){
+    const id = String(clipBtn.getAttribute('data-clip'));
+    const ul = document.getElementById('att-' + id);
+    if (ul){
+      ul.style.display = (ul.style.display === 'none' || !ul.style.display) ? 'block' : 'none';
+    }
+    return;
+  }
+
+  // 2) Ver más / Ver menos
+  const moreBtn = ev.target.closest('button[data-toggle]');
+  if (moreBtn){
+    const id = String(moreBtn.getAttribute('data-toggle'));
+    const card = moreBtn.closest('.card');
+    const body = card && card.querySelector('.msg-body');
+    if (body){
+      const expanded = body.getAttribute('data-expanded') === 'true';
+      if (expanded){
+        body.textContent = body.getAttribute('data-short') || '';
+        body.setAttribute('data-expanded', 'false');
+        moreBtn.textContent = 'Ver más';
+      } else {
+        body.textContent = body.getAttribute('data-full') || '';
+        body.setAttribute('data-expanded', 'true');
+        moreBtn.textContent = 'Ver menos';
       }
+    }
+    return;
+  }
 
-      const btn = ev.target.closest('button[data-mark]');
-      if (!btn) return;
-      const id = String(btn.getAttribute('data-mark'));
-      try{
-        const token = localStorage.getItem('token');
-        const r = await fetch(`/firmas/api/alumno/${encodeURIComponent(alumno_id)}/mensajes/${id}/leer`, {
-          method:'POST',
-          headers: Object.assign(
-            { 'Content-Type':'application/json' },
-            token ? { 'Authorization': 'Bearer ' + token } : {}
-          )
-        });
-        if (!r.ok) throw new Error('No se pudo marcar como leído');
+  // 3) Marcar como leído
+  const markBtn = ev.target.closest('button[data-mark]');
+  if (markBtn){
+    const id = String(markBtn.getAttribute('data-mark'));
+    try{
+      const token = localStorage.getItem('token');
+      const r = await fetch(`/firmas/api/alumno/${encodeURIComponent(alumno_id)}/mensajes/${id}/leer`, {
+        method: 'POST',
+        headers: Object.assign(
+          { 'Content-Type': 'application/json' },
+          token ? { 'Authorization': 'Bearer ' + token } : {}
+        )
+      });
+      if (!r.ok) throw new Error('No se pudo marcar como leído');
 
-        const set = getReadSet(); set.add(id); saveReadSet(set);
-        btn.remove();
-        const meta = btn.closest('.card').querySelector('.meta');
-        if (meta && !/leído/.test(meta.textContent)) {
-          meta.textContent = (meta.textContent ? meta.textContent + ' · ' : '') + 'leído';
-        }
-      }catch(e){ console.error(e); }
-    });
+      // Actualiza estado local y UI
+      const set = getReadSet(); set.add(id); saveReadSet(set);
+      markBtn.remove();
+      const card = markBtn.closest('.card');
+      const meta = card && card.querySelector('.meta');
+      if (meta && !/leído/.test(meta.textContent)) {
+        meta.textContent = (meta.textContent ? meta.textContent + ' · ' : '') + 'leído';
+      }
+    }catch(e){ console.error(e); }
+    return;
+  }
+});
+// Lanza la carga inicial y refrescos
+document.addEventListener('DOMContentLoaded', cargar);
+window.addEventListener('pageshow', cargar);
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') cargar();
+});
 
-    document.addEventListener('DOMContentLoaded', cargar);
-    window.addEventListener('pageshow', cargar);
-    document.addEventListener('visibilitychange', ()=>{ if (document.visibilityState === 'visible') cargar(); });
-  })();
+// Cierra la IIFE
+})();
   </script>
 
   <!-- Motivos musicales (símbolos compatibles + tamaño reducido) -->
