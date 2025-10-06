@@ -6,25 +6,75 @@
   <title>¡JOSG en tu mano! · Mensajes</title>
   <link rel="stylesheet" href="../styles/estilos_app.css" />
   <style>
-    /* Específico mínimo de esta página */
-    .list{ display:grid; gap:12px; }
-    .card{
-      border:1px solid #e5e7eb; border-left:4px solid #ea6b38; border-radius:14px;
-      padding:12px 12px 12px 14px; background:linear-gradient(180deg,#fff,#fff9f5);
-      box-shadow:0 4px 14px rgba(16,24,40,.06);
-    }
-    .card h3{ margin:.1rem 0 .25rem; font-size:1.05rem; }
-    .meta{ font-size:.85rem; color:#6b7280; }
-    .msg-body{ display:block; margin:.35rem 0 .2rem; padding:.6rem .7rem; background:#fff4ea; border:1px solid #f2f2f2; border-radius:10px; white-space:pre-wrap; word-break:break-word; }
-    .chips{ display:flex; justify-content:center; gap:.5rem; flex-wrap:wrap; margin-top:.4rem; }
-    .chip{ display:inline-block; padding:.38rem .7rem; border:1px solid #eee; border-radius:999px; background:#ffffff; font-weight:700; font-size:.9rem; color:#ea6b38; text-decoration:none; white-space:nowrap; }
-    .mark-wrap{ margin-top:.35rem; display:flex; gap:.4rem; flex-wrap:wrap; }
-    .btn-ghost{ padding:.4rem .6rem; font-size:.85rem; background:#fff; border:1px solid #e5e7eb; border-radius:999px; color:#ea6b38; cursor:pointer; user-select:none; }
-    .btn-ghost:hover{ background:#fffaf3; }
-    .pager{ display:flex; align-items:center; justify-content:center; gap:6px; flex-wrap:wrap; margin:14px 0 4px; }
-    .pager-btn{ all: unset; display:inline-flex; align-items:center; justify-content:center; padding:.35rem .6rem; min-width:2.2rem; text-align:center; border:1px solid #e5e7eb; border-radius:8px; background:#fff; font-size:.9rem; line-height:1; cursor:pointer; user-select:none; }
-    .pager-btn.active{ font-weight:700; border-color:#ea6b38; box-shadow:0 0 0 4px rgba(234,107,56,.20); color:#ea6b38; }
-    /* === Adjuntos (clip) === */
+  /* === Layout general === */
+.list{ display:grid; gap:12px; }
+
+/* Panel centrado (como mensajes_movil) */
+.hero .panel{
+  box-sizing:border-box;
+  background:#fff;
+  border:1px solid rgba(0,0,0,.08);
+  border-radius:16px;
+  padding:16px 18px;
+  margin-left:auto; margin-right:auto;
+  width:100%;
+}
+@media (max-width: 480px){
+  .hero .panel{ max-width: min(96%, 540px); }
+}
+@media (min-width: 481px){
+  .hero .panel{ max-width: min(96%, 560px); }
+}
+
+/* === Card: fondo naranja suave, sin banda lateral intensa === */
+.card{
+  border:1px solid rgba(0,0,0,.08);
+  border-left:0;
+  border-radius:16px;
+  padding:14px 16px;
+  background: linear-gradient(180deg, #fffdf8, #fff6ec); /* naranja muy suave */
+  box-shadow:0 6px 16px rgba(0,0,0,.06);
+}
+.card h3{ margin:.15rem 0 .35rem; font-size:1.06rem; }
+.meta{ font-size:.85rem; color:#6b7280; }
+
+/* Cuerpo del mensaje */
+.msg-body{
+  background:#fff;
+  border:1px solid #f0f0f0;
+  border-radius:12px;
+  padding:.7rem .8rem;
+  white-space:pre-wrap;
+  word-break:break-word;
+  margin:.35rem 0 .2rem;
+}
+
+/* Chips de enlaces */
+.chips{ display:flex; justify-content:center; gap:.5rem; flex-wrap:wrap; margin-top:.4rem; }
+.chip{
+  display:inline-block; padding:.38rem .7rem;
+  border:1px solid #eee; border-radius:999px; background:#ffffff;
+  font-weight:700; font-size:.9rem; color:#ea6b38; text-decoration:none; white-space:nowrap;
+}
+
+/* Barra de acciones (zona de botones) */
+.mark-wrap{ margin-top:.35rem; display:flex; gap:.4rem; flex-wrap:wrap; }
+.btn-ghost{
+  padding:.4rem .6rem; font-size:.85rem; background:#fff;
+  border:1px solid #e5e7eb; border-radius:999px; color:#ea6b38; cursor:pointer; user-select:none;
+}
+.btn-ghost:hover{ background:#fffaf3; }
+
+/* Paginador */
+.pager{ display:flex; align-items:center; justify-content:center; gap:6px; flex-wrap:wrap; margin:14px 0 4px; }
+.pager-btn{
+  all: unset; display:inline-flex; align-items:center; justify-content:center;
+  padding:.35rem .6rem; min-width:2.2rem; text-align:center;
+  border:1px solid #e5e7eb; border-radius:8px; background:#fff; font-size:.9rem; line-height:1; cursor:pointer; user-select:none;
+}
+.pager-btn.active{ font-weight:700; border-color:#ea6b38; box-shadow:0 0 0 4px rgba(234,107,56,.20); color:#ea6b38; }
+
+/* === Adjuntos (clip) — UNA sola definición, sin duplicados === */
 .clip-btn{
   padding:.35rem .6rem; font-size:.85rem; background:#fff;
   border:1px solid #e5e7eb; border-radius:999px; color:#374151;
@@ -39,21 +89,50 @@
 .att-list a{ text-decoration:none; color:#ea6b38; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .att-count{ font-weight:700; color:#ea6b38; }
 
-.clip-btn{
-  padding:.35rem .6rem; font-size:.85rem; background:#fff;
-  border:1px solid #e5e7eb; border-radius:999px; color:#374151;
-  cursor:pointer; user-select:none; display:inline-flex; align-items:center; gap:.4rem;
+/* Por si algún tema añade pseudo-elementos naranjas */
+.orange-cards .card::before,
+.orange-cards .card::after{ content:none !important; }
+.orange-cards .card{ border-left:0 !important; }
+/* === Estilos robustos para acciones por data-* === */
+:root{
+  --action-text: #111827;      /* “Ver más…” */
+  --mark-bg:    #fff7e6;       /* chip dorado/marrón */
+  --mark-bdr:   #e0bf86;
+  --mark-text:  #7a4a00;
 }
-.clip-btn:hover{ background:#fffaf3; }
-.att-list{ list-style:none; margin:.35rem 0 0; padding:0; display:none; }
-.att-list li{
-  display:flex; align-items:center; justify-content:space-between; gap:.5rem;
-  border:1px solid #eee; border-radius:10px; padding:.45rem .6rem; background:#fff; margin-top:.4rem;
-}
-.att-list a{ text-decoration:none; color:#ea6b38; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.att-count{ font-weight:700; color:#ea6b38; }
 
-  </style>
+.mark-wrap [data-toggle],
+.mark-wrap [data-mark]{
+  font: inherit !important;
+  line-height: 1.2 !important;
+}
+
+/* “Ver más…” como enlace en negrita */
+.mark-wrap [data-toggle]{
+  all: unset !important;
+  display: inline !important;
+  font-weight: 700 !important;
+  color: var(--action-text) !important;
+  cursor: pointer !important;
+}
+.mark-wrap [data-toggle]:hover{ text-decoration: underline !important; }
+
+/* “Marcar como leído” como chip dorado/marrón */
+.mark-wrap [data-mark]{
+  all: unset !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: .35rem !important;
+  padding: .35rem .7rem !important;
+  border: 1px dashed var(--mark-bdr) !important;
+  border-radius: 999px !important;
+  background: var(--mark-bg) !important;
+  color: var(--mark-text) !important;
+  cursor: pointer !important;
+}
+.mark-wrap [data-mark]:hover{ background: #ffedd5 !important; }
+
+</style>
 </head>
 <body data-page="mensajes" class="orange-cards">
   <div class="container">
@@ -157,6 +236,37 @@
       if (/^[a-zA-Z][\w.+-]*:/.test(s) || s.startsWith('//') || s.startsWith('/')) return s;
       return 'https://' + s;
     };
+    function normalizePublicURL(u){
+      const s = safeHref(u || '');
+      if (/^https?:\/\//i.test(s) || s.startsWith('//')) return s; // absoluta
+      const base =
+        location.pathname.startsWith('/josgmaestro/') ? '/josgmaestro' :
+        location.pathname.startsWith('/firmas/')      ? '/firmas'      : '';
+      if (s.startsWith('/mensajes/')) return base + s;
+      return s;
+    }
+    function normalizePublicURL(u){
+      const s = safeHref(u || '');
+      if (/^https?:\/\//i.test(s) || s.startsWith('//')) return s; // absoluta
+      const base =
+        location.pathname.startsWith('/josgmaestro/') ? '/josgmaestro' :
+        location.pathname.startsWith('/firmas/')      ? '/firmas'      : '';
+      if (s.startsWith('/mensajes/')) return base + s;
+      return s;
+    }
+    function isAttachmentUrl(raw){
+      const s = String(raw||'');
+      if (/^https?:\/\//i.test(s)) return false; // externas -> enlaces, no adjuntos
+      const base =
+        location.pathname.startsWith('/josgmaestro/') ? '/josgmaestro' :
+        location.pathname.startsWith('/firmas/')      ? '/firmas'      : '';
+      return s.startsWith('/mensajes/') || s.startsWith(base + '/mensajes/');
+    }
+    function domainLabel(href){
+      try{ const u = new URL(href, location.origin);
+          return u.hostname.replace(/^www\./,''); }
+      catch{ return 'Enlace'; }
+    }
 
     function fmtFecha(iso){
       if (!iso) return '';
@@ -169,18 +279,48 @@
       return `${dd}/${mm}/${aa} ${hh}:${mi}`;
     }
 
-    function cardHTML(m, readSet){
+    // Une en un único array los enlaces (strings u objetos) y los adjuntos {filename, original_name...}
+function collectLinksAndFiles(m){
+  const arr = [];
+
+  // 1) urls/enlaces/links como strings u objetos {url|href|link}
+  const rawUrls =
+    (Array.isArray(m.urls)    ? m.urls    :
+     Array.isArray(m.links)   ? m.links   :
+     Array.isArray(m.enlaces) ? m.enlaces : []);
+  for (const u of rawUrls){
+    const href = typeof u === 'string' ? u : (u?.url ?? u?.href ?? u?.link ?? '');
+    if (!href) continue;
+    const safe = safeHref(href);
+    const label = decodeURIComponent(String(href).split('/').pop() || href).replace(/\?.*$/,'');
+    arr.push({ href: safe, label });
+  }
+
+  // 2) adjuntos de BD (mensaje_adjuntos): filename suele venir como "/mensajes/xxxx.ext"
+  if (Array.isArray(m.adjuntos)){
+    for (const a of m.adjuntos){
+      const href = a?.filename || a?.url || a?.href || '';
+      if (!href) continue;
+      const safe = safeHref(href);
+      const label = a?.original_name ||
+                    decodeURIComponent(String(href).split('/').pop() || 'archivo').replace(/\?.*$/,'');
+      arr.push({ href: safe, label });
+    }
+  }
+
+  return arr;
+}
+
+function domainLabel(href){
+  try { return new URL(href, location.origin).hostname.replace(/^www\./,''); }
+  catch { return 'Enlace'; }
+}
+function cardHTML(m, readSet){
   const idStr  = String(m.id ?? '');
   const titulo = esc(m.titulo || m.title || 'Aviso');
   const cuerpo = String(m.cuerpo || m.mensaje || m.body || '').trim();
   const fecha  = m.fecha || m.created_at || m.fecha_envio || m.sent_at || m.createdAt || '';
   const when   = fmtFecha(fecha);
-
-  // Enlaces / adjuntos (array de strings o de objetos { url })
-  const enlaces = Array.isArray(m.enlaces) ? m.enlaces
-        : Array.isArray(m.links) ? m.links
-        : Array.isArray(m.urls)  ? m.urls
-        : (m.links ? [m.links] : (m.urls ? [m.urls] : []));
 
   const truncated = cuerpo.length > MAX_CHARS;
   const shortHTML = esc(cuerpo.slice(0, MAX_CHARS)) + (truncated ? '…' : '');
@@ -189,41 +329,97 @@
   const read = isRead(m, readSet);
   const meta = [when, read ? 'leído' : 'no leído'].filter(Boolean).join(' · ');
 
-  // Construcción del bloque de adjuntos (clip)
-  const atts = (enlaces || []).filter(Boolean).map(it => {
-    const href = typeof it === 'string' ? it : (it?.url ?? it?.href ?? it?.link);
-    if (!href) return '';
-    const safe = (typeof safeHref === 'function') ? safeHref(href) : href;
-    if (!safe) return '';
-    // Nombre legible (quita querystrings si los hay)
-    const name = decodeURIComponent(String(href).split('/').pop() || 'archivo').replace(/\?.*$/, '');
-    return `<li><a href="${safe}" target="_blank" rel="noopener">${name}</a></li>`;
-  }).filter(Boolean);
+  // --- Recolecta URLs (enlaces) y adjuntos BD ---
+  const urlsRaw =
+    (Array.isArray(m.urls)    ? m.urls :
+     Array.isArray(m.links)   ? m.links :
+     Array.isArray(m.enlaces) ? m.enlaces :
+     (m.links ? [m.links] : (m.urls ? [m.urls] : [])));
 
-  const clipHTML = atts.length ? `
-    <div class="mark-wrap">
-      <button class="clip-btn" data-clip="${idStr}">📎 <span class="att-count">${atts.length}</span> adjunto${atts.length>1?'s':''}</button>
+  const adjuntosRaw = Array.isArray(m.adjuntos) ? m.adjuntos : [];
+
+  const attachments = [];  // para el 📎
+  const links = [];        // chips separados
+
+  // Helper para prefijo de montaje (p. ej., /josgmaestro o /firmas)
+  const baseMount =
+    location.pathname.startsWith('/josgmaestro/') ? '/josgmaestro' :
+    location.pathname.startsWith('/firmas/')      ? '/firmas'      : '';
+
+  const isAttachmentPath = (p) => {
+    const s = String(p||'');
+    return s.startsWith('/mensajes/') || s.startsWith(baseMount + '/mensajes/');
+  };
+
+  // 1) URLs (string u objeto {url|href|link})
+  for (const u of urlsRaw){
+    const raw  = typeof u === 'string' ? u : (u?.url ?? u?.href ?? u?.link ?? '');
+    if (!raw) continue;
+
+    if (isAttachmentPath(raw)){
+      // Trátalo como adjunto
+      const path = raw.startsWith('/mensajes/') ? baseMount + raw : raw;
+      const href  = safeHref(path);
+      const label = decodeURIComponent(String(raw).split('/').pop() || 'archivo').replace(/\?.*$/,'');
+      attachments.push({ href, label });
+    } else {
+      // Trátalo como enlace externo/interno que no es adjunto
+      const href  = safeHref(raw);
+      const label = domainLabel(href); // solo dominio para no desbordar
+      links.push({ href, label, title: raw });
+    }
+  }
+
+  // 2) Adjuntos desde BD (mensaje_adjuntos)
+  for (const a of adjuntosRaw){
+    const raw = a?.filename || a?.url || a?.href || '';
+    if (!raw) continue;
+    const path = raw.startsWith('/mensajes/') ? baseMount + raw : raw;
+    const href  = safeHref(path);
+    const label = a?.original_name ||
+                  decodeURIComponent(String(raw).split('/').pop() || 'archivo').replace(/\?.*$/,'');
+    attachments.push({ href, label });
+  }
+
+  // --- Chips de enlaces (solo “links”, nunca adjuntos) ---
+  const linksHTML = links.length ? `
+    <div class="chips">
+      ${links.map(l =>
+        `<a class="chip" href="${l.href}" target="_blank" rel="noopener" title="${esc(l.title)}">${esc(l.label)} ↗</a>`
+      ).join('')}
     </div>
-    <ul class="att-list" id="att-${idStr}">${atts.join('')}</ul>
+  ` : '';
+
+  // --- Bloque del clip (solo adjuntos) ---
+  const clipHTML = attachments.length ? `
+    <div class="mark-wrap">
+      <button class="clip-btn" data-clip="${idStr}">📎 <span class="att-count">${attachments.length}</span> adjunto${attachments.length>1?'s':''}</button>
+    </div>
+    <ul class="att-list" id="att-${idStr}">
+      ${attachments.map(it => `<li><a href="${it.href}" target="_blank" rel="noopener">${esc(it.label)}</a></li>`).join('')}
+    </ul>
   ` : '';
 
   return `
-    <article class="card">
-      <h3>${titulo}</h3>
-      <div class="meta">${meta}</div>
-      <div class="msg-body" data-expanded="false" data-short="${shortHTML}" data-full="${fullHTML}">${shortHTML}</div>
+  <article class="card">
+    <h3>${titulo}</h3>
+    <div class="meta">${meta}</div>
+    <div class="msg-body" data-expanded="false" data-short="${shortHTML}" data-full="${fullHTML}">${shortHTML}</div>
 
-      ${clipHTML}
+    <!-- Botones primero (ahora con estilo action-chip) -->
+    <div class="mark-wrap">
+  ${truncated ? `<a href="#" data-toggle="${idStr}">Ver más…</a>` : ``}
+  ${!read ? `<button type="button" data-mark="${idStr}"><span aria-hidden="true">✓</span> Marcar como leído</button>` : ``}
+</div>
 
-      <div class="mark-wrap">
-        ${truncated ? `<button class="btn-ghost" data-toggle="${idStr}">Ver más</button>` : ``}
-        ${!read ? `<button class="btn-ghost" data-mark="${idStr}">Marcar como leído</button>` : ``}
-      </div>
-    </article>
-  `;
+    <!-- Enlaces/adjuntos después, como ya lo tienes -->
+    ${linksHTML || '' /* si usas chips para enlaces */}
+    ${clipHTML  || '' /* clip de adjuntos */}
+  </article>
+`;
 }
 
-    function renderPager(){
+  function renderPager(){
       $pager.innerHTML = '';
       if (totalPages <= 1) return;
 
@@ -297,10 +493,33 @@
         $empty.style.display = 'block';
       }
     }
-
-    // Delegación: Ver más / Ver menos y Marcar leído
 // Delegación: Clip / Ver más / Marcar leído
 $list.addEventListener('click', async (ev) => {
+  const chipLink = ev.target.closest('.chips a[href]');
+if (chipLink){
+  ev.preventDefault(); ev.stopPropagation(); ev.stopImmediatePropagation();
+  try {
+    const w = window.open(chipLink.href, '_blank', 'noopener');
+    if (!w) location.assign(chipLink.href);
+  } catch {
+    location.assign(chipLink.href);
+  }
+  return;
+}
+  const attLink = ev.target.closest('.att-list a[href]');
+if (attLink){
+  const url = attLink.href;
+  ev.preventDefault();
+  ev.stopPropagation();
+  ev.stopImmediatePropagation();
+  try {
+    const w = window.open(url, '_blank', 'noopener');
+    if (!w) location.assign(url); // fallback si bloquea popups
+  } catch {
+    location.assign(url);
+  }
+  return;
+}
   // 1) Clip: mostrar/ocultar adjuntos
   const clipBtn = ev.target.closest('button[data-clip]');
   if (clipBtn){
@@ -312,26 +531,30 @@ $list.addEventListener('click', async (ev) => {
     return;
   }
 
-  // 2) Ver más / Ver menos
-  const moreBtn = ev.target.closest('button[data-toggle]');
-  if (moreBtn){
-    const id = String(moreBtn.getAttribute('data-toggle'));
-    const card = moreBtn.closest('.card');
-    const body = card && card.querySelector('.msg-body');
-    if (body){
-      const expanded = body.getAttribute('data-expanded') === 'true';
-      if (expanded){
-        body.textContent = body.getAttribute('data-short') || '';
-        body.setAttribute('data-expanded', 'false');
-        moreBtn.textContent = 'Ver más';
-      } else {
-        body.textContent = body.getAttribute('data-full') || '';
-        body.setAttribute('data-expanded', 'true');
-        moreBtn.textContent = 'Ver menos';
-      }
-    }
-    return;
+// 2) Ver más / Ver menos
+const moreEl = ev.target.closest('[data-toggle]');
+if (moreEl){
+  ev.preventDefault();
+  ev.stopPropagation();
+
+  const card = moreEl.closest('.card');
+  const body = card && card.querySelector('.msg-body');
+  if (!body) return;
+
+  const expanded = body.getAttribute('data-expanded') === 'true';
+  if (expanded){
+    body.textContent = body.getAttribute('data-short') || '';
+    body.setAttribute('data-expanded', 'false');
+    moreEl.textContent = 'Ver más…';
+    moreEl.setAttribute('aria-expanded', 'false');
+  } else {
+    body.textContent = body.getAttribute('data-full') || '';
+    body.setAttribute('data-expanded', 'true');
+    moreEl.textContent = 'Ver menos';
+    moreEl.setAttribute('aria-expanded', 'true');
   }
+  return;
+}
 
   // 3) Marcar como leído
   const markBtn = ev.target.closest('button[data-mark]');
