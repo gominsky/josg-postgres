@@ -539,6 +539,15 @@ router.post('/api/firmar-alumnos', express.json(), async (req, res) => {
           `DELETE FROM asistencias WHERE evento_id=$1 AND alumno_id=$2`,
           [eventoId, alumnoId]
         );
+        // Limpia también la ausencia si se estaba usando para marcar no asistencia.
+        // Así evitamos que quede "atascada" una ausencia al desmarcar desde móvil.
+        await client.query(
+          `UPDATE evento_asignaciones
+             SET ausencia_tipo_id = NULL
+           WHERE evento_id = $1
+             AND alumno_id = $2`,
+          [eventoId, alumnoId]
+        );
         deleted += del.rowCount;
       }  
       

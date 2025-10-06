@@ -67,6 +67,12 @@
       background:#fff; border:1px solid #e5e7eb; border-radius:14px;
       padding:12px; place-items:center;
     }
+
+    /* Chips de retraso */
+    .chip{ display:inline-block; border-radius:12px; padding:2px 8px; font-size:0.8rem; line-height:1.6; }
+    .chip-retraso{ background:#ffc107; color:#333; }
+    .chip-retraso.chip--tarde{ background:#dc3545; color:#fff; }
+    .firma-nombre .chip{ margin-left:.75rem; }
   </style>
 </head>
 <body>
@@ -198,6 +204,18 @@
     let evento_id = new URLSearchParams(location.search).get('id') || '';
     let tokenQR = '';
 
+    // === UMBRAL CONFIGURABLE DE RETRASO ===
+    (function configureUmbral(){
+      const params = new URLSearchParams(location.search);
+      const qUmbral = parseInt(params.get('umbral') || '', 10);
+      if (Number.isFinite(qUmbral) && qUmbral >= 0) {
+        localStorage.setItem('RETRASO_UMBRAL', String(qUmbral));
+      }
+      const stored = parseInt(localStorage.getItem('RETRASO_UMBRAL') || '', 10);
+      window.RETRASO_UMBRAL = Number.isFinite(stored) ? stored : (window.RETRASO_UMBRAL ?? 15);
+    })();
+    const getUmbral = () => Number.isFinite(+window.RETRASO_UMBRAL) ? +window.RETRASO_UMBRAL : 15;
+
     window.__qrActivo = false;
     window.__qrVisible = false;
     window.__alumnosOcultos = true;
@@ -254,19 +272,33 @@
       }catch(e){ console.error('Error al cargar evento o alumnos', e); }
     }
 
+    // Render lista con chip por alumno + color según umbral
     async function actualizarListaAlumnos(){
       const res = await fetch(`${API_BASE}/eventos/${evento_id}/alumnos`, { credentials:'same-origin' });
       if(!res.ok){ console.error('No se pudieron cargar alumnos'); return; }
       const alumnos = await res.json();
 
+      const UMBRAL = getUmbral();
+
       const lista = alumnos.map(a => {
-        const delay = Number.isFinite(a.minutos_perdidos) && a.minutos_perdidos > 0 ? `<span class="count-badge">+${a.minutos_perdidos} min</span>` : '';
+        const minutos = Number.isFinite(a.minutos_perdidos) ? a.minutos_perdidos : 0;
+        const chip = minutos > 0
+          ? `<span class="chip chip-retraso ${minutos > UMBRAL ? 'chip--tarde' : ''}"
+                  data-role="chip-retraso"
+                  data-alumno-id="${a.id}"
+                  data-minutos="${minutos}">+${minutos} min</span>`
+          : '';
         return `
-          <div class="item-firma">
-            <div class="firma-check"><input type="checkbox" name="alumno_id" value="${a.id}" ${a.asistio ? 'checked' : ''} /></div>
-            <div class="firma-nombre">${a.nombre} ${a.apellidos}${delay}</div>
+          <div class="item-firma" data-alumno-id="${a.id}">
+            <div class="firma-check">
+              <input type="checkbox" name="alumno_id" value="${a.id}" data-alumno-id="${a.id}" ${a.asistio ? 'checked' : ''} />
+            </div>
+            <div class="firma-nombre">
+              ${a.nombre} ${a.apellidos} ${chip}
+            </div>
           </div>`;
       }).join('');
+
       document.getElementById('lista-alumnos').innerHTML = `
         <div class="firma-header">
           <div class="firma-check"><strong>Firma</strong></div>
@@ -282,6 +314,10 @@
       if (badge) { badge.textContent = String(alumnos.length); badge.style.display = 'inline-block'; }
 
       applyToggleState();
+
+      // (Re)bind refuerzo y decorar chips por si hay cambios de umbral
+      bindAsistenciaCheckboxRefuerzo();
+      decorateChipsRetraso();
     }
 
     // === Mostrar/Ocultar QR en el SLOT ===
@@ -315,7 +351,7 @@
 
     async function updateAusenciaAsignacion(alumnoId, ausenciaTipoId){
       const payload = { ausencia_tipo_id: ausenciaTipoId };
-      const opts = { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify(payload) };
+      const opts = { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify(payload) };
       const urls = [
         `${API_BASE}/eventos/${evento_id}/asignaciones/${alumnoId}`,
         `${API_BASE}/asignaciones/${alumnoId}`,
@@ -364,6 +400,96 @@
         mensaje.className = 'error'; mensaje.innerText = e.message || 'Error al guardar firmas.';
       }
     }
+
+    /**
+     * Decorador visual para chips de retraso (rojo si supera el umbral)
+     */
+    function decorateChipsRetraso(root=document){
+      const chips = root.querySelectorAll('[data-role="chip-retraso"]');
+      const UMBRAL = getUmbral();
+      chips.forEach(chip=>{
+        const mins = parseInt(chip.dataset.minutos || '0', 10);
+        chip.classList.toggle('chip--tarde', mins > UMBRAL);
+      });
+    }
+
+    /**
+     * Actualiza/crea el chip de retraso de una fila concreta
+     * (útil si en el futuro refrescas minutos sin recargar)
+     */
+    function updateChipRetraso(alumnoId, minutos){
+      const fila = document.querySelector(`[data-alumno-id="${alumnoId}"]`);
+      if (!fila) return;
+      let chip = fila.querySelector('[data-role="chip-retraso"]');
+      if (!minutos || minutos <= 0){
+        if (chip){ chip.remove(); }
+        return;
+      }
+      if (!chip){
+        chip = document.createElement('span');
+        chip.className = 'chip chip-retraso';
+        chip.setAttribute('data-role','chip-retraso');
+        chip.setAttribute('data-alumno-id', String(alumnoId));
+        fila.querySelector('.firma-nombre')?.appendChild(chip);
+      }
+      chip.dataset.minutos = String(minutos);
+      chip.textContent = `+${minutos} min`;
+      chip.classList.toggle('chip--tarde', minutos > getUmbral());
+    }
+
+    /**
+     * Refuerzo UI: cuando se DESMARCA asistencia de un alumno,
+     * limpiamos ausencia_tipo_id en el backend y reflejamos en la UI.
+     * Requiere:
+     *   - checkboxes con data-alumno-id
+     *   - (opcional) un <select> de ausencias con data-alumno-id que vaciamos al limpiar
+     */
+    function bindAsistenciaCheckboxRefuerzo() {
+      const checks = document.querySelectorAll('input[type="checkbox"][data-alumno-id]');
+      checks.forEach(chk => {
+        if (chk.dataset.refuerzoBound === '1') return;
+        chk.dataset.refuerzoBound = '1';
+
+        chk.addEventListener('change', async (e) => {
+          const alumnoId = e.currentTarget.dataset.alumnoId;
+          const marcado = e.currentTarget.checked;
+
+          if (!marcado) {
+            e.currentTarget.disabled = true;
+            try {
+              const ok = await updateAusenciaAsignacion(alumnoId, null);
+              if (!ok) throw new Error('No se pudo limpiar la ausencia en el servidor');
+
+              const sel = document.querySelector(`select[data-alumno-id="${alumnoId}"][data-role="ausencia"]`);
+              if (sel) {
+                sel.value = '';
+                sel.dispatchEvent(new Event('change', { bubbles: true }));
+              }
+
+              // Oculta el chip si se desmarca asistencia
+              updateChipRetraso(alumnoId, 0);
+
+            } catch (err) {
+              console.error(err);
+              e.currentTarget.checked = true;
+              notifyUser('No se pudo limpiar la ausencia. Reintentá más tarde.');
+            } finally {
+              e.currentTarget.disabled = false;
+            }
+          }
+        });
+      });
+    }
+
+    // Utilidad simple de notificación (ajústala a tu sistema de toasts/modales)
+    function notifyUser(msg) {
+      if (window.toast) return window.toast(msg);
+      alert(msg);
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      bindAsistenciaCheckboxRefuerzo();
+    });
 
     function normalizarFecha(val){
       if(!val) return '';

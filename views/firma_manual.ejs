@@ -100,7 +100,6 @@
 <script>
 (() => {
    // === Etiqueta de grupo para prefijar nombre de plantilla al guardar ===
-  // (define una sola vez; si no hay grupo, queda cadena vacía)
   window.__TPL_GROUP_LABEL__ = <%- JSON.stringify(
     (evento && (evento.grupo_nombre || evento.grupo || evento.nombre_grupo || evento.grupoKey || '')) || ''
   ) %>;
@@ -1067,37 +1066,63 @@ async function doSave(nombre, descripcion){
   const H_FIN = toHHMMSS(evtDateEl?.dataset?.hfin);
 
   async function addSelected(tipo){
-    const tbody = document.querySelector(`#extrasWrap table[data-tipo="${tipo}"] tbody`);
-    const ids = Array.from(tbody.querySelectorAll('.sel:checked'))
-      .map(chk => Number(chk.closest('tr').dataset.alumno))
-      .filter(Number.isInteger);
+  const $wrap = document.getElementById('extrasWrap');
+  const tbody = $wrap?.querySelector(`table[data-tipo="${tipo}"] tbody`);
+  if (!tbody) return;
 
-    if (!ids.length) return;
+  const filas = Array.from(tbody.querySelectorAll('.sel:checked'))
+    .map(ch => ch.closest('tr'))
+    .filter(Boolean);
+  if (!filas.length) return;
 
-    for (const alumnoId of ids) {
-      const body = { hora_inicio: H_INI, hora_fin: H_FIN }; // se envía null si no hay
-      const res = await fetch(`/eventos/${eventoId}/asignaciones/${alumnoId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type':'application/json' },
-        body: JSON.stringify(body)
-      });
-      if (!res.ok) {
-        console.error('Fallo añadiendo', alumnoId, await res.text().catch(()=>res.status));
-      }
-    }
-    window.location.reload();
+  // Horas del evento desde #evtDate (dataset con "hini"/"hfin")
+  const evt = document.getElementById('evtDate');
+  const toHHMMSS = v => {
+    const m = String(v||'').match(/^(\d{2}):(\d{2})(?::(\d{2}))?$/);
+    return m ? `${m[1]}:${m[2]}:${m[3] ?? '00'}` : null;
+  };
+  const H_INI = toHHMMSS(evt?.dataset?.hini);
+  const H_FIN = toHHMMSS(evt?.dataset?.hfin);
+
+  // Prepara lote (incluye instrumento si lo quieres persistir)
+  const alumnos = filas.map(tr => {
+    const alumno_id = Number(tr.dataset.alumno);
+    const instText  = tr.querySelector('.text-muted, .text-muted.small')?.textContent?.trim() || '';
+    const instrumento = (instText.split(',')[0] || '').trim() || null;
+    return { alumno_id, hora_inicio: H_INI, hora_fin: H_FIN, instrumento };
+  });
+
+  const url = (window.ROUTES?.extras?.addSel?.(eventoId, tipo)) ?? `/eventos/${eventoId}/extras/${tipo}/add`;
+  const r = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type':'application/json' },
+    body: JSON.stringify({ alumnos })
+  });
+  if (!r.ok) {
+    const msg = await r.text().catch(()=>r.statusText);
+    throw new Error(`Fallo al añadir ${tipo}: ${r.status} ${msg}`);
   }
 
-  // Delegación de clicks
-  $wrap.addEventListener('click', ev => {
-    const btn = ev.target.closest('[data-action]');
-    if (!btn) return;
-    const tipo = btn.closest('[data-tipo]')?.dataset.tipo;
-    if (!tipo) return;
+  // (opcional) memoriza en LS si usas addedInv/addedRes
+  if (window.addedInv && window.addedRes && window.saveAdded) {
+    alumnos.forEach(a => (tipo === 'invitados' ? addedInv : addedRes).add(a.alumno_id));
+    saveAdded();
+  }
 
-    if (btn.dataset.action === 'add-all') addAll(tipo);
-    if (btn.dataset.action === 'add-sel') addSelected(tipo);
-  });
+  location.reload();
+}
+
+// Delegación de clicks (asegúrate de tener $wrap)
+const $wrap = document.getElementById('extrasWrap');
+$wrap.addEventListener('click', ev => {
+  const btn = ev.target.closest('[data-action]');
+  if (!btn) return;
+  const tipo = btn.closest('[data-tipo]')?.dataset.tipo;
+  if (!tipo) return;
+
+  if (btn.dataset.action === 'add-all') addAll(tipo);
+  if (btn.dataset.action === 'add-sel') addSelected(tipo);
+});
 
   // Init
   (async () => {
@@ -2723,23 +2748,37 @@ function setMinutesCell(tr, val){
   (rows || []).forEach(r => FALLBACK[tipo].add(Number(r.id)));
 }
 
-  // Añadir seleccionados → upsert fila + recordar en LS
-  async function addSelected(tipo){
-    const tbody = document.querySelector(`#extrasWrap table[data-tipo="${tipo}"] tbody`);
-    const ids = Array.from(tbody.querySelectorAll('.sel:checked'))
-      .map(chk => Number(chk.closest('tr').dataset.alumno))
-      .filter(Number.isInteger);
-    if (!ids.length) return;
 
-    for (const alumnoId of ids) {
-      await fetch(`/eventos/${eventoId}/asignaciones/${alumnoId}`, {
-        method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({})
-      });
-      (tipo === 'invitados' ? addedInv : addedRes).add(alumnoId);
-    }
-    saveAdded();
-    window.location.reload();
-  }
+ async function addSelected(tipo){
+   const tbody = document.querySelector(`#extrasWrap table[data-tipo="${tipo}"] tbody`);
+   const ids = Array.from(tbody.querySelectorAll('.sel:checked'))
+     .map(chk => Number(chk.closest('tr').dataset.alumno))
+     .filter(Number.isInteger);
+   if (!ids.length) return;
+
+  // Lee horas del encabezado del evento
+   const evt = document.getElementById('evtDate');
+   const H_INI = (evt?.dataset?.hini || '').slice(0,5) || null; // "HH:MM"
+   const H_FIN = (evt?.dataset?.hfin || '').slice(0,5) || null; // "HH:MM"
+
+   const alumnos = ids.map(id => ({
+     alumno_id: id,
+     hora_inicio: H_INI,
+     hora_fin: H_FIN
+     // instrumento: (opcional; si no lo pones, el plano usa fallback y mostrará "Varios" si procede)
+   }));
+
+   // Endpoint correcto para extras (insert-only)
+   await fetch(window.ROUTES.extras.addSel(eventoId, tipo), {
+     method: 'POST',
+     headers: { 'Content-Type':'application/json' },
+     body: JSON.stringify({ alumnos })
+   });
+
+   ids.forEach(id => (tipo === 'invitados' ? addedInv : addedRes).add(id));
+   saveAdded();
+   window.location.reload();
+ }
 
   // Delegación: “Ocultar” independiente + “Añadir seleccionados”
   document.getElementById('extrasWrap').addEventListener('click', (ev) => {
@@ -2810,3 +2849,62 @@ function setMinutesCell(tr, val){
   // Activa el modo compacto de Extras
   document.getElementById('extrasWrap')?.classList.add('extras-compact');
 </script>
+<script>
+  /* FIX: Extras (Invitados/Reservas) – añadir seleccionados con horas y sin colisiones */
+  (() => {
+    const wrap = document.getElementById('extrasWrap');
+    if (!wrap) return;
+  
+    // Id del evento (ya lo tienes disponible en la vista)
+    const eventoId = Number(<%= evento.id %>);
+  
+    // Lee horas del evento desde #evtDate (data-hini / data-hfin)
+    const evtDate = document.getElementById('evtDate');
+    const toHHMMSS = v => {
+      const m = String(v || '').match(/^(\d{2}):(\d{2})/);
+      return m ? `${m[1]}:${m[2]}:00` : null;
+    };
+    const H_INI = toHHMMSS(evtDate?.dataset?.hini);
+    const H_FIN = toHHMMSS(evtDate?.dataset?.hfin);
+  
+    async function putAsignacion(alumnoId, body) {
+      const r = await fetch(`/eventos/${eventoId}/asignaciones/${alumnoId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      if (!r.ok) throw new Error('PUT asignación falló');
+    }
+  
+    async function addSel(tipo) {
+      const tbody = wrap.querySelector(`table[data-tipo="${tipo}"] tbody`);
+      if (!tbody) return;
+      const ids = Array.from(tbody.querySelectorAll('input.sel:checked'))
+        .map(ch => Number(ch.closest('tr')?.dataset?.alumno))
+        .filter(Number.isInteger);
+      if (!ids.length) return;
+  
+      const body = {};
+      if (H_INI) body.hora_inicio = H_INI;
+      if (H_FIN) body.hora_fin    = H_FIN;
+  
+      // Sube cada seleccionado con horas del evento
+      for (const id of ids) await putAsignacion(id, body);
+  
+      // Al terminar, recarga para que desaparezcan de extras y aparezcan en la lista asignada
+      location.reload();
+    }
+  
+    // Captura primero y anula manejadores viejos que estaban duplicados/rotos
+    wrap.addEventListener('click', (ev) => {
+      const btn = ev.target.closest('[data-action="add-sel"]');
+      if (!btn) return;
+      ev.preventDefault();
+      ev.stopImmediatePropagation(); // <-- clave: cancela los listeners antiguos
+      const panel = btn.closest('.extras-panel');
+      const tipo = panel?.dataset?.tipo; // 'invitados' | 'reservas'
+      if (tipo) addSel(tipo);
+    }, true);
+  })();
+  </script>
+  

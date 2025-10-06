@@ -53,6 +53,45 @@
       position:absolute; right:-8px; bottom:-12px; pointer-events:none;
       font-size: var(--sz, 84px); line-height:1; color:#fff; opacity:.18; transform: rotate(var(--rot, -10deg)); filter: blur(.2px); z-index:0;
     }
+    /* Autor un poco más grande */
+.author{
+  margin:0; font-weight:800; letter-spacing:.2px;
+  font-size:1.25rem;         /* antes 1.1rem */
+  line-height:1.15;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  text-shadow: 0 1px 0 rgba(0,0,0,.06);
+}
+
+/* Obra (título) y duración en blanco explícito */
+.title{ margin:0; font-weight:700; line-height:1.2; font-size:1.05rem; color:#fff; }
+.dur{
+  margin:.1rem 0 0; font-weight:700; font-size:.92rem;
+  color:#fff;                         /* forzado a blanco */
+  background:rgba(255,255,255,.18);
+  display:inline-block; padding:.2rem .5rem
+}
+/* === Fix de alfas mal escritos (evita que el navegador ignore reglas) === */
+.dur{ background: rgba(255,255,255,.18) !important; }             /* antes: 18 */
+.card.m-staff::before{
+  background: repeating-linear-gradient(180deg,
+    rgba(255,255,255,.22) 0 1px,                                     /* antes: 22 */
+    transparent 1px 8px
+  ) !important;
+}
+
+/* === Tipografía y color pedidos === */
+.card .author{
+  font-size: 1.25rem !important;   /* autor un poco más grande */
+}
+
+.card .title,
+.card .dur{
+  color: #fff !important;          /* obra + duración en blanco */
+  text-shadow: 0 1px 0 rgba(0,0,0,.18); /* un pelín de contraste */
+}
+
+/* no tocar los chips: siguen con su color propio */
+
   </style>
 </head>
 <body data-page="partituras" class="page-partituras">
@@ -135,7 +174,37 @@
     const $q    = document.getElementById('q');
 
     let ALL = [];
+    function normalizePublicURL(raw){
+    if (!raw) return '';
+    let s = String(raw).trim();
 
+    // 1) Protocolos absolutos (https, http, drive, etc.): usa tal cual
+    if (/^[a-zA-Z][\w.+-]*:\/\//.test(s)) return s;
+
+    // 2) Quita prefijos de app (evita zonas con login)
+    s = s
+      .replace(/^\/?(?:josgmaestro|firmas)\//i, '/')  // /josgmaestro/... -> /
+      .replace(/^\/?public\//i, '/');                 // /public/... -> /
+
+    // 3) Si apunta a /partituras o /uploads/partituras, déjalo limpio
+    if (/^\/?(?:partituras|uploads\/partituras)\//i.test(s)) {
+      s = '/' + s.replace(/^\/+/, '');                // asegura barra inicial
+      // Normaliza /uploads/partituras -> /partituras (si sirves estático ahí)
+      s = s.replace(/^\/uploads\/partituras\//i, '/partituras/');
+      return s;
+    }
+
+    // 4) Caso “partituras/archivo.pdf” sin barra: añádela
+    if (/^(?:partituras|uploads\/partituras)\//i.test(s)) {
+      s = '/' + s;
+      s = s.replace(/^\/uploads\/partituras\//i, '/partituras/');
+      return s;
+    }
+
+    // 5) Cualquier otra ruta relativa: vuelve absoluta sobre este origen
+    if (!s.startsWith('/')) s = '/' + s;
+    return s;
+  }
     // ✅ Arreglado el regex (detecta http:, https:, mailto:, etc.)
     const ensureProto = (u)=>{
       if (!u) return '';
@@ -155,23 +224,22 @@
       const autor  = (p.autor || '—').trim();
       const titulo = (p.titulo || 'Sin título').trim();
       const dur    = (p.duracion || '').toString().trim();
-
-      // Preferir enlace público si existe, si no el protegido con JWT
+        // Preferir enlace público si existe, si no el protegido con JWT
       const raw = (p.enlace_partitura || '').toString().trim();
       let hrefPart = '';
       if (raw) {
-        const s = safeUrl(raw);
-        if (s.startsWith('http') || s.startsWith('/')) hrefPart = s;
+        const pub = normalizePublicURL(raw);
+        if (pub) hrefPart = pub;           // ← primer intento: estático público
       }
       if (!hrefPart) {
         const base = `${API_BASE}/api/alumno/${encodeURIComponent(alumno_id)}/partituras/${encodeURIComponent(p.id)}/archivo`;
-        // ✅ Arreglado: faltaban cierre de } y backtick
-        hrefPart = `${base}?tipo=partitura&jwt=${encodeURIComponent(token)}`;
+        hrefPart = `${base}?tipo=partitura&jwt=${encodeURIComponent(token)}`; // ← fallback firmado
       }
       const linkPart = hrefPart
         ? `<a class="chip-link" href="${hrefPart}" target="_blank" rel="noopener noreferrer">Partitura</a>`
         : '';
 
+  
       const mediaRaw = p.enlace_video || p.enlace_audio || p.enlace_media || p.enlace || p.url_media || p.url || '';
       const linkMedia = String(mediaRaw).trim()
         ? `<a class="chip-link" href="${safeUrl(mediaRaw)}" target="_blank" rel="noopener noreferrer">Audio/Vídeo</a>` : '';
