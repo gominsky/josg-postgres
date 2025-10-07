@@ -148,26 +148,27 @@ router.get('/evento/:eventoId.:ext', async (req, res) => {
 
     // 2) Asignados al evento (no requerimos asistencia)
         // 2) Asignados al evento (con fallback de instrumento)
-    const { rows: asignados } = await pool.query(`
-      SELECT
-        ea.alumno_id,
-        TRIM(COALESCE(a.nombre,'') || ' ' || COALESCE(a.apellidos,'')) AS nombre,
-        COALESCE(
-          NULLIF(TRIM(ea.instrumento), ''),
-          (
-            SELECT ins.nombre
-            FROM alumno_instrumento ai
-            JOIN instrumentos ins ON ins.id = ai.instrumento_id
-            WHERE ai.alumno_id = ea.alumno_id
-            ORDER BY ins.nombre ASC
-            LIMIT 1
-          ),
-          'Varios'
-        ) AS instrumento
-      FROM evento_asignaciones ea
-      JOIN alumnos a ON a.id = ea.alumno_id
-      WHERE ea.evento_id = $1
-    `, [eventoId]);
+const { rows: asignados } = await pool.query(`
+  SELECT
+    ea.alumno_id,
+    TRIM(COALESCE(a.nombre,'') || ' ' || COALESCE(a.apellidos,'')) AS nombre,
+    COALESCE(
+      NULLIF(TRIM(ea.instrumento), ''),
+      (
+        SELECT ins.nombre
+        FROM alumno_instrumento ai
+        JOIN instrumentos ins ON ins.id = ai.instrumento_id
+        WHERE ai.alumno_id = ea.alumno_id
+        ORDER BY ins.nombre ASC
+        LIMIT 1
+      ),
+      'Varios'
+    ) AS instrumento
+  FROM evento_asignaciones ea
+  JOIN alumnos a ON a.id = ea.alumno_id
+  WHERE ea.evento_id = $1
+`, [eventoId]);
+
     if (!asignados.length) {
       const { type, buf } = await renderMsg(ext, `Evento #${eventoId}`, 'No hay asignaciones para este evento.');
       return res.type(type).send(buf);

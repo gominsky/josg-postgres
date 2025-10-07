@@ -368,6 +368,19 @@ async function init({ reset = false } = {}) {
       );
       ALTER TABLE plantillas_evento ADD COLUMN IF NOT EXISTS horas JSONB DEFAULT '{}'::jsonb;
 
+      CREATE TABLE IF NOT EXISTS atril_clasificacion (
+        id           BIGSERIAL PRIMARY KEY,
+        grupo_id     INT  NOT NULL REFERENCES grupos(id) ON DELETE CASCADE,
+        instrumento  TEXT NOT NULL,
+        alumno_id    INT  NOT NULL REFERENCES alumnos(id) ON DELETE CASCADE,
+        puesto       INT  NOT NULL CHECK (puesto >= 1),  -- 1=mejor, 2,3,...
+        updated_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+        UNIQUE (grupo_id, instrumento, alumno_id)
+      );
+      -- Un puesto no puede repetirse dentro de un grupo+instrumento+periodo
+      CREATE UNIQUE INDEX IF NOT EXISTS uq_atril_puesto
+        ON atril_clasificacion (grupo_id, instrumento, puesto);
+
       CREATE TABLE IF NOT EXISTS guardias (
         id          INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
         evento_id   INTEGER NOT NULL REFERENCES eventos(id) ON DELETE CASCADE,

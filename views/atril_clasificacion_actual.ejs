@@ -1,0 +1,186 @@
+<% title = 'Clasificación de atril (actual)' %>
+<% hero = false %>
+<div class="container my-4">
+  <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+    <h1 class="h1-titulo mb-0"><%= title %></h1>
+    <div class="d-flex gap-2">
+      <button id="btnGuardar" class="btn btn-dark btn-sm">Guardar cambios</button>
+      <a id="btnPlano" class="btn btn-outline-secondary btn-sm" target="_blank" rel="noopener">Ver plano (latest)</a>
+    </div>
+  </div>
+
+  <!-- Filtros -->
+  <div class="card p-3 mb-3">
+    <div class="row g-2 align-items-end">
+      <div class="col-12 col-md-4">
+        <label class="form-label">Grupo</label>
+        <input id="inpGrupo" class="form-control form-control-sm" value="<%= typeof grupo_id!=='undefined' ? grupo_id : '' %>" readonly>
+      </div>
+      <div class="col-12 col-md-4">
+        <label class="form-label">Instrumento</label>
+        <select id="filtroInstrumento" class="form-select form-select-sm">
+          <option value="">Todos</option>
+        </select>
+      </div>
+      <div class="col-12 col-md-4">
+        <label class="form-label">Buscar alumno</label>
+        <input id="filtroTexto" class="form-control form-control-sm" placeholder="Nombre o apellidos…">
+      </div>
+    </div>
+  </div>
+
+  <!-- Tabla -->
+  <div class="table-responsive">
+    <table id="tabla" class="table table-sm align-middle table-bordered">
+      <thead class="table-light">
+        <tr>
+          <th style="width: 200px;">Instrumento</th>
+          <th>Alumno</th>
+          <th style="width: 90px;">Puesto</th>
+        </tr>
+      </thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </div>
+</div>
+
+<style>
+  .h1-titulo { font-size: clamp(1.2rem, 1.2rem + 1vw, 1.8rem); }
+  #tabla td input[type="number"] { text-align: center; }
+  #tabla td select, #tabla td input { min-width: 80px; }
+  .row-dirty { animation: flash .35s ease-in-out 1; }
+  @keyframes flash { from { background:#fff6d5; } to { background:transparent; } }
+</style>
+
+<script>
+(function(){
+  const grupoId = new URLSearchParams(location.search).get('grupo_id') || document.getElementById('inpGrupo').value || '';
+  const $tbody = document.getElementById('tbody');
+  const $fInst = document.getElementById('filtroInstrumento');
+  const $fTxt  = document.getElementById('filtroTexto');
+  const $btnGuardar = document.getElementById('btnGuardar');
+  const $btnPlano   = document.getElementById('btnPlano');
+
+  if (!$btnPlano) return;
+  // Enlace al plano latest de este grupo (PDF)
+  if (grupoId) $btnPlano.href = `/plano/latest/${encodeURIComponent(grupoId)}.pdf`;
+
+  // Estado en memoria
+  let DATA = [];        // filas [{ alumno_id, nombre, instrumento, puesto }]
+  let INSTRUMENTOS = []; // catálogo para selects
+
+  // Normaliza "Violín" -> "Violín I/II" si ya viene clasificado así
+  function normInst(s){
+    return String(s||'').trim();
+  }
+
+  function renderOptions(select, items, value){
+    select.innerHTML = items.map(it => `<option value="${it}">${it}</option>`).join('');
+    if (value != null) select.value = value;
+  }
+
+  function applyFilters(rows){
+    const inst = $fInst.value || '';
+    const txt  = ($fTxt.value || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+
+    let out = rows.slice();
+    if (inst) out = out.filter(r => r.instrumento === inst);
+    if (txt)  out = out.filter(r => (r.nombre || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').includes(txt));
+
+    // Orden: Instrumento → Puesto (ASC, nulos al final) → Nombre
+    out.sort((a,b) => {
+      const ai = a.instrumento.localeCompare(b.instrumento, 'es', { sensitivity:'base' });
+      if (ai !== 0) return ai;
+      const ap = (a.puesto==null?Infinity:Number(a.puesto));
+      const bp = (b.puesto==null?Infinity:Number(b.puesto));
+      if (ap !== bp) return ap - bp;
+      return (a.nombre||'').localeCompare(b.nombre||'', 'es', { sensitivity:'base' });
+    });
+    return out;
+  }
+
+  function render(){
+    const rows = applyFilters(DATA);
+    $tbody.innerHTML = '';
+    for (const r of rows){
+      const tr = document.createElement('tr');
+      tr.dataset.alumnoId = r.alumno_id;
+
+      tr.innerHTML = `
+        <td>
+          <select class="form-select form-select-sm sel-inst"></select>
+        </td>
+        <td>${r.nombre || r.alumno_id}</td>
+        <td>
+          <input type="number" min="1" step="1" class="form-control form-control-sm inp-puesto" value="${r.puesto ?? ''}" placeholder="—">
+        </td>
+      `;
+      const sel = tr.querySelector('.sel-inst');
+      renderOptions(sel, INSTRUMENTOS, r.instrumento);
+      sel.addEventListener('change', () => { r.instrumento = normInst(sel.value); tr.classList.add('row-dirty'); });
+      tr.querySelector('.inp-puesto').addEventListener('input', (ev) => {
+        const v = ev.target.value.trim();
+        r.puesto = v === '' ? null : Math.max(1, parseInt(v,10)||1);
+        tr.classList.add('row-dirty');
+      });
+
+      $tbody.appendChild(tr);
+    }
+  }
+
+  async function load(){
+    if (!grupoId) return alert('Falta grupo_id');
+    try{
+      const res = await fetch(`/informes/atril/actual?grupo_id=${encodeURIComponent(grupoId)}`, { headers:{ 'Accept':'application/json' }});
+      if (!res.ok) throw new Error(await res.text());
+      const data = await res.json(); // { ok, grupo, items, instrumentos }
+      INSTRUMENTOS = (data.instrumentos || []).map(normInst);
+      DATA = (data.items || []).map(x => ({
+        alumno_id: x.alumno_id,
+        nombre:    x.nombre,
+        instrumento: normInst(x.instrumento),
+        puesto:    (x.puesto==null ? null : Number(x.puesto))
+      }));
+
+      // poblar filtro de instrumento
+      renderOptions($fInst, [''].concat(INSTRUMENTOS), '');
+      render();
+    }catch(e){
+      console.error('Error cargando datos:', e);
+      alert('No se pudieron cargar los datos.');
+    }
+  }
+
+  async function save(){
+    try{
+      const payload = {
+        grupo_id: grupoId,
+        items: DATA.map(r => ({
+          alumno_id: r.alumno_id,
+          instrumento: r.instrumento,
+          puesto: (r.puesto==null ? null : Number(r.puesto))
+        }))
+      };
+      const res = await fetch('/informes/atril/actual', {
+        method:'PUT',
+        headers:{ 'Content-Type':'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (!res.ok) throw new Error(await res.text());
+      // feedback visual
+      document.querySelectorAll('#tbody tr.row-dirty').forEach(tr => tr.classList.remove('row-dirty'));
+      alert('Clasificación guardada.');
+    }catch(e){
+      console.error('Error guardando:', e);
+      alert('No se pudo guardar la clasificación.');
+    }
+  }
+
+  // Eventos UI
+  $fInst.addEventListener('change', render);
+  $fTxt .addEventListener('input', render);
+  $btnGuardar.addEventListener('click', save);
+
+  load();
+})();
+</script>
