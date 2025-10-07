@@ -202,13 +202,20 @@ router.post('/', upload.single('foto'), async (req, res) => {
       activo: activoBool,
       password: toStrOrNull(password),
       registrado: registradoBool,
-      guardias_actual: toIntOrNull(guardias_actual),
-      guardias_hist: toIntOrNull(guardias_hist),
       fecha_matriculacion: toDateOrNull(fecha_matriculacion_val),
       fecha_baja: toDateOrNull(fecha_baja_val)
       // created_at / updated_at -> defaults
     };
+    // Solo incluir guardias_* si llegan explícitamente y con número válido
+    const ga = toIntOrNull(guardias_actual);
+    const gh = toIntOrNull(guardias_hist);
 
+    if (Object.prototype.hasOwnProperty.call(req.body, 'guardias_actual') && ga !== null) {
+      payload.guardias_actual = ga;
+    }
+    if (Object.prototype.hasOwnProperty.call(req.body, 'guardias_hist') && gh !== null) {
+      payload.guardias_hist = gh;
+    }
     // INSERT alumno y obtener id
     const fields = Object.keys(payload).join(', ');
     const placeholders = Object.keys(payload).map((_, i) => `$${i + 1}`).join(', ');
