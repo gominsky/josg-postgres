@@ -969,7 +969,14 @@ async function doSave(nombre, descripcion){
   width: 100%;
   table-layout: auto;
 }
-
+.fm-badge{
+    display:inline-flex; align-items:center; justify-content:center;
+    min-width:1.4em; height:1.4em; padding:0 .42em;
+    border-radius:999px; background:#ea6b38; color:#fff;
+    font-weight:700; font-size:.75rem; line-height:1;
+    margin-left:.4rem;
+  }
+  .fm-badge[hidden]{ display:none !important; }
 </style>
 
 <!-- ============ Utils compartidas ============ -->
@@ -3050,4 +3057,31 @@ function setMinutesCell(tr, val){
         });
       })();
       </script>
-      
+      <script>
+        (function(){
+          function mountBadge(sel, count){
+            const el = document.querySelector(sel);
+            if(!el) return;
+            let b = el.querySelector('.fm-badge');
+            if(!b){
+              b = document.createElement('span');
+              b.className = 'fm-badge';
+              el.appendChild(b);
+            }
+            if (!count || Number(count)===0){
+              b.setAttribute('hidden','');
+              b.textContent = '';
+            } else {
+              b.removeAttribute('hidden');
+              b.textContent = String(count);
+            }
+          }
+        
+          // Exponer función global para que tu lógica la invoque tras cargar datos
+          window.fmUpdateBadges = function({ invitados=0, reservas=0 }={}){
+            // Ajusta los selectores a tus ids/clases reales:
+            mountBadge('#btn-invitados', invitados);
+            mountBadge('#btn-reservas', reservas);
+          };
+        })();
+        </script>

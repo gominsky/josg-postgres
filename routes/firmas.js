@@ -264,48 +264,83 @@ async function getAsignTable() {
 router.use('/api', requireJWT);
 
 /** 1) Eventos del alumno (calendario) */
+// GET /firmas/api/alumno/:alumnoId/eventos
 router.get('/api/alumno/:alumnoId/eventos', mustMatchAlumnoParam, async (req, res) => {
   const alumnoId = Number(req.alumno_id);
+  if (!alumnoId) return res.status(400).json({ error: 'alumnoId inválido' });
 
   try {
     const asignTable = await getAsignTable();
+
     const sql = `
       WITH base AS (
-        SELECT e.id, e.titulo, e.descripcion, e.grupo_id, e.espacio_id,
-               e.fecha_inicio::text AS fi, e.fecha_fin::text AS ff, 
-               e.hora_inicio, e.hora_fin,
-               a.hora_inicio AS ahi, a.hora_fin AS ahf
-          FROM ${asignTable} a
-          JOIN eventos e ON e.id = a.evento_id
-         WHERE a.alumno_id = $1
+        SELECT
+          e.id,
+          e.titulo,
+          e.descripcion,
+          e.grupo_id,
+          e.espacio_id,
+          e.fecha_inicio::text AS fi,
+          e.fecha_fin::text    AS ff,
+          e.hora_inicio,
+          e.hora_fin,
+          a.hora_inicio AS ahi,
+          a.hora_fin    AS ahf,
+          a.actividad_complementaria_id
+        FROM ${asignTable} a
+        JOIN eventos e ON e.id = a.evento_id
+        WHERE a.alumno_id = $1
       ),
       t AS (
-        SELECT b.*,
-               to_char(
-                 to_timestamp(left(b.fi,10) || ' ' ||
-                   COALESCE(NULLIF(b.ahi::text,''), NULLIF(b.hora_inicio::text,''), '00:00'), 'YYYY-MM-DD HH24:MI'
-                 ),
-                 'YYYY-MM-DD"T"HH24:MI'
-               ) AS start_iso,
-               to_char(
-                 to_timestamp(left(b.ff,10) || ' ' ||
-                   COALESCE(NULLIF(b.ahf::text,''), NULLIF(b.hora_fin::text,''), COALESCE(NULLIF(b.ahi::text,''), NULLIF(b.hora_inicio::text,''), '00:00')), 'YYYY-MM-DD HH24:MI'
-                 ),
-                 'YYYY-MM-DD"T"HH24:MI'
-               ) AS end_iso
-          FROM base b
+        SELECT
+          b.*,
+          to_char(
+            to_timestamp(
+              left(b.fi,10) || ' ' ||
+              COALESCE(NULLIF(b.ahi::text,''), NULLIF(b.hora_inicio::text,''), '00:00'),
+              'YYYY-MM-DD HH24:MI'
+            ),
+            'YYYY-MM-DD"T"HH24:MI'
+          ) AS start_iso,
+          to_char(
+            to_timestamp(
+              left(b.ff,10) || ' ' ||
+              COALESCE(
+                NULLIF(b.ahf::text,''),
+                NULLIF(b.hora_fin::text,''),
+                COALESCE(NULLIF(b.ahi::text,''), NULLIF(b.hora_inicio::text,''), '00:00')
+              ),
+              'YYYY-MM-DD HH24:MI'
+            ),
+            'YYYY-MM-DD"T"HH24:MI'
+          ) AS end_iso
+        FROM base b
       )
-      SELECT t.id, t.titulo, t.descripcion, t.start_iso, t.end_iso,
-       g.nombre AS grupo_nombre, es.nombre AS espacio_nombre,
-       es.ubicacion AS espacio_ubicacion
-        FROM t
-        LEFT JOIN grupos   g  ON g.id  = t.grupo_id
-        LEFT JOIN espacios es ON es.id = t.espacio_id
-       ORDER BY t.start_iso;
+      SELECT
+        t.id,
+        t.titulo,
+        t.descripcion,
+        t.start_iso,
+        t.end_iso,
+        g.nombre     AS grupo_nombre,
+        es.nombre    AS espacio_nombre,
+        es.ubicacion AS espacio_ubicacion,
+
+        /* letra desde actividades_complementarias.tipo; si no hay, usa la id como texto */
+        COALESCE(NULLIF(TRIM(ac.tipo), ''), t.actividad_complementaria_id::text) AS act_comp_txt,
+        (t.actividad_complementaria_id IS NOT NULL) AS act_comp
+
+      FROM t
+      LEFT JOIN grupos   g  ON g.id  = t.grupo_id
+      LEFT JOIN espacios es ON es.id = t.espacio_id
+      LEFT JOIN actividades_complementarias ac
+             ON ac.id = t.actividad_complementaria_id
+      ORDER BY t.start_iso;
     `;
+
     const { rows } = await db.query(sql, [alumnoId]);
 
-    res.json(rows.map(r => {
+    const out = rows.map(r => {
       const ubic = (r.espacio_ubicacion || '').trim();
       const espacio_link = ubic ? `https://www.google.com/maps?q=${encodeURIComponent(ubic)}` : null;
 
@@ -319,15 +354,20 @@ router.get('/api/alumno/:alumnoId/eventos', mustMatchAlumnoParam, async (req, re
           grupo: r.grupo_nombre || '',
           espacio: r.espacio_nombre || '',
           espacio_ubicacion: ubic,
-          espacio_link
+          espacio_link,
+          act_comp: !!r.act_comp,                 // cambia fondo
+          act_comp_txt: r.act_comp_txt || null    // muestra la “letra” (tipo)
         }
       };
-    }));
+    });
+
+    res.json(out);
   } catch (err) {
     console.error('[firmas/api] eventos alumno:', err);
     res.status(500).json({ error: 'Error obteniendo eventos' });
   }
 });
+
 
 /** 2) Detalle de evento del alumno */
 router.get('/api/alumno/:alumnoId/eventos/:eventoId', mustMatchAlumnoParam, async (req, res) => {

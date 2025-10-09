@@ -5,6 +5,62 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>¡JOSG en tu mano!</title>
   <link rel="stylesheet" href="../styles/estilos_app.css" />
+  <style>
+    /* Carrusel de próximos eventos */
+    .upcoming{
+      display:flex; gap:12px; overflow-x:auto; padding-bottom:6px; scrollbar-width:thin;
+    }
+  
+    /* Poster estilo portal_maestro (clicable) */
+    .poster{
+      display:block; position:relative; overflow:hidden; cursor:pointer;
+      flex:0 0 220px; border-radius:16px; text-decoration:none; color:#0b0b0b;
+      background:linear-gradient(180deg,#ffffff,#fdf8f2);
+      border:1px solid #eee; box-shadow:0 4px 14px rgba(16,24,40,.08);
+      padding:12px; transition: transform .12s ease, box-shadow .12s ease, filter .12s ease;
+    }
+    .poster:hover{ transform: translateY(-2px); box-shadow:0 10px 30px rgba(16,24,40,.16); }
+    .poster::before{
+      content:""; position:absolute; inset:0; pointer-events:none;
+      background:repeating-linear-gradient(180deg, rgba(0,0,0,.12) 0 1px, transparent 1px 8px);
+      opacity:.12;
+    }
+    .poster::after{
+      content:""; position:absolute; inset:0; pointer-events:none;
+      background:
+        radial-gradient(60% 60% at 100% 100%, rgba(255,170,80,.18), transparent 60%),
+        radial-gradient(60% 60% at   0%   0%, rgba(255,255,255,.6), transparent 60%);
+      mix-blend-mode:multiply; opacity:.6;
+    }
+  
+    /* Tipos de contenido dentro del poster */
+    .poster .date{ display:flex; align-items:baseline; gap:8px; }
+    .poster .num{ font-size:54px; font-weight:800; line-height:1; letter-spacing:-1px; color:#000;
+                  text-shadow:0 1px 0 rgba(255,255,255,.4); }
+    .poster .meta{ display:flex; flex-direction:column; gap:2px; text-transform:uppercase;
+                   font-weight:800; color:#b45309; font-size:12px; letter-spacing:.4px; }
+    .poster .title{ margin-top:8px; font-weight:800; line-height:1.2; min-height:2.4em; color:#111; }
+    .poster .line{ height:2px; background:repeating-linear-gradient(90deg,#111 0 8px, transparent 8px 12px);
+                   opacity:.25; margin:6px 0; }
+    .poster .venue{ color:#6b7280; font-size:.92rem; }
+  
+    /* Estado especial cuando hay Actividad Complementaria (corporativo) */
+    .poster.poster--ac{
+      background:#fff4ea;              /* naranja muy suave corporativo */
+      border-left:4px solid #ea6b38;   /* acento corporativo */
+      box-shadow:0 6px 20px rgba(234,107,56,.15);
+    }
+    /* Badge con la letra (tipo) */
+    .ac-badge{
+      position:absolute; top:6px; right:6px;
+      padding:.14rem .42rem; border-radius:7px;
+      font-weight:800; font-size:.78rem; line-height:1;
+      background:#ea6b38; color:#fff; letter-spacing:.3px;
+      pointer-events:none;
+    }
+  </style>
+  
+  
 </head>
 <body data-page="index">
   <div class="container" id="contenedor">
@@ -83,6 +139,7 @@
   (function(){
     const badge = document.getElementById('badge-msg');
     const alumno_id = localStorage.getItem('alumno_id');
+
     async function refreshBadge(){
       if (!badge || !alumno_id) { if (badge) badge.style.display = 'none'; return; }
       try {
@@ -155,5 +212,196 @@
     let tm=null; window.addEventListener('resize',()=>{clearTimeout(tm);tm=setTimeout(placeMotifs,120);});
   })();
   </script>
+<script>
+  (function(){
+    const $con   = document.getElementById('conectado');
+    const $des   = document.getElementById('desconectado');
+    const $wrap  = document.getElementById('upcoming');
+    const $empty = document.getElementById('no-events');
+  
+    const esc  = (s)=>String(s).replace(/[&<>"']/g,m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m]));
+    const pick = (v)=> (v==null ? '' : String(v).trim());
+  
+    let loadTimer = null;
+    let seq = 0;
+    let inflight = null; // AbortController
+  
+    function normalizarEventos(data){
+      const arr = Array.isArray(data) ? data : [];
+      return arr.map(e=>{
+        const ep = e.extendedProps || {};
+  
+        const id    = e.id ?? e.ID ?? e.evento_id ?? e.EventoId;
+        const start = e.start ?? e.start_iso ?? e.startISO ?? e.startDate ?? e.fecha_inicio;
+        const end   = e.end   ?? e.end_iso   ?? e.endDate   ?? e.fecha_fin ?? null;
+  
+        const grupo   = e.grupo_nombre ?? ep.grupo ?? null;
+        const espacio = ep.espacio || e.espacio || null;
+  
+        // letra/bandera vengan donde vengan (incluye ac.tipo que ya mandas)
+        const letraRaw =
+          pick(ep.act_comp_txt) || pick(e.act_comp_txt) ||
+          pick(ep.tipo) || pick(e.tipo) ||
+          pick(ep.actividad_complementaria_id) || pick(e.actividad_complementaria_id);
+  
+        const actCompFlag = (ep.act_comp === true || e.act_comp === true) || (letraRaw !== '');
+  
+        const href =
+          pick(ep.href) || pick(ep.url) || pick(ep.link) ||
+          pick(e.href)  || pick(e.url)  || pick(e.link)  || '';
+  
+        const baseTitle = e.title ?? e.titulo ?? 'Evento';
+        const title = (baseTitle && grupo) ? `${baseTitle} (${grupo})` : baseTitle;
+  
+        return {
+          id, title, start, end, href,
+          extendedProps: { ...ep, grupo, espacio, act_comp: actCompFlag, act_comp_txt: letraRaw || null }
+        };
+      }).filter(ev => ev.id != null && ev.start);
+    }
+  
+    function filtrarProximos(eventos){
+      const hoy  = new Date();
+      const hoy0 = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
+      const fut  = eventos.filter(ev => new Date(ev.start).getTime() >= hoy0.getTime())
+                          .sort((a,b)=> new Date(a.start)-new Date(b.start));
+      if (fut.length) return fut.slice(0,5);
+      const desde = new Date(hoy0); desde.setDate(desde.getDate()-14);
+      const rec = eventos.filter(ev => {
+        const t = new Date(ev.start).getTime();
+        return t>=desde.getTime() && t<hoy0.getTime();
+      }).sort((a,b)=> new Date(b.start)-new Date(a.start));
+      return rec.slice(0,5);
+    }
+  
+    function buildEventHref(ev){
+  // si el backend ya envía un enlace explícito, respétalo
+  const fromApi =
+    (ev && ev.href) ||
+    (ev && ev.extendedProps && (ev.extendedProps.href || ev.extendedProps.url || ev.extendedProps.link));
+  if (fromApi && String(fromApi).trim()) return String(fromApi).trim();
+
+  // enlace al DETALLE del evento (mismo patrón que portal_maestro)
+  return `evento_alumno.html?id=${encodeURIComponent(ev.id)}`;
+}
+
+  
+    function posterHTML(ev){
+    const xp = ev.extendedProps || {};
+
+    // “letra” y bandera de actividad complementaria
+    const letra = (xp.act_comp_txt ?? '').toString().trim();
+    const isAC  = !!xp.act_comp;
+
+    // Fecha y textos
+    const d = new Date(ev.start);
+    const MESES = ['ENE','FEB','MAR','ABR','MAY','JUN','JUL','AGO','SEP','OCT','NOV','DIC'];
+    const DIAS  = ['dom','lun','mar','mié','jue','vie','sáb'];
+
+    const diaNum = d.getDate();
+    const mesTxt = MESES[d.getMonth()];
+    const dowTxt = DIAS[d.getDay()];
+    const hora   = d.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'});
+
+    const titulo = (ev.title || 'Evento');
+    const venue  = xp.espacio ? xp.espacio : '';
+
+    // Enlace final (usa el que ya construyes en buildEventHref)
+    const href   = (typeof buildEventHref === 'function') ? buildEventHref(ev)
+                  : `agenda.html?eid=${encodeURIComponent(ev.id)}`;
+
+    const aria   = `Abrir ${titulo} ${hora}${venue ? ' · ' + venue : ''}`;
+    const extra  = isAC ? ' poster--ac' : '';
+    const badge  = letra ? `<span class="ac-badge" title="Actividad complementaria">${letra}</span>` : '';
+
+    return `
+      <a class="poster${extra}" href="${href}" aria-label="${aria}">
+        ${badge}
+        <div class="date">
+          <div class="num">${diaNum}</div>
+          <div class="meta">
+            <span>${mesTxt}</span>
+            <span>${dowTxt} · ${hora}</span>
+          </div>
+        </div>
+        <div class="title">${titulo}</div>
+        <div class="line"></div>
+        ${venue ? `<div class="venue">${venue}</div>` : ''}
+      </a>
+    `;
+  }
+    async function cargarEventos(){
+      if (!$wrap || !$empty) return;
+  
+      // lee SIEMPRE en el momento de cargar
+      const alumno_id = localStorage.getItem('alumno_id');
+      const token     = localStorage.getItem('token');
+  
+      // alterna vistas SOLO según alumno_id (no forzamos token)
+      if ($con && $des){
+        if (alumno_id){ $con.style.display='block'; $des.style.display='none'; }
+        else { $con.style.display='none'; $des.style.display='block'; }
+      }
+  
+      if (!alumno_id){
+        // no vaciamos $wrap para evitar “despintar”; solo mostramos mensaje si está vacío
+        if (!$wrap.innerHTML) { $empty.textContent='Inicia sesión para ver tus eventos.'; $empty.style.display='block'; }
+        return;
+      }
+  
+      // cancela petición anterior si existe
+      if (inflight) inflight.abort();
+      inflight = new AbortController();
+  
+      const mySeq = ++seq; // marca esta carga
+      try{
+        const headers = { 'Accept':'application/json' };
+        if (token) headers['Authorization'] = 'Bearer '+token;
+  
+        const r = await fetch(`/firmas/api/alumno/${encodeURIComponent(alumno_id)}/eventos`, {
+          headers,
+          cache:'no-store',
+          credentials:'include',
+          signal: inflight.signal
+        });
+        if (!r.ok) throw new Error('HTTP '+r.status);
+        const data = await r.json();
+  
+        // si llegó otra respuesta MÁS nueva, descarta esta
+        if (mySeq !== seq) return;
+  
+        const eventos = filtrarProximos(normalizarEventos(data));
+        if (!eventos.length){
+          // solo mostramos “vacío” si no hay nada ya renderizado
+          if (!$wrap.innerHTML) { $empty.style.display='block'; }
+          return;
+        }
+  
+        $empty.style.display='none';
+        $wrap.innerHTML = eventos.map(posterHTML).join('');
+      }catch(e){
+        if (e.name === 'AbortError') return; // se canceló a propósito
+        console.error('Próximos eventos:', e);
+        if (mySeq !== seq) return;
+        if (!$wrap.innerHTML){
+          $empty.textContent='No se pudieron cargar los eventos.';
+          $empty.style.display='block';
+        }
+      }
+    }
+  
+    // dispara con debounce para unificar DOMContentLoaded/load/pageshow/visibilitychange
+    function scheduleLoad(){
+      clearTimeout(loadTimer);
+      loadTimer = setTimeout(cargarEventos, 120);
+    }
+  
+    document.addEventListener('DOMContentLoaded', scheduleLoad);
+    window.addEventListener('load', scheduleLoad);
+    window.addEventListener('pageshow', scheduleLoad);
+    document.addEventListener('visibilitychange', ()=>{ if (document.visibilityState === 'visible') scheduleLoad(); });
+  })();
+  </script>  
 </body>
 </html>
+
