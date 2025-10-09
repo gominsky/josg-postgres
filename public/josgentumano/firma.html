@@ -157,22 +157,40 @@
       firmarConPosibleUbicacion({ evento_id, token });
     }
 
-    (function initScanner() {
-      try{
-        qrScanner = new Html5Qrcode("reader");
-        qrScanner.start(
+  </script>
+  <script>
+    function calcQrbox(w, h) {
+      const side = Math.max(220, Math.min(360, Math.floor(Math.min(w, h) * 0.8)));
+      return { width: side, height: side };
+    }
+  
+    async function startScanner() {
+      const host = document.getElementById('reader');
+      // Espera a que tenga tamaño real (>260 px de ancho)
+      let attempts = 0;
+      while (host && host.offsetWidth < 260 && attempts++ < 40) {
+        await new Promise(r => setTimeout(r, 75));
+      }
+      const w = host?.offsetWidth || 320;
+      const h = host?.offsetHeight || w;
+  
+      qrScanner = new Html5Qrcode("reader");
+      try {
+        await qrScanner.start(
           { facingMode: "environment" },
-          { fps: 10, qrbox: 250 },
+          { fps: 12, qrbox: calcQrbox(w, h) },
           onScanSuccess,
-          () => {}
+          () => {} // onScanFailure opcional
         );
-      }catch(e){
+      } catch (e) {
         console.error(e);
         pintarMensaje("❌ No se pudo iniciar la cámara", false);
       }
-    })();
+    }
+  
+    (function initScanner(){ startScanner(); })();
   </script>
-
+  
   <!-- Motivos musicales -->
   <script>
     (function(){
