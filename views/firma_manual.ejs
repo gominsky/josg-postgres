@@ -92,8 +92,35 @@
     </div>
 
     <div class="cfg-right">
-      <button id="btnRefreshAsign" class="btn btn-ghost-sm">Restaurar alumnos</button>
+      <button id="btnRefreshAsign" class="btn btn-ghost-sm">Restaurar alumnos</button>       
+        <!-- NUEVO: editor dinámico del plano del evento -->
+        <a class="btn btn-ghost-sm" href="/plano/editor/evento?evento_id=<%= evento.id %>">
+          Plano dinámico (evento)
+        </a>
       <a class="btn btn-outline-sm" href="/plano/evento/<%= evento.id %>.pdf" target="_blank" rel="noopener">Plano del evento (PDF)</a>
+      <button id="shareEventoBtn" class="btn btn-blanco btn-sm">Generar enlace público</button>
+    </div>
+  </div>
+</div>
+<div class="modal fade" id="sharePlanoModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-sm">
+    <div class="modal-content">
+      <div class="modal-header py-2">
+        <h5 class="modal-title">Enlace público</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-2">
+          <input id="sharePlanoUrl" class="form-control form-control-sm" readonly>
+        </div>
+        <div class="small text-muted mb-2">
+          Caduca: <span id="sharePlanoExp">—</span>
+        </div>
+        <div class="d-flex gap-2">
+          <button id="sharePlanoCopy" class="btn btn-outline-secondary btn-sm flex-fill">Copiar</button>
+          <a id="sharePlanoOpen" class="btn btn-outline-secondary btn-sm flex-fill" target="_blank" rel="noopener">Abrir</a>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -2907,4 +2934,120 @@ function setMinutesCell(tr, val){
     }, true);
   })();
   </script>
-  
+  <script>
+    (() => {
+      const btn   = document.getElementById('shareEventoBtn');
+      const mini  = document.getElementById('shareEventoMini');
+      const inp   = document.getElementById('shareEventoUrl');
+      const copy  = document.getElementById('shareEventoCopy');
+      const exp   = document.getElementById('shareEventoExp');
+      const err   = document.getElementById('shareEventoErr');
+    
+      const eventoId = <%= Number(evento.id) %>; // ya lo tienes en la vista
+    
+      btn?.addEventListener('click', async (e) => {
+        e.preventDefault();
+        err.classList.add('d-none');
+    
+        try {
+          btn.disabled = true;
+          const prev = btn.textContent; btn.textContent = 'Generando…';
+    
+          const r = await fetch('/api/share', {
+            method: 'POST',
+            headers: { 'Content-Type':'application/json' },
+            body: JSON.stringify({
+              kind: 'plano',
+              params: { grupo: eventoId, src: 'evento' }, // ← plano del EVENTO
+              expireHours: 24 * 7                           // 7 días (ajusta a gusto)
+            })
+          });
+          const j = await r.json().catch(() => ({}));
+          if (!r.ok || !j.ok) throw new Error(j.msg || 'No se pudo crear el enlace');
+    
+          inp.value = j.url;
+          mini.classList.remove('d-none');
+          exp.textContent = j.expiresAt ? new Date(j.expiresAt).toLocaleString() : '—';
+    
+          copy.onclick = () => {
+            navigator.clipboard.writeText(j.url).then(() => {
+              const old = copy.textContent; copy.textContent = 'Copiado ✓';
+              setTimeout(() => copy.textContent = old, 1000);
+            });
+          };
+    
+          btn.textContent = prev;
+          btn.disabled = false;
+        } catch (e) {
+          err.textContent = e.message || 'Error creando el enlace';
+          err.classList.remove('d-none');
+          btn.disabled = false;
+          btn.textContent = 'Generar enlace público';
+        }
+      });
+    })();
+    </script>    
+    <script>
+      (() => {
+        const btn   = document.getElementById('shareEventoBtn');  // tu botón existente
+        if (!btn) return;
+      
+        const eventoId = <%= Number(evento.id) %>;                // en firma_manual.ejs
+      
+        const $modalEl = document.getElementById('sharePlanoModal');
+        const $url     = document.getElementById('sharePlanoUrl');
+        const $exp     = document.getElementById('sharePlanoExp');
+        const $copy    = document.getElementById('sharePlanoCopy');
+        const $open    = document.getElementById('sharePlanoOpen');
+      
+        // instancia Bootstrap Modal
+        let modal;
+        function ensureModal() {
+          if (!modal) modal = new bootstrap.Modal($modalEl, { backdrop: 'static' });
+        }
+      
+        btn.addEventListener('click', async (e) => {
+          e.preventDefault();
+          btn.disabled = true;
+          const prev = btn.textContent;
+          btn.textContent = 'Generando…';
+          try {
+            const r = await fetch('/api/share', {
+              method: 'POST',
+              headers: { 'Content-Type':'application/json' },
+              body: JSON.stringify({
+                kind: 'plano',
+                params: { grupo: eventoId, src: 'evento' },
+                expireHours: 24 * 7
+              })
+            });
+            const j = await r.json();
+            if (!r.ok || !j.ok) throw new Error(j.msg || 'No se pudo crear el enlace');
+      
+            // Rellenar modal
+            $url.value = j.url;
+            $exp.textContent = j.expiresAt ? new Date(j.expiresAt).toLocaleString() : '—';
+            $open.href = j.url;
+      
+            // Mostrar modal (sin mover cabecera)
+            ensureModal();
+            modal.show();
+      
+            // Copiar al portapapeles
+            $copy.onclick = () => {
+              navigator.clipboard.writeText(j.url).then(() => {
+                const old = $copy.textContent; $copy.textContent = 'Copiado ✓';
+                setTimeout(() => $copy.textContent = old, 1200);
+              });
+            };
+      
+          } catch (err) {
+            alert(err.message || 'Error creando el enlace');
+          } finally {
+            btn.textContent = prev;
+            btn.disabled = false;
+          }
+        });
+      })();
+      </script>
+      

@@ -367,19 +367,34 @@ async function init({ reset = false } = {}) {
         created_at TIMESTAMP DEFAULT now()
       );
       ALTER TABLE plantillas_evento ADD COLUMN IF NOT EXISTS horas JSONB DEFAULT '{}'::jsonb;
-
-      CREATE TABLE IF NOT EXISTS atril_clasificacion (
-        id           BIGSERIAL PRIMARY KEY,
-        grupo_id     INT  NOT NULL REFERENCES grupos(id) ON DELETE CASCADE,
-        instrumento  TEXT NOT NULL,
-        alumno_id    INT  NOT NULL REFERENCES alumnos(id) ON DELETE CASCADE,
-        puesto       INT  NOT NULL CHECK (puesto >= 1),  -- 1=mejor, 2,3,...
-        updated_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
-        UNIQUE (grupo_id, instrumento, alumno_id)
+      
+      CREATE TABLE IF NOT EXISTS public.atril_clasificacion (
+        id                   BIGSERIAL PRIMARY KEY,
+        grupo_id             INT  NOT NULL REFERENCES grupos(id)   ON DELETE CASCADE,
+        instrumento          TEXT NOT NULL,
+        instrumento_seccion  TEXT, -- 'I' | 'II'
+        alumno_id            INT  NOT NULL REFERENCES alumnos(id) ON DELETE CASCADE,
+        puesto               INT  NOT NULL CHECK (puesto >= 1),
+        updated_at           TIMESTAMPTZ NOT NULL DEFAULT now(),
+        CONSTRAINT atril_clasificacion_uniq_alumno
+          UNIQUE (grupo_id, instrumento, instrumento_seccion, alumno_id),
+        CONSTRAINT atril_clasificacion_uniq_puesto
+          UNIQUE (grupo_id, instrumento, instrumento_seccion, puesto)
       );
-      -- Un puesto no puede repetirse dentro de un grupo+instrumento+periodo
-      CREATE UNIQUE INDEX IF NOT EXISTS uq_atril_puesto
-        ON atril_clasificacion (grupo_id, instrumento, puesto);
+      CREATE INDEX IF NOT EXISTS atril_clasif_idx_lookup
+        ON public.atril_clasificacion (grupo_id, alumno_id, instrumento, instrumento_seccion);
+
+      CREATE TABLE IF NOT EXISTS public.plano_layout (
+        id         bigserial PRIMARY KEY,
+        scope      text NOT NULL CHECK (scope IN ('grupo','evento')),
+        scope_id   int  NOT NULL,
+        key        text NOT NULL,
+        x          real NOT NULL,
+        y          real NOT NULL,
+        angle      real NOT NULL,
+        updated_at timestamptz DEFAULT now(),
+        UNIQUE (scope, scope_id, key)
+      );
 
       CREATE TABLE IF NOT EXISTS guardias (
         id          INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -397,7 +412,8 @@ async function init({ reset = false } = {}) {
       CREATE INDEX IF NOT EXISTS idx_guardias_alumno1 ON guardias(alumno_id_1);
       CREATE INDEX IF NOT EXISTS idx_guardias_alumno2 ON guardias(alumno_id_2);
     `, 'tables:eventos+asistencias+guardias');
-
+     
+      
     // ============================
     // 6) INFORMES
     // ============================

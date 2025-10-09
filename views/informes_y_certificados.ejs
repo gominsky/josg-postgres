@@ -229,7 +229,21 @@
           <p class="req-line"><span class="badge-soft">Histórico completo</span></p>
         </div>
       </a>
-
+          <!-- Clasificación actual (editar) -->
+      <button type="button" id="cardAtrilActual" class="action-card">
+        <div class="icon-badge" aria-hidden="true">
+          <!-- icono “ordenar” -->
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"
+              viewBox="0 0 16 16" fill="currentColor">
+            <path d="M3 2.5a.5.5 0 0 1 .5-.5H9a.5.5 0 0 1 0 1H3.5a.5.5 0 0 1-.5-.5zM3 6a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 0 1H3.5A.5.5 0 0 1 3 6zm0 3.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1H3.5a.5.5 0 0 1-.5-.5zM3 13a.5.5 0 0 1 .5-.5H8a.5.5 0 0 1 0 1H3.5A.5.5 0 0 1 3 13z"/>
+          </svg>
+        </div>
+        <div>
+          <p class="action-title">Pruebas de atril, situación actual (editar)</p>
+          <p class="action-desc">Tabla editable por instrumento y alumno. Genera el plano usando esta clasificación.</p>
+          <p class="req-line"><span class="badge-soft">Requiere: Grupo</span></p>
+        </div>
+      </button>
       <!-- Listado / Tabla dinámica (lleva filtros) -->
       <a href="#" id="cardFicha" class="action-card">
         <div class="icon-badge" aria-hidden="true">
@@ -245,21 +259,6 @@
           <p class="req-line"><span class="badge-soft">Requiere: Fecha, grupo e instrumento</span></p>
         </div>
       </a>
-            <!-- Clasificación actual (editar) -->
-      <button type="button" id="cardAtrilActual" class="action-card">
-        <div class="icon-badge" aria-hidden="true">
-          <!-- icono “ordenar” -->
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"
-              viewBox="0 0 16 16" fill="currentColor">
-            <path d="M3 2.5a.5.5 0 0 1 .5-.5H9a.5.5 0 0 1 0 1H3.5a.5.5 0 0 1-.5-.5zM3 6a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 0 1H3.5A.5.5 0 0 1 3 6zm0 3.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1H3.5a.5.5 0 0 1-.5-.5zM3 13a.5.5 0 0 1 .5-.5H8a.5.5 0 0 1 0 1H3.5A.5.5 0 0 1 3 13z"/>
-          </svg>
-        </div>
-        <div>
-          <p class="action-title">Pruebas de atril, situación actual (editar)</p>
-          <p class="action-desc">Tabla editable por instrumento y alumno. Genera el plano usando esta clasificación.</p>
-          <p class="req-line"><span class="badge-soft">Requiere: Grupo</span></p>
-        </div>
-      </button>
 
       <!-- Porcentaje de asistencia -->
       <button type="submit" class="action-card" formaction="/informes/horas" formmethod="GET" id="cardHoras">
@@ -276,10 +275,10 @@
         </div>
       </button>
 
-      <!-- Distribución (últimas pruebas de atril) -->
+      <!-- Plano de informes de pruebas de atril (separar)
       <button type="button" id="cardPlano" class="action-card">
-        <div class="icon-badge" aria-hidden="true">
-          <!-- mapa -->
+        <div class="icon-badge" aria-hidden="true"> -->
+          <!-- mapa 
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"
                viewBox="0 0 16 16"><path d="M15.817.113A.5.5 0 0 1 16 .5v13.99a.5.5 0 0 1-.683.472L10 12.566l-4.64 2.022a.5.5 0 0 1-.36 0L.183 13.887A.5.5 0 0 1 0 13.5V-.49a.5.5 0 0 1 .683-.472L6 1.434l4.64-2.022a.5.5 0 0 1 .36 0zM6 2.434l-4-1.74V13.566l4 1.74zM10 1.566l-4 1.74v11.74l4-1.74zM15 13.566V1.26l-4-1.74v12.306z"/></svg>
         </div>
@@ -288,17 +287,17 @@
           <p class="action-desc">Abre el PDF más reciente del grupo seleccionado.</p>
           <p class="req-line"><span class="badge-soft">Requiere: Grupo</span></p>
         </div>
-      </button>
+      </button>-->
       <!-- Compartir plano (último) -->
-<div class="action-card" id="cardSharePlano" role="group" tabindex="0" aria-label="Generar enlace público del plano">
-  <div class="icon-badge" aria-hidden="true">
-    <!-- icono link -->
-    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"
-         viewBox="0 0 16 16" fill="currentColor">
-      <path d="M6.354 5.5H4a3 3 0 0 0 0 6h3a3 3 0 0 0 2.674-1.664.5.5 0 1 1 .893.448A4 4 0 0 1 7 12.5H4a4 4 0 0 1 0-8h2.354a.5.5 0 0 1 0 1z"/>
-      <path d="M12 3.5H9a3 3 0 0 0-2.674 1.664.5.5 0 1 1-.893-.448A4 4 0 0 1 9 2.5h3a4 4 0 0 1 0 8H9.646a.5.5 0 0 1 0-1H12a3 3 0 0 0 0-6z"/>
-    </svg>
-  </div>
+      <div class="action-card" id="cardSharePlano" role="group" tabindex="0" aria-label="Generar enlace público del plano">
+        <div class="icon-badge" aria-hidden="true">
+          <!-- icono link -->
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"
+              viewBox="0 0 16 16" fill="currentColor">
+            <path d="M6.354 5.5H4a3 3 0 0 0 0 6h3a3 3 0 0 0 2.674-1.664.5.5 0 1 1 .893.448A4 4 0 0 1 7 12.5H4a4 4 0 0 1 0-8h2.354a.5.5 0 0 1 0 1z"/>
+            <path d="M12 3.5H9a3 3 0 0 0-2.674 1.664.5.5 0 1 1-.893-.448A4 4 0 0 1 9 2.5h3a4 4 0 0 1 0 8H9.646a.5.5 0 0 1 0-1H12a3 3 0 0 0 0-6z"/>
+          </svg>
+        </div>
 
   <div>
     <p class="action-title">Enlace público del plano de distribución</p>
@@ -417,10 +416,10 @@
 
     // ==== Plano (avisa si falta grupo o si es 'ninguno') ====
     cardPlano?.addEventListener('click', () => {
-      const grupo = elGrupo?.value;
-      if (!grupo || grupo === 'ninguno') { alert('Selecciona un grupo válido primero.'); return; }
-      window.open(`/plano/latest/${encodeURIComponent(grupo)}.pdf`, '_blank', 'noopener');
-    });
+    const grupo = elGrupo?.value;
+    if (!grupo || grupo === 'ninguno') { alert('Selecciona un grupo válido primero.'); return; }
+    window.open(`/plano/clasif/${encodeURIComponent(grupo)}.pdf`, '_blank', 'noopener');
+  });
 
     // ==== Enlace a Ficha: llevar también sec_violin ====
     cardFicha?.addEventListener('click', (e) => {
@@ -515,7 +514,7 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             kind: 'plano',
-            params: { grupo, latest: true },
+            params: { grupo, src: 'clasif' },
             ...(expireHours ? { expireHours } : {})
           })
         });
@@ -566,8 +565,74 @@
           return alert('Selecciona un grupo para editar su clasificación actual.');
         }
         // Abre el editor con el grupo elegido
-        window.location.href = `/informes/atril/actual/editor?grupo_id=${encodeURIComponent(grupoSel)}`;
+        window.location.href = `/atril/actual/editor?grupo_id=${encodeURIComponent(grupoSel)}`;
       });
     })();
   </script>
-  
+  <script>
+    (() => {
+      const card    = document.getElementById('cardSharePlano');
+      const btn     = document.getElementById('sharePlanoBtn');
+      const mini    = document.getElementById('sharePlanoMini');
+      const urlInp  = document.getElementById('sharePlanoUrl');
+      const btnCopy = document.getElementById('sharePlanoCopy');
+      const exp     = document.getElementById('sharePlanoExpBadge');
+      const hint    = document.getElementById('sharePlanoHint');
+      const errBox  = document.getElementById('sharePlanoErr');
+    
+      if (!btn) return;
+    
+      function getGrupoId() {
+        // adapta si tu selector de grupo es otro
+        const v = document.querySelector('[name="grupo_id"], #inpGrupo, #grupoSelect')?.value || '';
+        return String(v).trim();
+      }
+    
+      async function generateLink() {
+        errBox.classList.add('d-none');
+        const grupo = getGrupoId();
+        if (!grupo) { errBox.textContent = 'Selecciona un grupo'; errBox.classList.remove('d-none'); return; }
+    
+        btn.disabled = true;
+        const oldTxt = btn.innerText;
+        btn.innerText = 'Generando…';
+    
+        try {
+          // NUEVO: usamos src:'clasif' (puedes pasar ?inst CSV si quieres acotar)
+          const body = {
+            kind: 'plano',
+            params: { grupo, src: 'clasif' },
+            expireHours: 24 * 7   // 7 días
+          };
+          const r = await fetch('/api/share', {
+            method: 'POST',
+            headers: { 'Content-Type':'application/json' },
+            body: JSON.stringify(body)
+          });
+          const j = await r.json().catch(() => ({}));
+          if (!r.ok || !j.ok) throw new Error(j.msg || 'No se pudo crear el enlace');
+    
+          urlInp.value = j.url;
+          mini.classList.remove('d-none');
+          hint.classList.remove('d-none');
+          exp.textContent = j.expiresAt ? new Date(j.expiresAt).toLocaleString() : '—';
+    
+          btnCopy.onclick = () => {
+            navigator.clipboard.writeText(j.url).then(() => {
+              btnCopy.innerText = 'Copiado ✓';
+              setTimeout(() => (btnCopy.innerText = 'Copiar'), 1200);
+            });
+          };
+        } catch (e) {
+          errBox.textContent = e.message || 'Error creando el enlace';
+          errBox.classList.remove('d-none');
+        } finally {
+          btn.disabled = false;
+          btn.innerText = oldTxt;
+        }
+      }
+    
+      btn.addEventListener('click', (ev) => { ev.preventDefault(); generateLink(); });
+    })();
+    </script>
+    

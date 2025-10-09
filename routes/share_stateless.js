@@ -1,7 +1,7 @@
 // routes/share_stateless.js
 // Enlaces públicos SIN base de datos usando tokens firmados (stateless) + redirect.
-// Genera: POST /api/share  -> { ok, url, token, expiresAt? }
-// Consume: GET  /s/:token.pdf  -> valida token y redirige a tus rutas actuales
+// Genera:  POST /api/share  -> { ok, url, token, expiresAt? }
+// Consume: GET  /s/:token.pdf -> valida token y redirige a tus rutas actuales
 
 const { Router } = require('express');
 const crypto = require('crypto');
@@ -17,6 +17,13 @@ function b64url(buf) {
     .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
 }
 function b64urlJson(obj) { return b64url(Buffer.from(JSON.stringify(obj))); }
+function b64urlToBuf(s) {
+  // pasa de base64url a base64 estándar con padding
+  s = String(s || '').replace(/-/g, '+').replace(/_/g, '/');
+  const pad = s.length % 4 ? 4 - (s.length % 4) : 0;
+  if (pad) s += '='.repeat(pad);
+  return Buffer.from(s, 'base64');
+}
 
 // Comparación constante de strings (mismo largo)
 function timingSafeEqualStr(a, b) {
@@ -33,7 +40,7 @@ function fullUrl(req, path) {
   return `${proto}://${req.get('host')}${path}`;
 }
 
-// Carga de claves con FALLOVER a cero variables de entorno nuevas.
+// Carga de claves con FALLOVER a variables de entorno comunes.
 // - Si existe PUBLIC_LINKS_KEYS="v1:clave1,v0:claveAntigua", las usa.
 // - Si no, deriva una clave estable de SESSION_SECRET / JWT_SECRET / COOKIE_SECRET.
 // - Si ninguna existe, usa una clave efímera en memoria (válida hasta reinicio).
@@ -64,25 +71,27 @@ function loadKeys() {
 const KEYS = loadKeys();
 const ACTIVE_KID = [...KEYS.keys()][0];
 
-// Firma HMAC-SHA256(payloadB64) -> base64url
-function hmacSign(kid, payloadB64) {
+// Firma HMAC-SHA256(payloadB64url) -> base64url
+function hmacSign(kid, payloadB64url) {
   const key = KEYS.get(kid);
-  return b64url(crypto.createHmac('sha256', key).update(payloadB64).digest());
+  return b64url(crypto.createHmac('sha256', key).update(payloadB64url).digest());
 }
 
 // Verifica token y devuelve payload o null
 function verifyAndParse(token) {
-  // token = kid.payload.sig
-  const [kid, payloadB64, sig] = String(token || '').split('.');
-  if (!kid || !payloadB64 || !sig) return null;
+  // token = kid.payload.sig  (payload es base64url)
+  const [kid, payloadB64url, sig] = String(token || '').split('.');
+  if (!kid || !payloadB64url || !sig) return null;
+
   const key = KEYS.get(kid);
   if (!key) return null; // clave rotada o desconocida
-  const expected = hmacSign(kid, payloadB64);
+
+  const expected = hmacSign(kid, payloadB64url);
   if (!timingSafeEqualStr(sig, expected)) return null;
 
   let payload;
   try {
-    payload = JSON.parse(Buffer.from(payloadB64, 'base64').toString('utf8'));
+    payload = JSON.parse(b64urlToBuf(payloadB64url).toString('utf8'));
   } catch {
     return null;
   }
@@ -101,15 +110,25 @@ function validate(kind, params) {
   }
 
   if (kind === 'plano') {
-    const hasTrimestre = params.grupo && params.trimestre;
-    const hasLatest = params.grupo && (params.latest === true || params.latest === 'true');
-    if (!hasTrimestre && !hasLatest) {
-      return 'params.grupo y (params.trimestre o params.latest=true) requeridos';
+    const g   = params?.grupo;
+    const src = params?.src ? String(params.src) : null; // 'clasif' | 'latest' | 'evento'
+    const hasLatest = params?.latest === true || params?.latest === 'true'; // compat hereda
+    const hasTrim   = typeof params?.trimestre === 'string' && params.trimestre.trim();
+      if (!g) return 'params.grupo requerido';
+      if (src) {
+      if (!['clasif', 'latest', 'evento'].includes(src)) {
+        return 'params.src debe ser "clasif", "latest" o "evento"';
+      }
+    } else if (!hasLatest && !hasTrim) {
+      // si no pasas src, debe venir latest=true o trimestre (compat)
+      return 'params.src="clasif"|"latest"|"evento", o bien params.latest=true, o params.trimestre';
+    }
+  
+    if (params.inst != null && typeof params.inst !== 'string') {
+      return 'params.inst (si se usa) debe ser un string CSV';
     }
   }
-
   if (kind === 'guardias') {
-    // Variante por rango de fechas (grupo opcional)
     if (!params.desde || !params.hasta) return 'params.desde y params.hasta requeridos';
   }
 
@@ -143,7 +162,7 @@ router.post('/api/share', (req, res) => {
   }
 });
 
-// Resuelve el token y REDIRIGE a tus rutas actuales (no tocamos plano/guardias)
+// Resuelve el token y REDIRIGE a tus rutas actuales
 router.get('/s/:token.pdf', (req, res) => {
   try {
     const payload = verifyAndParse(req.params.token);
@@ -160,16 +179,33 @@ router.get('/s/:token.pdf', (req, res) => {
     }
 
     if (kind === 'plano') {
-      if (params.latest === true || params.latest === 'true') {
-        const url = `/plano/latest/${encodeURIComponent(params.grupo)}.pdf`;
-        return res.redirect(302, url);
+      const grupoEnc = encodeURIComponent(params.grupo);
+      const instQS   = params.inst ? `?inst=${encodeURIComponent(params.inst)}` : '';
+      const src      = params.src ? String(params.src) : null;
+    
+      // Nuevo flujo (preferente)
+      if (src === 'evento') {
+        return res.redirect(302, `/plano/evento/${grupoEnc}.pdf${instQS}`);
       }
-      const url = `/plano/${encodeURIComponent(params.grupo)}/${encodeURIComponent(params.trimestre)}.pdf`;
-      return res.redirect(302, url);
+      if (src === 'clasif') {
+        return res.redirect(302, `/plano/clasif/${grupoEnc}.pdf${instQS}`);
+      }
+      if (src === 'latest') {
+        return res.redirect(302, `/plano/latest/${grupoEnc}.pdf${instQS}`);
+      }
+    
+      // Compatibilidad con enlaces antiguos
+      if (params.latest === true || params.latest === 'true') {
+        return res.redirect(302, `/plano/latest/${grupoEnc}.pdf${instQS}`);
+      }
+      if (params.trimestre) {
+        return res.redirect(302, `/plano/${grupoEnc}/${encodeURIComponent(params.trimestre)}.pdf${instQS}`);
+      }
+    
+      // Por defecto, si no especifican nada, usa 'clasif'
+      return res.redirect(302, `/plano/clasif/${grupoEnc}.pdf${instQS}`);
     }
-
     if (kind === 'guardias') {
-      // Redirige al alias GET que debe devolver el PDF de la planilla
       if (!params.desde || !params.hasta) {
         return res.status(400).send('Parámetros de guardias insuficientes');
       }
@@ -188,3 +224,4 @@ router.get('/s/:token.pdf', (req, res) => {
 });
 
 module.exports = router;
+

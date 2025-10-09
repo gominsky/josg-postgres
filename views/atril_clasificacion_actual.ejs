@@ -1,23 +1,33 @@
-<% title = 'Clasificación de atril (actual)' %>
+<% title = 'Prueba de atril (actual)' %>
 <% hero = false %>
+
+<link rel="stylesheet" href="/styles/estilos.css">
+
 <div class="container my-4">
   <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
     <h1 class="h1-titulo mb-0"><%= title %></h1>
     <div class="d-flex gap-2">
-      <button id="btnGuardar" class="btn btn-dark btn-sm">Guardar cambios</button>
-      <a id="btnPlano" class="btn btn-outline-secondary btn-sm" target="_blank" rel="noopener">Ver plano (latest)</a>
+      <button id="btnGuardar" class="btn btn-dark btn-sm" disabled>Guardar cambios</button>
+      <button id="btnExportInst" class="btn btn-outline-secondary btn-sm">Exportar CSV (instrumento)</button>
+      <button id="btnExportAll"  class="btn btn-outline-secondary btn-sm">Exportar CSV (general)</button>
+      <a id="btnPlanoNuevo" class="btn btn-dark btn-sm">Plantilla (número de atril)</a>
     </div>
+    <p class="text-muted small mb-0">
+      Selecciona un instrumento (p. ej. “Violín I”) y asigna los puestos. “Guardar” solo guarda ese instrumento.
+    </p>
   </div>
 
-  <!-- Filtros -->
   <div class="card p-3 mb-3">
     <div class="row g-2 align-items-end">
-      <div class="col-12 col-md-4">
+      <div class="col-12 col-md-5">
         <label class="form-label">Grupo</label>
-        <input id="inpGrupo" class="form-control form-control-sm" value="<%= typeof grupo_id!=='undefined' ? grupo_id : '' %>" readonly>
+        <div class="form-control form-control-sm d-flex justify-content-between align-items-center">
+          <span><%= (typeof grupo_nombre !== 'undefined' && grupo_nombre) ? grupo_nombre : '—' %></span>
+        </div>
+        <input id="inpGrupo" type="hidden" value="<%= typeof grupo_id!=='undefined' ? grupo_id : '' %>">
       </div>
-      <div class="col-12 col-md-4">
-        <label class="form-label">Instrumento</label>
+      <div class="col-12 col-md-3">
+        <label class="form-label">Instrumento / Sección</label>
         <select id="filtroInstrumento" class="form-select form-select-sm">
           <option value="">Todos</option>
         </select>
@@ -29,14 +39,13 @@
     </div>
   </div>
 
-  <!-- Tabla -->
   <div class="table-responsive">
     <table id="tabla" class="table table-sm align-middle table-bordered">
       <thead class="table-light">
         <tr>
-          <th style="width: 200px;">Instrumento</th>
+          <th style="width: 240px;">Instrumento</th>
           <th>Alumno</th>
-          <th style="width: 90px;">Puesto</th>
+          <th style="width: 110px;">Puesto</th>
         </tr>
       </thead>
       <tbody id="tbody"></tbody>
@@ -47,140 +56,438 @@
 <style>
   .h1-titulo { font-size: clamp(1.2rem, 1.2rem + 1vw, 1.8rem); }
   #tabla td input[type="number"] { text-align: center; }
-  #tabla td select, #tabla td input { min-width: 80px; }
+  #tabla td select, #tabla td input { min-width: 90px; }
   .row-dirty { animation: flash .35s ease-in-out 1; }
   @keyframes flash { from { background:#fff6d5; } to { background:transparent; } }
+
+  /* Matices por sección (Violín I/II) */
+  tr.sec-i  { background: rgba(255, 200, 0, .12); }
+  tr.sec-ii { background: rgba(120, 150, 255, .12); }
+  .badge-sec { font-size: .75rem; padding: .1rem .4rem; border-radius: .35rem; vertical-align: middle; }
+  .badge-i  { background:#ffe08a; }
+  .badge-ii { background:#b3c7ff; }
+
+  /* Cabecera de grupo (instrumento) */
+  #tabla .group-head td {
+    font-weight: 600;
+    letter-spacing: .2px;
+    border-top: 2px solid var(--gh-accent, #bbb);
+    background: var(--gh-bg, #f6f6f6);
+  }
+  #tabla .group-head .chip {
+    display:inline-flex; align-items:center; gap:.5rem;
+    padding:.35rem .6rem; border-radius:.5rem;
+    background: rgba(255,255,255,.5);
+  }
+  #tabla .group-head .dot {
+    width:.6rem; height:.6rem; border-radius:50%;
+    background: var(--gh-accent, #999);
+  }
+
+  /* Bordecito de color en las filas del grupo */
+  #tabla tbody tr.data-row { border-left: 6px solid transparent; }
 </style>
-
 <script>
-(function(){
-  const grupoId = new URLSearchParams(location.search).get('grupo_id') || document.getElementById('inpGrupo').value || '';
-  const $tbody = document.getElementById('tbody');
-  const $fInst = document.getElementById('filtroInstrumento');
-  const $fTxt  = document.getElementById('filtroTexto');
-  const $btnGuardar = document.getElementById('btnGuardar');
-  const $btnPlano   = document.getElementById('btnPlano');
-
-  if (!$btnPlano) return;
-  // Enlace al plano latest de este grupo (PDF)
-  if (grupoId) $btnPlano.href = `/plano/latest/${encodeURIComponent(grupoId)}.pdf`;
-
-  // Estado en memoria
-  let DATA = [];        // filas [{ alumno_id, nombre, instrumento, puesto }]
-  let INSTRUMENTOS = []; // catálogo para selects
-
-  // Normaliza "Violín" -> "Violín I/II" si ya viene clasificado así
-  function normInst(s){
-    return String(s||'').trim();
-  }
-
-  function renderOptions(select, items, value){
-    select.innerHTML = items.map(it => `<option value="${it}">${it}</option>`).join('');
-    if (value != null) select.value = value;
-  }
-
-  function applyFilters(rows){
-    const inst = $fInst.value || '';
-    const txt  = ($fTxt.value || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
-
-    let out = rows.slice();
-    if (inst) out = out.filter(r => r.instrumento === inst);
-    if (txt)  out = out.filter(r => (r.nombre || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').includes(txt));
-
-    // Orden: Instrumento → Puesto (ASC, nulos al final) → Nombre
-    out.sort((a,b) => {
-      const ai = a.instrumento.localeCompare(b.instrumento, 'es', { sensitivity:'base' });
-      if (ai !== 0) return ai;
-      const ap = (a.puesto==null?Infinity:Number(a.puesto));
-      const bp = (b.puesto==null?Infinity:Number(b.puesto));
-      if (ap !== bp) return ap - bp;
-      return (a.nombre||'').localeCompare(b.nombre||'', 'es', { sensitivity:'base' });
-    });
-    return out;
-  }
-
-  function render(){
-    const rows = applyFilters(DATA);
-    $tbody.innerHTML = '';
-    for (const r of rows){
-      const tr = document.createElement('tr');
-      tr.dataset.alumnoId = r.alumno_id;
-
-      tr.innerHTML = `
-        <td>
-          <select class="form-select form-select-sm sel-inst"></select>
-        </td>
-        <td>${r.nombre || r.alumno_id}</td>
-        <td>
-          <input type="number" min="1" step="1" class="form-control form-control-sm inp-puesto" value="${r.puesto ?? ''}" placeholder="—">
-        </td>
-      `;
-      const sel = tr.querySelector('.sel-inst');
-      renderOptions(sel, INSTRUMENTOS, r.instrumento);
-      sel.addEventListener('change', () => { r.instrumento = normInst(sel.value); tr.classList.add('row-dirty'); });
-      tr.querySelector('.inp-puesto').addEventListener('input', (ev) => {
-        const v = ev.target.value.trim();
-        r.puesto = v === '' ? null : Math.max(1, parseInt(v,10)||1);
-        tr.classList.add('row-dirty');
-      });
-
-      $tbody.appendChild(tr);
+  (function(){
+    // ===== Elementos y estado =====
+    const $tbody       = document.getElementById('tbody');
+    const $fInst       = document.getElementById('filtroInstrumento');
+    const $fTxt        = document.getElementById('filtroTexto');
+    const $btnGuardar  = document.getElementById('btnGuardar');
+    const $btnExpInst  = document.getElementById('btnExportInst');
+    const $btnExpAll   = document.getElementById('btnExportAll');
+    const $btnPlanoCls = document.getElementById('btnPlanoClasif');
+    const $inpGrupo    = document.getElementById('inpGrupo');
+  
+    const BTN_TEXT_DEFAULT = 'Guardar cambios';
+    let isSaving = false;   // evita doble click
+    let hasDirty = false;   // hay cambios sin guardar
+  
+    const grupoId  = Number(new URLSearchParams(location.search).get('grupo_id') || $inpGrupo.value);
+  
+    if (!Number.isInteger(grupoId)) {
+      alert('Falta grupo_id en la URL (/?grupo_id=XX)');
     }
-  }
-
-  async function load(){
-    if (!grupoId) return alert('Falta grupo_id');
-    try{
-      const res = await fetch(`/informes/atril/actual?grupo_id=${encodeURIComponent(grupoId)}`, { headers:{ 'Accept':'application/json' }});
-      if (!res.ok) throw new Error(await res.text());
-      const data = await res.json(); // { ok, grupo, items, instrumentos }
-      INSTRUMENTOS = (data.instrumentos || []).map(normInst);
-      DATA = (data.items || []).map(x => ({
-        alumno_id: x.alumno_id,
-        nombre:    x.nombre,
-        instrumento: normInst(x.instrumento),
-        puesto:    (x.puesto==null ? null : Number(x.puesto))
-      }));
-
-      // poblar filtro de instrumento
-      renderOptions($fInst, [''].concat(INSTRUMENTOS), '');
-      render();
-    }catch(e){
-      console.error('Error cargando datos:', e);
-      alert('No se pudieron cargar los datos.');
+  
+    // ===== Datos =====
+    window.DATA = [];      // [{ alumno_id, nombre, instrumento, puesto }]
+    let INSTRUMENTOS = []; // ["Violín I", "Clarinete", ...]
+  
+    // ===== Utils =====
+    const norm = s => String(s||'').trim();
+  
+    // Detecta sección al final (I/II/III/IV/V)
+    const getSeccion = (inst) => {
+      const m = norm(inst).match(/\s(III|IV|VI{0,2}|V|II|I)\s*$/i);
+      return m ? m[1].toUpperCase() : null;
+    };
+  
+    // Slug seguro para anclas de grupo
+    function slug(s){
+      return String(s||'').trim().toLowerCase()
+        .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+        .replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'');
     }
-  }
-
-  async function save(){
-    try{
-      const payload = {
-        grupo_id: grupoId,
-        items: DATA.map(r => ({
-          alumno_id: r.alumno_id,
-          instrumento: r.instrumento,
-          puesto: (r.puesto==null ? null : Number(r.puesto))
-        }))
+  
+    // === COLORES OFICIALES DE LA LEYENDA DEL PLANO ===
+    const COLORES = {
+      // 🎻 Cuerdas (gama de marrones)
+      'Violín I':    '#4F372F',
+      'Violín II':   '#A1887F',
+      'Viola':       '#B5651D',
+      'Violonchelo': '#D2691E',
+      'Contrabajo':  '#F5DEB3',
+  
+      // 🎼 Madera (gris-plateada)
+      'Flauta':    '#C0C0C0',
+      'Oboe':      '#000000',
+      'Clarinete': '#909090',
+      'Fagot':     '#616161',
+  
+      // 🎺 Metales (dorados/naranjas)
+      'Trompa':   '#FFD700',
+      'Trompeta': '#FFC400',
+      'Trombón':  '#FFAA00',
+      'Tuba':     '#E65100',
+  
+      // 🥁 Percusión
+      'Percusión': '#B22222',
+      'Batería':   '#6A1B9A',
+    };
+  
+    function hexToRgb(hex){
+      const h = hex.replace('#','').trim();
+      const n = h.length===3 ? h.split('').map(c=>c+c).join('') : h;
+      const num = parseInt(n,16);
+      return { r:(num>>16)&255, g:(num>>8)&255, b:num&255 };
+    }
+    function rgba(hex, a){ const {r,g,b}=hexToRgb(hex); return `rgba(${r},${g},${b},${a})`; }
+  
+    // "Violín I" -> "Violín", "Trompa II" -> "Trompa"
+    function baseInstrument(inst){
+      return String(inst||'').trim().replace(/\s(III|IV|VI{0,2}|V|II|I)\s*$/i,'').trim();
+    }
+  
+    // Colores por instrumento exacto o por base; si no existe en paleta, fallback estable
+    function groupColors(inst){
+      const exact = COLORES[String(inst||'').trim()];
+      const base  = COLORES[baseInstrument(inst)];
+      const hex   = exact || base;
+  
+      if (hex) {
+        return {
+          accent: hex,              // borde y punto cabecera
+          bg:     rgba(hex, 0.10),  // fondo suave
+          badge:  rgba(hex, 0.22),  // badge sección
+        };
+      }
+      // Fallback cromático
+      let h=0; const s=String(inst||'');
+      for (let i=0;i<s.length;i++) h=(h*31+s.charCodeAt(i))|0;
+      const hue=(h>>>0)%360;
+      return {
+        accent: `hsl(${hue} 70% 55%)`,
+        bg:     `hsl(${hue} 80% 96%)`,
+        badge:  `hsl(${hue} 75% 85%)`,
       };
-      const res = await fetch('/informes/atril/actual', {
-        method:'PUT',
-        headers:{ 'Content-Type':'application/json' },
-        body: JSON.stringify(payload)
-      });
-      if (!res.ok) throw new Error(await res.text());
-      // feedback visual
-      document.querySelectorAll('#tbody tr.row-dirty').forEach(tr => tr.classList.remove('row-dirty'));
-      alert('Clasificación guardada.');
-    }catch(e){
-      console.error('Error guardando:', e);
-      alert('No se pudo guardar la clasificación.');
     }
-  }
-
-  // Eventos UI
-  $fInst.addEventListener('change', render);
-  $fTxt .addEventListener('input', render);
-  $btnGuardar.addEventListener('click', save);
-
-  load();
-})();
-</script>
+  
+    function markDirty() {
+      hasDirty = true;
+      if ($btnGuardar.textContent !== BTN_TEXT_DEFAULT) $btnGuardar.textContent = BTN_TEXT_DEFAULT;
+      updateGuardarState();
+    }
+  
+    function updateGuardarState(){
+      const instSel = norm($fInst.value);
+      const hayPuestos = (window.DATA || []).some(r =>
+        instSel && norm(r.instrumento) === instSel && Number.isInteger(r.puesto) && r.puesto >= 1
+      );
+      $btnGuardar.disabled = isSaving || !instSel || !hayPuestos || !hasDirty;
+    }
+  
+    function renderOptions(select, items, value){
+      select.innerHTML = '';
+      for (const it of items){
+        const opt = document.createElement('option');
+        opt.value = it; opt.textContent = it;
+        if (value && norm(value) === norm(it)) opt.selected = true;
+        select.appendChild(opt);
+      }
+    }
+  
+    function applyFilters(rows){
+      const inst = norm($fInst.value);
+      const txt  = String($fTxt.value || '').trim().toLowerCase();
+      return rows.filter(r => {
+        const okInst = inst ? norm(r.instrumento) === inst : true; // “Todos” = sin filtro
+        const okTxt  = !txt ? true : (String(r.nombre||'').toLowerCase().includes(txt));
+        return okInst && okTxt;
+      });
+    }
+  
+    function render(){
+      const rows = applyFilters(window.DATA).slice();
+  
+      // Orden: instrumento > puesto (null al final) > nombre
+      rows.sort((a,b) =>
+        (a.instrumento||'').localeCompare(b.instrumento||'','es',{numeric:true,sensitivity:'base'}) ||
+        ((a.puesto ?? 999999) - (b.puesto ?? 999999)) ||
+        (a.nombre||'').localeCompare(b.nombre||'','es',{numeric:true,sensitivity:'base'})
+      );
+  
+      // Agrupar por instrumento en el orden ya ordenado
+      const instOrder = [...new Set(rows.map(r => r.instrumento))];
+      $tbody.innerHTML = '';
+  
+      for (const inst of instOrder){
+        const { accent, bg, badge } = groupColors(inst);
+        const gid = 'group-' + slug(inst);
+  
+        // --- Cabecera del grupo ---
+        const gh = document.createElement('tr');
+        gh.className = 'group-head';
+        gh.id = gid;
+        const td = document.createElement('td');
+        td.colSpan = 3;
+        td.style.setProperty('--gh-bg', bg);
+        td.style.setProperty('--gh-accent', accent);
+        td.innerHTML = `<span class="chip"><span class="dot"></span>${inst}</span>`;
+        gh.appendChild(td);
+        $tbody.appendChild(gh);
+  
+        // --- Filas del grupo ---
+        const filas = rows.filter(r => r.instrumento === inst);
+        for (const r of filas){
+          const tr = document.createElement('tr');
+          tr.classList.add('data-row');
+          tr.style.borderLeftColor = accent;            // raya de grupo
+          tr.style.setProperty('--row-bg', bg);         // fondo suave grupo
+  
+          const sec = getSeccion(r.instrumento);        // I/II/...
+          tr.innerHTML = `
+            <td>
+              <select class="form-select form-select-sm sel-inst"></select>
+              ${sec ? `<span class="badge-sec ms-2" style="background:${badge}">Sección ${sec}</span>` : ''}
+            </td>
+            <td>${r.nombre ? r.nombre : r.alumno_id}</td>
+            <td><input type="number" min="1" step="1" class="form-control form-control-sm inp-puesto" value="${r.puesto ?? ''}" placeholder="—"></td>
+          `;
+  
+          // Selector de instrumento en la fila
+          const sel = tr.querySelector('.sel-inst');
+          renderOptions(sel, INSTRUMENTOS, r.instrumento);
+          sel.addEventListener('change', () => {
+            const newInst = norm(sel.value);
+            r.instrumento = newInst;
+            tr.classList.add('row-dirty');
+            markDirty();
+            // Re-pintar para mover la fila al bloque nuevo y resaltar
+            render();
+            // Scroll suave a la cabecera del nuevo bloque
+            setTimeout(() => {
+              const anchor = document.getElementById('group-' + slug(newInst));
+              if (anchor) anchor.scrollIntoView({ behavior:'smooth', block:'start' });
+            }, 0);
+          });
+  
+          // Puesto
+          const inp = tr.querySelector('.inp-puesto');
+          inp.addEventListener('input', (ev) => {
+            const v = String(ev.target.value || '').trim();
+            r.puesto = v === '' ? null : Math.max(1, parseInt(v, 10) || 1);
+            tr.classList.add('row-dirty');
+            markDirty();
+          });
+  
+          $tbody.appendChild(tr);
+        }
+      }
+      updateGuardarState();
+    }
+  
+    async function load(){
+      try{
+        const res = await fetch(`../actual?grupo_id=${encodeURIComponent(grupoId)}`, {
+          headers:{ 'Accept':'application/json' }
+        });
+        if (!res.ok) {
+          let txt = '';
+          try { txt = await res.text(); } catch {}
+          throw new Error(`HTTP ${res.status} ${res.statusText} · ${txt}`);
+        }
+        const data = await res.json(); // { items, instrumentos }
+  
+        INSTRUMENTOS = (data.instrumentos || [])
+          .map(norm)
+          .filter(Boolean)
+          .sort((a,b)=>a.localeCompare(b,'es',{numeric:true,sensitivity:'base'}));
+  
+        // Rellenar selector (mantener “Todos”)
+        $fInst.innerHTML = '<option value="">Todos</option>';
+        for (const it of INSTRUMENTOS){
+          const opt = document.createElement('option');
+          opt.value = it; opt.textContent = it;
+          $fInst.appendChild(opt);
+        }
+  
+        window.DATA = (data.items || []).map(r => ({
+          alumno_id: r.alumno_id,
+          nombre: r.nombre || '',
+          instrumento: norm(r.instrumento),
+          puesto: (r.puesto == null || r.puesto === '') ? null : parseInt(r.puesto, 10)
+        }));
+  
+        render();
+  
+        // tabla recién cargada: no hay cambios pendientes
+        hasDirty = false;
+        updateGuardarState();
+      }catch(e){
+        console.error('Error cargando:', e);
+        alert('No se pudieron cargar los datos.\n\n' + (e?.message || e));
+      }
+    }
+  
+    async function save(){
+      try{
+        const instSel = norm($fInst.value);
+        if (!instSel) { alert('Elige un instrumento para guardar.'); return; }
+  
+        const items = (window.DATA || [])
+          .filter(r => norm(r.instrumento) === instSel && Number.isInteger(r.puesto) && r.puesto >= 1)
+          .map(r => ({ alumno_id: r.alumno_id, instrumento: r.instrumento, puesto: Number(r.puesto) }));
+  
+        if (!items.length) { alert('No hay puestos válidos para ese instrumento.'); return; }
+  
+        const payload = { grupo_id: grupoId, instrumento: instSel, items };
+  
+        // bloquear botón y mostrar “Guardando…”
+        isSaving = true;
+        $btnGuardar.textContent = 'Guardando…';
+        updateGuardarState();
+  
+        const res = await fetch(`../actual?instrumento=${encodeURIComponent(instSel)}`, {
+          method:'PUT',
+          headers:{ 'Content-Type':'application/json' },
+          body: JSON.stringify(payload)
+        });
+  
+        if (!res.ok) {
+          let msg = 'Error desconocido';
+          try { const j = await res.json(); msg = j?.error || JSON.stringify(j); }
+          catch { msg = await res.text(); }
+          throw new Error(msg);
+        }
+  
+        // éxito: marcar limpio y mostrar check un instante
+        hasDirty = false;
+        $btnGuardar.textContent = 'Guardado ✔';
+        setTimeout(() => {
+          if (!hasDirty) $btnGuardar.textContent = BTN_TEXT_DEFAULT;
+          updateGuardarState();
+        }, 1200);
+  
+      } catch (e) {
+        console.error('Error guardando:', e);
+        alert('No se pudo guardar la clasificación.\n\n' + (e?.message || e));
+        $btnGuardar.textContent = BTN_TEXT_DEFAULT;
+      } finally {
+        isSaving = false;
+        updateGuardarState();
+      }
+    }
+  
+    // ===== Exportaciones CSV =====
+    function toCSV(rows){
+      const header = ['instrumento','alumno_id','nombre','puesto'];
+      const lines = [header.join(';')];
+      for (const r of rows){
+        lines.push([r.instrumento, r.alumno_id, (r.nombre||'').replace(/;/g,','), r.puesto ?? ''].join(';'));
+      }
+      return lines.join('\n');
+    }
+    function download(filename, text){
+      const blob = new Blob([text], {type:'text/csv;charset=utf-8;'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href=url; a.download=filename; a.click();
+      URL.revokeObjectURL(url);
+    }
+  
+    $btnExpInst.addEventListener('click', ()=>{
+      const instSel = norm($fInst.value);
+      if (!instSel) { alert('Elige un instrumento para exportar.'); return; }
+      const rows = applyFilters(window.DATA).filter(r => norm(r.instrumento) === instSel);
+      download(`informe_${instSel.replace(/\s+/g,'_')}.csv`, toCSV(rows));
+    });
+    $btnExpAll.addEventListener('click', ()=>{
+      const rows = applyFilters(window.DATA);
+      download(`informe_general.csv`, toCSV(rows));
+    });
+  
+    // ===== Plano (pruebas de atril) =====
+    if ($btnPlanoCls) {
+      $btnPlanoCls.addEventListener('click', (e)=>{
+        e.preventDefault();
+        const sel = norm($fInst.value);
+        // Shift+click → SVG, click normal → PDF
+        const ext = e.shiftKey ? 'svg' : 'pdf';
+        const base = `/plano/clasif/${encodeURIComponent(grupoId)}.${ext}`;
+        const insts = sel ? [sel] : [...new Set((window.DATA||[]).map(r=>r.instrumento).filter(Boolean))];
+        const url = insts.length ? `${base}?inst=${insts.map(encodeURIComponent).join(',')}` : base;
+        window.open(url, '_blank', 'noopener');
+      });
+    }
+  
+    // ===== Eventos de filtro y guardar =====
+    $fInst.addEventListener('change', ()=>{ render(); updateGuardarState(); });
+    $fTxt .addEventListener('input',  ()=>{ render(); });
+    $btnGuardar.addEventListener('click', save);
+  
+    // ===== Carga inicial =====
+    if (Number.isInteger(grupoId)) load();
+  })();
+  </script>
+  <script>
+    (function(){
+      const btn = document.getElementById('btnPlanoNuevo');
+      if (!btn) return;
+    
+      function selectedInstruments() {
+        const sel = document.getElementById('filtroInstrumento');
+        const v = sel ? (sel.value || '') : '';
+        if (v) return [v];
+        return [...new Set((window.DATA || []).map(r => r.instrumento).filter(Boolean))]; // ← corregido
+      }
+    
+      btn.addEventListener('click', async (e) => {
+        e.preventDefault();
+        const grupoId = new URLSearchParams(location.search).get('grupo_id')
+                     || document.getElementById('inpGrupo')?.value || '';
+        if (!grupoId) { alert('Falta grupo_id'); return; }
+    
+        // ALT+click → resetear layout antes de abrir
+        if (e.altKey) {
+          try {
+            const r = await fetch(`/plano/layout?scope=grupo&scope_id=${encodeURIComponent(grupoId)}`, { method: 'DELETE' });
+            if (!r.ok) {
+              let msg = 'No se pudo reiniciar el layout.';
+              try {
+                const ct = r.headers.get('content-type')||'';
+                msg = ct.includes('json') ? (await r.json()).error : (await r.text()) || msg;
+              } catch {}
+              alert(msg);
+              return;
+            }
+          } catch { alert('Error de red al reiniciar el layout.'); return; }
+        }
+    
+        const instSel = selectedInstruments();
+        const base = `/plano/editor/clasif?grupo_id=${encodeURIComponent(grupoId)}`; // ← usa CLASIF
+        const url  = instSel.length ? `${base}&inst=${encodeURIComponent(instSel.join(','))}` : base;
+        window.location.href = url;
+      });
+    })();
+    </script>
+    
+    

@@ -3,7 +3,7 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../database/db');
 const sharp = require('sharp'); // fallback PNG
-
+const { isAuthenticated } = require('../middleware/auth');
 const {
   FONT_STACK, esc, svgToPdfBuffer, renderMsg,
   colorPorInstrumento, autoLayoutFromCounts, buildLegendFromPositions,
@@ -37,12 +37,15 @@ const {
                   fill="#CFCFCF" fill-opacity="0.6"></rect>`;
   },
 } = require('../utils/planoUtils');
-
 // helper no-cache
 function noCache(res) {
   res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
   res.set('Pragma', 'no-cache');
   res.set('Expires', '0');
+}
+function atrilLadoFromIndex(i) {
+  const n = Math.max(0, i|0);
+  return { atril: Math.floor(n/2) + 1, lado: (n % 2) + 1 }; // lado: 1→I, 2→II
 }
 
 function mapSeccionToSpec(seccionRaw) {
@@ -123,216 +126,291 @@ async function fetchLayout(client, layoutId) {
   const secciones = [...new Set(rows.map(r => r.instrumento))];
   return { posiciones: rows, secciones };
 }
+/* ========== Helpers de layout guardado ========== */
+async function getSavedLayout({ scope, scope_id }) {
+  try {
+    const { rows } = await pool.query(
+      `SELECT key, x, y, angle
+         FROM plano_layout
+        WHERE scope = $1 AND scope_id = $2
+        ORDER BY key`,
+      [String(scope), String(scope_id)]
+    );
+    return rows.length ? { items: rows } : null;
+  } catch (e) {
+    console.warn('[plano] getSavedLayout error:', e.message);
+    return null;
+  }
+}
+
 router.get('/evento/:eventoId.:ext', async (req, res) => {
   const { eventoId } = req.params;
   const ext = String(req.params.ext || '').toLowerCase();
   if (!new Set(['svg','png','pdf']).has(ext)) return res.status(404).send('Extensión no soportada');
 
-  // Evita cacheos raros del navegador
+  // Sin caché
   res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
   res.set('Pragma', 'no-cache');
   res.set('Expires', '0');
 
+  // helper: índice 0→(atril 1,lado1), 1→(1,2), 2→(2,1)...
+  const atrilLadoFromIndex = (i) => ({ atril: Math.floor((i|0)/2)+1, lado: ((i|0)%2)+1 });
+
   try {
-    // 1) Evento
+    /* 1) Evento (incluye grupo_id) */
     const { rows: evRows } = await pool.query(
-      `SELECT e.id, e.titulo, e.fecha_inicio, g.nombre AS grupo_nombre
-         FROM eventos e LEFT JOIN grupos g ON g.id = e.grupo_id
-        WHERE e.id = $1`, [eventoId]
+      `SELECT e.id, e.titulo, e.fecha_inicio, e.grupo_id, g.nombre AS grupo_nombre
+         FROM eventos e
+         LEFT JOIN grupos g ON g.id = e.grupo_id
+        WHERE e.id = $1`,
+      [eventoId]
     );
     if (!evRows.length) {
       const { type, buf } = await renderMsg(ext, `Evento #${eventoId}`, 'Evento no encontrado.');
       return res.type(type).send(buf);
     }
-    const evento = evRows[0];
+    const evento  = evRows[0];
+    const grupoId = evento.grupo_id != null ? Number(evento.grupo_id) : null;
 
-    // 2) Asignados al evento (no requerimos asistencia)
-        // 2) Asignados al evento (con fallback de instrumento)
-const { rows: asignados } = await pool.query(`
-  SELECT
-    ea.alumno_id,
-    TRIM(COALESCE(a.nombre,'') || ' ' || COALESCE(a.apellidos,'')) AS nombre,
-    COALESCE(
-      NULLIF(TRIM(ea.instrumento), ''),
-      (
-        SELECT ins.nombre
-        FROM alumno_instrumento ai
-        JOIN instrumentos ins ON ins.id = ai.instrumento_id
-        WHERE ai.alumno_id = ea.alumno_id
-        ORDER BY ins.nombre ASC
-        LIMIT 1
-      ),
-      'Varios'
-    ) AS instrumento
-  FROM evento_asignaciones ea
-  JOIN alumnos a ON a.id = ea.alumno_id
-  WHERE ea.evento_id = $1
-`, [eventoId]);
+    /* 2) Asignados al evento (con fallback de instrumento “principal”) */
+    const { rows: asignados } = await pool.query(`
+      SELECT
+        ea.alumno_id,
+        TRIM(COALESCE(a.nombre,'') || ' ' || COALESCE(a.apellidos,'')) AS nombre,
+        COALESCE(
+          NULLIF(TRIM(ea.instrumento), ''),
+          (
+            SELECT ins.nombre
+            FROM alumno_instrumento ai
+            JOIN instrumentos ins ON ins.id = ai.instrumento_id
+            WHERE ai.alumno_id = ea.alumno_id
+            ORDER BY ins.nombre ASC
+            LIMIT 1
+          ),
+          'Varios'
+        ) AS instrumento
+      FROM evento_asignaciones ea
+      JOIN alumnos a ON a.id = ea.alumno_id
+      WHERE ea.evento_id = $1
+    `, [eventoId]);
 
     if (!asignados.length) {
       const { type, buf } = await renderMsg(ext, `Evento #${eventoId}`, 'No hay asignaciones para este evento.');
       return res.type(type).send(buf);
     }
 
-    // 3) Ranking (última prueba por instrumento), usando instrumento del evento cuando aplique,
-    //    y mapeo especial Violín → Violín I/II si procede.
-    const idsAsignados = asignados.map(r => String(r.alumno_id));
-    const { rows: ranking } = await pool.query(`
-      WITH ea_event AS (
-        SELECT ea.alumno_id,
-               NULLIF(TRIM(ea.instrumento), '') AS inst_evento
-        FROM evento_asignaciones ea
-        WHERE ea.evento_id = $1
-      ),
-      base AS (
-        SELECT instrumento, alumno_id, puntuacion, trimestre
-        FROM pruebas_atril_norm
-        WHERE TRIM(alumno_id)::text = ANY($2::text[])
-          AND trimestre ~ '^[0-9]{2}/[0-9]{2}T[1-4]$'
-      ),
-      parsed AS (
-        SELECT *,
-               (regexp_match(trimestre, '^([0-9]{2})/([0-9]{2})T([1-4])$'))[2]::int AS year_end,
-               (regexp_match(trimestre, 'T([1-4])$'))[1]::int AS t
-        FROM base
-      ),
-      latest AS (
-        SELECT DISTINCT ON (instrumento) instrumento, trimestre
-        FROM parsed
-        ORDER BY instrumento, year_end DESC, t DESC
-      )
-      SELECT
-        CASE
-          WHEN regexp_replace(p.instrumento, '\\s+I{1,2}$', '', 'i') ~* '^viol[ií]n$' THEN
-            COALESCE(
-              /* 1) sección del propio evento si existe */
-              CASE
-                WHEN ea.inst_evento ~* '^viol[ií]n\\s*i$'  THEN 'Violín I'
-                WHEN ea.inst_evento ~* '^viol[ií]n\\s*ii$' THEN 'Violín II'
-                ELSE NULL
-              END,
-              /* 2) inferencia por grupos del alumno */
-              (
-                SELECT CASE
-                         WHEN g.nombre ~* '^viol[ií]n\\s*i$'  THEN 'Violín I'
-                         WHEN g.nombre ~* '^viol[ií]n\\s*ii$' THEN 'Violín II'
-                         ELSE NULL
-                       END
-                FROM alumno_grupo ag
-                JOIN grupos g ON g.id = ag.grupo_id
-                WHERE ag.alumno_id = a.id
-                  AND (g.nombre ~* '^viol[ií]n\\s*i$' OR g.nombre ~* '^viol[ií]n\\s*ii$')
-                ORDER BY
-                  CASE
-                    WHEN g.nombre ~* '^viol[ií]n\\s*i$'  THEN 1
-                    WHEN g.nombre ~* '^viol[ií]n\\s*ii$' THEN 2
-                    ELSE 3
-                  END
-                LIMIT 1
-              ),
-              /* 3) por defecto */
-              'Violín II'
-            )
-          ELSE
-            COALESCE(ea.inst_evento, p.instrumento)
-        END AS instrumento,
-        TRIM(p.alumno_id)::text AS alumno_id,
-        p.puntuacion,
-        TRIM(COALESCE(a.nombre,'') || ' ' || COALESCE(a.apellidos,'')) AS nombre
-      FROM parsed p
-      JOIN latest l
-        ON l.instrumento = p.instrumento AND l.trimestre = p.trimestre
-      LEFT JOIN alumnos a
-        ON a.id::text = TRIM(p.alumno_id)
-      LEFT JOIN ea_event ea
-        ON ea.alumno_id = TRIM(p.alumno_id)::int
-      ORDER BY instrumento, p.puntuacion DESC NULLS LAST, p.alumno_id ASC
-    `, [eventoId, idsAsignados]);
+    // IDs de alumnos asignados
+    const idList = asignados.map(r => Number(r.alumno_id)).filter(Number.isFinite);
+    const idArr  = idList.length ? idList : [-1];
 
-    // 4) Unificación: ranking + asignados sin ranking (para que entren TODOS)
-    const porInstrumento = new Map();
-    const presentes = new Set();
-    for (const r of ranking) {
-      presentes.add(String(r.alumno_id));
-      if (!porInstrumento.has(r.instrumento)) porInstrumento.set(r.instrumento, []);
-      porInstrumento.get(r.instrumento).push({ ...r, seat: null });
+    /* 3) Clasificación del grupo (si hay grupo) — public.atril_clasificacion */
+    let clasifMap = new Map(); // alumno_id -> { instrumentoClasif, puesto }
+    if (Number.isInteger(grupoId)) {
+      // ¿existe instrumento_seccion?
+      const colChk = await pool.query(`
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema='public' AND table_name='atril_clasificacion' AND column_name='instrumento_seccion'
+        LIMIT 1
+      `);
+      const hasSeccion = colChk.rowCount > 0;
+
+      const { rows: clasifRows } = await pool.query(
+        `
+        SELECT
+          ac.alumno_id,
+          -- Mapeo Violín + seccion -> 'Violín I/II'
+          CASE
+            WHEN ac.instrumento ~* '^viol[ií]n$' AND ${hasSeccion ? `ac.instrumento_seccion IN ('I','II')` : 'FALSE'}
+              THEN 'Violín ' || ac.instrumento_seccion
+            ELSE ac.instrumento
+          END AS instrumento_clasif,
+          ac.puesto
+        FROM public.atril_clasificacion ac
+        WHERE ac.grupo_id = $1
+          AND ac.alumno_id = ANY($2::int[])
+        `,
+        [grupoId, idArr]
+      );
+      clasifMap = new Map(
+        clasifRows
+          .filter(r => r.alumno_id != null && r.instrumento_clasif && Number.isFinite(Number(r.puesto)))
+          .map(r => [Number(r.alumno_id), { instrumento: String(r.instrumento_clasif).trim(), puesto: Number(r.puesto) }])
+      );
     }
 
-    // Heurística: equilibrar Violín I/II cuando llega "Violín" sin sección
-    const pickViolinSection = () => {
-      const nI  = porInstrumento.get('Violín I')?.length  || 0;
-      const nII = porInstrumento.get('Violín II')?.length || 0;
-      return (nI <= nII) ? 'Violín I' : 'Violín II';
-    };
+    /* 4) Deducción de sección de Violín por pertenencia a grupos (para los que no tienen clasif) */
+    const secMap = new Map(); // alumno_id -> 'Violín I'|'Violín II'|null
+    {
+      const { rows: secRows } = await pool.query(
+        `
+        WITH sec AS (
+          SELECT DISTINCT ON (ag.alumno_id)
+                 ag.alumno_id,
+                 CASE
+                   WHEN g.nombre ~* '^viol[ií]n\\s*i(\\b|\\s|$)'  THEN 'Violín I'
+                   WHEN g.nombre ~* '^viol[ií]n\\s*ii(\\b|\\s|$)' THEN 'Violín II'
+                   ELSE NULL
+                 END AS sec
+          FROM alumno_grupo ag
+          JOIN grupos g ON g.id = ag.grupo_id
+          WHERE ag.alumno_id = ANY($1::int[])
+            AND (g.nombre ~* '^viol[ií]n\\s*i(\\b|\\s|$)' OR g.nombre ~* '^viol[ií]n\\s*ii(\\b|\\s|$)')
+          ORDER BY ag.alumno_id,
+                   CASE
+                     WHEN g.nombre ~* '^viol[ií]n\\s*i'  THEN 1
+                     WHEN g.nombre ~* '^viol[ií]n\\s*ii' THEN 2
+                     ELSE 3
+                   END
+        )
+        SELECT * FROM sec
+        `,
+        [idArr]
+      );
+      for (const r of secRows) secMap.set(Number(r.alumno_id), r.sec);
+    }
 
+    /* 5) Construir lista por instrumento:
+          - Si hay clasificación: instrumento y orden por ac.puesto (hasRanking = true)
+          - Si no hay: instrumento de asignación; si es "Violín" a secas → intentar secMap; hasRanking = false
+       */
+    const porInstrumento = new Map(); // inst -> [{alumno_id, nombre, hasRanking, puesto, instrumento}]
     for (const a of asignados) {
-      const id = String(a.alumno_id);
-      if (presentes.has(id)) continue;
+      const alumnoId = Number(a.alumno_id);
+      const nombre   = a.nombre;
+      const instEv   = String(a.instrumento || '').trim();
 
-      let inst = (a.instrumento || '').trim();
-      if (/^viol[ií]n$/i.test(inst)) inst = pickViolinSection(); // balancea si viene sin sección
-      if (!inst) inst = 'Varios';
+      const clasif = clasifMap.get(alumnoId);
+      let instFinal, hasRanking = false, puesto = null;
 
-      if (!porInstrumento.has(inst)) porInstrumento.set(inst, []);
-      porInstrumento.get(inst).push({
-        instrumento: inst,
-        alumno_id  : id,
-        puntuacion : null,
-        nombre     : a.nombre,
-        seat       : null
+      if (clasif) {
+        instFinal  = clasif.instrumento || instEv || 'Varios';
+        hasRanking = true;
+        puesto     = clasif.puesto;
+      } else {
+        if (/^viol[ií]n$/i.test(instEv)) {
+          instFinal = secMap.get(alumnoId) || 'Violín'; // si hay sección, úsala; si no, queda “Violín”
+        } else {
+          instFinal = instEv || 'Varios';
+        }
+      }
+
+      if (!porInstrumento.has(instFinal)) porInstrumento.set(instFinal, []);
+      porInstrumento.get(instFinal).push({
+        instrumento: instFinal,
+        alumno_id: alumnoId,
+        nombre,
+        hasRanking,
+        puesto // solo si hasRanking
       });
     }
 
-    // 5) Conteos combinados → layout
+    // (Opcional) filtro por instrumentos ?inst=CSV
+    const instCSV = String(req.query.inst || '').trim();
+    if (instCSV) {
+      const filtro = new Set(instCSV.split(',').map(s => s.trim()).filter(Boolean));
+      for (const key of [...porInstrumento.keys()]) {
+        if (!filtro.has(key)) porInstrumento.delete(key);
+      }
+      if (!porInstrumento.size) {
+        const { type, buf } = await renderMsg(ext, `Evento #${eventoId}`, 'No hay instrumentos tras aplicar el filtro.');
+        return res.type(type).send(buf);
+      }
+    }
+
+    /* 6) Conteos → layout base */
     const counts = {};
     for (const [inst, lista] of porInstrumento.entries()) counts[inst] = (counts[inst] || 0) + lista.length;
-    const posiciones = autoLayoutFromCounts(counts);
+    const posiciones = autoLayoutFromCounts(counts); // { instrumento, atril, puesto(1/2), x, y, angulo }
 
-    // 6) Asignar: los arrays ya están en orden (ranking primero, añadidos después)
+    /* 7) Asignación a plazas
+          Orden por instrumento: primero con ranking (ordenados por puesto ASC),
+          luego sin ranking (alfabético por nombre). Después calculamos atril/lado por índice.
+    */
     const asignacion = new Map();
+
     for (const inst of new Set(posiciones.map(p => p.instrumento))) {
-      const lista = porInstrumento.get(inst) || [];
+      const base = (porInstrumento.get(inst) || []);
+
+      const ranked = base
+        .filter(x => x.hasRanking)
+        .sort((a,b) => (a.puesto || 1) - (b.puesto || 1) ||
+                       String(a.alumno_id).localeCompare(String(b.alumno_id), 'es', { numeric:true }));
+
+      const rest = base
+        .filter(x => !x.hasRanking)
+        .sort((a,b) =>
+          (a.nombre||'').localeCompare(b.nombre||'', 'es', { sensitivity:'base' }) ||
+          String(a.alumno_id).localeCompare(String(b.alumno_id), 'es', { numeric:true })
+        );
+
+      const ordered = ranked.concat(rest);
+      const lista   = ordered.map((c,i) => ({ ...c, ...atrilLadoFromIndex(i) })); // añade {atril,lado}
+
       const plazas = posiciones
         .filter(p => p.instrumento === inst)
         .sort((a,b) => a.atril - b.atril || a.puesto - b.puesto);
+
       const n = Math.min(plazas.length, lista.length);
       for (let i = 0; i < n; i++) {
         const plaza = plazas[i];
-        const cand  = { ...lista[i], seat: i + 1 };
+        const cand  = lista[i]; // { instrumento, alumno_id, nombre, atril, lado, hasRanking, puesto? }
         asignacion.set(`${plaza.instrumento}|${plaza.atril}|${plaza.puesto}`, cand);
       }
     }
 
-    // 7) Render
+    /* 8) Cargar layout guardado: evento → grupo (fallback) */
+    const savedEvento = await getSavedLayout({ scope: 'evento', scope_id: String(eventoId) });
+    const savedGrupo  = Number.isInteger(grupoId) ? await getSavedLayout({ scope: 'grupo', scope_id: String(grupoId) }) : null;
+    const saved       = savedEvento || savedGrupo;
+    const L = new Map((saved?.items || []).map(it => [it.key, it])); // key = "Inst|atril|lado"
+
+    /* 9) Render SVG */
     const W = 1400, H = 900, FONT = FONT_STACK;
 
     let nodos = '';
     for (const p of posiciones) {
-      const key = `${p.instrumento}|${p.atril}|${p.puesto}`;
+      const key  = `${p.instrumento}|${p.atril}|${p.puesto}`;
       const asig = asignacion.get(key);
       if (!asig) continue;
 
-      const cx = p.x * W, cy = p.y * H;
+      // Posición: guardada (normalizada 0–1) o auto
+      const s   = L.get(key);
+      const cx  = (s ? s.x : p.x) * W;
+      const cy  = (s ? s.y : p.y) * H;
+      const ang = (s && Number.isFinite(s.angle)) ? s.angle : p.angulo;
+
       const color = colorPorInstrumento(p.instrumento);
 
-      // Nombre + primer apellido
-      const fullName = asig.nombre || asig.alumno_id || '';
-      const parts = fullName.trim().split(/\s+/);
-      const displayName = parts.length >= 3 ? `${parts[0]} ${parts[1]}` : fullName;
+      // Nombre corto: nombre + primer apellido si hay dos
+      const parts = (asig.nombre || '').trim().split(/\s+/);
+      const displayName = parts.length >= 3 ? `${parts[0]} ${parts[1]}` : (asig.nombre || asig.alumno_id);
+
+      // Nº de atril / Lado SIEMPRE desde el candidato (no usar "seat" ni ranking)
+      const numAtril = Number(asig.atril) || p.atril || 1;
+      const ladoTxt  = (Number(asig.lado) === 1 ? 'I' : 'II');
 
       nodos += `
-        <g transform="translate(${cx},${cy}) rotate(${p.angulo})">
+        <g class="draggable" data-key="${esc(key)}"
+           transform="translate(${cx},${cy}) rotate(${ang})">
           <circle r="30" fill="${color}" fill-opacity="0.9"></circle>
           <circle r="31.5" fill="none" stroke="#fff" stroke-width="2"></circle>
           <circle r="33" fill="none" stroke="#222" stroke-opacity="0.15" stroke-width="1.2"></circle>
-          <text y="6" text-anchor="middle" font-weight="800" font-size="18" fill="#fff" font-family="${FONT}">${asig.seat}</text>
+
+          <text y="4" text-anchor="middle" font-weight="800" font-size="18" fill="#fff" font-family="${FONT}">
+            ${numAtril}
+          </text>
+          <text y="22" text-anchor="middle" font-size="10" fill="#fff" fill-opacity="0.95" font-family="${FONT}">
+            ${ladoTxt}
+          </text>
+
           <text y="46" text-anchor="middle" font-size="9" fill="#333" font-family="${FONT}">
             ${esc(displayName)}
           </text>
         </g>`;
     }
 
-    const cxDir = W/2, cyDirBase = H - 50;
+    const cxDir = W / 2, cyDirBase = H - 50;
     const director = `
       <g aria-label="Director">
         ${directorPodiumSVG(W / 2, H - 50)}
@@ -346,13 +424,14 @@ const { rows: asignados } = await pool.query(`
         <rect width="100%" height="100%" rx="36" fill="#FAF8F5"></rect>
         ${stageBackdropSVG(W, H)}
         <text x="${W/2}" y="36" text-anchor="middle" font-size="24" font-weight="800" letter-spacing=".3px" font-family="${FONT}">
-          Plano de ${esc(evento.titulo || 'Evento')} — ${esc(evento.grupo_nombre || '')}
+          Plano de ${esc(evento.titulo || 'Evento')}${evento.grupo_nombre ? ' — ' + esc(evento.grupo_nombre) : ''}
         </text>
         ${buildLegendFromPositions({ posiciones, x: 16, y: 16, fontFamily: FONT })}
         ${nodos}
         ${director}
       </svg>`;
 
+    // 10) Respuesta
     if (ext === 'svg') return res.type('image/svg+xml; charset=utf-8').send(svg);
     if (ext === 'pdf') {
       try {
@@ -372,7 +451,238 @@ const { rows: asignados } = await pool.query(`
   }
 });
 
-/* ===================== /plano/latest/:grupo.:ext ===================== */
+router.get('/clasif/:grupo.:ext', async (req, res) => {
+  const { grupo: grupoParam } = req.params;
+  const ext = String(req.params.ext || '').toLowerCase();
+  if (!new Set(['svg','png','pdf']).has(ext)) return res.status(404).send('Extensión no soportada');
+  noCache(res);
+
+  // helper local: índice 0→(atril 1,lado1), 1→(1,2), 2→(2,1)...
+  function atrilLadoFromIndex(i) {
+    const n = Math.max(0, i | 0);
+    return { atril: Math.floor(n/2) + 1, lado: (n % 2) + 1 };
+  }
+
+  try {
+    // 1) Resolver grupo (permite id numérico o nombre)
+    let grupoId = null, grupoNombre = null;
+    if (/^\d+$/.test(grupoParam)) {
+      const r = await pool.query(`SELECT id, nombre FROM grupos WHERE id=$1::int`, [grupoParam]);
+      if (!r.rowCount) return res.status(404).send('Grupo no encontrado');
+      grupoId = r.rows[0].id; grupoNombre = r.rows[0].nombre;
+    } else {
+      const r = await pool.query(`SELECT id, nombre FROM grupos WHERE nombre=$1`, [grupoParam]);
+      if (!r.rowCount) return res.status(404).send('Grupo no encontrado');
+      grupoId = r.rows[0].id; grupoNombre = r.rows[0].nombre;
+    }
+
+    // 2) Filtro opcional de instrumentos (?inst=Violín%20I,Clarinete)
+    const rawInst = (req.query.inst || '').toString().trim();
+    const instFiltro = rawInst
+      ? new Set(rawInst.split(',').map(s => s.trim()).filter(Boolean))
+      : null;
+
+    // 3) ¿existe columna instrumento_seccion?
+    const colChk = await pool.query(`
+      SELECT 1
+      FROM information_schema.columns
+      WHERE table_schema='public' AND table_name='atril_clasificacion' AND column_name='instrumento_seccion'
+      LIMIT 1
+    `);
+    const hasSeccion = colChk.rowCount > 0;
+
+    // 4) Cargar clasificación del grupo
+    let sql, params = [grupoId];
+    if (hasSeccion) {
+      sql = `
+        SELECT
+          CASE WHEN ac.instrumento ~* '^viol[ií]n$' AND ac.instrumento_seccion IN ('I','II')
+               THEN 'Violín ' || ac.instrumento_seccion
+               ELSE ac.instrumento
+          END AS instrumento,
+          ac.alumno_id,
+          ac.puesto,
+          TRIM(COALESCE(a.nombre,'') || ' ' || COALESCE(a.apellidos,'')) AS nombre
+        FROM public.atril_clasificacion ac
+        JOIN public.alumnos a ON a.id = ac.alumno_id
+        WHERE ac.grupo_id = $1
+      `;
+    } else {
+      sql = `
+        SELECT
+          ac.instrumento AS instrumento,
+          ac.alumno_id,
+          ac.puesto,
+          TRIM(COALESCE(a.nombre,'') || ' ' || COALESCE(a.apellidos,'')) AS nombre
+        FROM public.atril_clasificacion ac
+        JOIN public.alumnos a ON a.id = ac.alumno_id
+        WHERE ac.grupo_id = $1
+      `;
+    }
+
+    const { rows: clasifRaw } = await pool.query(sql, params);
+
+    // Normalizar / filtrar / ordenar: por instrumento + puesto asc + alumno_id
+    let clasif = clasifRaw
+      .map(r => ({
+        instrumento: String(r.instrumento || '').trim(),
+        alumno_id: r.alumno_id,
+        puesto: Number(r.puesto),
+        nombre: r.nombre || ''
+      }))
+      .filter(r => r.instrumento && Number.isInteger(r.puesto) && r.puesto >= 1);
+
+    if (instFiltro) {
+      clasif = clasif.filter(r => instFiltro.has(r.instrumento));
+    }
+
+    if (!clasif.length) {
+      const { type, buf } = await renderMsg(ext,
+        `No hay clasificación para ${grupoNombre}.`,
+        `Revisa la tabla atril_clasificacion del grupo.`);
+      return res.type(type).send(buf);
+    }
+
+    clasif.sort((a,b) =>
+      a.instrumento.localeCompare(b.instrumento,'es',{sensitivity:'base'}) ||
+      a.puesto - b.puesto ||
+      (a.alumno_id - b.alumno_id)
+    );
+
+    // 5) Conteos por instrumento -> layout
+    const counts = {};
+    for (const r of clasif) counts[r.instrumento] = (counts[r.instrumento] || 0) + 1;
+    const posiciones = autoLayoutFromCounts(counts); // ← helper existente: { instrumento, atril, puesto(1/2), x, y, angulo }
+
+    // 6) Agrupar candidatos por instrumento
+    const porInstrumento = new Map();
+    for (const r of clasif) {
+      if (!porInstrumento.has(r.instrumento)) porInstrumento.set(r.instrumento, []);
+      porInstrumento.get(r.instrumento).push(r);
+    }
+
+    // 7) Asignar candidatos a plazas (emparejando 1–2, 3–4… con ATRIL/LADO por índice)
+    const asignacion = new Map();
+
+    for (const inst of new Set(posiciones.map(p => p.instrumento))) {
+      const base = (porInstrumento.get(inst) || []).slice()
+        .sort((a,b) => a.puesto - b.puesto || (a.alumno_id - b.alumno_id)); // 1,2,3…
+
+      const lista = base.map((c, i) => ({ ...c, clasif: c.puesto, ...atrilLadoFromIndex(i) }));
+
+      const plazas = posiciones
+        .filter(p => p.instrumento === inst)
+        .sort((a,b) => a.atril - b.atril || a.puesto - b.puesto);
+
+      const n = Math.min(plazas.length, lista.length);
+      for (let i = 0; i < n; i++) {
+        const plaza = plazas[i];
+        const cand  = lista[i]; // { instrumento, alumno_id, nombre, clasif, atril, lado }
+        asignacion.set(`${plaza.instrumento}|${plaza.atril}|${plaza.puesto}`, cand);
+      }
+    }
+
+    // 8) Aplicar layout guardado (si existe) de scope=grupo
+    const { rows: saved } = await pool.query(`
+      SELECT key, x, y, angle
+      FROM public.plano_layout
+      WHERE scope='grupo' AND scope_id=$1
+    `, [grupoId]);
+    const savedByKey = new Map(saved.map(r => [r.key, r]));
+    for (const p of posiciones) {
+      const k = `${p.instrumento}|${p.atril}|${p.puesto}`;
+      const s = savedByKey.get(k);
+      if (s) { p.x = s.x; p.y = s.y; p.angulo = s.angle; }
+    }
+
+    // 9) Render SVG
+    const W = 1400, H = 900, FONT = FONT_STACK;
+    let nodos = '';
+    for (const p of posiciones) {
+      const key  = `${p.instrumento}|${p.atril}|${p.puesto}`;
+      const asig = asignacion.get(key);
+      if (!asig) continue;
+
+      const cx = p.x * W, cy = p.y * H;
+      const color = colorPorInstrumento(p.instrumento);
+
+      // Nombre corto
+      const parts = (asig.nombre || '').trim().split(/\s+/);
+      const displayName = parts.length >= 3 ? `${parts[0]} ${parts[1]}` : (asig.nombre || asig.alumno_id);
+
+      // ATRIL y LADO SIEMPRE desde la asignación; fallback a plaza o a la clasificación
+      const numAtril = Number.isFinite(asig.atril)
+        ? asig.atril
+        : (Number.isFinite(p.atril) ? p.atril : Math.max(1, Math.ceil((asig.clasif || 1) / 2)));
+
+      const ladoNum = Number.isFinite(asig.lado) ? asig.lado : (Number(p.puesto) === 1 ? 1 : 2);
+      const ladoTxt = (ladoNum === 1 ? 'I' : 'II');
+
+      nodos += `
+        <g class="draggable" data-key="${esc(key)}"
+           transform="translate(${cx},${cy}) rotate(${p.angulo})">
+          <circle r="30" fill="${color}" fill-opacity="0.9"></circle>
+          <circle r="31.5" fill="none" stroke="#fff" stroke-width="2"></circle>
+          <circle r="33" fill="none" stroke="#222" stroke-opacity="0.15" stroke-width="1.2"></circle>
+
+          <!-- ATRIL grande -->
+          <text y="4" text-anchor="middle" font-weight="800" font-size="18" fill="#fff" font-family="${FONT}">
+            ${numAtril}
+          </text>
+
+          <!-- LADO I/II -->
+          <text y="22" text-anchor="middle" font-size="10" fill="#fff" fill-opacity="0.95" font-family="${FONT}">
+            ${ladoTxt}
+          </text>
+
+          <!-- Nombre -->
+          <text y="46" text-anchor="middle" font-size="9" fill="#333" font-family="${FONT}">
+            ${esc(displayName)}
+          </text>
+        </g>`;
+    }
+
+    const cxDir = W/2, cyDirBase = H - 50;
+    const director = `
+      <g aria-label="Director">
+        ${directorPodiumSVG(W/2, H-50)}
+        <circle cx="${cxDir}" cy="${cyDirBase}" r="20" fill="#000"></circle>
+        <circle cx="${cxDir}" cy="${cyDirBase}" r="22" fill="none" stroke="#fff" stroke-width="2"></circle>
+        <text x="${cxDir}" y="${cyDirBase + 34}" text-anchor="middle" font-size="12" fill="#000" font-family="${FONT}">Director</text>
+      </g>`;
+
+    const svg = `
+      <svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
+        <rect width="100%" height="100%" rx="36" fill="#FAF8F5"></rect>
+        ${stageBackdropSVG(W, H)}
+        <text x="${W/2}" y="36" text-anchor="middle" font-size="24" font-weight="800" letter-spacing=".3px" font-family="${FONT}">
+          Plano · ${esc(grupoNombre)}
+        </text>
+        ${buildLegendFromPositions({ posiciones, x: 16, y: 16, fontFamily: FONT })}
+        ${nodos}
+        ${director}
+      </svg>`;
+
+    // 10) Salida
+    if (ext === 'svg') return res.type('image/svg+xml; charset=utf-8').send(svg);
+    if (ext === 'pdf') {
+      try {
+        const pdfBuf = await svgToPdfBuffer(svg, { W, H, title: `Plano ${grupoNombre}` });
+        return res.type('application/pdf').send(pdfBuf);
+      } catch (e) {
+        const png = await sharp(Buffer.from(svg), { density: 220 }).png({ compressionLevel: 9 }).toBuffer();
+        return res.type('image/png').send(png);
+      }
+    }
+    const png = await sharp(Buffer.from(svg), { density: 220 }).png({ compressionLevel: 9 }).toBuffer();
+    return res.type('image/png').send(png);
+
+  } catch (e) {
+    console.error('[plano] GET /clasif/:grupo.:ext error:', e);
+    return res.status(500).send('Error generando el plano.');
+  }
+});
+
 router.get('/latest/:grupo.:ext', async (req, res) => {
   const { grupo: grupoParam } = req.params;
   const ext = String(req.params.ext || '').toLowerCase();
@@ -419,9 +729,9 @@ router.get('/latest/:grupo.:ext', async (req, res) => {
                 JOIN grupos g ON g.id = ag.grupo_id
                 WHERE ag.alumno_id = a.id
                   AND (
-                  g.nombre ~* '^viol[ií]n\\s*i$'
-                  OR g.nombre ~* '^viol[ií]n\\s*ii$'
-                )
+                    g.nombre ~* '^viol[ií]n\\s*i$' OR
+                    g.nombre ~* '^viol[ií]n\\s*ii$'
+                  )
                 ORDER BY
                   CASE
                     WHEN g.nombre ~* '^viol[ií]n\\s*i$'  THEN 1
@@ -437,12 +747,12 @@ router.get('/latest/:grupo.:ext', async (req, res) => {
         p.alumno_id::text AS alumno_id,
         p.puntuacion,
         l.trimestre AS trimestre,
-        trim(coalesce(a.nombre,'') || ' ' || coalesce(a.apellidos,'')) AS nombre
+        TRIM(COALESCE(a.nombre,'') || ' ' || COALESCE(a.apellidos,'')) AS nombre
       FROM parsed p
       JOIN latest l
         ON p.instrumento = l.instrumento AND p.trimestre = l.trimestre
       LEFT JOIN alumnos a
-        ON a.id::text = trim(p.alumno_id)
+        ON a.id::text = TRIM(p.alumno_id)
       ORDER BY instrumento, p.puntuacion DESC, p.alumno_id ASC
     `, [grupoNombre]);
 
@@ -452,7 +762,7 @@ router.get('/latest/:grupo.:ext', async (req, res) => {
       return res.type(type).send(buf);
     }
 
-    // Conteos → layout
+    // Conteos → layout automático
     const counts = {};
     for (const r of ranking) counts[r.instrumento] = (counts[r.instrumento] || 0) + 1;
     const posiciones = autoLayoutFromCounts(counts);
@@ -464,7 +774,7 @@ router.get('/latest/:grupo.:ext', async (req, res) => {
       porInstrumento.get(r.instrumento).push(r);
     }
 
-    // Asignación
+    // Asignación (orden por puntuación)
     const asignacion = new Map();
     for (const inst of new Set(posiciones.map(p => p.instrumento))) {
       const lista = porInstrumento.get(inst) || [];
@@ -480,43 +790,46 @@ router.get('/latest/:grupo.:ext', async (req, res) => {
     }
 
     // Render
-    const W = 1400, H = 900, FONT = FONT_STACK;
+    // Render
+const W = 1400, H = 900, FONT = FONT_STACK;
 
-    let nodos = '';
-    for (const p of posiciones) {
-      const key = `${p.instrumento}|${p.atril}|${p.puesto}`;
-      const asig = asignacion.get(key);
-      if (!asig) continue;
-    
-      const cx = p.x * W, cy = p.y * H;
-      const color = colorPorInstrumento(p.instrumento);
-    
-      // Divide nombre y apellidos, muestra nombre + primer apellido completos
-      const fullName = asig.nombre || asig.alumno_id || '';
-      const parts = fullName.trim().split(/\s+/);
-      let displayName;
-      if (parts.length >= 3) {
-        // Si hay nombre y dos apellidos, muestra nombre + primer apellido
-        displayName = `${parts[0]} ${parts[1]}`;
-      } else {
-        // Si solo hay nombre y apellido, o menos, muéstralo tal cual
-        displayName = fullName;
-      }
-    
-      nodos += `
-        <g transform="translate(${cx},${cy}) rotate(${p.angulo})">
-          <circle r="30" fill="${color}" fill-opacity="0.9"></circle>
-          <circle r="31.5" fill="none" stroke="#fff" stroke-width="2"></circle>
-          <circle r="33" fill="none" stroke="#222" stroke-opacity="0.15" stroke-width="1.2"></circle>
-          <text y="6" text-anchor="middle" font-weight="800" font-size="18" fill="#fff" font-family="${FONT}">
-            ${asig.seat}
-          </text>
-          <text y="46" text-anchor="middle" font-size="9" fill="#333" font-family="${FONT}">
-            ${esc(displayName)}
-          </text>
-        </g>`;
-    }
-    
+let nodos = '';
+for (const p of posiciones) {
+  const key  = `${p.instrumento}|${p.atril}|${p.puesto}`;
+  const asig = asignacion.get(key);
+  if (!asig) continue;
+
+  const cx = p.x * W, cy = p.y * H;
+  const color = colorPorInstrumento(p.instrumento);
+
+  // Nombre corto
+  const fullName = asig.nombre || asig.alumno_id || '';
+  const parts = fullName.trim().split(/\s+/);
+  const displayName = (parts.length >= 3) ? `${parts[0]} ${parts[1]}` : fullName;
+
+  // SIEMPRE desde la plaza (parejas 1–2, 3–4…)
+  const numAtril = p.atril;
+  const ladoTxt  = (Number(p.puesto) === 1 ? 'I' : 'II');
+
+  nodos += `
+    <g transform="translate(${cx},${cy}) rotate(${p.angulo})">
+      <circle r="30" fill="${color}" fill-opacity="0.9"></circle>
+      <circle r="31.5" fill="none" stroke="#fff" stroke-width="2"></circle>
+      <circle r="33" fill="none" stroke="#222" stroke-opacity="0.15" stroke-width="1.2"></circle>
+
+      <text y="4" text-anchor="middle" font-weight="800" font-size="18" fill="#fff" font-family="${FONT}">
+        ${numAtril}
+      </text>
+      <text y="22" text-anchor="middle" font-size="10" fill="#fff" fill-opacity="0.95" font-family="${FONT}">
+        ${ladoTxt}
+      </text>
+
+      <text y="46" text-anchor="middle" font-size="9" fill="#333" font-family="${FONT}">
+        ${esc(displayName)}
+      </text>
+    </g>`;
+}
+
 
     const cxDir = W/2, cyDirBase = H - 50;
     const director = `
@@ -558,7 +871,6 @@ router.get('/latest/:grupo.:ext', async (req, res) => {
   }
 });
 
-/* ===================== /plano/:grupo/:trimestre.:ext ===================== */
 router.get('/:grupo/:trimestreFriendly.:ext', async (req, res) => {
   const { grupo, trimestreFriendly: tfParam } = req.params;
   const ext = String(req.params.ext || '').toLowerCase();
@@ -668,44 +980,45 @@ router.get('/:grupo/:trimestreFriendly.:ext', async (req, res) => {
     }
 
     // Render
-    const W = 1400, H = 900;
+    // Render
+const W = 1400, H = 900, FONT = FONT_STACK;
 
-    let nodos = '';
-    for (const p of posiciones) {
-      const key = `${p.instrumento}|${p.atril}|${p.puesto}`;
-      const asig = asignacion.get(key);
-      if (!asig) continue;
-    
-      const cx = p.x * W, cy = p.y * H;
-      const color = colorPorInstrumento(p.instrumento);
-    
-      // Divide nombre y apellidos, muestra nombre + primer apellido completos
-      const fullName = asig.nombre || asig.alumno_id || '';
-      const parts = fullName.trim().split(/\s+/);
-      let displayName;
-      if (parts.length >= 3) {
-        // Si hay nombre y dos apellidos, muestra nombre + primer apellido
-        displayName = `${parts[0]} ${parts[1]}`;
-      } else {
-        // Si solo hay nombre y apellido, o menos, muéstralo tal cual
-        displayName = fullName;
-      }
-    
-      nodos += `
-        <g transform="translate(${cx},${cy}) rotate(${p.angulo})">
-          <circle r="30" fill="${color}" fill-opacity="0.9"></circle>
-          <circle r="31.5" fill="none" stroke="#fff" stroke-width="2"></circle>
-          <circle r="33" fill="none" stroke="#222" stroke-opacity="0.15" stroke-width="1.2"></circle>
-          <text y="6" text-anchor="middle" font-weight="800" font-size="18" fill="#fff" font-family="${FONT}">
-            ${asig.seat}
-          </text>
-          <text y="46" text-anchor="middle" font-size="9" fill="#333" font-family="${FONT}">
-            ${esc(displayName)}
-          </text>
-        </g>`;
-    }
-    
+let nodos = '';
+for (const p of posiciones) {
+  const key  = `${p.instrumento}|${p.atril}|${p.puesto}`;
+  const asig = asignacion.get(key);
+  if (!asig) continue;
 
+  const cx = p.x * W, cy = p.y * H;
+  const color = colorPorInstrumento(p.instrumento);
+
+  // Nombre corto
+  const fullName = asig.nombre || asig.alumno_id || '';
+  const parts = fullName.trim().split(/\s+/);
+  const displayName = (parts.length >= 3) ? `${parts[0]} ${parts[1]}` : fullName;
+
+  // SIEMPRE desde la plaza (parejas 1–2, 3–4…)
+  const numAtril = p.atril;
+  const ladoTxt  = (Number(p.puesto) === 1 ? 'I' : 'II');
+
+  nodos += `
+    <g transform="translate(${cx},${cy}) rotate(${p.angulo})">
+      <circle r="30" fill="${color}" fill-opacity="0.9"></circle>
+      <circle r="31.5" fill="none" stroke="#fff" stroke-width="2"></circle>
+      <circle r="33" fill="none" stroke="#222" stroke-opacity="0.15" stroke-width="1.2"></circle>
+
+      <text y="4" text-anchor="middle" font-weight="800" font-size="18" fill="#fff" font-family="${FONT}">
+        ${numAtril}
+      </text>
+      <text y="22" text-anchor="middle" font-size="10" fill="#fff" fill-opacity="0.95" font-family="${FONT}">
+        ${ladoTxt}
+      </text>
+
+      <text y="46" text-anchor="middle" font-size="9" fill="#333" font-family="${FONT}">
+        ${esc(displayName)}
+      </text>
+    </g>`;
+} 
     const cxDir = W / 2, cyDir = H - 50;
     const director = `
       <g aria-label="Director">
@@ -747,12 +1060,97 @@ router.get('/:grupo/:trimestreFriendly.:ext', async (req, res) => {
     return res.status(500).send('Error generando el plano');
   }
 });
-
-/* ===================== Vista simple ===================== */
 router.get('/view', (req, res) => {
   const grupo = req.query.grupo || 'JOSG';
   const trimestreFriendly = (req.query.trimestre || '25-26T1');
   res.render('plano', { grupo, trimestre: trimestreFriendly });
+});
+// GET /plano/layout?scope=grupo&scope_id=123
+router.get('/layout', async (req, res) => {
+  const scope = (req.query.scope || 'grupo').toString();
+  const scopeId = Number(req.query.scope_id);
+  if (!['grupo','evento'].includes(scope) || !Number.isInteger(scopeId)) {
+    return res.status(400).json({ error:'scope (grupo|evento) y scope_id válidos' });
+  }
+  const { rows } = await pool.query(
+    `SELECT key, x, y, angle FROM public.plano_layout WHERE scope=$1 AND scope_id=$2`,
+    [scope, scopeId]
+  );
+  res.json({ items: rows });
+});
+// PUT /plano/layout  { scope, scope_id, updates:[{key,x,y,angle}...] }
+router.put('/layout', express.json(), async (req, res) => {
+  const { scope='grupo', scope_id, updates=[] } = req.body || {};
+  const scopeId = Number(scope_id);
+  if (!['grupo','evento'].includes(scope) || !Number.isInteger(scopeId) || !Array.isArray(updates)) {
+    return res.status(400).json({ ok:false, error:'payload inválido' });
+  }
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    for (const u of updates) {
+      await client.query(`
+        INSERT INTO public.plano_layout (scope, scope_id, key, x, y, angle)
+        VALUES ($1,$2,$3,$4,$5,$6)
+        ON CONFLICT (scope, scope_id, key)
+        DO UPDATE SET x=EXCLUDED.x, y=EXCLUDED.y, angle=EXCLUDED.angle, updated_at=now()
+      `, [scope, scopeId, u.key, u.x, u.y, u.angle]);
+    }
+    await client.query('COMMIT');
+    res.json({ ok:true, saved: updates.length });
+  } catch (e) {
+    await client.query('ROLLBACK');
+    console.error('[plano] PUT /plano/layout', e);
+    res.status(500).json({ ok:false, error:'Error guardando layout' });
+  } finally {
+    client.release();
+  }
+});
+
+router.get('/editor/latest', isAuthenticated, (req, res) => {
+  res.render('plano_editor_latest', {
+    title: 'Editor de plano',
+    grupo_id: req.query.grupo_id || '',
+    inst: req.query.inst || ''
+  });
+});
+
+router.get('/editor/clasif', isAuthenticated, (req, res) => {
+  res.render('plano_editor_latest', {
+    title: 'Editor de plano',
+    grupo_id: req.query.grupo_id || '',
+    inst: req.query.inst || '',
+    src: 'clasif'
+  });
+});
+
+router.delete('/layout', async (req, res) => {
+  try {
+    const scope = (req.query.scope || 'grupo').toString();
+    const scopeId = Number(req.query.scope_id);
+    if (!['grupo','evento'].includes(scope) || !Number.isInteger(scopeId) || scopeId <= 0) {
+      return res.status(400).json({ ok:false, error:'scope (grupo|evento) y scope_id válidos' });
+    }
+    const { rowCount } = await pool.query(
+      `DELETE FROM public.plano_layout WHERE scope=$1 AND scope_id=$2`,
+      [scope, scopeId]
+    );
+    return res.json({ ok:true, deleted: rowCount });
+  } catch (e) {
+    console.error('[plano] DELETE /plano/layout error:', e);
+    return res.status(500).json({ ok:false, error:'Error borrando layout' });
+  }
+});
+router.get('/editor/evento', isAuthenticated, async (req, res) => {
+  const eventoId = Number(req.query.evento_id);
+  if (!Number.isInteger(eventoId)) return res.status(400).send('Falta evento_id');
+  res.render('plano_editor_latest', {
+    title: 'Editor de plano (evento)',
+    hero: false,
+    grupo_id: String(eventoId), // el editor lo llama grupo_id
+    src: 'evento',
+    inst: req.query.inst || ''
+  });
 });
 
 module.exports = router;

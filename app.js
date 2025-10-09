@@ -133,7 +133,7 @@ const espaciosRoutes = require('./routes/espacios');
 const partiturasRoutes = require('./routes/partituras');
 const plantillasRoutes = require('./routes/plantillas');
 const mensajesRoutes = require('./routes/mensajes');
-
+const atrilRoutes = require('./routes/atril');
 app.use('/configuracion', isAdmin, configuracionRoutes);
 app.use('/usuarios', isAuthenticated,usuariosRoutes);        
 app.use('/profesores', isAuthenticated, profesoresRoutes); 
@@ -162,7 +162,7 @@ app.use('/espacios', isAuthenticated, espaciosRoutes);
 app.use(pdfRoutes);
 app.use('/partituras', isAuthenticated, partiturasRoutes);
 app.use('/plantillas', isAuthenticated, plantillasRoutes);
-app.use('/mensajes', mensajesRoutes);
+app.use('/atril', atrilRoutes);
 
 
 // Ruta de inicio

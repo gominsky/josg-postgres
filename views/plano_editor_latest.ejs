@@ -1,0 +1,198 @@
+<% title = title || 'Editor de plano (arrastrar fichas)' %>
+<div class="container my-3">
+  <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+    <h1 class="mb-0"><%= title %></h1>
+    <div class="d-flex gap-2">
+      <button id="btnGuardarLayout" class="btn btn-dark btn-sm">Guardar layout</button>
+      <a id="btnAbrirPDF" class="btn btn-outline-secondary btn-sm" target="_blank">Ver PDF</a>
+      <a class="btn btn-outline-secondary btn-sm" href="javascript:history.back()">Volver</a>
+    </div>
+  </div>
+
+  <div class="alert alert-corp py-2">
+    Arrastra las fichas. Se guarda por <b>grupo</b>. El PDF/PNG usará esta distribución.
+  </div>
+
+  <!-- OJO: sin style inline para que no pise el CSS -->
+  <div id="wrap" class="border rounded"></div>
+</div>
+
+<style>
+  html, body { height: 100%; }
+  #wrap {
+    overflow: hidden;           /* sin barras de scroll */
+    background: #fafafa;
+    border-radius: .5rem;
+  }
+
+  :root {
+    --corp-orange: #F28C18;
+    --corp-orange-dark: #9C530A;
+  }
+  .alert-corp {
+    background: #FFF6E9;                /* naranja muy suave */
+    border: 1px solid var(--corp-orange);
+    color: var(--corp-orange-dark);
+  }
+</style>
+
+<script>
+(() => {
+  const grupoId = '<%= grupo_id || "" %>';
+  const instQS  = '<%= inst || "" %>';
+  const src     = '<%= (typeof src !== "undefined" && src) ? src : "clasif" %>'; // 'clasif' por defecto
+  const scope = (src === 'evento') ? 'evento' : 'grupo';
+  const $wrap   = document.getElementById('wrap');
+  const $save   = document.getElementById('btnGuardarLayout');
+  const $pdf    = document.getElementById('btnAbrirPDF');
+
+  if (!$wrap || !grupoId) { alert('Falta grupo_id'); return; }
+
+  // Dimensiones del SVG (se ajustan con viewBox)
+  let SVG, W = 1400, H = 900;
+
+  // Helpers de rutas según la fuente
+  function svgBaseFor(id){ return `/plano/${src}/${encodeURIComponent(id)}.svg`; }
+  function pdfBaseFor(id){ return `/plano/${src}/${encodeURIComponent(id)}.pdf`; }
+
+  // Enlace al PDF con el mismo filtro de instrumentos (si lo hay)
+  (function setPdfHref(){
+    const base = pdfBaseFor(grupoId);
+    if ($pdf) $pdf.href = instQS ? `${base}?inst=${encodeURIComponent(instQS)}` : base;
+  })();
+
+  // Ajusta el alto del contenedor al viewport
+  function resizeWrap() {
+    const marginBottom = 16;
+    const top = $wrap.getBoundingClientRect().top;
+    const h = Math.max(300, window.innerHeight - top - marginBottom);
+    $wrap.style.height = `${h}px`;
+  }
+
+  async function fetchText(url){
+    const r = await fetch(url, { headers:{ 'Accept':'image/svg+xml' }});
+    if (!r.ok) throw new Error(await r.text());
+    return r.text();
+  }
+  function toNode(html){
+    const div = document.createElement('div');
+    div.innerHTML = html.trim();
+    return div.firstElementChild;
+  }
+  function parseViewBox(svgEl){
+    const vb = svgEl.getAttribute('viewBox');
+    if (!vb) return;
+    const p = vb.split(/\s+/).map(Number);
+    if (p.length === 4) { W = p[2]; H = p[3]; }
+  }
+
+  // Drag & drop
+  let dragging = null, startPt = null, startTx = 0, startTy = 0, startAngle = 0;
+  function parseTransform(t) {
+    const m1 = t.match(/translate\(([-\d.]+)[ ,]([-\d.]+)\)/);
+    const m2 = t.match(/rotate\(([-\d.]+)\)/);
+    return { tx: m1?parseFloat(m1[1]):0, ty: m1?parseFloat(m1[2]):0, angle: m2?parseFloat(m2[1]):0 };
+  }
+  function toSvgCoords(evt) {
+    const pt = SVG.createSVGPoint();
+    pt.x = evt.clientX; pt.y = evt.clientY;
+    return pt.matrixTransform(SVG.getScreenCTM().inverse());
+  }
+  function enableDrag(){
+    SVG.addEventListener('pointerdown', (e) => {
+      const g = e.target.closest('g.draggable[data-key]');
+      if (!g) return;
+      dragging = g;
+      dragging.setPointerCapture(e.pointerId);
+      const t = parseTransform(g.getAttribute('transform') || 'translate(0,0) rotate(0)');
+      startTx = t.tx; startTy = t.ty; startAngle = t.angle;
+      startPt = toSvgCoords(e);
+    });
+    SVG.addEventListener('pointermove', (e) => {
+      if (!dragging) return;
+      const p = toSvgCoords(e);
+      const dx = p.x - startPt.x, dy = p.y - startPt.y;
+      dragging.setAttribute('transform', `translate(${startTx+dx},${startTy+dy}) rotate(${startAngle})`);
+      dragging.classList.add('dirty');
+    });
+    SVG.addEventListener('pointerup', () => { dragging = null; });
+    SVG.addEventListener('pointercancel', () => { dragging = null; });
+  }
+
+  async function applySavedLayout(){
+    try {
+      const r = await fetch(`/plano/layout?scope=${encodeURIComponent(scope)}&scope_id=${encodeURIComponent(grupoId)}`);
+      if (!r.ok) return;
+      const j = await r.json();
+      const map = new Map((j.items||[]).map(x => [x.key, x]));
+      SVG.querySelectorAll('g.draggable[data-key]').forEach(g => {
+        const key = g.getAttribute('data-key');
+        const save = map.get(key);
+        if (!save) return;
+        const tx = Number(save.x) * W, ty = Number(save.y) * H, angle = Number(save.angle) || 0;
+        g.setAttribute('transform', `translate(${tx},${ty}) rotate(${angle})`);
+      });
+    } catch {}
+  }
+
+  async function loadSVG(){
+    try{
+      const base = svgBaseFor(grupoId);
+      const url  = instQS ? `${base}?inst=${encodeURIComponent(instQS)}` : base;
+      const svgText = await fetchText(url);
+      SVG = toNode(svgText);
+      SVG.id = 'stage';
+      parseViewBox(SVG);
+
+      // SVG responsive: ocupa el wrap completo
+      SVG.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+      SVG.removeAttribute('width');
+      SVG.removeAttribute('height');
+      SVG.style.width  = '100%';
+      SVG.style.height = '100%';
+
+      // Ajusta el contenedor y pinta
+      resizeWrap();
+      $wrap.innerHTML = '';
+      $wrap.appendChild(SVG);
+
+      await applySavedLayout();
+      enableDrag();
+    } catch (e) {
+      $wrap.innerHTML = `<div class="p-3 text-danger"><pre style="white-space:pre-wrap">${(e.message||e).toString()}</pre></div>`;
+    }
+  }
+
+  async function saveLayout(){
+    const dirty = [...SVG.querySelectorAll('g.draggable.dirty')];
+    if (!dirty.length) { alert('No hay cambios.'); return; }
+    const updates = dirty.map(g => {
+      const key = g.getAttribute('data-key');
+      const { tx, ty, angle } = parseTransform(g.getAttribute('transform') || '');
+      return { key, x: tx / W, y: ty / H, angle };
+    });
+    const res = await fetch('/plano/layout', {
+      method: 'PUT',
+      headers: { 'Content-Type':'application/json' },
+      body: JSON.stringify({ scope:'grupo', scope_id: grupoId, updates })
+    });
+    if (res.ok) { alert('Layout guardado'); dirty.forEach(g => g.classList.remove('dirty')); }
+    else {
+      let msg = 'Error guardando layout';
+      try {
+        const ct = res.headers.get('content-type')||'';
+        msg = ct.includes('json') ? (await res.json()).error : (await res.text());
+      } catch {}
+      alert(msg || 'Error guardando layout');
+    }
+  }
+
+  // Eventos
+  window.addEventListener('resize', resizeWrap);
+  document.getElementById('btnGuardarLayout')?.addEventListener('click', saveLayout);
+
+  // Arranque
+  loadSVG();
+})();
+</script>
+
