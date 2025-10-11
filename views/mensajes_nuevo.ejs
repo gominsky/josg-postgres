@@ -14,7 +14,6 @@
   <form id="msg-form" class="panel" autocomplete="off">
     <div class="hdr">
       <h2 class="h1-titulo" style="margin:0;">Enviar mensaje</h2>
-      <span class="pill" id="pill-count" title="Destinatarios estimados">— destinatarios</span>
     </div>
 
     <!-- Título + URL -->
@@ -37,16 +36,6 @@
         <label class="form-label" for="cuerpo">Mensaje</label>
         <textarea id="cuerpo" name="cuerpo" maxlength="500" placeholder="Texto del aviso para los alumnos…" required></textarea>
         <div class="counter" id="c-cuerpo">0 / 500</div>
-      </div>
-    </div>
-
-    <!-- Enlaces extra -->
-    <div id="links-block" class="row">
-      <div>
-        <label class="form-label">Enlaces extra (opcionales)</label>
-        <div id="links-wrap"></div>
-        <button type="button" class="btn-main-blanco" id="add-link">Añadir enlace</button>
-        <div class="help">Puedes añadir hasta 2 enlaces extra (además del campo “Enlace” de arriba).</div>
       </div>
     </div>
       <!-- Adjuntos -->
@@ -334,7 +323,48 @@
 
 /* Mantener el input limpio y separado visualmente */
 #files.form-control{ background:#fff; }
+  .last-extras{ display:flex; gap:.4rem; flex-wrap:wrap; margin:.4rem 0 .2rem; align-items:center; }
+  .link-chip{
+    display:inline-flex; align-items:center; gap:.35rem;
+    border:1px solid var(--border); border-radius:999px; padding:.15rem .5rem; text-decoration:none;
+    font-size:.8rem;
+  }
+  .adj-inline{ list-style:none; margin:.25rem 0 0; padding:0; display:flex; flex-wrap:wrap; gap:.35rem; }
+  .adj-inline li{
+    display:inline-flex; align-items:center; gap:.25rem;
+    border:1px solid var(--border); border-radius:999px; padding:.15rem .5rem; font-size:.8rem;
+    background:#fff;
+  }
+  .adj-inline .muted{ color: var(--muted); }
+  .last-msg { --orange-50:#fff7ed; --orange-100:#ffedd5; --orange-400:#fb923c; --orange-500:#f97316; --orange-600:#ea580c; --orange-700:#b45309; }
 
+/* Chip “Abrir” y chips de enlaces extra */
+.last-extras .link-chip, .link-chip{
+  display:inline-flex; align-items:center; gap:.35rem;
+  border:1px solid var(--orange-400);
+  background: var(--orange-50);
+  color: var(--orange-700);
+  border-radius:999px; padding:.15rem .55rem; font-size:.8rem; text-decoration:none;
+}
+.last-extras .link-chip:hover, .link-chip:hover{
+  background: var(--orange-100);
+  border-color: var(--orange-500);
+  color: var(--orange-600);
+  text-decoration:none;
+}
+
+/* Enlaces dentro de “Últimos” (chips y adjuntos) en naranja */
+.last-extras a, .adj-inline a{
+  color: var(--orange-700);
+  text-decoration:none;
+}
+.last-extras a:hover, .adj-inline a:hover{
+  color: var(--orange-600);
+  text-decoration: underline;
+}
+
+/* (Opcional) borde de las píldoras de adjuntos en un tono suave */
+.adj-inline li{ border-color: var(--orange-400); }
 </style>
 
 <script>
@@ -372,8 +402,10 @@
     pvTitle.textContent = titulo.value.trim() || 'Título del mensaje';
     pvBody.textContent  = cuerpo.value.trim() || 'El contenido aparecerá aquí mientras escribes.';
     const u = url.value.trim();
-    if (u){ pvUrl.textContent = ensureProto(u); pvUrl.style.display='block'; } else { pvUrl.textContent=''; pvUrl.style.display='none'; }
-
+    if (pvUrl) {
+      if (u) { pvUrl.textContent = ensureProto(u); pvUrl.style.display = 'block'; }
+      else   { pvUrl.textContent = '';            pvUrl.style.display = 'none';  }
+    }
     const pvLinks = document.getElementById('pv-links');
     if (pvLinks){
       pvLinks.innerHTML = '';
@@ -401,10 +433,12 @@
       <button type="button" class="btn-main-blanco link-del" title="Quitar">Quitar</button>
     `;
     row.querySelector('.link-del').addEventListener('click', ()=> { row.remove(); updatePreview(); });
-    row.querySelector('.link-input').addEventListener('input', updatePreview);
-    linksWrap.appendChild(row);
+    if (linksWrap) {
+   row.querySelector('.link-input').addEventListener('input', updatePreview);
+   linksWrap.appendChild(row);
+ }
   }
-  if (btnAddLink) {
+  if (btnAddLink && linksWrap) {
     btnAddLink.addEventListener('click', ()=>{
       const current = linksWrap.querySelectorAll('.link-input').length;
       if (current >= 2) return;
@@ -496,7 +530,7 @@
       const g = state.groupsChecked2.size, i = state.instrumentosChecked2.size;
       txt = (g && i) ? `${g} grupo(s) + ${i} instrumento(s)` : '— destinatarios';
     }
-    pillCount.textContent = txt;
+   
   }
 
   // Toast
@@ -564,7 +598,7 @@
 
     // limpiar
     cuerpo.value=''; url.value=''; titulo.value='';
-    linksWrap.innerHTML = '';
+    if (linksWrap) linksWrap.innerHTML = '';
     // DESPUÉS
     const fi = document.getElementById('files');
     const ul = document.getElementById('files-preview');
@@ -590,7 +624,7 @@ $files?.addEventListener('change', ()=>{
     state.groupsChecked.clear(); state.groupsChecked2.clear();
     state.instrumentosChecked.clear(); state.instrumentosChecked2.clear();
     $$('.g-check,.g2-check,.i-check,.i2-check').forEach(el => el.checked=false);
-    linksWrap.innerHTML = '';
+    if (linksWrap) linksWrap.innerHTML = '';
     updateCounters(); updatePreview(); updateDestCount();
   });
 
@@ -635,6 +669,8 @@ async function fetchPage(page = 1){
 }
 
 function renderList(items){
+  const ultList  = document.getElementById('ultimos-list');
+  const ultEmpty = document.getElementById('ultimos-empty');
   ultList.innerHTML = '';
 
   if (!items.length){
@@ -642,6 +678,26 @@ function renderList(items){
     return;
   }
   ultEmpty.style.display = 'none';
+
+  const ensureProto = u => /^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//.test(u) ? u : ('https://' + u);
+  const escapeHtml = s => String(s||'')
+    .replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;')
+    .replaceAll('"','&quot;').replaceAll("'","&#39;");
+  const escapeAttr = s => escapeHtml(s).replaceAll('`','&#96;');
+
+  const fmtBytes = n => {
+    const b = Number(n)||0; const u=['B','KB','MB','GB']; let i=0, x=b;
+    while(x>=1024 && i<u.length-1){ x/=1024; i++; }
+    return (i ? x.toFixed(x>=10?0:1) : x) + ' ' + u[i];
+  };
+  const normalizeUrls = urls => {
+    if (!urls) return [];
+    if (Array.isArray(urls)) return urls;
+    try { const j = JSON.parse(String(urls)); return Array.isArray(j) ? j : []; } catch { return []; }
+  };
+  const shortHost = (u) => {
+    try { return new URL(ensureProto(u)).host.replace(/^www\./,''); } catch { return u; }
+  };
 
   for (const it of items){
     const id = Number(it.id);
@@ -652,11 +708,45 @@ function renderList(items){
     const fecha = new Date(it.created_at);
     const fechaTxt = isNaN(fecha.getTime()) ? '' : fecha.toLocaleString();
 
+    // Enlace principal
+    const btnAbrir = it.url ? `
+      <a class="link-chip" href="${escapeAttr(ensureProto(it.url))}" target="_blank" rel="noopener">Abrir</a>
+    ` : '';
+
+    // Enlaces extra (urls[])
+    const extras = normalizeUrls(it.urls).map((u, i) => {
+      const href = typeof u === 'string' ? u : (u?.url || u?.href || '');
+      if (!href) return '';
+      return `<a class="link-chip" href="${escapeAttr(ensureProto(href))}" target="_blank" rel="noopener">${escapeHtml(shortHost(href))}</a>`;
+    }).filter(Boolean).join('');
+
+    // Adjuntos
+    const adj = Array.isArray(it.adjuntos) ? it.adjuntos : [];
+    const adjList = adj.length ? `
+      <ul class="adj-inline">
+        ${adj.map(a=>{
+          const name = a.original_name || a.filename?.split('/').pop() || 'archivo';
+          const href = a.filename || a.path || '';
+          const size = a.size ? ` · ${fmtBytes(a.size)}` : '';
+          return `<li><a href="${escapeAttr(href)}" target="_blank" rel="noopener">📎 ${escapeHtml(name)}</a><span class="muted">${escapeHtml(size)}</span></li>`;
+        }).join('')}
+      </ul>
+    ` : '';
+
+    const extrasHtml = (btnAbrir || extras || adjList) ? `
+      <div class="last-extras">
+        ${btnAbrir}
+        ${extras}
+        ${adjList}
+      </div>
+    ` : '';
+
     card.innerHTML = `
       <div>
         <h4 title="ID ${id}">${escapeHtml(it.titulo || '(sin título)')}</h4>
         <div class="help">Por ${escapeHtml(it.autor || '—')}</div>
         <p style="font-weight:400;">${escapeHtml((it.cuerpo || '').slice(0,140))}${(it.cuerpo && it.cuerpo.length>140)?'…':''}</p>
+        ${extrasHtml}
         <time>${fechaTxt}</time>
       </div>
       <div class="actions">
@@ -666,7 +756,7 @@ function renderList(items){
     ultList.appendChild(card);
   }
 
-  // Bind eliminar
+  // Eliminar
   ultList.querySelectorAll('.btn-del').forEach(btn=>{
     if (!btn._wired) { btn._wired = true; btn.addEventListener('click', onDeleteClick); }
   });

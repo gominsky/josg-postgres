@@ -2878,6 +2878,21 @@ function setMinutesCell(tr, val){
     __initAsignObserver(marcarAsignacionesConTags);
   })();
 })();
+
+window.__initAsignObserver = window.__initAsignObserver || function(cb){
+  try{
+    const tgt = document.getElementById('asigBody');
+    if (!tgt || !('MutationObserver' in window)) return null;
+    const obs = new MutationObserver((muts) => {
+      // re-pinta si entran o salen filas
+      if (muts.some(m => (m.addedNodes && m.addedNodes.length) || (m.removedNodes && m.removedNodes.length))) {
+        try { cb && cb(); } catch(_) {}
+      }
+    });
+    obs.observe(tgt, { childList: true });
+    return obs;
+  }catch{ return null; }
+};
 </script>
 <script>
   // Activa el modo compacto de Extras

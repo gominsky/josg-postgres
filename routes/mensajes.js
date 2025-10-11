@@ -319,9 +319,15 @@ router.get('/ultimos', isAuthenticated, isDocente, async (req, res) => {
     // Mensajes de la página solicitada
     const { rows: items } = await db.query(`
       SELECT
-        m.id, m.titulo, m.cuerpo, m.url, m.urls, m.created_at,
-        m.creado_por, (u.nombre || ' ' || u.apellidos) AS autor,
-        COALESCE(a.adjuntos, '[]'::json) AS adjuntos
+  m.id,
+  m.titulo,
+  m.cuerpo,
+  m.url,
+  COALESCE(NULLIF(m.urls::text, '')::jsonb, '[]'::jsonb) AS urls,
+  m.created_at,
+  m.creado_por,
+  COALESCE(NULLIF(TRIM(COALESCE(u.nombre,'') || ' ' || COALESCE(u.apellidos,'')), ''), u.email, 'Sistema') AS autor,
+  COALESCE(a.adjuntos, '[]'::json) AS adjuntos
       FROM mensajes m
       LEFT JOIN usuarios u ON u.id = m.creado_por
       LEFT JOIN LATERAL (

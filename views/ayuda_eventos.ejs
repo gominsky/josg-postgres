@@ -1,161 +1,240 @@
-<% title = 'Ayuda · Eventos' %>
-<% hero  = false %>
-<link rel="stylesheet" href="/styles/estilos_help.css">
+<% /* Ayuda · Eventos (EJS) — paleta corporativa (naranja/negro/gris), sin botón de PDF */ %>
+<div class="container ayuda-eventos">
+  <div class="d-flex align-items-center justify-content-between mb-3">
+    <h1 class="h3 m-0">Ayuda · Eventos</h1>
+  </div>
 
+  <div class="alert alert-info">
+    <strong>Recuerda:</strong> Un evento no aparece en la app del alumno hasta que está <em>configurado</em> y marcado como <em>activo</em>. Mientras tanto, se muestra <strong>atenuado</strong>.
+  </div>
 
-<div class="help-wrap">
-  
+  <div class="accordion" id="ayudaEventosAccordion">
 
-  <div class="panel">
-    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
-      <h1 class="h1">Ayuda · Eventos</h1>
-      <div class="cta">
-        <a href="/eventos">Ir a Calendario →</a>
-        <a href="/guardias">Ir a Guardias →</a>
+    <div class="accordion-item">
+      <h2 class="accordion-header" id="sec1">
+        <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#col1" aria-expanded="true" aria-controls="col1">
+          1) Crear eventos (individual y masivo)
+        </button>
+      </h2>
+      <div id="col1" class="accordion-collapse collapse show" aria-labelledby="sec1" data-bs-parent="#ayudaEventosAccordion">
+        <div class="accordion-body">
+          <ul>
+            <li><strong>Crear individualmente:</strong> abre el calendario, haz clic en el día y completa <em>título, fechas/horas, espacio</em> y observaciones si procede. Puedes activar el <strong>QR</strong>. Guarda.</li>
+            <li><strong>Crear masivamente:</strong> pulsa <em>Crear eventos masivos</em>, selecciona <em>varias fechas</em> y define datos comunes (título, horas, espacio). Guarda para generar un evento por cada fecha.</li>
+          </ul>
+          <p class="mb-0"><em>Después</em> entra en <strong>Configuración</strong> para seleccionar músicos y horarios.</p>
+        </div>
       </div>
     </div>
 
-    <!-- Índice -->
-    <nav class="toc" aria-label="Índice">
-      <a href="#flujo">Flujo rápido</a>
-      <a href="#calendario">Calendario & listado</a>
-      <a href="#crear">Crear / Editar</a>
-      <a href="#qr">QR del evento</a>
-      <a href="#firmas">Firmas y asistencias</a>
-      <a href="#tips">Consejos y formatos</a>
-      <a href="#faq">FAQ</a>
-    </nav>
-
-    <!-- Flujo rápido -->
-    <section id="flujo" class="section">
-      <h2>Flujo rápido</h2>
-      <ol class="list">
-        <li>Abre <span class="kbd">Agenda de Eventos</span> (vista calendario).</li>
-        <li>Haz clic en un día para crear un evento; ajusta título, grupo, horas y guarda.</li>
-        <li>Si ya existe, haz clic sobre el evento para editarlo, ver <em>Listado</em> de firmas o abrir su <em>QR</em>.</li>
-        <li>Para ver en tabla un rango, pulsa <span class="pill">Lista</span> o usa los campos <em>Desde/Hasta</em>.</li>
-      </ol>
-      <p class="notice info">El calendario está en español y muestra los eventos con título y grupo; el botón “Lista” usa el rango visible del calendario.</p>
-    </section>
-
-    <!-- Calendario & listado -->
-    <section id="calendario" class="section">
-      <h2>Calendario y listado</h2>
-      <div class="grid-2">
-        <div class="card">
-          <h3 style="margin:.1rem 0 .35rem;">Calendario</h3>
-          <ul class="list">
-            <li>Vistas: <em>Mes</em>, <em>Semana</em> y <em>Lista</em> (botón personalizado “Lista”).</li>
-            <li>Al pulsar un día se abre el formulario con una hora por defecto (09:00–10:00).</li>
-            <li>Al pulsar un evento se abre para editar (título, grupo, fechas, QR, eliminar).</li>
+    <div class="accordion-item">
+      <h2 class="accordion-header" id="sec2">
+        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#col2" aria-expanded="false" aria-controls="col2">
+          2) Configurar el evento (el corazón del flujo)
+        </button>
+      </h2>
+      <div id="col2" class="accordion-collapse collapse" aria-labelledby="sec2" data-bs-parent="#ayudaEventosAccordion">
+        <div class="accordion-body">
+          <p>Elige qué músicos asistirán y ajusta sus horarios. Usa los <strong>filtros por familia e instrumento</strong> para centrarte en la lista adecuada.</p>
+          <p>Selecciona uno o varios músicos y aplica <strong>acciones en bloque</strong>:</p>
+          <ul>
+            <li><strong>Cambio horario</strong>: ajusta inicio/fin para los seleccionados.</li>
+            <li><strong>Ausencias</strong>: marca <em>Justificada</em>, <em>Injustificada</em>, <em>Parcial</em> o <em>Retraso</em>. <em>El retraso tiene minutos de cortesía configurables</em> (Configuración del evento → Ajustes de asistencia).</li>
+            <li><strong>Actividad complementaria</strong>: añade tareas de <em>montaje</em> y <em>desmontaje</em>.</li>
+            <li><strong>Eliminación</strong>: quita músicos que finalmente no asistirán.</li>
           </ul>
-          <p class="notice info">Usa las flechas o “Hoy” para navegar; el botón “Lista” lleva al rango actual como tabla.</p>
-        </div>
-        <div class="card">
-          <h3 style="margin:.1rem 0 .35rem;">Listado</h3>
-          <ul class="list">
-            <li>Pasa parámetros <span class="kbd">?desde=YYYY-MM-DD&hasta=YYYY-MM-DD</span> para ver una tabla ordenada.</li>
-            <li>Cada fila es clicable y abre el evento en el formulario.</li>
-            <li>Incluye un pequeño formulario para consultar otro rango “Lista personalizada”.</li>
-          </ul>
+          <p class="mb-0">Al terminar, el evento queda <strong>configurado</strong> y, si está <strong>activado</strong>, los alumnos lo verán en su app.</p>
         </div>
       </div>
-    </section>
-
-    <!-- Crear / Editar -->
-    <section id="crear" class="section">
-      <h2>Crear / Editar evento</h2>
-      <div class="grid-2">
-        <div class="card">
-          <h3 style="margin:.1rem 0 .35rem;">Campos</h3>
-          <ul class="list">
-            <li><strong>Título</strong> (obligatorio) y <strong>Descripción</strong> (opcional).</li>
-            <li><strong>Grupo</strong> (obligatorio): selecciona el grupo al que pertenece el evento.</li>
-            <li><strong>Inicio/Fin</strong>: formato <span class="kbd">YYYY-MM-DDTHH:MM</span> (el sistema admite también fecha y hora por separado).</li>
-            <li><strong>Activar QR</strong>: interruptor para habilitar el QR del evento.</li>
-          </ul>
-        </div>
-        <div class="card">
-          <h3 style="margin:.1rem 0 .35rem;">Acciones</h3>
-          <ul class="list">
-            <li><strong>Guardar</strong>: crea o actualiza (se recarga la vista).</li>
-            <li><strong>Listado</strong>: abre la hoja de firmas manuales del evento.</li>
-            <li><strong>Ver QR</strong>: abre una página imprimible con el código QR.</li>
-            <li><strong>Eliminar</strong>: borra el evento, sus firmas y guardias asociadas.</li>
-          </ul>
-          <p class="notice info">En edición se muestran los botones extra; en creación solo aparece “Guardar”.</p>
-        </div>
-      </div>
-    </section>
-
-    <!-- QR -->
-    <section id="qr" class="section">
-      <h2>QR del evento</h2>
-      <p>La página del QR muestra el título, la fecha formateada y el código en grande, con un botón para imprimir. El QR contiene un JSON con <span class="kbd">{ evento_id, token }</span> para verificar firmas desde la app.</p>
-      <ul class="list">
-        <li>Ruta: <span class="kbd">/eventos/:id/qr</span></li>
-        <li>Botón <strong>Imprimir QR</strong> oculta el resto al imprimir.</li>
-      </ul>
-    </section>
-
-    <!-- Firmas -->
-    <section id="firmas" class="section">
-      <h2>Firmas y asistencias</h2>
-      <div class="grid-2">
-        <div class="card">
-          <h3 style="margin:.1rem 0 .35rem;">Firma manual</h3>
-          <ul class="list">
-            <li>Lista de alumnos del grupo del evento, ordenada por apellidos y nombre.</li>
-            <li>Marca/desmarca para registrar asistencia; puedes guardar todo de golpe o usar AJAX (según la vista).</li>
-          </ul>
-          <p class="notice info">La vista muestra la fecha del evento formateada y las horas de inicio/fin.</p>
-        </div>
-        <div class="card">
-          <h3 style="margin:.1rem 0 .35rem;">PDF de control</h3>
-          <ul class="list">
-            <li>Ruta: <span class="kbd">/eventos/:id/firmas.pdf</span> — genera un PDF de control de asistencia listo para imprimir.</li>
-          </ul>
-        </div>
-      </div>
-    </section>
-
-    <!-- Consejos -->
-    <section id="tips" class="section">
-      <h2>Consejos y formatos</h2>
-      <ul class="list">
-        <li>Fechas: admite <span class="kbd">YYYY-MM-DDTHH:MM</span> o fecha y hora separadas; internamente se normaliza para el calendario.</li>
-        <li>Si cambias horas habituales, al crear desde el calendario ajusta la franja por defecto antes de guardar.</li>
-        <li>Si no ves grupos en el selector, crea primero el grupo desde su sección.</li>
-      </ul>
-      <p class="notice info">Los textos del evento se limpian de caracteres invisibles antes de pintar en el calendario.</p>
-    </section>
-
-    <!-- FAQ -->
-    <section id="faq" class="section">
-      <h2>FAQ</h2>
-      <div class="grid-2">
-        <div class="card">
-          <h3 style="margin:.1rem 0 .35rem;">¿Puedo ver un listado por fechas?</h3>
-          <p>Sí. Usa el botón “Lista” del calendario o entra con parámetros <span class="kbd">?desde=YYYY-MM-DD&hasta=YYYY-MM-DD</span>.</p>
-        </div>
-        <div class="card">
-          <h3 style="margin:.1rem 0 .35rem;">¿Qué elimina exactamente “Eliminar”?</h3>
-          <p>El evento, sus guardias relacionadas y todas las asistencias registradas para ese evento.</p>
-        </div>
-        <div class="card">
-          <h3 style="margin:.1rem 0 .35rem;">¿Cómo imprimo el QR?</h3>
-          <p>Desde la edición del evento pulsa <em>Ver QR</em> y luego <em>Imprimir</em> en la página del QR.</p>
-        </div>
-        <div class="card">
-          <h3 style="margin:.1rem 0 .35rem;">¿Se pueden firmar desde móvil?</h3>
-          <p>Sí, escaneando el QR con la app prevista; también puedes registrar manualmente en la página de firmas.</p>
-        </div>
-      </div>
-    </section>
-
-    <div class="section" style="display:flex;gap:10px;flex-wrap:wrap;">
-      <a class="cta" href="/eventos"><span class="pill">← Volver a Eventos</span></a>
-      <a class="cta" href="/"><span class="pill">← Volver al inicio</span></a>
     </div>
+
+    <div class="accordion-item">
+      <h2 class="accordion-header" id="sec3">
+        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#col3" aria-expanded="false" aria-controls="col3">
+          3) Plantillas (con vista previa) y eventos periódicos
+        </button>
+      </h2>
+      <div id="col3" class="accordion-collapse collapse" aria-labelledby="sec3" data-bs-parent="#ayudaEventosAccordion">
+        <div class="accordion-body">
+          <ul>
+            <li><strong>Guardar plantilla:</strong> cuando un evento esté bien configurado, guárdalo como plantilla.</li>
+            <li><strong>Vista previa:</strong> al aplicar una plantilla, <em>previsualiza</em> los cambios y confírmalos.</li>
+            <li><strong>Eventos periódicos:</strong> crea todas las fechas con creación masiva y aplica la plantilla para acelerar el proceso.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="accordion-item">
+      <h2 class="accordion-header" id="sec4">
+        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#col4" aria-expanded="false" aria-controls="col4">
+          4) QR y firmado
+        </button>
+      </h2>
+      <div id="col4" class="accordion-collapse collapse" aria-labelledby="sec4" data-bs-parent="#ayudaEventosAccordion">
+        <div class="accordion-body">
+          <ul>
+            <li><strong>QR del evento:</strong> genera/imprime para que el alumnado firme desde la app (evento activo).</li>
+            <li><strong>Firmado desde Configuración:</strong> también puedes marcar la firma manualmente.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="accordion-item">
+      <h2 class="accordion-header" id="sec5">
+        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#col5" aria-expanded="false" aria-controls="col5">
+          5) Planos (vista dinámica)
+        </button>
+      </h2>
+      <div id="col5" class="accordion-collapse collapse" aria-labelledby="sec5" data-bs-parent="#ayudaEventosAccordion">
+        <div class="accordion-body">
+          <p>Los <strong>planos</strong> son un <em>dibujo visual del evento</em> y son <strong>dinámicos</strong>: puedes <strong>mover los ítems</strong> para organizar la disposición.</p>
+          <p class="mb-0">Útiles para coordinar montaje, flujos y ubicación general.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="accordion-item">
+      <h2 class="accordion-header" id="sec6">
+        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#col6" aria-expanded="false" aria-controls="col6">
+          6) Ausencias (tipos)
+        </button>
+      </h2>
+      <div id="col6" class="accordion-collapse collapse" aria-labelledby="sec6" data-bs-parent="#ayudaEventosAccordion">
+        <div class="accordion-body">
+          <ul>
+            <li><strong>Justificada</strong></li>
+            <li><strong>Injustificada</strong></li>
+            <li><strong>Parcial</strong> (asiste solo parte del evento)</li>
+            <li><strong>Retraso</strong> (llega tarde) — <em>con minutos de cortesía configurables</em> (Configuración del evento → Ajustes de asistencia)</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="accordion-item">
+      <h2 class="accordion-header" id="sec7">
+        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#col7" aria-expanded="false" aria-controls="col7">
+          7) Actividades complementarias (montaje y desmontaje)
+        </button>
+      </h2>
+      <div id="col7" class="accordion-collapse collapse" aria-labelledby="sec7" data-bs-parent="#ayudaEventosAccordion">
+        <div class="accordion-body">
+          <p>Asocia actividades centradas en <strong>montaje</strong> y <strong>desmontaje</strong> para planificar y registrar tiempos de preparación y recogida.</p>
+          <p class="mb-0">Puedes asignarlas en bloque a los músicos seleccionados.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="accordion-item">
+      <h2 class="accordion-header" id="sec8">
+        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#col8" aria-expanded="false" aria-controls="col8">
+          8) Vistas: calendario ↔ lista
+        </button>
+      </h2>
+      <div id="col8" class="accordion-collapse collapse" aria-labelledby="sec8" data-bs-parent="#ayudaEventosAccordion">
+        <div class="accordion-body">
+          <p>Cambia entre <strong>Calendario</strong> y <strong>Lista</strong> según lo que necesites: planificación vs. revisión masiva.</p>
+          <p class="mb-0">En <strong>Lista</strong> es más cómodo filtrar, revisar estados y aplicar acciones a muchos elementos.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="accordion-item">
+      <h2 class="accordion-header" id="sec9">
+        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#col9" aria-expanded="false" aria-controls="col9">
+          9) Consejos rápidos
+        </button>
+      </h2>
+      <div id="col9" class="accordion-collapse collapse" aria-labelledby="sec9" data-bs-parent="#ayudaEventosAccordion">
+        <div class="accordion-body">
+          <ul>
+            <li><strong>Secuencia:</strong> crea → configura (filtros + acciones) → activa → firma/seguimiento.</li>
+            <li><strong>Atenuado = pendiente</strong> de configuración.</li>
+            <li><strong>Filtra antes de actuar:</strong> familia + instrumento te ahorran tiempo.</li>
+            <li><strong>Plantillas con vista previa:</strong> evita errores antes de aplicar.</li>
+            <li><strong>Periódicos:</strong> genera fechas y aplica plantilla; corrige diferencias con acciones en bloque.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="accordion-item">
+      <h2 class="accordion-header" id="sec10">
+        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#col10" aria-expanded="false" aria-controls="col10">
+          10) Extras: invitados y reservas
+        </button>
+      </h2>
+      <div id="col10" class="accordion-collapse collapse" aria-labelledby="sec10" data-bs-parent="#ayudaEventosAccordion">
+        <div class="accordion-body">
+          <p>Añade <strong>músicos invitados</strong> y <strong>reservas</strong> desde <em>Configuración</em> para cubrir necesidades puntuales o asegurar plazas.</p>
+          <ul>
+            <li>Se etiquetan como <em>Invitado</em> o <em>Reserva</em> para identificarlos rápido.</li>
+            <li>Se gestionan en su panel y <strong>no</strong> participan en filtros ni acciones en bloque del evento hasta que los <strong>incorpores</strong> (mover a asignados).</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
   </div>
 </div>
+
+<style>
+  /* Paleta corporativa — sin azules */
+  :root {
+    --naranja: #FF6F00; /* sustituye por tu hex exacto si procede */
+    --negro: #222;
+    --gris-osc: #444;
+    --gris: #777;
+    --gris-borde: #ddd;
+    --gris-fondo: #f7f7f7;
+    --gris-verylight: #fcfcfc;
+
+    /* Anula azules Bootstrap por defecto */
+    --bs-primary: var(--naranja);
+    --bs-link-color: var(--naranja);
+    --bs-link-hover-color: #cc5a00;
+    --bs-focus-ring-color: rgba(255, 111, 0, .25);
+  }
+  .ayuda-eventos h1.h3 { color: var(--negro); }
+  .ayuda-eventos a { color: var(--naranja); }
+  .ayuda-eventos a:hover { color: #cc5a00; }
+
+  .ayuda-eventos .accordion-button {
+    font-weight: 600;
+    color: var(--negro);
+    background-color: var(--gris-verylight);
+    border: 1px solid var(--gris-borde);
+  }
+  .ayuda-eventos .accordion-button:not(.collapsed) {
+    color: #fff;
+    background-color: var(--naranja);
+    box-shadow: inset 0 -1px 0 rgba(0,0,0,0.08);
+  }
+  .ayuda-eventos .accordion-button.collapsed {
+    color: var(--negro);
+    background-color: var(--gris-verylight);
+  }
+  .ayuda-eventos .accordion-button:focus {
+    border-color: var(--naranja);
+    box-shadow: 0 0 0 .2rem rgba(255,111,0,.25);
+  }
+  /* Chevron del acordeón sin azul */
+  .ayuda-eventos .accordion-button::after {
+    filter: none;
+  }
+
+  .ayuda-eventos .accordion-body {
+    background-color: var(--gris-fondo);
+    color: var(--gris-osc);
+    border-left: 3px solid var(--naranja);
+  }
+  .ayuda-eventos .accordion-body ul { margin-bottom: 0; }
+
+  .ayuda-eventos .alert-info {
+    background-color: #fff3e0;
+    color: #7a3e00;
+    border-color: #f0b37e;
+  }
+</style>

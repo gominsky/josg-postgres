@@ -11,7 +11,6 @@ const methodOverride = require('method-override');
 require('dotenv').config();
 
 app.use('/eventos/styles', express.static(path.join(__dirname, 'public', 'styles')));
-
 // --- Logs de proceso (como tenías) ---
 process.on('beforeExit', (code) => console.log('[proc] beforeExit code=', code));
 process.on('exit',       (code) => console.log('[proc] exit code=', code));
@@ -163,7 +162,7 @@ app.use(pdfRoutes);
 app.use('/partituras', isAuthenticated, partiturasRoutes);
 app.use('/plantillas', isAuthenticated, plantillasRoutes);
 app.use('/atril', atrilRoutes);
-
+app.use('/mensajes', mensajesRoutes);
 
 // Ruta de inicio
 app.get('/', (req, res) => {

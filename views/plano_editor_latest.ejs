@@ -34,6 +34,8 @@
     border: 1px solid var(--corp-orange);
     color: var(--corp-orange-dark);
   }
+  /* Evita que los strokes se “engorden” al escalar las fichas */
+  #stage g.draggable * { vector-effect: non-scaling-stroke; }
 </style>
 
 <script>
@@ -50,6 +52,27 @@
 
   // Dimensiones del SVG (se ajustan con viewBox)
   let SVG, W = 1400, H = 900;
+  let SCALE_K = 1;
+// Factor de escala según ancho de pantalla
+function computeScale(){
+  const w = window.innerWidth || document.documentElement.clientWidth;
+  if (w <= 360) return 1.6;
+  if (w <= 480) return 1.4;
+  if (w <= 768) return 1.2;
+  return 1; // desktop/tablet grande sin escala extra
+}
+
+// Aplica (o reajusta) la escala a TODAS las fichas ya pintadas
+function applyMobileScale(){
+  if (!SVG) return;
+  const k = computeScale();
+  SCALE_K = k;
+  SVG.querySelectorAll('g.draggable[data-key]').forEach(g => {
+    const t = parseTransform(g.getAttribute('transform') || 'translate(0,0) rotate(0)');
+    // Importante: ESCALA primero, luego translate/rotate → así el tx/ty NO se escalan
+    g.setAttribute('transform', `scale(${k}) translate(${t.tx},${t.ty}) rotate(${t.angle})`);
+  });
+}
 
   // Helpers de rutas según la fuente
   function svgBaseFor(id){ return `/plano/${src}/${encodeURIComponent(id)}.svg`; }
@@ -112,7 +135,7 @@
       if (!dragging) return;
       const p = toSvgCoords(e);
       const dx = p.x - startPt.x, dy = p.y - startPt.y;
-      dragging.setAttribute('transform', `translate(${startTx+dx},${startTy+dy}) rotate(${startAngle})`);
+      dragging.setAttribute('transform', `scale(${SCALE_K}) translate(${startTx+dx},${startTy+dy}) rotate(${startAngle})`);
       dragging.classList.add('dirty');
     });
     SVG.addEventListener('pointerup', () => { dragging = null; });
@@ -157,6 +180,7 @@
       $wrap.appendChild(SVG);
 
       await applySavedLayout();
+      applyMobileScale();
       enableDrag();
     } catch (e) {
       $wrap.innerHTML = `<div class="p-3 text-danger"><pre style="white-space:pre-wrap">${(e.message||e).toString()}</pre></div>`;
@@ -188,7 +212,7 @@
   }
 
   // Eventos
-  window.addEventListener('resize', resizeWrap);
+  window.addEventListener('resize', () => { resizeWrap(); applyMobileScale(); });
   document.getElementById('btnGuardarLayout')?.addEventListener('click', saveLayout);
 
   // Arranque

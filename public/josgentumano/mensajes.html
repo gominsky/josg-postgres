@@ -131,6 +131,27 @@
   cursor: pointer !important;
 }
 .mark-wrap [data-mark]:hover{ background: #ffedd5 !important; }
+/* Alineación específica de la barra de acciones de cada card */
+.mark-actions{ justify-content: flex-end; }
+@media (max-width:560px){
+  .mark-actions{ justify-content: center; }
+}
+/* Barra de acciones con “ver más” a la izda y “marcar como leído” a la dcha */
+.action-bar{
+  display:flex;
+  align-items:center;
+  gap:.5rem;
+  justify-content: flex-start; /* el contenedor arranca a la izquierda */
+  margin-top:.25rem;
+}
+.action-left{ display:flex; gap:.5rem; }
+.action-right{ display:flex; gap:.5rem; margin-left:auto; } /* empuja a la derecha */
+
+@media (max-width:560px){
+  /* En móvil se mantiene izda/dcha, sin saltos raros */
+  .action-bar{ flex-wrap:wrap; }
+  .action-right{ margin-left:auto; }
+}
 
 </style>
 </head>
@@ -278,9 +299,16 @@
       const mi = String(d.getMinutes()).padStart(2,'0');
       return `${dd}/${mm}/${aa} ${hh}:${mi}`;
     }
-
+    function getAutor(m){
+      const cand = [
+        m.autor, m.autor_nombre, m.docente, m.profesor,
+        m.creado_por_nombre, m.creado_por, m.usuario, m.user_name
+      ];
+      for (const v of cand){ if (v) return String(v); }
+      return '';
+    }
     // Une en un único array los enlaces (strings u objetos) y los adjuntos {filename, original_name...}
-function collectLinksAndFiles(m){
+  function collectLinksAndFiles(m){
   const arr = [];
 
   // 1) urls/enlaces/links como strings u objetos {url|href|link}
@@ -315,21 +343,43 @@ function domainLabel(href){
   try { return new URL(href, location.origin).hostname.replace(/^www\./,''); }
   catch { return 'Enlace'; }
 }
+
 function cardHTML(m, readSet){
+  // --- Helpers locales (no dependen de otras funciones externas) ---
+  const _esc = s => String(s ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+  const ensureProto = u => (String(u||'').startsWith('/') || /^\w+:\/\//.test(u||'')) ? String(u) : 'https://' + String(u);
+  const safeHref = u => {
+    const s = String(u||'').trim();
+    if (!s) return '#';
+    return s.startsWith('/') ? s : ensureProto(s);
+  };
+  const domainLabel = href => { try { return new URL(ensureProto(href), location.origin).host.replace(/^www\./,''); } catch { return href; } };
+  const fmtDate = v => { const d = new Date(v || m.created_at || m.fecha || m.sent_at || ''); return isNaN(d) ? '' : d.toLocaleString(); };
+  const isRead = (mm, rs) => !!(mm.leido || mm.read || (rs?.has && rs.has(mm.id)) || (rs && rs[mm.id]));
+  const MAX = (typeof MAX_CHARS === 'number' ? MAX_CHARS : 240);
+
+  // --- Datos base ---
   const idStr  = String(m.id ?? '');
-  const titulo = esc(m.titulo || m.title || 'Aviso');
+  const titulo = _esc(m.titulo || m.title || 'Aviso');
   const cuerpo = String(m.cuerpo || m.mensaje || m.body || '').trim();
-  const fecha  = m.fecha || m.created_at || m.fecha_envio || m.sent_at || m.createdAt || '';
-  const when   = fmtFecha(fecha);
+  const when   = fmtDate(m.created_at);
+  const read   = isRead(m, readSet);
 
-  const truncated = cuerpo.length > MAX_CHARS;
-  const shortHTML = esc(cuerpo.slice(0, MAX_CHARS)) + (truncated ? '…' : '');
-  const fullHTML  = esc(cuerpo);
+  // Autor (probamos varias props comunes)
+  const autor = [m.autor, m.autor_nombre, m.docente, m.profesor, m.creado_por_nombre, m.creado_por, m.usuario, m.user_name]
+                .find(Boolean) || '';
 
-  const read = isRead(m, readSet);
-  const meta = [when, read ? 'leído' : 'no leído'].filter(Boolean).join(' · ');
+  const truncated = cuerpo.length > MAX;
+  const shortHTML = _esc(cuerpo.slice(0, MAX)) + (truncated ? '…' : '');
+  const fullHTML  = _esc(cuerpo);
 
-  // --- Recolecta URLs (enlaces) y adjuntos BD ---
+  const metaParts = [];
+  if (autor) metaParts.push('Por ' + _esc(autor));
+  if (when)  metaParts.push(when);
+  metaParts.push(read ? 'leído' : 'no leído');
+  const meta = metaParts.join(' · ');
+
+  // --- Recogida de enlaces y adjuntos ---
   const urlsRaw =
     (Array.isArray(m.urls)    ? m.urls :
      Array.isArray(m.links)   ? m.links :
@@ -338,39 +388,39 @@ function cardHTML(m, readSet){
 
   const adjuntosRaw = Array.isArray(m.adjuntos) ? m.adjuntos : [];
 
-  const attachments = [];  // para el 📎
-  const links = [];        // chips separados
+  const attachments = []; // {href,label}
+  const links = [];       // {href,label,title}
+  let primaryHref = '';   // para chip "Abrir"
 
-  // Helper para prefijo de montaje (p. ej., /josgmaestro o /firmas)
-  const baseMount =
-    location.pathname.startsWith('/josgmaestro/') ? '/josgmaestro' :
-    location.pathname.startsWith('/firmas/')      ? '/firmas'      : '';
-
-  const isAttachmentPath = (p) => {
+  const baseMount = location.pathname.startsWith('/josgmaestro/') ? '/josgmaestro' : '';
+  const isAttachmentPath = p => {
     const s = String(p||'');
     return s.startsWith('/mensajes/') || s.startsWith(baseMount + '/mensajes/');
   };
 
-  // 1) URLs (string u objeto {url|href|link})
+  // Enlace principal por campo directo
+  const rawPrimary = m.url || m.enlace || m.link || '';
+  if (rawPrimary && !isAttachmentPath(rawPrimary)) primaryHref = safeHref(rawPrimary);
+
+  // Enlaces (urls[])
   for (const u of urlsRaw){
-    const raw  = typeof u === 'string' ? u : (u?.url ?? u?.href ?? u?.link ?? '');
+    const raw = typeof u === 'string' ? u : (u?.url ?? u?.href ?? u?.link ?? '');
     if (!raw) continue;
 
     if (isAttachmentPath(raw)){
-      // Trátalo como adjunto
       const path = raw.startsWith('/mensajes/') ? baseMount + raw : raw;
       const href  = safeHref(path);
       const label = decodeURIComponent(String(raw).split('/').pop() || 'archivo').replace(/\?.*$/,'');
       attachments.push({ href, label });
     } else {
-      // Trátalo como enlace externo/interno que no es adjunto
-      const href  = safeHref(raw);
-      const label = domainLabel(href); // solo dominio para no desbordar
-      links.push({ href, label, title: raw });
+      const href = safeHref(raw);
+      if (!primaryHref) primaryHref = href;       // el primero será el “Abrir” si no hay m.url
+      if (href === primaryHref) continue;         // evita duplicado del principal
+      links.push({ href, label: domainLabel(href), title: raw });
     }
   }
 
-  // 2) Adjuntos desde BD (mensaje_adjuntos)
+  // Adjuntos propiamente dichos
   for (const a of adjuntosRaw){
     const raw = a?.filename || a?.url || a?.href || '';
     if (!raw) continue;
@@ -381,11 +431,12 @@ function cardHTML(m, readSet){
     attachments.push({ href, label });
   }
 
-  // --- Chips de enlaces (solo “links”, nunca adjuntos) ---
-  const linksHTML = links.length ? `
+  // --- Chips: principal "Abrir" + secundarios ---
+  const chipsHTML = (primaryHref || links.length) ? `
     <div class="chips">
+      ${primaryHref ? `<a class="chip" href="${primaryHref}" target="_blank" rel="noopener">Abrir enlace</a>` : ``}
       ${links.map(l =>
-        `<a class="chip" href="${l.href}" target="_blank" rel="noopener" title="${esc(l.title)}">${esc(l.label)} ↗</a>`
+        `<a class="chip" href="${l.href}" target="_blank" rel="noopener" title="${_esc(l.title)}">${_esc(l.label)} ↗</a>`
       ).join('')}
     </div>
   ` : '';
@@ -396,28 +447,36 @@ function cardHTML(m, readSet){
       <button class="clip-btn" data-clip="${idStr}">📎 <span class="att-count">${attachments.length}</span> adjunto${attachments.length>1?'s':''}</button>
     </div>
     <ul class="att-list" id="att-${idStr}">
-      ${attachments.map(it => `<li><a href="${it.href}" target="_blank" rel="noopener">${esc(it.label)}</a></li>`).join('')}
+      ${attachments.map(it => `<li><a href="${it.href}" target="_blank" rel="noopener">${_esc(it.label)}</a></li>`).join('')}
     </ul>
   ` : '';
 
+  // --- Acciones: izda “Ver más…”, dcha “Marcar como leído” ---
+  const actionsHTML = `
+    <div class="mark-wrap action-bar">
+      <div class="action-left">
+        ${truncated ? `<a href="#" data-toggle="${idStr}">Ver más…</a>` : ``}
+      </div>
+      <div class="action-right">
+        ${!read ? `<button type="button" data-mark="${idStr}"><span aria-hidden="true">✓</span> Marcar como leído</button>` : ``}
+      </div>
+    </div>
+  `;
+
+  // --- Plantilla final ---
   return `
-  <article class="card">
-    <h3>${titulo}</h3>
-    <div class="meta">${meta}</div>
-    <div class="msg-body" data-expanded="false" data-short="${shortHTML}" data-full="${fullHTML}">${shortHTML}</div>
-
-    <!-- Botones primero (ahora con estilo action-chip) -->
-    <div class="mark-wrap">
-  ${truncated ? `<a href="#" data-toggle="${idStr}">Ver más…</a>` : ``}
-  ${!read ? `<button type="button" data-mark="${idStr}"><span aria-hidden="true">✓</span> Marcar como leído</button>` : ``}
-</div>
-
-    <!-- Enlaces/adjuntos después, como ya lo tienes -->
-    ${linksHTML || '' /* si usas chips para enlaces */}
-    ${clipHTML  || '' /* clip de adjuntos */}
-  </article>
-`;
+    <article class="card">
+      <h3>${titulo}</h3>
+      <div class="meta">${meta}</div>
+      <div class="msg-body" data-expanded="false"
+           data-short="${shortHTML}" data-full="${fullHTML}">${shortHTML}</div>
+      ${actionsHTML}
+      ${chipsHTML}
+      ${clipHTML}
+    </article>
+  `;
 }
+
 
   function renderPager(){
       $pager.innerHTML = '';
