@@ -174,7 +174,7 @@ select.form-control:disabled{ opacity:.6; cursor:not-allowed; }
         if (!btn) return;
         btn.addEventListener('click', ()=>{
           fetch('/josgmaestro/logout', { method:'POST', credentials:'include' })
-            .finally(()=>{ localStorage.clear(); location.href='index.html'; });
+            .finally(()=>{ localStorage.clear(); location.href='/josgentumano/login.html'; });
         });
       }
       document.addEventListener('DOMContentLoaded', cargarUsuarioPill);
@@ -188,7 +188,7 @@ select.form-control:disabled{ opacity:.6; cursor:not-allowed; }
     const API_BASE = '/josgmaestro/api';
     const usuario_id = localStorage.getItem('usuario_id');
     const rol        = localStorage.getItem('rol') || '';
-    if (!usuario_id) location.href = 'index.html';
+    if (!usuario_id) location.href = '/josgentumano/login.html';
 
     const state = { scope: null, grupos: [], adjuntos: [] };
 
@@ -319,7 +319,7 @@ async function uploadAdjuntos(){ if(!state.adjuntos.length) return []; const fd 
         if (!r) throw new Error('Sin respuesta del servidor');
         if (r.status === 401 || r.status === 403) {
           toast('No autenticado. Vuelve a iniciar sesión.', false);
-          setTimeout(() => location.href = 'index.html', 600);
+          setTimeout(() => location.href = '/josgentumano/login.html', 600);
           return;
         }
         const j = await r.json().catch(() => ({}));

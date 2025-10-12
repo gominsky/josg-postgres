@@ -70,7 +70,7 @@
         if (!btn) return;
         btn.addEventListener('click', ()=>{
           fetch('/josgmaestro/logout', { method:'POST', credentials:'include' })
-            .finally(()=>{ localStorage.clear(); location.href='index.html'; });
+          .finally(()=>{ localStorage.clear(); location.href='/josgentumano/login.html'; });
         });
       }
       document.addEventListener('DOMContentLoaded', cargarUsuarioPill);

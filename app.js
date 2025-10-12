@@ -133,6 +133,8 @@ const partiturasRoutes = require('./routes/partituras');
 const plantillasRoutes = require('./routes/plantillas');
 const mensajesRoutes = require('./routes/mensajes');
 const atrilRoutes = require('./routes/atril');
+const authUnificado = require('./routes/auth_unificado');
+app.use('/auth', authUnificado);
 app.use('/configuracion', isAdmin, configuracionRoutes);
 app.use('/usuarios', isAuthenticated,usuariosRoutes);        
 app.use('/profesores', isAuthenticated, profesoresRoutes); 

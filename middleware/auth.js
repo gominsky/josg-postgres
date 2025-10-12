@@ -1,9 +1,10 @@
 // middleware/auth.js
 
-// --- Páginas (vistas): mantienen tu comportamiento actual ---
+// --- Páginas (vistas): mantienen comportamiento actual ---
 function isAuthenticated(req, res, next) {
   if (req.session && req.session.usuario) return next();
-  res.redirect('/'); // o /login si tienes ruta
+  // Antes: res.redirect('/');
+  res.redirect('/josgentumano/login.html');   // puerta única
 }
 
 function isAdmin(req, res, next) {

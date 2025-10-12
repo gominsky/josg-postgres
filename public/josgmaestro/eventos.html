@@ -74,7 +74,7 @@
         if (!btn) return;
         btn.addEventListener('click', ()=>{
           fetch('/josgmaestro/logout', { method:'POST', credentials:'include' })
-            .finally(()=>{ localStorage.clear(); location.href = 'index.html'; });
+            .finally(()=>{ localStorage.clear(); location.href = '/josgentumano/login.html'; });
         });
       }
       document.addEventListener('DOMContentLoaded', cargarUsuarioPill);
@@ -106,7 +106,7 @@
             const url = `${API}/eventos?start=${encodeURIComponent(info.startStr)}&end=${encodeURIComponent(info.endStr)}`;
             const res = await fetch(url, { headers, credentials: 'include' });
 
-            if (res.status === 401) { window.location.href = '/josgmaestro/index.html'; return; }
+            if (res.status === 401) { window.location.href = '/josgentumano/login.html'; return; }
             if (!res.ok) { failure(new Error(`HTTP ${res.status}`)); alert('No se pudieron cargar los eventos.'); return; }
 
             const data = await res.json();

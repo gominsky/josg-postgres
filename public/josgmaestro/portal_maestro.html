@@ -106,13 +106,12 @@
     (function () {
       const API_BASE = '/josgmaestro/api';
       const usuario_id = localStorage.getItem('usuario_id');
-      if (!usuario_id) { location.href = 'index.html'; return; }
-
+      if (!usuario_id) { location.href = '/josgentumano/login.html'; return; }
       const $logout = document.getElementById('btn-logout');
       if ($logout) {
         $logout.addEventListener('click', () => {
           fetch('/josgmaestro/logout', { method: 'POST', credentials: 'include' })
-          .finally(() => { localStorage.clear(); location.href = 'index.html'; });
+          .finally(() => { localStorage.clear(); location.href = '/josgentumano/login.html'; });
         });
       }
 

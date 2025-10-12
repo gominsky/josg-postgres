@@ -32,44 +32,129 @@
     </div>
   </div>
 
+  <!-- Login unificado -->
   <script>
-    async function login() {
-      const email = document.getElementById('email').value.trim();
-      const password = document.getElementById('password').value;
-      const btn = document.getElementById('btn-login');
-      const msg = document.getElementById('mensaje');
-      const show = (t, ok)=>{ msg.textContent = t||''; msg.className = 'notice ' + (ok ? 'ok':'err'); };
+    (function(){
+      const emailEl = document.getElementById('email');
+      const passEl  = document.getElementById('password');
+      const btn     = document.getElementById('btn-login');
+      const msg     = document.getElementById('mensaje');
 
-      if (!email || !password){ show('Completa email y contraseña.', false); return; }
+      const show = (t, ok)=>{ 
+        msg.textContent = t||''; 
+        msg.className = 'notice ' + (ok ? 'ok':'err'); 
+      };
 
-      btn.disabled = true; show('', true);
-      try{
-        const res = await fetch('/firmas/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, password })
-        });
-        let data = {};
-        try{ data = await res.json(); }catch(_){}
-        if (res.ok && data.success){
-          localStorage.setItem('token', data.token);
-          localStorage.setItem('alumno_id', data.alumno_id);
-          localStorage.setItem('alumno_nombre', data.nombre || '');
-          window.location.href = 'index.html';
-        }else{
-          show(data.error || 'Credenciales incorrectas', false);
-          document.getElementById('password').value = '';
-          document.getElementById('password').focus();
-        }
-      }catch(e){
-        show('No se pudo conectar con el servidor. Inténtalo de nuevo.', false);
-      }finally{
-        btn.disabled = false;
+      // alumno en la MISMA carpeta que este login
+      const toAlumno = ()=> {
+        const base = location.pathname.replace(/[^\/]+$/, '');
+        return base + 'index.html';
+      };
+      // portal Docencia/Admin (ruta ABSOLUTA correcta)
+      const toDocente = ()=> '/josgmaestro/portal_maestro.html';
+
+      // puente de sesión para Docencia/Admin: crea req.session en /josgmaestro
+      async function ensureMaestroSession(email, password){
+        try{
+          const r = await fetch('/josgmaestro/login', {
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({ email, password })
+          });
+          // si responde 200 con success:true ya hay sesión; ignoramos el body
+          return r.ok;
+        }catch(_){ return false; }
       }
-    }
 
-    document.getElementById('btn-login').addEventListener('click', login);
-    document.addEventListener('keydown', (e)=>{ if (e.key === 'Enter') login(); });
+      async function doLogin(){
+        const email = (emailEl.value || '').trim();
+        const password = passEl.value || '';
+        if (!email || !password){ show('Completa email y contraseña.', false); return; }
+
+        btn.disabled = true; show('', true);
+        try{
+          const res = await fetch('/auth/login', {
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({ email, password })
+          });
+          let data = {}; try{ data = await res.json(); }catch(_){}
+
+          if (!res.ok || !data.success){
+            show(data.error || 'Credenciales incorrectas', false);
+            passEl.value = ''; passEl.focus();
+            return;
+          }
+
+          // --- Caso 1: backend ya decidió rol
+          if (data.role) {
+            localStorage.setItem('token', data.token);
+            if (data.role === 'alumno') {
+              localStorage.setItem('rol', 'alumno');
+              if (data.usuario?.alumno_id)     localStorage.setItem('alumno_id', data.usuario.alumno_id);
+              if (data.usuario?.alumno_nombre) localStorage.setItem('alumno_nombre', data.usuario.alumno_nombre);
+              window.location.href = toAlumno();
+            } else {
+              localStorage.setItem('rol', 'docente');
+              if (data.usuario?.usuario_id)     localStorage.setItem('usuario_id', data.usuario.usuario_id);
+              if (data.usuario?.usuario_nombre) localStorage.setItem('usuario_nombre', data.usuario.usuario_nombre);
+
+              // *** puente de sesión maestro ***
+              const ok = await ensureMaestroSession(email, password);
+              if (!ok){ show('No se pudo abrir sesión de Docencia. Inténtalo de nuevo.', false); btn.disabled = false; return; }
+
+              window.location.href = toDocente();
+            }
+            return;
+          }
+
+          // --- Caso 2: multirol → pedir elección
+          const picked = (window.prompt('Tienes dos roles. Escribe "alumno" o "docente":', 'alumno') || '').toLowerCase().trim();
+          if (!picked) { btn.disabled = false; return; }
+          if (picked !== 'alumno' && picked !== 'docente'){
+            show('Opción inválida. Escribe "alumno" o "docente".', false);
+            btn.disabled = false; return;
+          }
+
+          const sw = await fetch('/auth/switch-role', {
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({ role: picked, email })
+          });
+          let d = {}; try{ d = await sw.json(); }catch(_){}
+          if (!sw.ok || !d.success){
+            show(d.error || 'No se pudo activar el rol seleccionado.', false);
+            btn.disabled = false; return;
+          }
+
+          localStorage.setItem('token', d.token);
+          if (picked === 'alumno') {
+            localStorage.setItem('rol','alumno');
+            if (d.usuario?.alumno_id)     localStorage.setItem('alumno_id', d.usuario.alumno_id);
+            if (d.usuario?.alumno_nombre) localStorage.setItem('alumno_nombre', d.usuario.alumno_nombre);
+            window.location.href = toAlumno();
+          } else {
+            localStorage.setItem('rol','docente');
+            if (d.usuario?.usuario_id)     localStorage.setItem('usuario_id', d.usuario.usuario_id);
+            if (d.usuario?.usuario_nombre) localStorage.setItem('usuario_nombre', d.usuario.usuario_nombre);
+
+            // *** puente de sesión maestro ***
+            const ok = await ensureMaestroSession(email, password);
+            if (!ok){ show('No se pudo abrir sesión de Docencia. Inténtalo de nuevo.', false); btn.disabled = false; return; }
+
+            window.location.href = toDocente();
+          }
+
+        }catch(e){
+          show('No se pudo conectar con el servidor. Inténtalo de nuevo.', false);
+        }finally{
+          btn.disabled = false;
+        }
+      }
+
+      btn.addEventListener('click', doLogin);
+      document.addEventListener('keydown', (e)=>{ if (e.key === 'Enter') doLogin(); });
+    })();
   </script>
 
   <!-- Motivos musicales aleatorios sin solaparse -->
@@ -77,7 +162,7 @@
   (function(){
     const SYMBOLS = ['♩','♪','♫','♬','♭','♯','♮','🎵','🎶','🎼'];
     const COUNT_MIN = 7, COUNT_MAX = 10;
-    const SIZE_MIN = 36, SIZE_MAX = 50;   // más pequeñas (≈ mitad)
+    const SIZE_MIN = 36, SIZE_MAX = 50;
     const ROT_MIN  = -16, ROT_MAX  = 16;
     const PADDING  = 10;
     const EDGE_PAD = 6;
@@ -90,7 +175,7 @@
       const r = el.getBoundingClientRect(), p = parent.getBoundingClientRect();
       return { x:r.left-p.left, y:r.top-p.top, w:r.width, h:r.height };
     };
-    const intersects = (a,b,p)=> !(a.x+a.w+p<=b.x || b.x+b.w+p<=a.x || a.y+a.h+p<=b.y || b.y+b.h+p<=a.y);
+    const intersects = (a,b,p)=> !(a.x+a.w+p<=b.x || b.x+b.w+p<=a.x || a.y+a.h+p<=b.y || b.y+b.h<=a.y);
 
     function place(){
       const hero = document.querySelector('.hero');
@@ -144,3 +229,4 @@
   </script>
 </body>
 </html>
+
