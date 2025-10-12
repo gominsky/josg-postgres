@@ -1152,6 +1152,30 @@ router.get('/editor/evento', isAuthenticated, async (req, res) => {
     inst: req.query.inst || ''
   });
 });
+// GET card-data
+router.get('/card-data', async (req, res) => {
+  const { scope, scope_id } = req.query;
+  if (!scope || !scope_id) return res.status(400).json({ error: 'faltan campos' });
+  const rows = await db('plano_card_texts')
+    .select('card_key as key', 'num', 'part')
+    .where({ scope, scope_id });
+  res.json({ items: rows });
+});
+
+// PUT card-data (upsert)
+router.put('/card-data', async (req, res) => {
+  const { scope, scope_id, key, num = null, part = null } = req.body || {};
+  if (!scope || !scope_id || !key) return res.status(400).json({ error: 'faltan campos' });
+
+  await db.raw(`
+    INSERT INTO plano_card_texts (scope, scope_id, card_key, num, part)
+    VALUES (?, ?, ?, ?, ?)
+    ON CONFLICT (scope, scope_id, card_key)
+    DO UPDATE SET num = EXCLUDED.num, part = EXCLUDED.part, updated_at = now()
+  `, [scope, scope_id, key, num, part]);
+
+  res.json({ ok: true });
+});
 
 module.exports = router;
 

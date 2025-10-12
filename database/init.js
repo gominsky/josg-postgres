@@ -395,6 +395,16 @@ async function init({ reset = false } = {}) {
         updated_at timestamptz DEFAULT now(),
         UNIQUE (scope, scope_id, key)
       );
+      CREATE TABLE IF NOT EXISTS plano_card_texts (
+        id SERIAL PRIMARY KEY,
+        scope      VARCHAR(12) NOT NULL,        -- 'grupo' | 'evento'
+        scope_id   VARCHAR(64) NOT NULL,
+        card_key   VARCHAR(64) NOT NULL,        -- g[data-key]
+        num        INTEGER,                     -- 1..999
+        part       VARCHAR(3),                  -- 'I' | 'II'
+        updated_at TIMESTAMP DEFAULT now(),
+        UNIQUE(scope, scope_id, card_key)
+      );
 
       CREATE TABLE IF NOT EXISTS guardias (
         id          INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,

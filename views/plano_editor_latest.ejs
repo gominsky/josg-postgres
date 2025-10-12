@@ -3,26 +3,31 @@
   <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
     <h1 class="mb-0"><%= title %></h1>
     <div class="d-flex gap-2">
-      <button id="btnGuardarLayout" class="btn btn-dark btn-sm">Guardar layout</button>
+      <div class="d-flex align-items-center gap-2">
+        <label for="scRange" class="small mb-0">Tamaño fichas</label>
+        <input id="scRange" type="range" min="80" max="180" step="5" value="130" style="width:160px">
+        <span id="scPct" class="small">130%</span>
+      </div>
+      <button id="btnGuardarLayout" class="btn btn-dark btn-sm">Guardar diseño</button>
       <a id="btnAbrirPDF" class="btn btn-outline-secondary btn-sm" target="_blank">Ver PDF</a>
       <a class="btn btn-outline-secondary btn-sm" href="javascript:history.back()">Volver</a>
     </div>
   </div>
 
   <div class="alert alert-corp py-2">
-    Arrastra las fichas. Se guarda por <b>grupo</b>. El PDF/PNG usará esta distribución.
+    Arrastra las fichas. Se guarda por <b>grupo/evento</b>. El PDF/PNG usará esta distribución.
   </div>
 
-  <!-- OJO: sin style inline para que no pise el CSS -->
   <div id="wrap" class="border rounded"></div>
 </div>
 
 <style>
   html, body { height: 100%; }
   #wrap {
-    overflow: hidden;           /* sin barras de scroll */
+    overflow: hidden;
     background: #fafafa;
     border-radius: .5rem;
+    position: relative;
   }
 
   :root {
@@ -30,12 +35,15 @@
     --corp-orange-dark: #9C530A;
   }
   .alert-corp {
-    background: #FFF6E9;                /* naranja muy suave */
+    background: #FFF6E9;
     border: 1px solid var(--corp-orange);
     color: var(--corp-orange-dark);
   }
-  /* Evita que los strokes se “engorden” al escalar las fichas */
+
+  /* Evita que los strokes engorden al escalar por ATRIBUTO transform */
   #stage g.draggable * { vector-effect: non-scaling-stroke; }
+
+  /* ⚠️ IMPORTANTE: no aplicar transform por CSS a g.draggable (rompe posiciones) */
 </style>
 
 <script>
@@ -43,48 +51,60 @@
   const grupoId = '<%= grupo_id || "" %>';
   const instQS  = '<%= inst || "" %>';
   const src     = '<%= (typeof src !== "undefined" && src) ? src : "clasif" %>'; // 'clasif' por defecto
-  const scope = (src === 'evento') ? 'evento' : 'grupo';
+  const scope   = (src === 'evento') ? 'evento' : 'grupo';
+
   const $wrap   = document.getElementById('wrap');
   const $save   = document.getElementById('btnGuardarLayout');
   const $pdf    = document.getElementById('btnAbrirPDF');
 
   if (!$wrap || !grupoId) { alert('Falta grupo_id'); return; }
 
-  // Dimensiones del SVG (se ajustan con viewBox)
+  // Dimensiones del SVG (por viewBox)
   let SVG, W = 1400, H = 900;
-  let SCALE_K = 1;
-// Factor de escala según ancho de pantalla
-function computeScale(){
-  const w = window.innerWidth || document.documentElement.clientWidth;
-  if (w <= 360) return 1.6;
-  if (w <= 480) return 1.4;
-  if (w <= 768) return 1.2;
-  return 1; // desktop/tablet grande sin escala extra
-}
 
-// Aplica (o reajusta) la escala a TODAS las fichas ya pintadas
-function applyMobileScale(){
-  if (!SVG) return;
-  const k = computeScale();
-  SCALE_K = k;
-  SVG.querySelectorAll('g.draggable[data-key]').forEach(g => {
-    const t = parseTransform(g.getAttribute('transform') || 'translate(0,0) rotate(0)');
-    // Importante: ESCALA primero, luego translate/rotate → así el tx/ty NO se escalan
-    g.setAttribute('transform', `scale(${k}) translate(${t.tx},${t.ty}) rotate(${t.angle})`);
-  });
-}
+  // ========= Escala (en atributo transform) =========
+  let SCALE_K = 1; // factor actual
+  const SCALE_KEY = `plano:scale:${scope}:${grupoId}`;
+  const $scRange = document.getElementById('scRange');
+  const $scPct   = document.getElementById('scPct');
 
-  // Helpers de rutas según la fuente
+  // Lee translate/rotate (ignora scale)
+  function parseTR(s){
+    const t = { tx:0, ty:0, angle:0 };
+    if (!s) return t;
+    const mT = s.match(/translate\(\s*([-\d.]+)[ ,]\s*([-\d.]+)\s*\)/i);
+    if (mT) { t.tx = +mT[1]||0; t.ty = +mT[2]||0; }
+    const mR = s.match(/rotate\(\s*([-\d.]+)\s*\)/i);
+    if (mR) { t.angle = +mR[1]||0; }
+    return t;
+  }
+
+  function applyScaleToAll(k){
+    SCALE_K = k;
+    (SVG?.querySelectorAll('g.draggable[data-key]') || []).forEach(g=>{
+      const t = parseTR(g.getAttribute('transform') || '');
+      g.setAttribute('transform', `scale(${k}) translate(${t.tx},${t.ty}) rotate(${t.angle})`);
+    });
+    try{ localStorage.setItem(SCALE_KEY, String(k)); }catch{}
+    if ($scRange) $scRange.value = Math.round(k*100);
+    if ($scPct)   $scPct.textContent = `${Math.round(k*100)}%`;
+  }
+  function initScaleFromStorage(){
+    let saved = parseFloat(localStorage.getItem(SCALE_KEY));
+    if (!Number.isFinite(saved)) saved = 1.3;  // 130% por defecto
+    return saved;
+  }
+
+  // ========= Rutas =========
   function svgBaseFor(id){ return `/plano/${src}/${encodeURIComponent(id)}.svg`; }
   function pdfBaseFor(id){ return `/plano/${src}/${encodeURIComponent(id)}.pdf`; }
 
-  // Enlace al PDF con el mismo filtro de instrumentos (si lo hay)
   (function setPdfHref(){
     const base = pdfBaseFor(grupoId);
     if ($pdf) $pdf.href = instQS ? `${base}?inst=${encodeURIComponent(instQS)}` : base;
   })();
 
-  // Ajusta el alto del contenedor al viewport
+  // Ajusta alto del contenedor al viewport
   function resizeWrap() {
     const marginBottom = 16;
     const top = $wrap.getBoundingClientRect().top;
@@ -109,8 +129,9 @@ function applyMobileScale(){
     if (p.length === 4) { W = p[2]; H = p[3]; }
   }
 
-  // Drag & drop
+  // ========= Drag & drop =========
   let dragging = null, startPt = null, startTx = 0, startTy = 0, startAngle = 0;
+
   function parseTransform(t) {
     const m1 = t.match(/translate\(([-\d.]+)[ ,]([-\d.]+)\)/);
     const m2 = t.match(/rotate\(([-\d.]+)\)/);
@@ -123,10 +144,14 @@ function applyMobileScale(){
   }
   function enableDrag(){
     SVG.addEventListener('pointerdown', (e) => {
-      const g = e.target.closest('g.draggable[data-key]');
+      // Si haces doble-clic/edición sobre un <text>, no activamos drag
+      if (e.target.closest && e.target.closest('text')) return;
+
+      const g = e.target.closest && e.target.closest('g.draggable[data-key]');
       if (!g) return;
+
       dragging = g;
-      dragging.setPointerCapture(e.pointerId);
+      dragging.setPointerCapture?.(e.pointerId);
       const t = parseTransform(g.getAttribute('transform') || 'translate(0,0) rotate(0)');
       startTx = t.tx; startTy = t.ty; startAngle = t.angle;
       startPt = toSvgCoords(e);
@@ -138,10 +163,12 @@ function applyMobileScale(){
       dragging.setAttribute('transform', `scale(${SCALE_K}) translate(${startTx+dx},${startTy+dy}) rotate(${startAngle})`);
       dragging.classList.add('dirty');
     });
-    SVG.addEventListener('pointerup', () => { dragging = null; });
-    SVG.addEventListener('pointercancel', () => { dragging = null; });
+    const endDrag = () => { dragging = null; };
+    SVG.addEventListener('pointerup', endDrag);
+    SVG.addEventListener('pointercancel', endDrag);
   }
 
+  // ========= Guardado/recuperación de layout =========
   async function applySavedLayout(){
     try {
       const r = await fetch(`/plano/layout?scope=${encodeURIComponent(scope)}&scope_id=${encodeURIComponent(grupoId)}`);
@@ -158,6 +185,277 @@ function applyMobileScale(){
     } catch {}
   }
 
+  async function saveLayout(){
+    const dirty = [...SVG.querySelectorAll('g.draggable.dirty')];
+    const updates = dirty.map(g => {
+      const key = g.getAttribute('data-key');
+      const { tx, ty, angle } = parseTR(g.getAttribute('transform') || '');
+      return { key, x: tx / W, y: ty / H, angle };
+    });
+    const res = await fetch('/plano/layout', {
+      method: 'PUT',
+      headers: { 'Content-Type':'application/json' },
+      body: JSON.stringify({ scope, scope_id: grupoId, updates })
+    });
+    if (!res.ok) {
+      let msg = 'Error guardando layout';
+      try {
+        const ct = res.headers.get('content-type')||'';
+        msg = ct.includes('json') ? (await res.json()).error : (await res.text());
+      } catch {}
+      throw new Error(msg || 'Error guardando layout');
+    }
+    // si todo ok, limpias dirty (lo reharé tras flush para mantener UX)
+  }
+
+  // ========= Edición de NÚMERO y PARTE (I/II) =========
+  const CARD_DATA_KEY = `plano:cardData:${scope}:${grupoId}`;
+
+  const getCardData = () => {
+    try{ return JSON.parse(localStorage.getItem(CARD_DATA_KEY)||'{}'); }
+    catch{ return {}; }
+  };
+  const setCardData = m => { try{ localStorage.setItem(CARD_DATA_KEY, JSON.stringify(m)); }catch{} };
+
+  // Server: GET/PUT con logging de errores
+  async function fetchServerCardData(){
+    try{
+      const u = `/plano/card-data?scope=${encodeURIComponent(scope)}&scope_id=${encodeURIComponent(grupoId)}`;
+      const r = await fetch(u);
+      if (!r.ok) return {};
+      const j = await r.json();
+      const map = {};
+      (j.items||[]).forEach(it => {
+        map[it.key] = { num: it.num ?? undefined, part: it.part ?? undefined };
+      });
+      return map;
+    }catch{ return {}; }
+  }
+  async function putCardData(key, partial){
+    const payload = { scope, scope_id: grupoId, key, ...partial };
+    try{
+      const r = await fetch('/plano/card-data', {
+        method: 'PUT',
+        headers: { 'Content-Type':'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (!r.ok) {
+        const msg = await r.text().catch(()=> r.statusText);
+        console.error('[card-data] PUT failed', r.status, msg, payload);
+      }
+    }catch(e){
+      console.error('[card-data] network error', e, payload);
+    }
+  }
+
+  // Utilidades de búsqueda en los textos de la ficha
+  function listTextNodes(g){
+    return Array.from(g.querySelectorAll('text, tspan'));
+  }
+  function getFontSize(el){
+    const attr = el.getAttribute('font-size');
+    if (attr && !isNaN(parseFloat(attr))) return parseFloat(attr);
+    const cs = window.getComputedStyle(el);
+    const px = parseFloat(cs.fontSize || '0');
+    return isNaN(px) ? 0 : px;
+  }
+
+  function findNumberText(g){
+    const nodes = listTextNodes(g);
+    // 1) exacto dígitos
+    let cand = nodes.find(n => /^\d{1,3}$/.test((n.textContent||'').trim()));
+    if (cand) return cand;
+    // 2) contiene dígitos → el de mayor font-size
+    const withDigits = nodes
+      .filter(n => /\d/.test((n.textContent||'').trim()))
+      .map(n => ({ n, fs: getFontSize(n) }))
+      .sort((a,b)=> b.fs - a.fs);
+    return withDigits[0]?.n || null;
+  }
+
+  // Normaliza entradas/variantes → 'I' | 'II' o null si no válida
+  function normalizeRomanInput(v){
+    if (v == null) return null;
+    let s = String(v).trim().toUpperCase();
+    // quita adornos
+    s = s.replace(/[º°.\s-–—]/g, '');
+    // mapea unicode romanos a ASCII
+    s = s.replace(/Ⅰ/g, 'I').replace(/Ⅱ/g, 'II');
+    if (s === '1') s = 'I';
+    if (s === '2') s = 'II';
+    return (s === 'I' || s === 'II') ? s : null;
+  }
+
+  function findRomanText(g){
+    const nodes = listTextNodes(g);
+
+    // 1) candidatos por contenido (permisivo)
+    const byContent = nodes.filter(n => {
+      const raw = (n.textContent || '').trim().toUpperCase();
+      // acepta I, II, Ⅰ, Ⅱ, 1, 2 con adornos opcionales
+      return /^(?:I|II|Ⅰ|Ⅱ|1|2)(?:[º°.\s-–—]*)$/.test(raw);
+    });
+    if (byContent.length) {
+      // el de fuente más pequeña (suele ser el “de abajo”)
+      byContent.sort((a,b)=> getFontSize(a) - getFontSize(b));
+      return byContent[0];
+    }
+
+    // 2) heurística: texto corto en la mitad inferior de la ficha
+    try{
+      const gb = g.getBBox();
+      const midY = gb.y + gb.height/2;
+      const shortBottom = nodes.filter(n => {
+        const t = (n.textContent || '').trim();
+        if (t.length > 3) return false;
+        const b = n.getBBox?.();
+        return b && (b.y + b.height/2) > midY;
+      });
+      if (shortBottom.length){
+        shortBottom.sort((a,b)=> getFontSize(a) - getFontSize(b));
+        return shortBottom[0];
+      }
+    }catch{}
+
+    return null;
+  }
+
+  function applySavedCardData(){
+    const map = getCardData();
+    (SVG?.querySelectorAll('g.draggable[data-key]') || []).forEach(g=>{
+      const key = g.getAttribute('data-key');
+      const data = map[key];
+      if (!data) return;
+      if (data.num !== undefined){
+        const nt = findNumberText(g);
+        if (nt && /^\d{1,3}$/.test(String(data.num))) nt.textContent = String(data.num);
+      }
+      if (data.part){
+        const rt = findRomanText(g);
+        const norm = normalizeRomanInput(data.part);
+        if (rt && norm) rt.textContent = norm;
+      }
+    });
+  }
+
+  // === Recolectar y subir textos al pulsar Guardar ===
+  function collectCurrentCardData(){
+    const items = [];
+    (SVG?.querySelectorAll('g.draggable[data-key]') || []).forEach(g => {
+      const key = g.getAttribute('data-key');
+      const nNode = findNumberText(g);
+      const rNode = findRomanText(g);
+      const num = nNode ? Number((nNode.textContent||'').trim()) : null;
+      const partRaw = rNode ? (rNode.textContent||'').trim() : null;
+      const part = normalizeRomanInput(partRaw); // I | II | null
+      items.push({ key, num: Number.isFinite(num) ? num : null, part: part || null });
+    });
+    return items;
+  }
+
+  async function flushCardData(){
+    const items = collectCurrentCardData();
+    // subir uno a uno (robusto); si quieres optimizar, hacemos endpoint /bulk
+    for (const it of items){
+      await putCardData(it.key, { num: it.num, part: it.part });
+    }
+    // sincroniza el cache local también
+    const map = getCardData();
+    for (const it of items){
+      map[it.key] = { num: it.num ?? undefined, part: it.part ?? undefined };
+    }
+    setCardData(map);
+  }
+
+  function openInlineEditor({ targetText, g, clientX, clientY, mode }){
+    const key = g.getAttribute('data-key');
+    const start = (targetText.textContent||'').trim();
+
+    const inp = document.createElement('input');
+    Object.assign(inp.style, {
+      position:'fixed', left:(clientX+8)+'px', top:(clientY+8)+'px',
+      width: mode==='roman' ? '52px' : '64px',
+      padding:'6px 8px', fontSize:'16px',
+      border:'1px solid #ccc', borderRadius:'8px', zIndex:9999
+    });
+    if (mode === 'number'){
+      inp.type='number'; inp.min='0'; inp.max='999';
+    } else {
+      inp.type='text';
+      inp.inputMode='text';
+      inp.maxLength=3;
+      inp.style.textTransform='uppercase';
+    }
+    inp.value = start;
+    document.body.appendChild(inp);
+    inp.focus(); inp.select();
+
+    const done = ok => {
+      const map = getCardData();
+      const cur = map[key] || {};
+      if (ok){
+        let v = String(inp.value||'').trim();
+        if (mode === 'number'){
+          if (/^\d{1,3}$/.test(v)){
+            targetText.textContent = v;
+            cur.num = v;
+            map[key] = cur; setCardData(map);
+            putCardData(key, { num: Number(v) });  // persistencia servidor
+          }
+        } else { // roman
+          const norm = normalizeRomanInput(v);
+          if (norm){
+            targetText.textContent = norm;
+            cur.part = norm;
+            map[key] = cur; setCardData(map);
+            putCardData(key, { part: norm });      // persistencia servidor
+          }
+        }
+      }
+      inp.remove();
+    };
+    inp.addEventListener('keydown', e=>{ if(e.key==='Enter') done(true); if(e.key==='Escape') done(false); });
+    inp.addEventListener('blur', ()=>done(true));
+  }
+
+  function enableTextEdit(){
+    SVG.addEventListener('dblclick', e=>{
+      const g = e.target.closest && e.target.closest('g.draggable[data-key]');
+      if (!g) return;
+
+      const clickedText = e.target.closest && e.target.closest('text, tspan');
+      const raw = (clickedText?.textContent || '').trim();
+
+      // número directo
+      if (/^\d{1,3}$/.test(raw)){
+        e.preventDefault();
+        openInlineEditor({ targetText: clickedText, g, clientX:e.clientX, clientY:e.clientY, mode:'number' });
+        return;
+      }
+      // roman directo: I, II, Ⅰ, Ⅱ, 1, 2 con adornos
+      if (/^(?:I|II|Ⅰ|Ⅱ|1|2)(?:[º°.\s-–—]*)$/i.test(raw)){
+        e.preventDefault();
+        openInlineEditor({ targetText: clickedText, g, clientX:e.clientX, clientY:e.clientY, mode:'roman' });
+        return;
+      }
+
+      // búsqueda heurística en el grupo
+      const nt = findNumberText(g);
+      if (nt){
+        e.preventDefault();
+        openInlineEditor({ targetText: nt, g, clientX:e.clientX, clientY:e.clientY, mode:'number' });
+        return;
+      }
+      const rt = findRomanText(g);
+      if (rt){
+        e.preventDefault();
+        openInlineEditor({ targetText: rt, g, clientX:e.clientX, clientY:e.clientY, mode:'roman' });
+        return;
+      }
+    });
+  }
+
+  // ========= Carga del SVG =========
   async function loadSVG(){
     try{
       const base = svgBaseFor(grupoId);
@@ -167,55 +465,64 @@ function applyMobileScale(){
       SVG.id = 'stage';
       parseViewBox(SVG);
 
-      // SVG responsive: ocupa el wrap completo
+      // SVG responsive
       SVG.setAttribute('preserveAspectRatio', 'xMidYMid meet');
       SVG.removeAttribute('width');
       SVG.removeAttribute('height');
       SVG.style.width  = '100%';
       SVG.style.height = '100%';
 
-      // Ajusta el contenedor y pinta
       resizeWrap();
       $wrap.innerHTML = '';
       $wrap.appendChild(SVG);
 
       await applySavedLayout();
-      applyMobileScale();
+
+      // 1) Servidor → 2) fusiona con local → 3) pinta
+      const serverMap = await fetchServerCardData();
+      const localMap  = getCardData();
+      const merged    = { ...serverMap, ...localMap }; // local gana si hay conflicto
+      setCardData(merged);
+      applySavedCardData();
+
+      // Aplica escala guardada (atributo transform)
+      applyScaleToAll(initScaleFromStorage());
+
       enableDrag();
+      enableTextEdit();
     } catch (e) {
       $wrap.innerHTML = `<div class="p-3 text-danger"><pre style="white-space:pre-wrap">${(e.message||e).toString()}</pre></div>`;
     }
   }
 
-  async function saveLayout(){
-    const dirty = [...SVG.querySelectorAll('g.draggable.dirty')];
-    if (!dirty.length) { alert('No hay cambios.'); return; }
-    const updates = dirty.map(g => {
-      const key = g.getAttribute('data-key');
-      const { tx, ty, angle } = parseTransform(g.getAttribute('transform') || '');
-      return { key, x: tx / W, y: ty / H, angle };
-    });
-    const res = await fetch('/plano/layout', {
-      method: 'PUT',
-      headers: { 'Content-Type':'application/json' },
-      body: JSON.stringify({ scope:'grupo', scope_id: grupoId, updates })
-    });
-    if (res.ok) { alert('Layout guardado'); dirty.forEach(g => g.classList.remove('dirty')); }
-    else {
-      let msg = 'Error guardando layout';
-      try {
-        const ct = res.headers.get('content-type')||'';
-        msg = ct.includes('json') ? (await res.json()).error : (await res.text());
-      } catch {}
-      alert(msg || 'Error guardando layout');
+  // ========= Eventos =========
+  window.addEventListener('resize', () => { resizeWrap(); });
+  $scRange?.addEventListener('input', e => { applyScaleToAll(Number(e.target.value)/100); });
+
+  // Guardar layout + textos
+  $save?.addEventListener('click', async () => {
+    const prev = $save.textContent;
+    $save.disabled = true; $save.textContent = 'Guardando…';
+    try {
+      await saveLayout();       // posiciones/ángulos
+      await flushCardData();    // número y I/II
+      // limpiar marcas de sucio tras guardar todo
+      SVG?.querySelectorAll('g.draggable.dirty')?.forEach(g => g.classList.remove('dirty'));
+      alert('Layout y textos guardados');
+    } catch (e) {
+      console.error(e);
+      alert('No se pudo guardar todo. Revisa la consola.');
+    } finally {
+      $save.disabled = false; $save.textContent = prev;
     }
-  }
+  });
 
-  // Eventos
-  window.addEventListener('resize', () => { resizeWrap(); applyMobileScale(); });
-  document.getElementById('btnGuardarLayout')?.addEventListener('click', saveLayout);
+  // ========= Arranque =========
+  (function setPdfHrefInit(){
+    const base = pdfBaseFor(grupoId);
+    if ($pdf) $pdf.href = instQS ? `${base}?inst=${encodeURIComponent(instQS)}` : base;
+  })();
 
-  // Arranque
   loadSVG();
 })();
 </script>
