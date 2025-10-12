@@ -603,4 +603,44 @@ button[disabled]{ opacity:.7; cursor:not-allowed; }
 .page-agenda .fc .fc-toolbar{
   margin-bottom: 8px;
 }
+/* ===== Ensanchar layout en TODA la app (override global) ===== */
+
+/* Contenedor más ancho y fluido en móvil */
+.container{
+  /* 96% del viewport, con tope inicial más amplio */
+  max-width: min(96vw, 640px);
+  padding: clamp(12px, 3.5vw, 24px);
+}
+
+/* En pantallas medianas ampliamos aún más el tope */
+@media (min-width: 480px){
+  .container{ max-width: min(96vw, 720px); }
+}
+
+/* En tablets/grandes damos todavía más aire */
+@media (min-width: 768px){
+  .container{ max-width: 820px; }
+}
+
+/* Reducir padding global en móvil (ya tenías 2rem y estrecha el área útil) */
+body{
+  padding: clamp(8px, 3vw, 24px);
+}
+
+/* Formularios: que el contenido se adapte al nuevo ancho sin “estirar” demasiado */
+.panel{
+  padding: clamp(12px, 3vw, 20px);
+}
+
+/* Para grids de acciones en la home del alumno: mantener 2 columnas en móviles anchos */
+@media (min-width: 420px){
+  .grid-actions{ grid-template-columns: repeat(2, 1fr); }
+}
+
+/* Hero: limitar el logo/agua al crecer el contenedor para que no “coma” contenido */
+.hero .hero-logo{ max-height: 128px; }
+.hero::before{
+  width: clamp(140px, 26vw, 260px);
+  height: clamp(80px, 16vw, 150px);
+}
 
