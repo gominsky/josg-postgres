@@ -3032,4 +3032,266 @@ function setMinutesCell(tr, val){
   })();
   </script>
   
-
+  <style>
+    /* Puntito real junto al nombre (no pseudo-elemento) */
+    #asigBody .dot-alu{
+      display:inline-block; font-weight:900; line-height:1;
+      margin-left:6px; font-size:.85em; transform: translateY(-1px);
+    }
+    #asigBody .dot-alu.inv{ color:#2563eb; } /* invitado */
+    #asigBody .dot-alu.res{ color:#f59e0b; } /* reserva  */
+    /* Banda lateral de apoyo (si quieres mantenerla visualmente) */
+    #asigBody tr.is-invitado{ border-left:4px solid #2563eb; background-image:linear-gradient(to right, rgba(37,99,235,.06), transparent); }
+    #asigBody tr.is-reserva { border-left:4px solid #f59e0b; background-image:linear-gradient(to right, rgba(245,158,11,.06), transparent); }
+  </style>
+  
+  <script>
+  (() => {
+    const $tbody  = document.getElementById('asigBody');
+    const $extras = document.getElementById('extrasWrap');
+    const eventoId = Number(<%= evento.id %>);
+    if (!$tbody) return;
+  
+    // Quita cualquier marca previa
+    function clearMarks(tr){
+      tr.classList.remove('is-invitado','is-reserva');
+      tr.querySelectorAll('.dot-alu').forEach(n => n.remove());
+      tr.removeAttribute('data-status');
+    }
+  
+    // Inserta el puntito real al final del <strong>
+    function putDot(tr, kind){ // kind: 'inv' | 'res'
+      const strong = tr.querySelector('td:first-child strong');
+      if (!strong) return;
+      const span = document.createElement('span');
+      span.className = `dot-alu ${kind}`;
+      span.textContent = '●';
+      strong.appendChild(span);
+    }
+  
+    function apply(invSet, resSet){
+      $tbody.querySelectorAll('tr[data-alumno]').forEach(tr => {
+        const id = Number(tr.dataset.alumno);
+        if (!Number.isFinite(id)) return;
+        clearMarks(tr);
+  
+        const isInv = invSet.has(id);
+        const isRes = !isInv && resSet.has(id); // prioridad INV
+  
+        if (isInv){ tr.classList.add('is-invitado'); tr.dataset.status = 'inv'; putDot(tr,'inv'); }
+        else if (isRes){ tr.classList.add('is-reserva'); tr.dataset.status = 'res'; putDot(tr,'res'); }
+      });
+    }
+  
+    // --- Fuente 1: DOM de Extras (no depende de fetch/JSON) ---
+    function setsFromExtrasDOM(){
+      if (!$extras) return null;
+      const q = (sel) => Array.from($extras.querySelectorAll(sel));
+      const inv = new Set(q('table[data-tipo="invitados"] tbody tr').map(tr => Number(tr.dataset.alumno)).filter(Number.isFinite));
+      const res = new Set(q('table[data-tipo="reservas"] tbody tr').map(tr => Number(tr.dataset.alumno)).filter(Number.isFinite));
+      return { inv, res };
+    }
+  
+    // --- Fuente 2: endpoints (fallback) ---
+    const toIdSet = (list) => {
+      if (!Array.isArray(list)) return new Set();
+      return new Set(list.map(x => {
+        if (typeof x === 'number' || typeof x === 'string') return Number(x);
+        if (x && (x.alumno_id != null || x.id != null)) return Number(x.alumno_id ?? x.id);
+        return NaN;
+      }).filter(Number.isFinite));
+    };
+    async function fetchJSON(url){
+      const r = await fetch(url, { cache:'no-store' });
+      if (!r.ok) throw new Error('HTTP '+r.status);
+      const ct = r.headers.get('content-type') || '';
+      return ct.includes('application/json') ? r.json() : {};
+    }
+    async function setsFromAPI(){
+      try{
+        const j = await fetchJSON(`/eventos/${eventoId}/extras/tags`);
+        return { inv: toIdSet(j?.invitados), res: toIdSet(j?.reservas) };
+      }catch{
+        const [inv, res] = await Promise.allSettled([
+          fetchJSON(`/eventos/${eventoId}/extras/invitados`),
+          fetchJSON(`/eventos/${eventoId}/extras/reservas`),
+        ]);
+        return {
+          inv: toIdSet(inv.value || []),
+          res: toIdSet(res.value || []),
+        };
+      }
+    }
+  
+    // Pintado robusto: primero intenta DOM; si está vacío, prueba API.
+    async function paint(){
+      // 1) Espera a que existan las filas de alumnos
+      if (!$tbody.querySelector('tr[data-alumno]')) {
+        requestAnimationFrame(paint); return;
+      }
+      // 2) DOM de Extras
+      const domSets = setsFromExtrasDOM();
+      if (domSets && (domSets.inv.size || domSets.res.size)) {
+        apply(domSets.inv, domSets.res);
+        return;
+      }
+      // 3) API fallback
+      try{
+        const apiSets = await setsFromAPI();
+        apply(apiSets.inv, apiSets.res);
+      }catch(e){
+        // Último recurso: no hacer nada silenciosamente
+        console.warn('[inv/res] no se pudo obtener datos', e);
+      }
+    }
+  
+    // Inicial
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', paint, { once:true });
+    } else {
+      paint();
+    }
+  
+    // Repinta si cambian Extras (DOM) o si se añaden/quitán filas en alumnos
+    const obs1 = new MutationObserver(() => paint());
+    $extras && obs1.observe($extras, { childList:true, subtree:true });
+    const obs2 = new MutationObserver(() => paint());
+    obs2.observe($tbody, { childList:true });
+  
+    // Utilidad de depuración (opcional)
+    window.__INV_RES_FORCE__ = (id, kind) => { // kind: 'inv'|'res'|'' (limpiar)
+      const tr = $tbody.querySelector(`tr[data-alumno="${id}"]`);
+      if (!tr) return false;
+      clearMarks(tr);
+      if (kind === 'inv'){ tr.classList.add('is-invitado'); tr.dataset.status='inv'; putDot(tr,'inv'); }
+      else if (kind === 'res'){ tr.classList.add('is-reserva'); tr.dataset.status='res'; putDot(tr,'res'); }
+      return true;
+    };
+  })();
+  </script>
+  <!-- ====== INV/RES: HARNESS A PRUEBA DE BALAS ====== -->
+<script id="invres-harness">
+  (() => {
+    if (window.__INVRES_HARNESS__) return; window.__INVRES_HARNESS__ = true;
+    const $tbody = document.getElementById('asigBody');
+    if (!$tbody) { console.warn('[INV/RES] no hay #asigBody'); return; }
+    const eventoId = Number(<%= Number(evento.id) %>);
+  
+    // ===== Helpers super simples (sin CSS) =====
+    const mark = (tr, kind) => {
+      // Limpia marcas previas (por si re-pintamos)
+      tr.querySelectorAll('.mark-invres').forEach(n => n.remove());
+      tr.classList.remove('is-invitado','is-reserva');
+      tr.removeAttribute('data-status');
+  
+      const strong = tr.querySelector('td:first-child strong');
+      if (!strong) return;
+  
+      // Marca de texto visible SIEMPRE (no depende de CSS)
+      const sup = document.createElement('sup');
+      sup.className = 'mark-invres';
+      sup.textContent = (kind === 'inv') ? ' INV' : ' RES';
+      sup.style.cssText = 'margin-left:6px;font-size:11px;font-weight:700;'
+                        + (kind === 'inv' ? 'color:#2563eb' : 'color:#f59e0b');
+      strong.appendChild(sup);
+  
+      // Banda lateral como apoyo visual
+      if (kind === 'inv') tr.classList.add('is-invitado');
+      if (kind === 'res') tr.classList.add('is-reserva');
+    };
+  
+    const apply = (inv, res) => {
+      let cInv = 0, cRes = 0;
+      $tbody.querySelectorAll('tr[data-alumno]').forEach(tr => {
+        const id = Number(tr.dataset.alumno);
+        if (!Number.isFinite(id)) return;
+        if (inv.has(id)) { mark(tr, 'inv'); cInv++; }
+        else if (res.has(id)) { mark(tr, 'res'); cRes++; }
+      });
+      console.log('[INV/RES] aplicado → inv:', cInv, 'res:', cRes);
+    };
+  
+    // ===== Fuente 1: DOM de Extras (sin fetch) =====
+    const fromExtrasDOM = () => {
+      const wrap = document.getElementById('extrasWrap'); if (!wrap) return null;
+      const get = sel => Array.from(wrap.querySelectorAll(sel))
+        .map(tr => Number(tr.dataset.alumno)).filter(Number.isFinite);
+      const inv = new Set(get('table[data-tipo="invitados"] tbody tr'));
+      const res = new Set(get('table[data-tipo="reservas"]  tbody tr'));
+      return { inv, res };
+    };
+  
+    // ===== Fuente 2: API (fallback) =====
+    const toIdSet = list => new Set((Array.isArray(list)?list:[])
+      .map(x => typeof x === 'object' ? Number(x.alumno_id ?? x.id) : Number(x))
+      .filter(Number.isFinite));
+    const fetchJSON = async url => {
+      const r = await fetch(url, { cache: 'no-store' });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json().catch(()=> ({}));
+    };
+    const fromAPI = async () => {
+      try {
+        const j = await fetchJSON(`/eventos/${eventoId}/extras/tags`);
+        return { inv: toIdSet(j.invitados), res: toIdSet(j.reservas) };
+      } catch {
+        const [a,b] = await Promise.allSettled([
+          fetchJSON(`/eventos/${eventoId}/extras/invitados`),
+          fetchJSON(`/eventos/${eventoId}/extras/reservas`)
+        ]);
+        return { inv: toIdSet(a.value), res: toIdSet(b.value) };
+      }
+    };
+  
+    // ===== Arranque: prueba visible “•” y marcados =====
+    const ready = async () => {
+      // Espera a que existan filas (por si llegan tarde)
+      for (let i=0; i<60 && !$tbody.querySelector('tr[data-alumno]'); i++) {
+        await new Promise(r => setTimeout(r, 50));
+      }
+      const firstStrong = $tbody.querySelector('tr[data-alumno] td:first-child strong');
+      if (firstStrong && !firstStrong.dataset._ping) {
+        firstStrong.dataset._ping = '1';
+        firstStrong.insertAdjacentText('beforeend', ' •'); // ← SI NO VES ESTE PUNTO, el script NO está corriendo
+      }
+  
+      // 1º: lee de Extras en DOM
+      const dom = fromExtrasDOM();
+      if (dom && (dom.inv.size || dom.res.size)) {
+        console.log('[INV/RES] usando DOM de Extras');
+        apply(dom.inv, dom.res);
+      } else {
+        // 2º: cae a API
+        console.log('[INV/RES] usando API /extras/*');
+        const api = await fromAPI().catch(e => { console.warn('[INV/RES] API falló', e); return { inv:new Set(), res:new Set() } });
+        apply(api.inv, api.res);
+      }
+  
+      // Reaccionar si cambian Extras o filas de alumnos
+      const wrap = document.getElementById('extrasWrap');
+      if (wrap) new MutationObserver(() => {
+        const d = fromExtrasDOM();
+        if (d && (d.inv.size || d.res.size)) apply(d.inv, d.res);
+      }).observe(wrap, { childList:true, subtree:true });
+  
+      new MutationObserver(() => {
+        const d = fromExtrasDOM();
+        if (d && (d.inv.size || d.res.size)) apply(d.inv, d.res);
+      }).observe($tbody, { childList:true });
+    };
+  
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', ready, { once:true });
+    } else {
+      ready();
+    }
+  
+    // Utilidad de prueba manual desde consola:
+    window.__INV_RES_FORCE__ = (alumnoId, kind) => {
+      const tr = $tbody.querySelector(`tr[data-alumno="${alumnoId}"]`);
+      if (!tr) return false;
+      mark(tr, kind === 'inv' ? 'inv' : 'res'); return true;
+    };
+  })();
+  </script>
+  

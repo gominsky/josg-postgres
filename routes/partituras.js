@@ -286,7 +286,7 @@ router.put('/:id', upload.single('archivo_partitura'), async (req, res) => {
 
   let enlace_partitura = null;
   if (req.file) {
-    enlace_partitura = '/partituras/' + req.file.filename;   // subido a /public/partituras
+    enlace_partitura = '/partituren/' + req.file.filename;   // subido a /public/partituren
   } else {
     enlace_partitura = normalizeUrl(enlace_input);            // externa (https://…)
   }
