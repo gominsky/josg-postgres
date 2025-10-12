@@ -977,8 +977,57 @@ async function doSave(nombre, descripcion){
     margin-left:.4rem;
   }
   .fm-badge[hidden]{ display:none !important; }
-</style>
+  /* Punto junto al nombre según data-status (sin tocar el HTML) */
+#asigBody td:first-child strong{ position:relative; }
+#asigBody tr[data-status="inv"] td:first-child strong::after,
+#asigBody tr[data-status="res"] td:first-child strong::after{
+  content:"";
+  display:inline-block;
+  width:0.6rem; height:0.6rem;
+  margin-left:6px; vertical-align:middle;
+  border-radius:999px;
+  box-shadow:0 0 0 1px rgba(0,0,0,.12) inset;
+}
+/* Colores: Invitado = azul, Reserva = ámbar */
+#asigBody tr[data-status="inv"] td:first-child strong::after{ background:#2563eb; }
+#asigBody tr[data-status="res"] td:first-child strong::after{ background:#f59e0b; }
+#alumWrap #asigBody td:first-child strong{ position:relative; }
+#alumWrap #asigBody tr[data-status="inv"] td:first-child strong::after,
+#alumWrap #asigBody tr[data-status="res"] td:first-child strong::after{
+  content:"";
+  display:inline-block;
+  width:0.6rem; height:0.6rem;
+  margin-left:6px; vertical-align:middle;
+  border-radius:999px;
+  box-shadow:0 0 0 1px rgba(0,0,0,.12) inset;
+}
+#alumWrap #asigBody tr[data-status="inv"] td:first-child strong::after{ background:#2563eb; }
+#alumWrap #asigBody tr[data-status="res"] td:first-child strong::after{ background:#f59e0b; }
+/* Punto junto al nombre (más específico) */
+#alumWrap #asigBody td:first-child strong{ position:relative; }
+#alumWrap #asigBody tr[data-status="inv"] td:first-child strong::after,
+#alumWrap #asigBody tr[data-status="res"] td:first-child strong::after{
+  content:"";
+  display:inline-block;
+  width:0.6rem; height:0.6rem;
+  margin-left:6px; vertical-align:middle;
+  border-radius:999px;
+  box-shadow:0 0 0 1px rgba(0,0,0,.12) inset;
+}
+#alumWrap #asigBody tr[data-status="inv"] td:first-child strong::after{ background:#2563eb; }
+#alumWrap #asigBody tr[data-status="res"] td:first-child strong::after{ background:#f59e0b; }
 
+/* Fallback visual inmediato por clases (banda lateral) */
+#alumWrap #asigBody tr.is-invitado{
+  border-left:4px solid #2563eb;
+  background-image:linear-gradient(to right, rgba(37,99,235,.06), transparent);
+}
+#alumWrap #asigBody tr.is-reserva{
+  border-left:4px solid #f59e0b;
+  background-image:linear-gradient(to right, rgba(245,158,11,.06), transparent);
+}
+
+</style>
 <!-- ============ Utils compartidas ============ -->
 <script>
 (() => {
@@ -1028,6 +1077,7 @@ async function doSave(nombre, descripcion){
 (() => {
   const eventoId = <%= evento.id %>;
   const $wrap = document.getElementById('extrasWrap');
+  window.FALLBACK = window.FALLBACK || { invitados: new Set(), reservas: new Set() };
 
   const tipos = ['invitados','reservas'];
   const dataCache = { invitados: [], reservas: [] };
@@ -1147,7 +1197,6 @@ async function doSave(nombre, descripcion){
 }
 
 // Delegación de clicks (asegúrate de tener $wrap)
-const $wrap = document.getElementById('extrasWrap');
 $wrap.addEventListener('click', ev => {
   const btn = ev.target.closest('[data-action]');
   if (!btn) return;
@@ -1709,7 +1758,7 @@ function setMinutesCell(tr, val){
     function finOf(row){  return hhmm(first(row?.hora_fin,   row?.fin,   row?.hora_fin,  row?.end_time,  DEF_FIN)); }
   
     // Catálogo de actividades (usa el precargado si existe)
-    let ACT_CACHE = window.__ACT_CAT__ || null;
+    let ACT_CACHE = window.__ACT_CAT__ || null
     async function ensureActividades(){
       if (Array.isArray(ACT_CACHE)) return ACT_CACHE;
       try{
@@ -2682,421 +2731,305 @@ function setMinutesCell(tr, val){
     });
   })();
   </script>
-   <script>
-(() => {
-  const el = document.getElementById('evtDate');
-  if (!el) return;
-
-  const iso = (el.dataset.date || '').trim();      // p.ej. "2025-10-07"
-  const hIni = (el.dataset.hini || '').slice(0,5); // "HH:MM"
-  const hFin = (el.dataset.hfin || '').slice(0,5); // "HH:MM"
-
-  let fechaTxt = '';
-  if (iso) {
-    // Permite "YYYY-MM-DD" o iso con tiempo
-    const ymd = /^\d{4}-\d{2}-\d{2}$/.test(iso) ? iso + 'T00:00:00' : iso;
-    const d = new Date(ymd);
-    if (!isNaN(d.getTime())) {
-      fechaTxt = d.toLocaleDateString('es-ES', {
-        weekday: 'short', day: '2-digit', month: 'long', year: 'numeric'
-      });
-      // Capitaliza el primer carácter (opcional)
-      fechaTxt = fechaTxt.charAt(0).toUpperCase() + fechaTxt.slice(1);
-    }
-  }
-
-  // Construye "mar, 07 de octubre de 2025 — 18:00–20:00"
-  const horas =
-    (hIni && hFin) ? ` — ${hIni}–${hFin}` :
-    (hIni ? ` — ${hIni}` : '');
-
-  el.textContent = (fechaTxt || 'Fecha sin definir') + horas;
-})();
-</script>
 <script>
-(() => {
-  const eventoId = <%= evento.id %>;
-
-  // Rutas disponibles (sin add_all)
-  window.ROUTES = window.ROUTES || {};
-  window.ROUTES.extras = {
-    list:   (id, tipo) => `/eventos/${id}/extras/${tipo}`,
-    addSel: (id, tipo) => `/eventos/${id}/extras/${tipo}/add`,
-    tags:   (id)       => `/eventos/${id}/extras/tags` // si algún día existe, se usará
-  };
-   // Leer horas del evento de #evtDate
-  const evtDateEl = document.getElementById('evtDate');
- const H_INI = (evtDateEl?.dataset?.hini || '').slice(0,5) || null;
-  const H_FIN = (evtDateEl?.dataset?.hfin || '').slice(0,5) || null;
-  // Fallback y “memoria” local
-  const FALLBACK = { invitados: new Set(), reservas: new Set() };
-  const LS_INV = `evt${eventoId}:extras:inv`;
-  const LS_RES = `evt${eventoId}:extras:res`;
-  const addedInv = new Set(JSON.parse(localStorage.getItem(LS_INV) || '[]'));
-  const addedRes = new Set(JSON.parse(localStorage.getItem(LS_RES) || '[]'));
-  const saveAdded = () => {
-    localStorage.setItem(LS_INV, JSON.stringify([...addedInv]));
-    localStorage.setItem(LS_RES, JSON.stringify([...addedRes]));
-  };
-
-  // Carga tabla de un tipo (rellena fallback)
-  async function load(tipo){
-  const rows = await __fetchJSON(window.ROUTES.extras.list(eventoId, tipo));
-  const tbody = document.querySelector(`#extrasWrap table[data-tipo="${tipo}"] tbody`);
-  if (!tbody) return;
-
-  tbody.textContent = '';
-
-  for (const r of (rows || [])) {
-    const tr = document.createElement('tr');
-    tr.dataset.alumno = String(r.id);
-
-    // ✓
-    const tdChk = document.createElement('td');
-    const chk = document.createElement('input');
-    chk.type = 'checkbox';
-    chk.className = 'sel';
-    tdChk.appendChild(chk);
-
-    // Nombre + instrumento (debajo)
-    const tdNom = document.createElement('td');
-
-    const lineaNombre = document.createElement('div');
-    const strong = document.createElement('strong');
-    strong.textContent = `${r.apellidos || ''}, ${r.nombre || ''}`.replace(/\s+,/g, ',');
-    lineaNombre.appendChild(strong);
-
-    const lineaInstr = document.createElement('div');
-    lineaInstr.className = 'text-muted';
-    const instrumentos = (r.instrumento || r.instrumentos || '').toString().trim();
-    lineaInstr.textContent = instrumentos || '—';
-
-    tdNom.append(lineaNombre, lineaInstr);
-
-    tr.append(tdChk, tdNom);
-    tbody.appendChild(tr);
-  }
-
-  // Fallbacks (mantén tu lógica)
-  FALLBACK[tipo].clear();
-  (rows || []).forEach(r => FALLBACK[tipo].add(Number(r.id)));
-}
-
-
- async function addSelected(tipo){
-   const tbody = document.querySelector(`#extrasWrap table[data-tipo="${tipo}"] tbody`);
-   const ids = Array.from(tbody.querySelectorAll('.sel:checked'))
-     .map(chk => Number(chk.closest('tr').dataset.alumno))
-     .filter(Number.isInteger);
-   if (!ids.length) return;
-
-  // Lee horas del encabezado del evento
-   const evt = document.getElementById('evtDate');
-   const H_INI = (evt?.dataset?.hini || '').slice(0,5) || null; // "HH:MM"
-   const H_FIN = (evt?.dataset?.hfin || '').slice(0,5) || null; // "HH:MM"
-
-   const alumnos = ids.map(id => ({
-     alumno_id: id,
-     hora_inicio: H_INI,
-     hora_fin: H_FIN
-     // instrumento: (opcional; si no lo pones, el plano usa fallback y mostrará "Varios" si procede)
-   }));
-
-   // Endpoint correcto para extras (insert-only)
-   await fetch(window.ROUTES.extras.addSel(eventoId, tipo), {
-     method: 'POST',
-     headers: { 'Content-Type':'application/json' },
-     body: JSON.stringify({ alumnos })
-   });
-
-   ids.forEach(id => (tipo === 'invitados' ? addedInv : addedRes).add(id));
-   saveAdded();
-   window.location.reload();
- }
-
-  // Delegación: “Ocultar” independiente + “Añadir seleccionados”
-  document.getElementById('extrasWrap').addEventListener('click', (ev) => {
-    const btn = ev.target.closest('[data-action], .panel-toggle');
-    if (!btn) return;
-
-    // ⛔ cancela cualquier “add-all” residual
-    if (btn.dataset?.action === 'add-all') return;
-
-    // Mostrar/ocultar propio panel
-    if (btn.classList.contains('panel-toggle')) {
-      const panel = btn.closest('.extras-panel');
-      const collapsed = panel.classList.toggle('is-collapsed');
-      btn.textContent = collapsed ? 'Mostrar' : 'Ocultar';
-      btn.setAttribute('aria-expanded', String(!collapsed));
-      return;
-    }
-
-    const tipo = btn.closest('.extras-panel')?.dataset?.tipo;
-    if (!tipo) return;
-    if (btn.dataset.action === 'add-sel') addSelected(tipo);
-  });
-
-  // Marcado INV/RES
-  async function fetchTagsSafe(){
-    try { return await __fetchJSON(window.ROUTES.extras.tags(eventoId)); }
-    catch { // 404 → combina fallback + lo añadido en esta sesión
-      return {
-        invitados: [...new Set([...FALLBACK.invitados, ...addedInv])],
-        reservas : [...new Set([...FALLBACK.reservas , ...addedRes])]
-      };
-    }
-  }
-  async function marcarAsignacionesConTags(){
-    const tags = await fetchTagsSafe();
-    const setInv = new Set(tags.invitados || []);
-    const setRes = new Set(tags.reservas  || []);
-    const body = document.getElementById('asigBody'); if (!body) return;
-
-    body.querySelectorAll('tr[data-alumno]').forEach(tr => {
-      const id = Number(tr.dataset.alumno);
-      if (!Number.isInteger(id)) return;
-
-      tr.classList.remove('is-invitado', 'is-reserva');
-      tr.querySelectorAll('.tag-chip').forEach(n => n.remove());
-
-      let chip = '';
-      if (setInv.has(id)) { tr.classList.add('is-invitado'); chip = '<span class="tag-chip inv">INV</span>'; }
-      else if (setRes.has(id)) { tr.classList.add('is-reserva'); chip = '<span class="tag-chip res">RES</span>'; }
-
-      if (chip) {
-         const strong = tr.querySelector('td:first-child strong');
-        if (strong) strong.insertAdjacentHTML('afterend', ' ' + chip);
-      }
-    });
-  }
-
-  // Carga inicial y observer robusto
-  (async () => {
-    await load('invitados');
-    await load('reservas');
-    marcarAsignacionesConTags();
-    __initAsignObserver(marcarAsignacionesConTags);
-  })();
-})();
-
-window.__initAsignObserver = window.__initAsignObserver || function(cb){
-  try{
-    const tgt = document.getElementById('asigBody');
-    if (!tgt || !('MutationObserver' in window)) return null;
-    const obs = new MutationObserver((muts) => {
-      // re-pinta si entran o salen filas
-      if (muts.some(m => (m.addedNodes && m.addedNodes.length) || (m.removedNodes && m.removedNodes.length))) {
-        try { cb && cb(); } catch(_) {}
-      }
-    });
-    obs.observe(tgt, { childList: true });
-    return obs;
-  }catch{ return null; }
-};
-</script>
-<script>
-  // Activa el modo compacto de Extras
-  document.getElementById('extrasWrap')?.classList.add('extras-compact');
-</script>
-<script>
-  /* FIX: Extras (Invitados/Reservas) – añadir seleccionados con horas y sin colisiones */
   (() => {
-    const wrap = document.getElementById('extrasWrap');
-    if (!wrap) return;
+    const el = document.getElementById('evtDate');
+    if (!el) return;
   
-    // Id del evento (ya lo tienes disponible en la vista)
-    const eventoId = Number(<%= evento.id %>);
+    const iso = (el.dataset.date || '').trim();      // p.ej. "2025-10-07"
+    const hIni = (el.dataset.hini || '').slice(0,5); // "HH:MM"
+    const hFin = (el.dataset.hfin || '').slice(0,5); // "HH:MM"
   
-    // Lee horas del evento desde #evtDate (data-hini / data-hfin)
-    const evtDate = document.getElementById('evtDate');
-    const toHHMMSS = v => {
-      const m = String(v || '').match(/^(\d{2}):(\d{2})/);
-      return m ? `${m[1]}:${m[2]}:00` : null;
-    };
-    const H_INI = toHHMMSS(evtDate?.dataset?.hini);
-    const H_FIN = toHHMMSS(evtDate?.dataset?.hfin);
-  
-    async function putAsignacion(alumnoId, body) {
-      const r = await fetch(`/eventos/${eventoId}/asignaciones/${alumnoId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body)
-      });
-      if (!r.ok) throw new Error('PUT asignación falló');
+    let fechaTxt = '';
+    if (iso) {
+      // Permite "YYYY-MM-DD" o iso con tiempo
+      const ymd = /^\d{4}-\d{2}-\d{2}$/.test(iso) ? iso + 'T00:00:00' : iso;
+      const d = new Date(ymd);
+      if (!isNaN(d.getTime())) {
+        fechaTxt = d.toLocaleDateString('es-ES', {
+          weekday: 'short', day: '2-digit', month: 'long', year: 'numeric'
+        });
+        // Capitaliza el primer carácter (opcional)
+        fechaTxt = fechaTxt.charAt(0).toUpperCase() + fechaTxt.slice(1);
+      }
     }
   
-    async function addSel(tipo) {
-      const tbody = wrap.querySelector(`table[data-tipo="${tipo}"] tbody`);
-      if (!tbody) return;
-      const ids = Array.from(tbody.querySelectorAll('input.sel:checked'))
-        .map(ch => Number(ch.closest('tr')?.dataset?.alumno))
-        .filter(Number.isInteger);
-      if (!ids.length) return;
+    // Construye "mar, 07 de octubre de 2025 — 18:00–20:00"
+    const horas =
+      (hIni && hFin) ? ` — ${hIni}–${hFin}` :
+      (hIni ? ` — ${hIni}` : '');
   
-      const body = {};
-      if (H_INI) body.hora_inicio = H_INI;
-      if (H_FIN) body.hora_fin    = H_FIN;
-  
-      // Sube cada seleccionado con horas del evento
-      for (const id of ids) await putAsignacion(id, body);
-  
-      // Al terminar, recarga para que desaparezcan de extras y aparezcan en la lista asignada
-      location.reload();
-    }
-  
-    // Captura primero y anula manejadores viejos que estaban duplicados/rotos
-    wrap.addEventListener('click', (ev) => {
-      const btn = ev.target.closest('[data-action="add-sel"]');
-      if (!btn) return;
-      ev.preventDefault();
-      ev.stopImmediatePropagation(); // <-- clave: cancela los listeners antiguos
-      const panel = btn.closest('.extras-panel');
-      const tipo = panel?.dataset?.tipo; // 'invitados' | 'reservas'
-      if (tipo) addSel(tipo);
-    }, true);
+    el.textContent = (fechaTxt || 'Fecha sin definir') + horas;
   })();
-  </script>
+  </script>   
+ <script>
+  (() => {
+    const btn   = document.getElementById('shareEventoBtn');
+    const mini  = document.getElementById('shareEventoMini');
+    const inp   = document.getElementById('shareEventoUrl');
+    const copy  = document.getElementById('shareEventoCopy');
+    const exp   = document.getElementById('shareEventoExp');
+    const err   = document.getElementById('shareEventoErr');
+  
+    const eventoId = <%= Number(evento.id) %>; // ya lo tienes en la vista
+  
+    btn?.addEventListener('click', async (e) => {
+      e.preventDefault();
+      err.classList.add('d-none');
+  
+      try {
+        btn.disabled = true;
+        const prev = btn.textContent; btn.textContent = 'Generando…';
+  
+        const r = await fetch('/api/share', {
+          method: 'POST',
+          headers: { 'Content-Type':'application/json' },
+          body: JSON.stringify({
+            kind: 'plano',
+            params: { grupo: eventoId, src: 'evento' }, // ← plano del EVENTO
+            expireHours: 24 * 90                          // 90 días (ajusta a gusto)
+          })
+        });
+        const j = await r.json().catch(() => ({}));
+        if (!r.ok || !j.ok) throw new Error(j.msg || 'No se pudo crear el enlace');
+  
+        inp.value = j.url;
+        mini.classList.remove('d-none');
+        exp.textContent = j.expiresAt ? new Date(j.expiresAt).toLocaleString() : '—';
+  
+        copy.onclick = () => {
+          navigator.clipboard.writeText(j.url).then(() => {
+            const old = copy.textContent; copy.textContent = 'Copiado ✓';
+            setTimeout(() => copy.textContent = old, 1000);
+          });
+        };
+  
+        btn.textContent = prev;
+        btn.disabled = false;
+      } catch (e) {
+        err.textContent = e.message || 'Error creando el enlace';
+        err.classList.remove('d-none');
+        btn.disabled = false;
+        btn.textContent = 'Generar enlace público';
+      }
+    });
+  })();
+  </script>    
   <script>
     (() => {
-      const btn   = document.getElementById('shareEventoBtn');
-      const mini  = document.getElementById('shareEventoMini');
-      const inp   = document.getElementById('shareEventoUrl');
-      const copy  = document.getElementById('shareEventoCopy');
-      const exp   = document.getElementById('shareEventoExp');
-      const err   = document.getElementById('shareEventoErr');
+      const btn   = document.getElementById('shareEventoBtn');  // tu botón existente
+      if (!btn) return;
     
-      const eventoId = <%= Number(evento.id) %>; // ya lo tienes en la vista
+      const eventoId = <%= Number(evento.id) %>;                // en firma_manual.ejs
     
-      btn?.addEventListener('click', async (e) => {
+      const $modalEl = document.getElementById('sharePlanoModal');
+      const $url     = document.getElementById('sharePlanoUrl');
+      const $exp     = document.getElementById('sharePlanoExp');
+      const $copy    = document.getElementById('sharePlanoCopy');
+      const $open    = document.getElementById('sharePlanoOpen');
+    
+      // instancia Bootstrap Modal
+      let modal;
+      function ensureModal() {
+        if (!modal) modal = new bootstrap.Modal($modalEl, { backdrop: 'static' });
+      }
+    
+      btn.addEventListener('click', async (e) => {
         e.preventDefault();
-        err.classList.add('d-none');
-    
+        btn.disabled = true;
+        const prev = btn.textContent;
+        btn.textContent = 'Generando…';
         try {
-          btn.disabled = true;
-          const prev = btn.textContent; btn.textContent = 'Generando…';
-    
           const r = await fetch('/api/share', {
             method: 'POST',
             headers: { 'Content-Type':'application/json' },
             body: JSON.stringify({
               kind: 'plano',
-              params: { grupo: eventoId, src: 'evento' }, // ← plano del EVENTO
-              expireHours: 24 * 7                           // 7 días (ajusta a gusto)
+              params: { grupo: eventoId, src: 'evento' },
+              expireHours: 24 * 7
             })
           });
-          const j = await r.json().catch(() => ({}));
+          const j = await r.json();
           if (!r.ok || !j.ok) throw new Error(j.msg || 'No se pudo crear el enlace');
     
-          inp.value = j.url;
-          mini.classList.remove('d-none');
-          exp.textContent = j.expiresAt ? new Date(j.expiresAt).toLocaleString() : '—';
+          // Rellenar modal
+          $url.value = j.url;
+          $exp.textContent = j.expiresAt ? new Date(j.expiresAt).toLocaleString() : '—';
+          $open.href = j.url;
     
-          copy.onclick = () => {
+          // Mostrar modal (sin mover cabecera)
+          ensureModal();
+          modal.show();
+    
+          // Copiar al portapapeles
+          $copy.onclick = () => {
             navigator.clipboard.writeText(j.url).then(() => {
-              const old = copy.textContent; copy.textContent = 'Copiado ✓';
-              setTimeout(() => copy.textContent = old, 1000);
+              const old = $copy.textContent; $copy.textContent = 'Copiado ✓';
+              setTimeout(() => $copy.textContent = old, 1200);
             });
           };
     
+        } catch (err) {
+          alert(err.message || 'Error creando el enlace');
+        } finally {
           btn.textContent = prev;
           btn.disabled = false;
-        } catch (e) {
-          err.textContent = e.message || 'Error creando el enlace';
-          err.classList.remove('d-none');
-          btn.disabled = false;
-          btn.textContent = 'Generar enlace público';
         }
       });
     })();
-    </script>    
-    <script>
-      (() => {
-        const btn   = document.getElementById('shareEventoBtn');  // tu botón existente
-        if (!btn) return;
-      
-        const eventoId = <%= Number(evento.id) %>;                // en firma_manual.ejs
-      
-        const $modalEl = document.getElementById('sharePlanoModal');
-        const $url     = document.getElementById('sharePlanoUrl');
-        const $exp     = document.getElementById('sharePlanoExp');
-        const $copy    = document.getElementById('sharePlanoCopy');
-        const $open    = document.getElementById('sharePlanoOpen');
-      
-        // instancia Bootstrap Modal
-        let modal;
-        function ensureModal() {
-          if (!modal) modal = new bootstrap.Modal($modalEl, { backdrop: 'static' });
-        }
-      
-        btn.addEventListener('click', async (e) => {
-          e.preventDefault();
-          btn.disabled = true;
-          const prev = btn.textContent;
-          btn.textContent = 'Generando…';
-          try {
-            const r = await fetch('/api/share', {
-              method: 'POST',
-              headers: { 'Content-Type':'application/json' },
-              body: JSON.stringify({
-                kind: 'plano',
-                params: { grupo: eventoId, src: 'evento' },
-                expireHours: 24 * 7
-              })
-            });
-            const j = await r.json();
-            if (!r.ok || !j.ok) throw new Error(j.msg || 'No se pudo crear el enlace');
-      
-            // Rellenar modal
-            $url.value = j.url;
-            $exp.textContent = j.expiresAt ? new Date(j.expiresAt).toLocaleString() : '—';
-            $open.href = j.url;
-      
-            // Mostrar modal (sin mover cabecera)
-            ensureModal();
-            modal.show();
-      
-            // Copiar al portapapeles
-            $copy.onclick = () => {
-              navigator.clipboard.writeText(j.url).then(() => {
-                const old = $copy.textContent; $copy.textContent = 'Copiado ✓';
-                setTimeout(() => $copy.textContent = old, 1200);
-              });
-            };
-      
-          } catch (err) {
-            alert(err.message || 'Error creando el enlace');
-          } finally {
-            btn.textContent = prev;
-            btn.disabled = false;
-          }
-        });
-      })();
-      </script>
-      <script>
-        (function(){
-          function mountBadge(sel, count){
-            const el = document.querySelector(sel);
-            if(!el) return;
-            let b = el.querySelector('.fm-badge');
-            if(!b){
-              b = document.createElement('span');
-              b.className = 'fm-badge';
-              el.appendChild(b);
-            }
-            if (!count || Number(count)===0){
-              b.setAttribute('hidden','');
-              b.textContent = '';
-            } else {
-              b.removeAttribute('hidden');
-              b.textContent = String(count);
-            }
-          }
-        
-          // Exponer función global para que tu lógica la invoque tras cargar datos
-          window.fmUpdateBadges = function({ invitados=0, reservas=0 }={}){
-            // Ajusta los selectores a tus ids/clases reales:
-            mountBadge('#btn-invitados', invitados);
-            mountBadge('#btn-reservas', reservas);
-          };
-        })();
-        </script>
+    </script>
+<script>
+  // Modo compacto Extras
+  document.getElementById('extrasWrap')?.classList.add('extras-compact');
+
+  // FIX: Extras (Invitados/Reservas) – añadir seleccionados con horas
+  (() => {
+    const wrap = document.getElementById('extrasWrap');
+    if (!wrap) return;
+
+    const eventoId = Number(<%= evento.id %>);
+
+    function toHHMMSS(v){
+      const m = String(v || '').match(/^(\d{2}):(\d{2})(?::(\d{2}))?$/);
+      return m ? `${m[1]}:${m[2]}:${m[3] ?? '00'}` : null;
+    }
+
+    async function putAsignacion(alumnoId, body){
+      const r = await fetch(`/eventos/${eventoId}/asignaciones/${alumnoId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      if (!r.ok) throw new Error(await r.text().catch(()=> 'PUT asignación falló'));
+    }
+
+    async function addSel(tipo, btn){
+      const tbody = wrap.querySelector(`table[data-tipo="${tipo}"] tbody`);
+      if (!tbody) return;
+
+      const ids = Array.from(tbody.querySelectorAll('input.sel:checked'))
+        .map(ch => Number(ch.closest('tr')?.dataset?.alumno))
+        .filter(Number.isInteger);
+
+      if (!ids.length) return;
+
+      // Lee horas “en vivo”
+      const evtDate = document.getElementById('evtDate');
+      const H_INI = toHHMMSS(evtDate?.dataset?.hini);
+      const H_FIN = toHHMMSS(evtDate?.dataset?.hfin);
+
+      const body = {};
+      if (H_INI) body.hora_inicio = H_INI;
+      if (H_FIN) body.hora_fin    = H_FIN;
+
+      // Evita doble click
+      const prev = btn?.textContent;
+      if (btn) { btn.disabled = true; btn.textContent = 'Añadiendo…'; }
+
+      try {
+        // Secuencial para no saturar el backend
+        for (const id of ids) await putAsignacion(id, body);
+        location.reload();
+      } catch (e) {
+        alert('No se pudieron añadir: ' + (e?.message || e));
+      } finally {
+        if (btn) { btn.disabled = false; btn.textContent = prev; }
+      }
+    }
+
+    // Un solo listener, captura, y cancelamos otros antiguos
+    wrap.addEventListener('click', (ev) => {
+      const btn = ev.target.closest('[data-action="add-sel"]');
+      if (!btn) return;
+      ev.preventDefault();
+      ev.stopImmediatePropagation();
+      const panel = btn.closest('.extras-panel');
+      const tipo = panel?.dataset?.tipo; // 'invitados' | 'reservas'
+      if (tipo) addSel(tipo, btn);
+    }, true);
+  })();
+</script>
+<script>
+  (() => {
+    const eventoId = Number(<%= evento.id %>);
+    const $tbody = document.getElementById('asigBody');
+    if (!$tbody) return;
+  
+    // Convierte cualquier lista (ids u objetos) a Set<numérico>
+    const toIdSet = (list) => {
+      if (!Array.isArray(list)) return new Set();
+      return new Set(
+        list.map(item => {
+          if (typeof item === 'number' || typeof item === 'string') return Number(item);
+          if (item && (item.alumno_id != null || item.id != null)) return Number(item.alumno_id ?? item.id);
+          return NaN;
+        }).filter(Number.isFinite)
+      );
+    };
+  
+    async function fetchJSON(url){
+      const r = await fetch(url, { cache: 'no-store' });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      const ct = r.headers.get('content-type') || '';
+      return ct.includes('application/json') ? r.json() : {};
+    }
+  
+    // Primero intenta /extras/tags; si no existe, cae a /extras/invitados y /extras/reservas
+    async function getSets(){
+      try {
+        const j = await fetchJSON(`/eventos/${eventoId}/extras/tags`);
+        return { inv: toIdSet(j?.invitados), res: toIdSet(j?.reservas) };
+      } catch {
+        const [inv, res] = await Promise.all([
+          fetchJSON(`/eventos/${eventoId}/extras/invitados`).catch(()=>[]),
+          fetchJSON(`/eventos/${eventoId}/extras/reservas`).catch(()=>[]),
+        ]);
+        return { inv: toIdSet(inv), res: toIdSet(res) };
+      }
+    }
+  
+    function applyStatus(invSet, resSet){
+  $tbody.querySelectorAll('tr[data-alumno]').forEach(tr => {
+    const id = Number(tr.dataset.alumno);
+    if (!Number.isFinite(id)) return;
+
+    const isInv = invSet.has(id);
+    const isRes = !isInv && resSet.has(id); // prioridad INV sobre RES
+    const status = isInv ? 'inv' : (isRes ? 'res' : '');
+
+    // Atributo para el punto por CSS
+    if (status) tr.setAttribute('data-status', status);
+    else tr.removeAttribute('data-status');
+
+    // Fallback visual por clases (banda lateral)
+    tr.classList.toggle('is-invitado', isInv);
+    tr.classList.toggle('is-reserva',  isRes);
+  });
+}
+
+    let busy = false;
+    async function refresh(){
+      if (busy) return;
+      busy = true;
+      try {
+        const { inv, res } = await getSets();
+        applyStatus(inv, res);
+      } finally { busy = false; }
+    }
+  
+    // 1ª pasada
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', refresh, { once:true });
+    } else {
+      refresh();
+    }
+  
+    // Repintar si entran/salen filas en #asigBody (por acciones en la UI)
+    const obs = new MutationObserver(muts => {
+      if (muts.some(m => m.addedNodes?.length || m.removedNodes?.length)) refresh();
+    });
+    obs.observe($tbody, { childList: true });
+  })();
+  </script>
+  
+

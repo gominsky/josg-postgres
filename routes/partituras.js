@@ -8,7 +8,7 @@ const db = require('../database/db');
 const router = express.Router();
 
 // ====== Multer: subida a /public/partituras ======
-const uploadDir = path.join(__dirname, '..', 'public', 'partituras');
+const uploadDir = path.join(__dirname, '..', 'public', 'partituren');
 fs.mkdirSync(uploadDir, { recursive: true });
 
 const storage = multer.diskStorage({
@@ -94,10 +94,9 @@ router.post('/', upload.single('archivo_partitura'), async (req, res) => {
   } = req.body;
 
   // 1) Resolver enlace_partitura (archivo tiene prioridad). OBLIGATORIO.
-  // ⚠️ Usa la ruta estática correcta para servir archivos (normalmente /uploads/partituras/)
   let enlace_partitura = null;
   if (req.file) {
-    enlace_partitura = '/partituras/' + req.file.filename; // <-- ajusta si tu static es otro
+    enlace_partitura = '/partituren/' + req.file.filename; 
   } else {
     enlace_partitura = normalizeUrl(enlace_input);
   }
@@ -182,7 +181,7 @@ router.post('/:id', upload.single('archivo_partitura'), async (req, res) => {
   } = req.body;
 
   let enlace_partitura = (enlace_input || '').trim() || null;
-  if (req.file) enlace_partitura = '/partituras/' + req.file.filename;
+  if (req.file) enlace_partitura = '/partituren/' + req.file.filename;
 
   const tagsArr = parseTags(tags);
   const instrumentosIds = normIds(req.body.instrumentos);
