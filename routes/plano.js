@@ -45,9 +45,24 @@ function noCache(res) {
 }
 function atrilLadoFromIndex(i) {
   const n = Math.max(0, i|0);
-  return { atril: Math.floor(n/2) + 1, lado: (n % 2) + 1 }; // lado: 1→I, 2→II
+  return { atril: Math.floor(n/2) + 1, lado: (n % 2) + 1 }; // lado: 1→I, 2→I
 }
-
+// --- Overrides de texto en fichas (nº y parte) ---
+async function loadCardDataMap(scope, scopeId) {
+    const { rows } = await pool.query(
+      `SELECT card_key AS key, num, part
+         FROM plano_card_texts
+        WHERE scope = $1 AND scope_id = $2`,
+      [String(scope), String(scopeId)]
+    );
+    return new Map(
+      rows.map(r => [
+        String(r.key),
+        { num: (r.num == null ? null : Number(r.num)),
+          part: String(r.part || '').toUpperCase() }
+      ])
+    );
+  }
 function mapSeccionToSpec(seccionRaw) {
   const seccion = (seccionRaw || '').trim();
   const low = seccion.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
@@ -60,7 +75,6 @@ function mapSeccionToSpec(seccionRaw) {
   }
   return { baseInstrumento: seccion, grupoSeccion: null, rankingInstrumento: seccion };
 }
-
 async function fetchCandidatosOrdenados(client, grupoOrquesta, seccionLayout) {
   const spec = mapSeccionToSpec(seccionLayout);
   const sql = `
@@ -114,7 +128,6 @@ async function fetchCandidatosOrdenados(client, grupoOrquesta, seccionLayout) {
   const { rows } = await client.query(sql, params);
   return rows;
 }
-
 async function fetchLayout(client, layoutId) {
   const { rows } = await client.query(
     `SELECT id, instrumento, atril, puesto, x, y, angulo
@@ -142,7 +155,6 @@ async function getSavedLayout({ scope, scope_id }) {
     return null;
   }
 }
-
 router.get('/evento/:eventoId.:ext', async (req, res) => {
   const { eventoId } = req.params;
   const ext = String(req.params.ext || '').toLowerCase();
@@ -364,8 +376,12 @@ router.get('/evento/:eventoId.:ext', async (req, res) => {
     const savedGrupo  = Number.isInteger(grupoId) ? await getSavedLayout({ scope: 'grupo', scope_id: String(grupoId) }) : null;
     const saved       = savedEvento || savedGrupo;
     const L = new Map((saved?.items || []).map(it => [it.key, it])); // key = "Inst|atril|lado"
-
-    /* 9) Render SVG */
+   /* 8.bis) Overrides de textos (nº y parte) evento → grupo (fallback) */
+    const evtCard = await loadCardDataMap('evento', String(eventoId));
+    const grpCard = Number.isInteger(grupoId) ? await loadCardDataMap('grupo', String(grupoId)) : new Map();
+    // El evento tiene prioridad sobre el grupo:
+    const cardMap = new Map([...grpCard, ...evtCard]);
+      /* 9) Render SVG */
     const W = 1400, H = 900, FONT = FONT_STACK;
 
     let nodos = '';
@@ -387,9 +403,14 @@ router.get('/evento/:eventoId.:ext', async (req, res) => {
       const displayName = parts.length >= 3 ? `${parts[0]} ${parts[1]}` : (asig.nombre || asig.alumno_id);
 
       // Nº de atril / Lado SIEMPRE desde el candidato (no usar "seat" ni ranking)
-      const numAtril = Number(asig.atril) || p.atril || 1;
-      const ladoTxt  = (Number(asig.lado) === 1 ? 'I' : 'II');
-
+      let numAtril = Number(asig.atril) || p.atril || 1;
+      let ladoTxt  = (Number(asig.lado) === 1 ? 'I' : 'II');
+      // Overrides desde BD si existen:
+      const ov = cardMap.get(key);
+      if (ov) {
+        if (Number.isFinite(ov.num)) numAtril = ov.num;
+        if (ov.part === 'I' || ov.part === 'II') ladoTxt = ov.part;
+      }
       nodos += `
         <g class="draggable" data-key="${esc(key)}"
            transform="translate(${cx},${cy}) rotate(${ang})">
@@ -450,7 +471,6 @@ router.get('/evento/:eventoId.:ext', async (req, res) => {
     return res.status(500).send('Error generando el plano del evento');
   }
 });
-
 router.get('/clasif/:grupo.:ext', async (req, res) => {
   const { grupo: grupoParam } = req.params;
   const ext = String(req.params.ext || '').toLowerCase();
@@ -594,7 +614,8 @@ router.get('/clasif/:grupo.:ext', async (req, res) => {
       const s = savedByKey.get(k);
       if (s) { p.x = s.x; p.y = s.y; p.angulo = s.angle; }
     }
-
+    // 8.bis) Overrides de textos (grupo)
+      const cardMap = await loadCardDataMap('grupo', String(grupoId));
     // 9) Render SVG
     const W = 1400, H = 900, FONT = FONT_STACK;
     let nodos = '';
@@ -611,12 +632,18 @@ router.get('/clasif/:grupo.:ext', async (req, res) => {
       const displayName = parts.length >= 3 ? `${parts[0]} ${parts[1]}` : (asig.nombre || asig.alumno_id);
 
       // ATRIL y LADO SIEMPRE desde la asignación; fallback a plaza o a la clasificación
-      const numAtril = Number.isFinite(asig.atril)
+      let numAtril = Number.isFinite(asig.atril)
         ? asig.atril
         : (Number.isFinite(p.atril) ? p.atril : Math.max(1, Math.ceil((asig.clasif || 1) / 2)));
 
-      const ladoNum = Number.isFinite(asig.lado) ? asig.lado : (Number(p.puesto) === 1 ? 1 : 2);
-      const ladoTxt = (ladoNum === 1 ? 'I' : 'II');
+        let ladoNum = Number.isFinite(asig.lado) ? asig.lado : (Number(p.puesto) === 1 ? 1 : 2);
+              let ladoTxt = (ladoNum === 1 ? 'I' : 'II');
+              // Overrides desde BD
+              const ov = cardMap.get(key);
+              if (ov) {
+                if (Number.isFinite(ov.num)) numAtril = ov.num;
+                if (ov.part === 'I' || ov.part === 'II') ladoTxt = ov.part;
+              }
 
       nodos += `
         <g class="draggable" data-key="${esc(key)}"
@@ -682,7 +709,6 @@ router.get('/clasif/:grupo.:ext', async (req, res) => {
     return res.status(500).send('Error generando el plano.');
   }
 });
-
 router.get('/latest/:grupo.:ext', async (req, res) => {
   const { grupo: grupoParam } = req.params;
   const ext = String(req.params.ext || '').toLowerCase();
@@ -691,13 +717,19 @@ router.get('/latest/:grupo.:ext', async (req, res) => {
   noCache(res);
 
   try {
-    // Resolver nombre si llega ID
-    let grupoNombre = grupoParam;
-    if (/^\d+$/.test(grupoParam)) {
-      const { rows: g } = await pool.query(`SELECT nombre FROM grupos WHERE id = $1::int`, [grupoParam]);
-      if (!g.length) return res.status(404).send('Grupo no encontrado');
-      grupoNombre = g[0].nombre;
-    }
+        // Resolver nombre e ID de grupo (acepta id numérico o nombre)
+        let grupoNombre = grupoParam;
+        let grupoId = null;
+        if (/^\d+$/.test(grupoParam)) {
+          grupoId = Number(grupoParam);
+          const { rows: g } = await pool.query(`SELECT nombre FROM grupos WHERE id = $1::int`, [grupoId]);
+          if (!g.length) return res.status(404).send('Grupo no encontrado');
+          grupoNombre = g[0].nombre;
+        } else {
+          const { rows: g } = await pool.query(`SELECT id FROM grupos WHERE nombre = $1`, [grupoParam]);
+          if (!g.length) return res.status(404).send('Grupo no encontrado');
+          grupoId = g[0].id;
+        }
 
     // Último por instrumento (mapeando violín → Violín I/II según grupo del alumno)
     const { rows: ranking } = await pool.query(`
@@ -788,8 +820,8 @@ router.get('/latest/:grupo.:ext', async (req, res) => {
         asignacion.set(`${plaza.instrumento}|${plaza.atril}|${plaza.puesto}`, cand);
       }
     }
-
-    // Render
+        // Overrides de textos por grupo
+    const cardMap = await loadCardDataMap('grupo', String(grupoId));
     // Render
 const W = 1400, H = 900, FONT = FONT_STACK;
 
@@ -808,8 +840,13 @@ for (const p of posiciones) {
   const displayName = (parts.length >= 3) ? `${parts[0]} ${parts[1]}` : fullName;
 
   // SIEMPRE desde la plaza (parejas 1–2, 3–4…)
-  const numAtril = p.atril;
-  const ladoTxt  = (Number(p.puesto) === 1 ? 'I' : 'II');
+  let numAtril = p.atril;
+      let ladoTxt  = (Number(p.puesto) === 1 ? 'I' : 'II');
+      const ov = cardMap.get(key);
+      if (ov) {
+        if (Number.isFinite(ov.num)) numAtril = ov.num;
+        if (ov.part === 'I' || ov.part === 'II') ladoTxt = ov.part;
+      }
 
   nodos += `
     <g transform="translate(${cx},${cy}) rotate(${p.angulo})">
@@ -870,13 +907,21 @@ for (const p of posiciones) {
     return res.status(500).send('Error generando el plano.');
   }
 });
-
 router.get('/:grupo/:trimestreFriendly.:ext', async (req, res) => {
   const { grupo, trimestreFriendly: tfParam } = req.params;
   const ext = String(req.params.ext || '').toLowerCase();
   if (!new Set(['svg','png','pdf']).has(ext)) return res.status(404).send('Extensión no soportada');
 
   noCache(res);
+
+    // Resolver grupoId (acepta id o nombre) para leer overrides
+  let grupoIdForOverrides = null;
+  if (/^\d+$/.test(grupo)) {
+    grupoIdForOverrides = Number(grupo);
+  } else {
+    const rG = await pool.query(`SELECT id FROM grupos WHERE nombre = $1`, [grupo]);
+    if (rG.rowCount) grupoIdForOverrides = rG.rows[0].id;
+  }
 
   // Resolver trimestreFinal
   let trimestreFinal = (tfParam || '').trim();
@@ -978,9 +1023,12 @@ router.get('/:grupo/:trimestreFriendly.:ext', async (req, res) => {
         asignacion.set(`${plaza.instrumento}|${plaza.atril}|${plaza.puesto}`, cand);
       }
     }
-
-    // Render
-    // Render
+        // Overrides de textos (grupo si se pudo resolver id)
+        const cardMap = grupoIdForOverrides != null
+          ? await loadCardDataMap('grupo', String(grupoIdForOverrides))
+          : new Map();
+    
+        // Render
 const W = 1400, H = 900, FONT = FONT_STACK;
 
 let nodos = '';
@@ -998,9 +1046,13 @@ for (const p of posiciones) {
   const displayName = (parts.length >= 3) ? `${parts[0]} ${parts[1]}` : fullName;
 
   // SIEMPRE desde la plaza (parejas 1–2, 3–4…)
-  const numAtril = p.atril;
-  const ladoTxt  = (Number(p.puesto) === 1 ? 'I' : 'II');
-
+    let numAtril = p.atril;
+  let ladoTxt  = (Number(p.puesto) === 1 ? 'I' : 'II');
+  const ov = cardMap.get(key);
+  if (ov) {
+    if (Number.isFinite(ov.num)) numAtril = ov.num;
+    if (ov.part === 'I' || ov.part === 'II') ladoTxt = ov.part;
+  }
   nodos += `
     <g transform="translate(${cx},${cy}) rotate(${p.angulo})">
       <circle r="30" fill="${color}" fill-opacity="0.9"></circle>
@@ -1156,25 +1208,62 @@ router.get('/editor/evento', isAuthenticated, async (req, res) => {
 router.get('/card-data', async (req, res) => {
   const { scope, scope_id } = req.query;
   if (!scope || !scope_id) return res.status(400).json({ error: 'faltan campos' });
-  const rows = await db('plano_card_texts')
-    .select('card_key as key', 'num', 'part')
-    .where({ scope, scope_id });
-  res.json({ items: rows });
+    const { rows } = await pool.query(
+        `SELECT card_key AS key, num, part
+           FROM plano_card_texts
+          WHERE scope = $1 AND scope_id = $2
+          ORDER BY card_key`,
+        [scope, scope_id]
+      );
+      res.json({ items: rows });
 });
 
 // PUT card-data (upsert)
-router.put('/card-data', async (req, res) => {
+router.put('/card-data', express.json(), async (req, res) => {
   const { scope, scope_id, key, num = null, part = null } = req.body || {};
   if (!scope || !scope_id || !key) return res.status(400).json({ error: 'faltan campos' });
 
-  await db.raw(`
-    INSERT INTO plano_card_texts (scope, scope_id, card_key, num, part)
-    VALUES (?, ?, ?, ?, ?)
-    ON CONFLICT (scope, scope_id, card_key)
-    DO UPDATE SET num = EXCLUDED.num, part = EXCLUDED.part, updated_at = now()
-  `, [scope, scope_id, key, num, part]);
-
-  res.json({ ok: true });
+    await pool.query(
+        `INSERT INTO plano_card_texts (scope, scope_id, card_key, num, part, updated_at)
+         VALUES ($1, $2, $3, $4, $5, now())
+         ON CONFLICT (scope, scope_id, card_key)
+         DO UPDATE SET
+           num = EXCLUDED.num,
+           part = EXCLUDED.part,
+           updated_at = now()`,
+        [scope, scope_id, key, num, part]
+      );
+});
+// PUT /plano/card-data/bulk  { scope, scope_id, items:[{key,num,part},...] }
+router.put('/card-data/bulk', express.json(), async (req, res) => {
+  const { scope, scope_id, items } = req.body || {};
+  if (!scope || !scope_id || !Array.isArray(items)) {
+    return res.status(400).json({ error: 'faltan campos o items inválidos' });
+  }
+  try {
+    // Un solo upsert masivo usando jsonb_to_recordset
+    await pool.query(
+      `
+      WITH data AS (
+        SELECT * FROM jsonb_to_recordset($1::jsonb)
+        AS t(key text, num int, part text)
+      )
+      INSERT INTO plano_card_texts (scope, scope_id, card_key, num, part, updated_at)
+      SELECT $2::text, $3::text, d.key, d.num, d.part, now()
+      FROM data d
+      ON CONFLICT (scope, scope_id, card_key)
+      DO UPDATE SET
+        num = EXCLUDED.num,
+        part = EXCLUDED.part,
+        updated_at = now()
+      `,
+      [JSON.stringify(items), String(scope), String(scope_id)]
+    );
+    res.json({ ok: true, saved: items.length });
+  } catch (e) {
+    console.error('[card-data] BULK error', e);
+    res.status(500).json({ error: 'Error guardando datos de fichas (bulk)' });
+  }
 });
 
 module.exports = router;

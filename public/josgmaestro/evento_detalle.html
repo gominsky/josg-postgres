@@ -73,6 +73,10 @@
     .chip-retraso{ background:#ffc107; color:#333; }
     .chip-retraso.chip--tarde{ background:#dc3545; color:#fff; }
     .firma-nombre .chip{ margin-left:.75rem; }
+
+    /* Mensajes */
+    #mensaje.success{ color:#f59e0b; font-weight:700; margin-top:.5rem; }
+    #mensaje.error{ color:#b91c1c; font-weight:700; margin-top:.5rem; }
   </style>
 </head>
 <body>
@@ -140,9 +144,16 @@
             <textarea id="observaciones_generales" rows="8" style="width: 100%; font-size:1rem; min-height:180px;"></textarea>
           </div>
         </form>
-
         <p id="mensaje"></p>
 
+        <!-- Minutos de cortesía en una sola fila -->
+        <div class="form-row" style="margin:.5rem 0 0.75rem; display:flex; align-items:center; justify-content:center; gap:.5rem; text-align:center;">
+          <label for="grace_minutes" class="small" style="margin:0;"><strong>Minutos sin penalizar:</strong></label>
+          <input id="grace_minutes" type="number" min="0" max="120" step="1" value="15" style="width:90px; text-align:center;">
+          <small class="muted">(Por defecto: 15)</small>
+        </div>
+        
+        
         <div class="actions" style="margin-top:.9rem;">
           <button id="btn-guardar" class="btn btn-primary" onclick="document.getElementById('form-asistencias').requestSubmit();">Guardar cambios</button>
           <button onclick="location.href='eventos.html'" class="btn btn-accent">← Volver</button>
@@ -204,7 +215,7 @@
     let evento_id = new URLSearchParams(location.search).get('id') || '';
     let tokenQR = '';
 
-    // === UMBRAL CONFIGURABLE DE RETRASO ===
+    // === UMBRAL CONFIGURABLE DE RETRASO (para pintar chips) ===
     (function configureUmbral(){
       const params = new URLSearchParams(location.search);
       const qUmbral = parseInt(params.get('umbral') || '', 10);
@@ -250,6 +261,9 @@
           <p><strong>Inicio:</strong> ${inicioLinea}</p>`;
 
         document.getElementById('observaciones_generales').value = evento.observaciones || '';
+        // valor por defecto 15 si no hay configurado
+        document.getElementById('grace_minutes').value =
+          Number.isFinite(+evento.grace_minutes) ? +evento.grace_minutes : 15;
 
         const espacioNombre = (evento.espacio || evento.espacio_nombre || evento.lugar || evento.sala || '').toString().trim();
         const rawUbic = (evento.espacio_ubicacion || evento.ubicacion || evento.espacio_url || evento.ubicacion_url || '').toString().trim();
@@ -272,11 +286,22 @@
       }catch(e){ console.error('Error al cargar evento o alumnos', e); }
     }
 
+    // Helper de ordenación “española” (tildes bien)
+    function sortByApellidoNombreEs(arr){
+      arr.sort((a,b) =>
+        (a.apellidos||'').localeCompare(b.apellidos||'', 'es', { sensitivity:'base' }) ||
+        (a.nombre||'').localeCompare(b.nombre||'', 'es', { sensitivity:'base' })
+      );
+      return arr;
+    }
+
     // Render lista con chip por alumno + color según umbral
     async function actualizarListaAlumnos(){
       const res = await fetch(`${API_BASE}/eventos/${evento_id}/alumnos`, { credentials:'same-origin' });
       if(!res.ok){ console.error('No se pudieron cargar alumnos'); return; }
       const alumnos = await res.json();
+
+      sortByApellidoNombreEs(alumnos); // << orden alfabético correcto con tildes
 
       const UMBRAL = getUmbral();
 
@@ -363,7 +388,12 @@
 
     async function guardarAsistencias(e) {
       e.preventDefault();
-      const mensaje = document.getElementById('mensaje'); mensaje.innerText = ''; mensaje.className = '';
+      const mensaje = document.getElementById('mensaje');
+      const btn = document.getElementById('btn-guardar');
+      const txt0 = btn.textContent;
+
+      mensaje.innerText = ''; mensaje.className = '';
+      btn.disabled = true; btn.textContent = 'Guardando…';
 
       const checks = document.querySelectorAll('#lista-alumnos input[type=checkbox][name="alumno_id"]');
       const registros = []; const tareasAusencia = [];
@@ -387,17 +417,34 @@
         }
         if (tareasAusencia.length) await Promise.allSettled(tareasAusencia);
 
+        // Observaciones generales
         const observacionesGenerales = document.getElementById('observaciones_generales').value;
         await fetch(`${API_BASE}/eventos/${evento_id}/observaciones-generales`, {
           method: 'PATCH', headers: { 'Content-Type': 'application/json' },
           credentials:'same-origin', body: JSON.stringify({ observaciones: observacionesGenerales })
         });
 
+        // Minutos de cortesía (se guardan también aquí)
+        const gm = parseInt(document.getElementById('grace_minutes').value || '15', 10);
+        await fetch(`${API_BASE}/eventos/${evento_id}/grace`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'same-origin',
+          body: JSON.stringify({ minutes: Math.max(0, Math.min(120, isNaN(gm) ? 15 : gm)) })
+        });
+        window.RETRASO_UMBRAL = Math.max(0, Math.min(120, isNaN(gm) ? 15 : gm));
+
+        // Actualizamos estado local y refrescamos la lista SIN salir de la página
         checks.forEach(ch => estadoInicial.set(ch.value, ch.checked));
-        mensaje.className = 'success'; mensaje.innerText = 'Firmas actualizadas.';
-        setTimeout(() => window.location.reload(), 650);
+        await actualizarListaAlumnos(); // <- refresca chips y conteos acorde a cambios
+
+        mensaje.className = 'success';
+        mensaje.innerText = 'Cambios guardados correctamente.';
       }catch(e){
-        mensaje.className = 'error'; mensaje.innerText = e.message || 'Error al guardar firmas.';
+        mensaje.className = 'error';
+        mensaje.innerText = e.message || 'Error al guardar.';
+      } finally {
+        btn.disabled = false; btn.textContent = txt0;
       }
     }
 
@@ -415,7 +462,6 @@
 
     /**
      * Actualiza/crea el chip de retraso de una fila concreta
-     * (útil si en el futuro refrescas minutos sin recargar)
      */
     function updateChipRetraso(alumnoId, minutos){
       const fila = document.querySelector(`[data-alumno-id="${alumnoId}"]`);
@@ -437,13 +483,6 @@
       chip.classList.toggle('chip--tarde', minutos > getUmbral());
     }
 
-    /**
-     * Refuerzo UI: cuando se DESMARCA asistencia de un alumno,
-     * limpiamos ausencia_tipo_id en el backend y reflejamos en la UI.
-     * Requiere:
-     *   - checkboxes con data-alumno-id
-     *   - (opcional) un <select> de ausencias con data-alumno-id que vaciamos al limpiar
-     */
     function bindAsistenciaCheckboxRefuerzo() {
       const checks = document.querySelectorAll('input[type="checkbox"][data-alumno-id]');
       checks.forEach(chk => {
@@ -481,7 +520,6 @@
       });
     }
 
-    // Utilidad simple de notificación (ajústala a tu sistema de toasts/modales)
     function notifyUser(msg) {
       if (window.toast) return window.toast(msg);
       alert(msg);
@@ -517,12 +555,12 @@
     }
   </script>
 
-  <!-- Motivos musicales tamaño pequeño -->
+  <!-- Motivos musicales (solo decoración) -->
   <script>
     (function(){
       const SYMBOLS = ['♩','♪','♫','♬','♭','♯','♮','🎵','🎶','🎼'];
       const COUNT_MIN = 7, COUNT_MAX = 10;
-      const SIZE_MIN = 30, SIZE_MAX = 40;  /* solicitado */
+      const SIZE_MIN = 30, SIZE_MAX = 40;
       const ROT_MIN  = -16, ROT_MAX  = 16;
       const PADDING  = 10, EDGE_PAD = 6, MAX_TRIES = 80;
 
@@ -561,3 +599,4 @@
   </script>
 </body>
 </html>
+

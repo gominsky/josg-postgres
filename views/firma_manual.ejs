@@ -439,595 +439,200 @@ async function doSave(nombre, descripcion){
       <a href="/eventos" class="enlace-final">← Volver al calendario</a>
   </div>
 </div>
-
 <style>
-  .tpl-sel {
-  width: 50% !important;    /* antes 32%, ahora un poco más ancho */
-  max-width: 500px;         /* permite crecer un poco más en pantallas grandes */
-  min-width: 180px;         /* sigue siendo razonable en pantallas pequeñas */
-  flex: 0 0 auto;
-}
-/* Margen lateral suave para que la tabla no toque bordes */
-.container-fluid { padding-left: 12px; padding-right: 12px; }
-
-/* ===== Toolbar ===== */
-.evt-toolbar{
-  position: relative;
-  display: grid;
-  gap: 0;                    /* filas pegadas entre sí */
-  margin: 0 0 .6rem 0;       /* pegada al header */
-}
-.evt-row{
-  display: flex; align-items: center; justify-content: space-between;
-  gap: .75rem; flex-wrap: wrap;
-  background: #fff; border: 1px solid #e6e6e6; border-radius: 14px;
-  padding: .5rem .75rem; box-shadow: 0 1px 0 rgba(0,0,0,.02);
-}
-.evt-row-top{
-  border-bottom-left-radius: 0; border-bottom-right-radius: 0; border-bottom: none;
-  padding-top: .65rem; padding-bottom: .65rem;
-}
-.evt-row-bottom{
-  border-top-left-radius: 0; border-top-right-radius: 0;
-  padding-top: .5rem; padding-bottom: .5rem;
-}
-.evt-left, .evt-right, .cfg-left, .cfg-right {
-  display: flex; align-items: center; gap: .6rem; flex-wrap: nowrap;
-}
-
-/* Plantillas: select + etiqueta */
-.tpl-group { display: inline-flex; align-items: center; gap: .45rem; flex-wrap: nowrap; margin-right: .25rem; }
-.tpl-label { font-weight: 600; color:#222; font-size: .95rem; }
-
-/* Select un poco más grande y más pegado a los botones */
-.tpl-sel {
-  width: 32% !important;         /* un poco más grande */
-  max-width: 340px;
-  min-width: 160px;
-  flex: 0 0 auto;                /* no se expande */
-  margin-right: .25rem;          /* más cerca de los botones */
-}
-
-/* Info contador de filtro */
-.tpl-info { color:#6b7280; }
-
-/* Enlace “Guardar como plantilla” */
-.tpl-popwrap { position: relative; }
-.evt-link-add{
-  font-weight: 600; font-size: .95rem; text-decoration: none; color: #111;
-  padding: 6px 10px; border-radius: 10px; border: 1px dashed #e6e6e6;
-}
-.evt-link-add:hover{ background: #fafafa; }
-
-/* Popover justo debajo del enlace (anclado al wrap) */
-.evt-popover{
-  position: absolute; top: calc(100% + 8px); left: 0; z-index: 20;
-  display: flex; flex-direction: column; gap: 8px; width: min(440px, 85vw);
-  background: #fff; border: 1px solid #e6e6e6; border-radius: 14px; padding: 12px;
-  box-shadow: 0 12px 28px rgba(0,0,0,.08);
-}
-.evt-popover .row{ display: flex; gap: 8px; }
-.evt-popover input.form-control{ height: 34px; font-size: 14px; }
-
-/* Botones del popover más pequeños */
-.btn-solid-xs{
-  background:#222; color:#fff; border:1px solid #222;
-  border-radius: 10px; padding:.25rem .55rem; font-weight: 700; font-size: 13px;
-}
-.btn-solid-xs:hover{ filter:brightness(.95); }
-.btn-outline-xs{
-  background: transparent; color:#222; border:1px solid #cfcfcf;
-  border-radius: 10px; padding:.25rem .55rem; font-weight: 600; font-size: 13px;
-}
-.btn-outline-xs:hover{ background:#f5f5f5; }
-
-/* ===== Botones neutrales de la barra ===== */
-.btn-ghost-sm{
-  background: transparent; color:#111; border:1px solid #e1e1e1;
-  border-radius: 10px; padding:.35rem .75rem; font-weight: 600;
-}
-.btn-ghost-sm:hover{ background:#f8f8f8; }
-.btn-outline-sm{
-  background: transparent; color:#222; border:1px solid #cfcfcf;
-  border-radius: 10px; padding:.35rem .75rem; font-weight: 600;
-}
-.btn-outline-sm:hover{ background:#f5f5f5; }
-.btn-solid-sm{
-  background:#222; color:#fff; border:1px solid #222;
-  border-radius: 10px; padding:.35rem .75rem; font-weight: 700;
-}
-.btn-solid-sm:hover{ filter:brightness(.95); }
-
-/* ===== Pill switches ===== */
-.cfg-label{ font-weight:700; color:#222; margin-right:.25rem; }
-.pill-switch{
-  display:inline-flex; align-items:center; gap:.45rem;
-  background:#fafafa; border:1px solid #e6e6e6; border-radius: 999px;
-  padding: .22rem .55rem .22rem .4rem; cursor: pointer; user-select: none;
-}
-.pill-switch input{ margin:0; width:18px; height:18px; }
-.pill-switch span{ font-weight:600; color:#333; font-size:.95rem; }
-
-/* Utilidad */
-.tpl-hidden{ display:none !important; }
-
-/* Responsivo: en móviles dejamos que la fila envuelva */
-@media (max-width: 640px){
-  .evt-left, .cfg-left { flex-wrap: wrap; }
-  .tpl-sel { width: 100% !important; max-width: 100%; }
-}
-/* ===== Popover compacto y elegante ===== */
-.evt-popover.form-compact{
-  position: absolute; top: 44px; /* se ajusta con tu barra */
-  right: 10px; z-index: 30;
-  display: grid; grid-template-columns: 1fr; gap: 8px;
-  width: min(380px, 88vw); /* más estrecho */
-  background: #fff; border: 1px solid #e9e9e9; border-radius: 12px;
-  padding: 10px 12px;
-  box-shadow: 0 12px 28px rgba(0,0,0,.08);
-}
-
-.popover-head{
-  display:flex; align-items:center; justify-content:space-between;
-  margin-bottom: 2px;
-}
-.popover-head strong{ font-size: 14px; color:#111; }
-
-.btn-icon{
-  appearance:none; border:0; background:transparent; cursor:pointer;
-  font-size: 16px; line-height: 1; padding: 2px 4px; color:#666;
-  border-radius: 6px;
-}
-.btn-icon:hover{ background:#f3f3f3; }
-
-/* Campos compactos */
-.fc-label{ font-size: 12px; font-weight: 600; color:#333; margin-bottom: 2px; }
-.muted{ color:#8a8a8a; font-weight: 500; }
-
-.fc-input, .fc-textarea{
-  height: 30px; font-size: 14px; padding: 4px 8px;
-  border: 1px solid #dcdcdc; border-radius: 8px; background:#fff;
-}
-.fc-textarea{ height:auto; resize: vertical; min-height: 62px; }
-
-/* Fila de descripción con contador */
-.inline-row{
-  display:flex; align-items: baseline; justify-content: space-between;
-  margin-top: 4px;
-}
-.char-count{ font-size: 12px; color:#9a9a9a; }
-
-/* Botones XS del popover (más pequeños que los generales) */
-.btn-solid-xs, .btn-outline-xs{
-  padding: .28rem .6rem; font-size: 13px; font-weight: 700; border-radius: 9px;
-}
-.btn-solid-xs{ background:#111; color:#fff; border:1px solid #111; }
-.btn-solid-xs:hover{ filter:brightness(.96); }
-.btn-outline-xs{ background:#fff; color:#222; border:1px solid #cfcfcf; }
-.btn-outline-xs:hover{ background:#f6f6f6; }
-
-/* Disposición botones y mensajes */
-.btns-row{
-  display:flex; gap: 8px; justify-content: flex-end; align-items:center; margin-top: 2px;
-}
-.msg-row{ min-height: 18px; }
-.msg{ font-size: 12px; }
-/* Select de plantilla: más ancho y menos alto */
-.form-select.tpl-sel{
-  min-width: 340px;         /* antes ~280-300; súbelo un poco */
-  max-width: 42vw;          /* límite en pantallas grandes */
-  height: 32px;             /* más bajo */
-  padding: .2rem .65rem;    /* compacta verticalmente */
-  font-size: .92rem;        /* un poco más pequeño para ganar altura */
-  line-height: 1.2;         /* ayuda a bajar la altura total */
-}
-
-/* En algunos Bootstrap, la altura la controlan variables: reforzamos */
-.form-select.tpl-sel{
-  --bs-form-select-padding-y: .2rem;
-  --bs-form-select-font-size: .92rem;
-}
-
-/* Acerca el select a los botones */
-.evt-left{ gap: .5rem; }    /* si quieres aún más pegado, usa .4rem */
-.evt-meta{
-  display:flex; flex-direction:column; align-items:flex-end;
-  gap:2px; line-height:1.15;
-}
-.evt-title{
-  font-weight: 700; color:#111; font-size: 1rem;
-  max-width: 420px; text-align:right; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
-}
-.evt-date{
-  color:#6b7280; font-weight:600; font-size:.92rem;
-}
-@media (max-width: 640px){
-  .evt-meta{ align-items:flex-start; }
-  .evt-title, .evt-date{ text-align:left; }
-}
-  /* Estilos tabla existentes */
-  .tabla-estilizada td, .tabla-estilizada th { padding: 10px 12px; vertical-align: middle; }
-  .tabla-estilizada input.form-control, .tabla-estilizada select.form-select {
-    height: 36px; padding: 4px 10px; font-size: .95rem;
+  /* ===========================
+     Layout básico
+  =========================== */
+  .container-fluid { padding-left:12px; padding-right:12px; }
+  
+  /* ===========================
+     Toolbar
+  =========================== */
+  .evt-toolbar{ position:relative; display:grid; gap:0; margin:0 0 .6rem; }
+  .evt-row{
+    display:flex; align-items:center; justify-content:space-between;
+    gap:.75rem; flex-wrap:wrap;
+    background:#fff; border:1px solid #e6e6e6; border-radius:14px;
+    padding:.5rem .75rem; box-shadow:0 1px 0 rgba(0,0,0,.02);
   }
-  .th-sort { cursor: pointer; user-select: none; }
-  .th-sort::after { content: ' ⇅'; font-size: .8em; opacity: .5; }
-  .th-sort.asc::after { content: ' ↑'; opacity: .9; }
-  .th-sort.desc::after { content: ' ↓'; opacity: .9; }
-  .row-dirty { background: rgba(255,149,1,0.08); }
-  h1.h1-titulo, .container-fluid h5, .container-fluid strong { color:#000 !important; }
-  .td-instrumento { cursor: text; }
-
+  .evt-row-top{ border-bottom-left-radius:0; border-bottom-right-radius:0; border-bottom:none; padding-top:.65rem; padding-bottom:.65rem; }
+  .evt-row-bottom{ border-top-left-radius:0; border-top-right-radius:0; padding-top:.5rem; padding-bottom:.5rem; }
+  .evt-left, .evt-right, .cfg-left, .cfg-right{ display:flex; align-items:center; gap:.6rem; flex-wrap:nowrap; }
+  
+  /* Plantillas: select + etiqueta */
+  .tpl-group{ display:inline-flex; align-items:center; gap:.45rem; flex-wrap:nowrap; margin-right:.25rem; }
+  .tpl-label{ font-weight:600; color:#222; font-size:.95rem; }
+  
+  /* Selector de plantilla */
+  .tpl-sel{
+    width:50% !important; max-width:500px; min-width:180px;
+    flex:0 0 auto; margin-right:.25rem;
+  }
+  .form-select.tpl-sel{
+    min-width:340px; max-width:42vw; height:32px;
+    padding:.2rem .65rem; font-size:.92rem; line-height:1.2;
+    --bs-form-select-padding-y:.2rem;
+    --bs-form-select-font-size:.92rem;
+  }
+  
+  /* Info + enlace “Guardar como plantilla” */
+  .tpl-info{ color:#6b7280; }
+  .tpl-popwrap{ position:relative; }
+  .evt-link-add{
+    font-weight:600; font-size:.95rem; text-decoration:none; color:#111;
+    padding:6px 10px; border-radius:10px; border:1px dashed #e6e6e6;
+  }
+  .evt-link-add:hover{ background:#fafafa; }
+  
+  /* Popover guardar plantilla */
+  .evt-popover{
+    position:absolute; top:calc(100% + 8px); left:0; z-index:20;
+    display:flex; flex-direction:column; gap:8px; width:min(440px,85vw);
+    background:#fff; border:1px solid #e6e6e6; border-radius:14px; padding:12px;
+    box-shadow:0 12px 28px rgba(0,0,0,.08);
+  }
+  .evt-popover .row{ display:flex; gap:8px; }
+  .evt-popover input.form-control{ height:34px; font-size:14px; }
+  .evt-popover.form-compact{
+    top:44px; right:10px; left:auto; z-index:30;
+    display:grid; grid-template-columns:1fr; gap:8px;
+    width:min(380px,88vw); border:1px solid #e9e9e9; border-radius:12px; padding:10px 12px;
+  }
+  .popover-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:2px; }
+  .popover-head strong{ font-size:14px; color:#111; }
+  
+  /* Botones */
+  .btn-icon{
+    appearance:none; border:0; background:transparent; cursor:pointer;
+    font-size:16px; line-height:1; padding:2px 4px; color:#666; border-radius:6px;
+  }
+  .btn-icon:hover{ background:#f3f3f3; }
+  
+  .btn-ghost-sm{
+    background:transparent; color:#111; border:1px solid #e1e1e1;
+    border-radius:10px; padding:.35rem .75rem; font-weight:600;
+  }
+  .btn-ghost-sm:hover{ background:#f8f8f8; }
+  .btn-outline-sm{
+    background:transparent; color:#222; border:1px solid #cfcfcf;
+    border-radius:10px; padding:.35rem .75rem; font-weight:600;
+  }
+  .btn-outline-sm:hover{ background:#f5f5f5; }
+  .btn-solid-sm{
+    background:#222; color:#fff; border:1px solid #222;
+    border-radius:10px; padding:.35rem .75rem; font-weight:700;
+  }
+  .btn-solid-sm:hover{ filter:brightness(.95); }
+  
+  .btn-solid-xs, .btn-outline-xs{ padding:.28rem .6rem; font-size:13px; font-weight:700; border-radius:9px; }
+  .btn-solid-xs{ background:#111; color:#fff; border:1px solid #111; }
+  .btn-solid-xs:hover{ filter:brightness(.96); }
+  .btn-outline-xs{ background:#fff; color:#222; border:1px solid #cfcfcf; }
+  .btn-outline-xs:hover{ background:#f6f6f6; }
+  
+  /* Switches */
+  .cfg-label{ font-weight:700; color:#222; margin-right:.25rem; }
+  .pill-switch{
+    display:inline-flex; align-items:center; gap:.45rem;
+    background:#fafafa; border:1px solid #e6e6e6; border-radius:999px;
+    padding:.22rem .55rem .22rem .4rem; cursor:pointer; user-select:none;
+  }
+  .pill-switch input{ margin:0; width:18px; height:18px; }
+  .pill-switch span{ font-weight:600; color:#333; font-size:.95rem; }
+  
+  /* Utilidades */
+  .tpl-hidden{ display:none !important; }
+  
+  /* Meta del evento */
+  .evt-meta{ display:flex; flex-direction:column; align-items:flex-end; gap:2px; line-height:1.15; }
+  .evt-title{
+    font-weight:700; color:#111; font-size:1rem;
+    max-width:420px; text-align:right; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  .evt-date{ color:#6b7280; font-weight:600; font-size:.92rem; }
+  
+  /* Responsivo */
+  @media (max-width:640px){
+    .evt-left, .cfg-left{ flex-wrap:wrap; }
+    .tpl-sel{ width:100% !important; max-width:100%; }
+    .evt-meta{ align-items:flex-start; }
+    .evt-title, .evt-date{ text-align:left; }
+  }
+  
+  /* ===========================
+     Tabla principal
+  =========================== */
+  .tabla-estilizada td, .tabla-estilizada th{ padding:10px 12px; vertical-align:middle; }
+  .tabla-estilizada input.form-control, .tabla-estilizada select.form-select{ height:36px; padding:4px 10px; font-size:.95rem; }
+  .th-sort{ cursor:pointer; user-select:none; }
+  .th-sort::after{ content:' ⇅'; font-size:.8em; opacity:.5; }
+  .th-sort.asc::after{ content:' ↑'; opacity:.9; }
+  .th-sort.desc::after{ content:' ↓'; opacity:.9; }
+  .row-dirty{ background:rgba(255,149,1,.08); }
+  h1.h1-titulo, .container-fluid h5, .container-fluid strong{ color:#000 !important; }
+  
+  .td-instrumento{
+    cursor:text; min-height:1.85rem; padding:.25rem .4rem;
+    border:1px solid transparent; border-radius:.35rem;
+  }
+  .td-instrumento:focus{
+    outline:none; border-color:#d0d0d0; background:#fff; box-shadow:inset 0 0 0 1px #d0d0d0;
+  }
+  
+  /* Botón “peligro neutral” */
   .btn-outline-danger-neutral{
-  background:transparent; color:#aa2a2a; border:1px solid #e1bcbc;
-  border-radius:10px; padding:.4rem .8rem;
-}
-.btn-outline-danger-neutral:hover{ background:#f8eaea; }
-.btn-outline-danger-neutral:disabled{
-  opacity:.55; cursor:not-allowed;
-}
-.td-instrumento{
-  cursor:text;
-  min-height: 1.85rem;
-  padding: .25rem .4rem;
-  border: 1px solid transparent;
-  border-radius: .35rem;
-}
-.td-instrumento:focus{
-  outline: none;
-  border-color: #d0d0d0;
-  background: #fff;
-  box-shadow: inset 0 0 0 1px #d0d0d0;
-}
-/* Margen lateral para que la tabla no toque los bordes */
-.container-fluid {
-  padding-left: 16px;
-  padding-right: 16px;
-}
-
-/* Si prefieres aplicarlo solo a las tablas estilizadas */
-.tabla-estilizada {
-  margin-left: 8px;
-  margin-right: 8px;
-  width: calc(100% - 16px); /* evita que ocupe todo el ancho */
-}
-/* 🔹 Oculta elementos hasta que se activen */
-.tpl-hidden {
-  display: none !important;
-}
-
-/* 🔹 Contenedor del popover para guardar plantilla */
-.evt-popover {
-  position: absolute;
-  top: 130%;
-  right: 0;
-  z-index: 20;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  width: min(440px, 80vw);
-  background: #fff;
-  border: 1px solid #e6e6e6;
-  border-radius: 14px;
-  padding: 12px;
-  box-shadow: 0 10px 24px rgba(0,0,0,.08);
-}
-
-/* 🔹 Fila de inputs dentro del popover */
-.evt-popover .row {
-  display: flex;
-  gap: 8px;
-}
-
-/* 🔹 Fila de botones dentro del popover */
-.evt-popover .row.btns {
-  justify-content: flex-end;
-}
-
-/* 🔹 Inputs del formulario */
-.evt-popover input.form-control {
-  height: 36px;
-  font-size: 15px;
-}
-
-/* 🔹 Enlace para abrir el formulario "Guardar como plantilla" */
-.evt-link-add {
-  font-weight: 600;
-  font-size: 15px;
-  text-decoration: none;
-  color: #111;
-  padding: 4px 10px;
-  border-radius: 8px;
-  border: 1px dashed #e6e6e6;
-  cursor: pointer;
-}
-
-.evt-link-add:hover {
-  background: #fafafa;
-}
-
-/* 🔹 Mensaje de estado debajo del popover */
-#saveTplMsg {
-  font-size: 0.85rem;
-  color: #6b7280;
-}
-.badge-delay{ display: none !important; }
- #extrasWrap table[data-tipo="invitados"] tbody tr {
-    background-color: #e8f7ff; /* azul claro */
+    background:transparent; color:#aa2a2a; border:1px solid #e1bcbc;
+    border-radius:10px; padding:.4rem .8rem;
   }
-
-  /* Color de fondo para reservas */
-  #extrasWrap table[data-tipo="reservas"] tbody tr {
-    background-color: #fff7e6; /* naranja claro */
-  }
-
-  /* Opcional: hover más oscuro para mejorar la lectura */
-  #extrasWrap table[data-tipo="invitados"] tbody tr:hover {
-    background-color: #d6f0ff;
-  }
-
-  #extrasWrap table[data-tipo="reservas"] tbody tr:hover {
-    background-color: #ffeacc;
-  }
-
-  /* Botonera corporativa (grises/negros) */
-  #extrasWrap .btn-link.text-dark { text-decoration: none; }
-
-  /* Opción A: Diferenciar por color suave (mejor escaneabilidad) */
-  #extrasWrap table[data-tipo="invitados"] tbody tr { background-color: #f7f9fc; } /* gris azulado muy suave */
-  #extrasWrap table[data-tipo="reservas"]  tbody tr { background-color: #faf7f2; } /* gris cálido muy suave */
-  #extrasWrap .extras-table tbody tr:hover { filter: brightness(0.98); }
-
-  /* Opción B (alternativa 100% grises, si la A no te encaja):
-  #extrasWrap table[data-tipo="invitados"] tbody tr { background-color: #f6f6f6; }
-  #extrasWrap table[data-tipo="reservas"]  tbody tr { background-color: #eeeeee; }
-  */
-
-  /* Estado colapsado */
-  .extras-panel.is-collapsed .table-responsive { display: none; }
-  .extras-panel.is-collapsed [data-action="toggle"][aria-expanded="false"]::after { content: ' (oculto)'; font-weight: normal; }
-
-  /* Botonera corporativa en grises/negros con separación */
-  #extrasWrap .btn-group { gap: .5rem; }
-
-  /* Paneles más delimitados y en vertical */
+  .btn-outline-danger-neutral:hover{ background:#f8eaea; }
+  .btn-outline-danger-neutral:disabled{ opacity:.55; cursor:not-allowed; }
+  
+  /* Ajustes tabla principal */
+  #alumWrap .table-responsive{ padding:0 12px; }
+  #asigBody .min-col .minutos-show{ display:none !important; }
+  
+  /* ===========================
+     Panel Extras
+  =========================== */
+  #extrasWrap{ margin:0 12px; }
+  #extrasWrap .btn-link.text-dark{ text-decoration:none; }
+  #extrasWrap .btn-group{ gap:.5rem; }
   #extrasWrap .extras-panel{
-    border: 1px solid #e6e6e6;
-    border-radius: 10px;
-    padding: .9rem;
-    background: #fff;
-    box-shadow: 0 1px 0 rgba(0,0,0,.05);
-    margin-bottom: 1rem;
+    border:1px solid #e6e6e6; border-radius:10px; padding:.9rem;
+    background:#fff; box-shadow:0 1px 0 rgba(0,0,0,.05); margin-bottom:1rem;
   }
-
-  /* Diferenciación suave por tipo en los listados Extras */
-  #extrasWrap table[data-tipo="invitados"] tbody tr { background-color:#f5f7fa; }
-  #extrasWrap table[data-tipo="reservas"]  tbody tr { background-color:#f3f2f0; }
-  #extrasWrap .extras-table tbody tr:hover { filter: brightness(0.98); }
-
-  /* === MARCAS EN LA TABLA PRINCIPAL (asignaciones) === */
-  /* Fila invitado/reserva: una banda lateral y badge en el nombre */
-  #asigBody tr.is-invitado { border-left: 4px solid #2b6cb0; background-image: linear-gradient(to right, rgba(43,108,176,.06), transparent); }
-  #asigBody tr.is-reserva  { border-left: 4px solid #4a5568; background-image: linear-gradient(to right, rgba(74,85,104,.06), transparent); }
-
-  #asigBody .tag-chip{
-    display:inline-block; font-size:.75rem; line-height:1; padding:.25rem .4rem;
-    border-radius: 999px; margin-left:.35rem; vertical-align: middle;
-    background:#eee; color:#333; font-weight:600;
-  }
-  #asigBody .tag-chip.inv { background:#e6eef8; color:#2b6cb0; }
-  #asigBody .tag-chip.res { background:#e9eaec; color:#4a5568; }
-
-  /* Leyenda compacta */
-  #legendExtras { font-size:.85rem; color:#666; }
-  #legendExtras .swatch { display:inline-block; width:10px; height:10px; border-radius:2px; margin-right:6px; vertical-align:middle; }
-  #legendExtras .sw-inv { background:#2b6cb0; }
-  #legendExtras .sw-res { background:#4a5568; }
-
-  /* Margen lateral del bloque Extras */
-  #extrasWrap { margin: 0 12px; }
-
-  /* Paneles apilados y delimitados */
-  #extrasWrap .extras-panel{
-    border: 1px solid #e6e6e6; border-radius: 10px; padding: .9rem;
-    background: #fff; box-shadow: 0 1px 0 rgba(0,0,0,.05);
-    margin-bottom: 1rem;
-  }
-
-  /* Botonera corporativa separada */
-  #extrasWrap .btn-group { gap: .5rem; }
-
-  /* Diferenciación en listados de Extras (suave) */
-  #extrasWrap table[data-tipo="invitados"] tbody tr { background-color:#f5f7fa; }
-  #extrasWrap table[data-tipo="reservas"]  tbody tr { background-color:#f3f2f0; }
-  #extrasWrap .extras-table tbody tr:hover { filter: brightness(0.98); }
-
-  /* === MARCAS EN TABLA PRINCIPAL === */
-  #asigBody tr.is-invitado {
-    border-left: 4px solid #2b6cb0;
-    background-image: linear-gradient(to right, rgba(43,108,176,.06), transparent);
-  }
-  #asigBody tr.is-reserva {
-    border-left: 4px solid #4a5568;
-    background-image: linear-gradient(to right, rgba(74,85,104,.06), transparent);
-  }
-  #asigBody .tag-chip{
-    display:inline-block; font-size:.75rem; line-height:1; padding:.25rem .45rem;
-    border-radius: 999px; margin-left:.35rem; vertical-align: middle;
-    background:#eee; color:#333; font-weight:600;
-  }
-  #asigBody .tag-chip.inv { background:#e6eef8; color:#2b6cb0; }
-  #asigBody .tag-chip.res { background:#e9eaec; color:#4a5568; }
-
-  /* Botón de ocultar/mostrar por panel (no el global) */
-  .panel-toggle.btn { padding: .15rem .5rem; }
-  .extras-panel.is-collapsed .table-responsive { display:none; }
-/* Chips compactos en la celda del nombre, sin aumentar altura ni romper línea */
-#asigBody .tag-chip{
-  display: inline-block;
-  font-size: .70rem;          /* un pelín más pequeño */
-  line-height: 1;             /* compacto */
-  padding: .18rem .38rem;     /* menos padding */
-  border-radius: 999px;
-  margin-left: .35rem;
-  vertical-align: baseline;   /* para ir a la línea del nombre */
-  white-space: nowrap;        /* no parte */
-}
-#asigBody .tag-chip.inv { background:#e6eef8; color:#2b6cb0; }
-#asigBody .tag-chip.res { background:#e9eaec; color:#4a5568; }
-
-/* Bandas laterales (suaves, no aumentan altura) */
-#asigBody tr.is-invitado { border-left: 4px solid #2b6cb0; background-image: linear-gradient(to right, rgba(43,108,176,.06), transparent); }
-#asigBody tr.is-reserva  { border-left: 4px solid #4a5568; background-image: linear-gradient(to right, rgba(74,85,104,.06), transparent); }
-/* Margen lateral suave en la tabla principal (alumnos) */
-#alumWrap .table-responsive { padding: 0 12px}
-#extrasWrap .extras-table td .text-muted { font-size:.9em; margin-top:2px; }
-/* ===== MODO COMPACTO PARA EXTRAS ===== */
-#extrasWrap.extras-compact {
-  margin: 0 8px !important;
-}
-
-/* Panel menos “acolchado” */
-#extrasWrap.extras-compact .extras-panel{
-  padding: .55rem !important;
-  border-radius: 8px !important;
-}
-
-/* Cabeceras más bajas y tipografía más pequeña */
-#extrasWrap.extras-compact h6 { 
-  font-size: .95rem !important; 
-  margin: 0 !important;
-}
-#extrasWrap.extras-compact .btn-group .btn,
-#extrasWrap.extras-compact .panel-toggle.btn{
-  padding: .15rem .45rem !important;
-  font-size: .8rem !important;
-}
-
-/* Mesas compactas */
-#extrasWrap.extras-compact .table { 
-  margin-bottom: .35rem !important;
-}
-#extrasWrap.extras-compact .table thead th{
-  padding: .28rem .5rem !important;
-  font-size: .85rem !important;
-  line-height: 1.1 !important;
-}
-#extrasWrap.extras-compact .table tbody td{
-  padding: .28rem .5rem !important;
-  line-height: 1.15 !important;
-  vertical-align: middle !important;
-}
-
-/* Nombre + instrumento (línea secundaria aún más sutil) */
-#extrasWrap.extras-compact .extras-table td .text-muted{
-  font-size: .82em !important;
-  margin-top: 1px !important;
-  opacity: .85;
-}
-
-/* Leyenda más discreta */
-#extrasWrap.extras-compact #legendExtras{
-  font-size: .78rem !important;
-  opacity: .8 !important;
-}
-
-/* (Opcional) límite de altura por panel con scroll interno */
-#extrasWrap.extras-compact .extras-panel .table-responsive{
-  max-height: 260px;          /* ajusta a 220–320 según gusto */
-  overflow: auto;
-  scrollbar-gutter: stable;
-}
-
-/* Reduce separaciones verticales entre paneles */
-#extrasWrap.extras-compact .extras-panel + .extras-panel{
-  margin-top: .6rem !important;
-}
-
-/* Reduce el espacio del header del card */
-#extrasWrap.extras-compact .card-header{
-  padding: .45rem .6rem !important;
-}
-#extrasWrap.extras-compact .card-body{
-  padding: .6rem .6rem !important;
-}
-#asigBody .min-col .minutos-show { display: none !important; }
-/* === Ancho más estrecho para EXTRAS === */
-#extrasWrap.extras-narrow{
-  width: 100%;
-  max-width: 620px;         /* ~algo más de la mitad en pantallas grandes */
-  margin: 0 auto;           /* céntralo; cámbialo por 0 si lo quieres a la izquierda */
-}
-
-/* Opcional: aún más estrecho en súper anchas */
-@media (min-width: 1400px){
-  #extrasWrap.extras-narrow{ max-width: 560px; }
-}
-
-/* Asegurar que la tabla no fuerce el ancho */
-#extrasWrap.extras-narrow .extras-table{
-  width: 100%;
-  table-layout: auto;
-}
-.fm-badge{
-    display:inline-flex; align-items:center; justify-content:center;
-    min-width:1.4em; height:1.4em; padding:0 .42em;
-    border-radius:999px; background:#ea6b38; color:#fff;
-    font-weight:700; font-size:.75rem; line-height:1;
-    margin-left:.4rem;
-  }
-  .fm-badge[hidden]{ display:none !important; }
-  /* Punto junto al nombre según data-status (sin tocar el HTML) */
-#asigBody td:first-child strong{ position:relative; }
-#asigBody tr[data-status="inv"] td:first-child strong::after,
-#asigBody tr[data-status="res"] td:first-child strong::after{
-  content:"";
-  display:inline-block;
-  width:0.6rem; height:0.6rem;
-  margin-left:6px; vertical-align:middle;
-  border-radius:999px;
-  box-shadow:0 0 0 1px rgba(0,0,0,.12) inset;
-}
-/* Colores: Invitado = azul, Reserva = ámbar */
-#asigBody tr[data-status="inv"] td:first-child strong::after{ background:#2563eb; }
-#asigBody tr[data-status="res"] td:first-child strong::after{ background:#f59e0b; }
-#alumWrap #asigBody td:first-child strong{ position:relative; }
-#alumWrap #asigBody tr[data-status="inv"] td:first-child strong::after,
-#alumWrap #asigBody tr[data-status="res"] td:first-child strong::after{
-  content:"";
-  display:inline-block;
-  width:0.6rem; height:0.6rem;
-  margin-left:6px; vertical-align:middle;
-  border-radius:999px;
-  box-shadow:0 0 0 1px rgba(0,0,0,.12) inset;
-}
-#alumWrap #asigBody tr[data-status="inv"] td:first-child strong::after{ background:#2563eb; }
-#alumWrap #asigBody tr[data-status="res"] td:first-child strong::after{ background:#f59e0b; }
-/* Punto junto al nombre (más específico) */
-#alumWrap #asigBody td:first-child strong{ position:relative; }
-#alumWrap #asigBody tr[data-status="inv"] td:first-child strong::after,
-#alumWrap #asigBody tr[data-status="res"] td:first-child strong::after{
-  content:"";
-  display:inline-block;
-  width:0.6rem; height:0.6rem;
-  margin-left:6px; vertical-align:middle;
-  border-radius:999px;
-  box-shadow:0 0 0 1px rgba(0,0,0,.12) inset;
-}
-#alumWrap #asigBody tr[data-status="inv"] td:first-child strong::after{ background:#2563eb; }
-#alumWrap #asigBody tr[data-status="res"] td:first-child strong::after{ background:#f59e0b; }
-
-/* Fallback visual inmediato por clases (banda lateral) */
-#alumWrap #asigBody tr.is-invitado{
-  border-left:4px solid #2563eb;
-  background-image:linear-gradient(to right, rgba(37,99,235,.06), transparent);
-}
-#alumWrap #asigBody tr.is-reserva{
-  border-left:4px solid #f59e0b;
-  background-image:linear-gradient(to right, rgba(245,158,11,.06), transparent);
-}
-
-</style>
+  .extras-panel.is-collapsed .table-responsive{ display:none; }
+  .extras-panel.is-collapsed [data-action="toggle"][aria-expanded="false"]::after{ content:' (oculto)'; font-weight:normal; }
+  
+  /* Filas invitado/reserva (suave) */
+  #extrasWrap table[data-tipo="invitados"] tbody tr{ background-color:#f5f7fa; }
+  #extrasWrap table[data-tipo="reservas"]  tbody tr{ background-color:#f3f2f0; }
+  #extrasWrap .extras-table tbody tr:hover{ filter:brightness(.98); }
+  #extrasWrap .extras-table td .text-muted{ font-size:.9em; margin-top:2px; }
+  
+  /* Modo compacto Extras */
+  #extrasWrap.extras-compact{ margin:0 8px !important; }
+  #extrasWrap.extras-compact .extras-panel{ padding:.55rem !important; border-radius:8px !important; }
+  #extrasWrap.extras-compact h6{ font-size:.95rem !important; margin:0 !important; }
+  #extrasWrap.extras-compact .btn-group .btn,
+  #extrasWrap.extras-compact .panel-toggle.btn{ padding:.15rem .45rem !important; font-size:.8rem !important; }
+  #extrasWrap.extras-compact .table{ margin-bottom:.35rem !important; }
+  #extrasWrap.extras-compact .table thead th{ padding:.28rem .5rem !important; font-size:.85rem !important; line-height:1.1 !important; }
+  #extrasWrap.extras-compact .table tbody td{ padding:.28rem .5rem !important; line-height:1.15 !important; vertical-align:middle !important; }
+  #extrasWrap.extras-compact .extras-table td .text-muted{ font-size:.82em !important; margin-top:1px !important; opacity:.85; }
+  #extrasWrap.extras-compact #legendExtras{ font-size:.78rem !important; opacity:.8 !important; }
+  #extrasWrap.extras-compact .extras-panel .table-responsive{ max-height:260px; overflow:auto; scrollbar-gutter:stable; }
+  #extrasWrap.extras-compact .extras-panel + .extras-panel{ margin-top:.6rem !important; }
+  #extrasWrap.extras-compact .card-header{ padding:.45rem .6rem !important; }
+  #extrasWrap.extras-compact .card-body{ padding:.6rem .6rem !important; }
+  
+  /* Ancho estrecho opcional */
+  #extrasWrap.extras-narrow{ width:100%; max-width:800px; margin:0 auto; }
+  @media (min-width:1400px){ #extrasWrap.extras-narrow{ max-width:560px; } }
+  #extrasWrap.extras-narrow .extras-table{ width:100%; table-layout:auto; }
+   
+  </style>  
+  
 <!-- ============ Utils compartidas ============ -->
 <script>
 (() => {
@@ -1100,7 +705,14 @@ async function doSave(nombre, descripcion){
 
   for (const r of rows) {
     const tr = document.createElement('tr');
-    tr.dataset.alumno = String(r.id);
+    const alumnoId = r.alumno_id ?? r.id ?? r.alumnoId ?? r.id_alumno ?? r.user_id ?? r.persona_id;
+tr.dataset.alumno = alumnoId != null ? String(alumnoId) : '';
+if (!tr.dataset.alumno) console.warn('[extras] fila sin id reconocible:', r);
+
+  if (!tr.dataset.alumno) {
+    // te avisa en consola si llega una fila sin id reconocible
+    console.warn('[extras] fila sin id reconocible:', r);
+  }
 
     // Columna check
     const tdChk = document.createElement('td');
@@ -1213,7 +825,26 @@ $wrap.addEventListener('click', ev => {
   })();
 })();
 </script>
-
+<script>
+  // 🔒 Parche defensivo para MutationObserver.observe
+  (function(){
+    if (window.__MO_SAFE_PATCH__) return;
+    window.__MO_SAFE_PATCH__ = true;
+  
+    const origObserve = MutationObserver.prototype.observe;
+    MutationObserver.prototype.observe = function(target, options){
+      if (!(target instanceof Node)) {
+        // Log útil para localizar el selector o llamada problemática
+        try {
+          const at = (new Error('observe(target) inválido')).stack;
+          console.warn('[MO safeguard] Se ignoró observe() con', target, 'Opciones:', options, '\n', at);
+        } catch {}
+        return; // NO lances: evita el TypeError que rompe todo.
+      }
+      return origObserve.call(this, target, options);
+    };
+  })();
+  </script>  
 <!-- ============ Switches (mostrar/ocultar bloques) ============ -->
 <script>
 (() => {
@@ -1627,102 +1258,102 @@ function setMinutesCell(tr, val){
   
 <!-- ============ Ordenación por cabecera (2 estados asc/desc) ============ -->
 <script>
-(() => {
-  const $tbody = document.getElementById('asigBody');
-  if (!$tbody) return;
-
-  const headers = document.querySelectorAll('#alumWrap th.th-sort');
-
-  const collator = new Intl.Collator('es', { sensitivity: 'base', numeric: true });
-  const toMinutes = v => {
-    const m = /^(\d{2}):(\d{2})$/.exec((v || '').trim());
-    return m ? (+m[1])*60 + (+m[2]) : Number.POSITIVE_INFINITY;
-  };
-
-  function getVal(tr, key) {
-    switch (key) {
-      case 'apellidos':
-        return (tr.querySelector('td:first-child strong')?.textContent || tr.dataset.apellidos || '')
-          .trim().toLowerCase();
-
-      case 'instrumento': {
-        const visible = tr.querySelector('.td-instrumento')?.textContent?.trim();
-        if (visible) return visible.toLowerCase();
-        if (tr.dataset.instrumento) return tr.dataset.instrumento.toLowerCase();
-        const first = String(tr.dataset.instrumentos||'')
-          .split(/[;,|]/).map(s=>s.trim()).filter(Boolean)[0];
-        return (first||'').toLowerCase();
+  (() => {
+    const $tbody = document.getElementById('asigBody');
+    if (!$tbody) return;
+  
+    // --- helpers idénticos a los del bloque de ordenación ---
+    const ascii = s => String(s||'')
+      .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+      .toLowerCase().trim();
+  
+    const toMinutes = v => {
+      const m = /^(\d{2}):(\d{2})$/.exec((v || '').trim());
+      return m ? (+m[1])*60 + (+m[2]) : Number.POSITIVE_INFINITY;
+    };
+  
+    function getVal(tr, key) {
+      switch (key) {
+        case 'apellidos': {
+          const s = tr.dataset.apellidos || (tr.querySelector('td:first-child strong')?.textContent || '');
+          return ascii(s);
+        }
+        case 'instrumento': {
+          const visible = (tr.querySelector('.td-instrumento')?.textContent || '').trim();
+          const base = visible || tr.dataset.instrumento ||
+            (String(tr.dataset.instrumentos||'').split(/[;,|]/).map(s=>s.trim()).filter(Boolean)[0] || '');
+          return ascii(base);
+        }
+        case 'firmado':   return (tr.querySelector('.chk-firmado')?.checked ? 1 : 0);
+        case 'inicio':    return toMinutes(tr.querySelector('.inp-ini')?.value || tr.dataset.inicio || '');
+        case 'fin':       return toMinutes(tr.querySelector('.inp-fin')?.value  || tr.dataset.fin    || '');
+        case 'ausencia': {
+          const sel = tr.querySelector('.sel-aus');
+          const id  = sel ? (sel.value || '') : (tr.dataset.ausenciaId || '');
+          const txt = sel ? (sel.selectedOptions[0]?.textContent || '') : (tr.dataset.ausencia || '');
+          return [String(id).padStart(6,'0'), ascii(txt)];
+        }
+        case 'actividad': {
+          const sel = tr.querySelector('.sel-act');
+          const id  = sel ? (sel.value || '') : (tr.dataset.actividadId || '');
+          const txt = sel ? (sel.selectedOptions[0]?.textContent || '') : (tr.dataset.actividad || '');
+          return [String(id).padStart(6,'0'), ascii(txt)];
+        }
+        case 'notas':     return ascii((tr.querySelector('.inp-notas')?.value || tr.dataset.notas || '').trim());
+        default:          return '';
       }
-
-      case 'firmado':
-        return (tr.querySelector('.chk-firmado')?.checked ? 1 : 0);
-
-      case 'inicio':
-        return toMinutes(tr.querySelector('.inp-ini')?.value || tr.dataset.inicio || '');
-
-      case 'fin':
-        return toMinutes(tr.querySelector('.inp-fin')?.value  || tr.dataset.fin    || '');
-
-      case 'ausencia': {
-        const sel = tr.querySelector('.sel-aus');
-        const id  = sel ? (sel.value || '') : (tr.dataset.ausenciaId || '');
-        const txt = sel ? (sel.selectedOptions[0]?.textContent || '') : (tr.dataset.ausencia || '');
-        return [String(id).padStart(6,'0'), txt.toLowerCase()];
-      }
-
-      case 'actividad': {
-        const sel = tr.querySelector('.sel-act');
-        const id  = sel ? (sel.value || '') : (tr.dataset.actividadId || '');
-        const txt = sel ? (sel.selectedOptions[0]?.textContent || '') : (tr.dataset.actividad || '');
-        return [String(id).padStart(6,'0'), txt.toLowerCase()];
-      }
-
-      case 'notas':
-        return (tr.querySelector('.inp-notas')?.value || tr.dataset.notas || '').trim().toLowerCase();
-
-      default:
-        return '';
     }
-  }
-
-  function sortBy(key, dir) {
-    const rows = Array.from($tbody.querySelectorAll('tr')).map((tr,i)=>({tr,i}));
-    rows.sort((A,B)=> {
-      const va = getVal(A.tr, key), vb = getVal(B.tr, key);
-      let res = 0;
-      if (typeof va === 'number' && typeof vb === 'number') {
-        res = va - vb;
-      } else if (Array.isArray(va) && Array.isArray(vb)) {
-        res = collator.compare(va[0], vb[0]) || collator.compare(va[1], vb[1]);
-      } else {
-        res = collator.compare(String(va), String(vb));
+  
+    function sortBy(key, dir) {
+      const rows = Array.from($tbody.querySelectorAll('tr')).map((tr,i)=>({tr,i}));
+      rows.sort((A,B)=> {
+        const va = getVal(A.tr, key), vb = getVal(B.tr, key);
+        let res = 0;
+        if (typeof va === 'number' && typeof vb === 'number') {
+          res = va - vb;
+        } else if (Array.isArray(va) && Array.isArray(vb)) {
+          res = (va[0] < vb[0] ? -1 : va[0] > vb[0] ? 1 : 0) ||
+                (va[1] < vb[1] ? -1 : va[1] > vb[1] ? 1 : 0);
+        } else {
+          res = (va < vb ? -1 : va > vb ? 1 : 0);
+        }
+        res = (dir === 'asc') ? res : -res;
+        return res || (A.i - B.i);
+      });
+      const frag = document.createDocumentFragment();
+      rows.forEach(o=>frag.appendChild(o.tr));
+      $tbody.appendChild(frag);
+    }
+  
+    // --- ORDENACIÓN INICIAL: por “Músico” (apellidos) ascendente ---
+    function initialSortApellidosAsc(){
+      const thAp = document.querySelector('#alumWrap th.th-sort[data-key="apellidos"]');
+      if (thAp) {
+        // marca visualmente el estado
+        thAp.classList.remove('desc');
+        thAp.classList.add('asc');
       }
-      res = (dir === 'asc') ? res : -res;
-      return res || (A.i - B.i); // estable
+      sortBy('apellidos','asc');
+    }
+  
+    // Lánzalo al pintar y también un pelín después por si hay hidratación tardía
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', () => {
+        initialSortApellidosAsc();
+        setTimeout(initialSortApellidosAsc, 250);
+      });
+    } else {
+      initialSortApellidosAsc();
+      setTimeout(initialSortApellidosAsc, 250);
+    }
+  
+    // Si más tarde aplicas plantilla / refrescas, re-ordena de nuevo
+    ['tplApply','btnRefreshAsign'].forEach(id => {
+      document.getElementById(id)?.addEventListener('click', () => setTimeout(initialSortApellidosAsc, 300));
     });
-    const frag = document.createDocumentFragment();
-    rows.forEach(o=>frag.appendChild(o.tr));
-    $tbody.appendChild(frag);
-  }
-
-  headers.forEach(th => {
-    th.addEventListener('click', () => {
-      const key = th.dataset.key;
-      if (!key) return;
-
-      let dir = 'asc';
-      if (th.classList.contains('asc')) dir = 'desc';
-      else if (th.classList.contains('desc')) dir = 'asc';
-
-      headers.forEach(h => h.classList.remove('asc','desc'));
-      th.classList.add(dir);
-
-      sortBy(key, dir);
-    });
-  });
-})();
-</script>
-
+  })();
+  </script>
+  
 <!-- ============ Tabla INSTRUMENTOS: editor visual + autoguardado alumnos ============ -->
 <script>
   (() => {
@@ -2762,59 +2393,6 @@ function setMinutesCell(tr, val){
     el.textContent = (fechaTxt || 'Fecha sin definir') + horas;
   })();
   </script>   
- <script>
-  (() => {
-    const btn   = document.getElementById('shareEventoBtn');
-    const mini  = document.getElementById('shareEventoMini');
-    const inp   = document.getElementById('shareEventoUrl');
-    const copy  = document.getElementById('shareEventoCopy');
-    const exp   = document.getElementById('shareEventoExp');
-    const err   = document.getElementById('shareEventoErr');
-  
-    const eventoId = <%= Number(evento.id) %>; // ya lo tienes en la vista
-  
-    btn?.addEventListener('click', async (e) => {
-      e.preventDefault();
-      err.classList.add('d-none');
-  
-      try {
-        btn.disabled = true;
-        const prev = btn.textContent; btn.textContent = 'Generando…';
-  
-        const r = await fetch('/api/share', {
-          method: 'POST',
-          headers: { 'Content-Type':'application/json' },
-          body: JSON.stringify({
-            kind: 'plano',
-            params: { grupo: eventoId, src: 'evento' }, // ← plano del EVENTO
-            expireHours: 24 * 90                          // 90 días (ajusta a gusto)
-          })
-        });
-        const j = await r.json().catch(() => ({}));
-        if (!r.ok || !j.ok) throw new Error(j.msg || 'No se pudo crear el enlace');
-  
-        inp.value = j.url;
-        mini.classList.remove('d-none');
-        exp.textContent = j.expiresAt ? new Date(j.expiresAt).toLocaleString() : '—';
-  
-        copy.onclick = () => {
-          navigator.clipboard.writeText(j.url).then(() => {
-            const old = copy.textContent; copy.textContent = 'Copiado ✓';
-            setTimeout(() => copy.textContent = old, 1000);
-          });
-        };
-  
-        btn.textContent = prev;
-        btn.disabled = false;
-      } catch (e) {
-        err.textContent = e.message || 'Error creando el enlace';
-        err.classList.remove('d-none');
-        btn.disabled = false;
-        btn.textContent = 'Generar enlace público';
-      }
-    });
-  })();
-  </script>    
   <script>
     (() => {
       const btn   = document.getElementById('shareEventoBtn');  // tu botón existente
@@ -2949,349 +2527,6 @@ function setMinutesCell(tr, val){
     }, true);
   })();
 </script>
-<script>
-  (() => {
-    const eventoId = Number(<%= evento.id %>);
-    const $tbody = document.getElementById('asigBody');
-    if (!$tbody) return;
-  
-    // Convierte cualquier lista (ids u objetos) a Set<numérico>
-    const toIdSet = (list) => {
-      if (!Array.isArray(list)) return new Set();
-      return new Set(
-        list.map(item => {
-          if (typeof item === 'number' || typeof item === 'string') return Number(item);
-          if (item && (item.alumno_id != null || item.id != null)) return Number(item.alumno_id ?? item.id);
-          return NaN;
-        }).filter(Number.isFinite)
-      );
-    };
-  
-    async function fetchJSON(url){
-      const r = await fetch(url, { cache: 'no-store' });
-      if (!r.ok) throw new Error('HTTP ' + r.status);
-      const ct = r.headers.get('content-type') || '';
-      return ct.includes('application/json') ? r.json() : {};
-    }
-  
-    // Primero intenta /extras/tags; si no existe, cae a /extras/invitados y /extras/reservas
-    async function getSets(){
-      try {
-        const j = await fetchJSON(`/eventos/${eventoId}/extras/tags`);
-        return { inv: toIdSet(j?.invitados), res: toIdSet(j?.reservas) };
-      } catch {
-        const [inv, res] = await Promise.all([
-          fetchJSON(`/eventos/${eventoId}/extras/invitados`).catch(()=>[]),
-          fetchJSON(`/eventos/${eventoId}/extras/reservas`).catch(()=>[]),
-        ]);
-        return { inv: toIdSet(inv), res: toIdSet(res) };
-      }
-    }
-  
-    function applyStatus(invSet, resSet){
-  $tbody.querySelectorAll('tr[data-alumno]').forEach(tr => {
-    const id = Number(tr.dataset.alumno);
-    if (!Number.isFinite(id)) return;
 
-    const isInv = invSet.has(id);
-    const isRes = !isInv && resSet.has(id); // prioridad INV sobre RES
-    const status = isInv ? 'inv' : (isRes ? 'res' : '');
-
-    // Atributo para el punto por CSS
-    if (status) tr.setAttribute('data-status', status);
-    else tr.removeAttribute('data-status');
-
-    // Fallback visual por clases (banda lateral)
-    tr.classList.toggle('is-invitado', isInv);
-    tr.classList.toggle('is-reserva',  isRes);
-  });
-}
-
-    let busy = false;
-    async function refresh(){
-      if (busy) return;
-      busy = true;
-      try {
-        const { inv, res } = await getSets();
-        applyStatus(inv, res);
-      } finally { busy = false; }
-    }
   
-    // 1ª pasada
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', refresh, { once:true });
-    } else {
-      refresh();
-    }
-  
-    // Repintar si entran/salen filas en #asigBody (por acciones en la UI)
-    const obs = new MutationObserver(muts => {
-      if (muts.some(m => m.addedNodes?.length || m.removedNodes?.length)) refresh();
-    });
-    obs.observe($tbody, { childList: true });
-  })();
-  </script>
-  
-  <style>
-    /* Puntito real junto al nombre (no pseudo-elemento) */
-    #asigBody .dot-alu{
-      display:inline-block; font-weight:900; line-height:1;
-      margin-left:6px; font-size:.85em; transform: translateY(-1px);
-    }
-    #asigBody .dot-alu.inv{ color:#2563eb; } /* invitado */
-    #asigBody .dot-alu.res{ color:#f59e0b; } /* reserva  */
-    /* Banda lateral de apoyo (si quieres mantenerla visualmente) */
-    #asigBody tr.is-invitado{ border-left:4px solid #2563eb; background-image:linear-gradient(to right, rgba(37,99,235,.06), transparent); }
-    #asigBody tr.is-reserva { border-left:4px solid #f59e0b; background-image:linear-gradient(to right, rgba(245,158,11,.06), transparent); }
-  </style>
-  
-  <script>
-  (() => {
-    const $tbody  = document.getElementById('asigBody');
-    const $extras = document.getElementById('extrasWrap');
-    const eventoId = Number(<%= evento.id %>);
-    if (!$tbody) return;
-  
-    // Quita cualquier marca previa
-    function clearMarks(tr){
-      tr.classList.remove('is-invitado','is-reserva');
-      tr.querySelectorAll('.dot-alu').forEach(n => n.remove());
-      tr.removeAttribute('data-status');
-    }
-  
-    // Inserta el puntito real al final del <strong>
-    function putDot(tr, kind){ // kind: 'inv' | 'res'
-      const strong = tr.querySelector('td:first-child strong');
-      if (!strong) return;
-      const span = document.createElement('span');
-      span.className = `dot-alu ${kind}`;
-      span.textContent = '●';
-      strong.appendChild(span);
-    }
-  
-    function apply(invSet, resSet){
-      $tbody.querySelectorAll('tr[data-alumno]').forEach(tr => {
-        const id = Number(tr.dataset.alumno);
-        if (!Number.isFinite(id)) return;
-        clearMarks(tr);
-  
-        const isInv = invSet.has(id);
-        const isRes = !isInv && resSet.has(id); // prioridad INV
-  
-        if (isInv){ tr.classList.add('is-invitado'); tr.dataset.status = 'inv'; putDot(tr,'inv'); }
-        else if (isRes){ tr.classList.add('is-reserva'); tr.dataset.status = 'res'; putDot(tr,'res'); }
-      });
-    }
-  
-    // --- Fuente 1: DOM de Extras (no depende de fetch/JSON) ---
-    function setsFromExtrasDOM(){
-      if (!$extras) return null;
-      const q = (sel) => Array.from($extras.querySelectorAll(sel));
-      const inv = new Set(q('table[data-tipo="invitados"] tbody tr').map(tr => Number(tr.dataset.alumno)).filter(Number.isFinite));
-      const res = new Set(q('table[data-tipo="reservas"] tbody tr').map(tr => Number(tr.dataset.alumno)).filter(Number.isFinite));
-      return { inv, res };
-    }
-  
-    // --- Fuente 2: endpoints (fallback) ---
-    const toIdSet = (list) => {
-      if (!Array.isArray(list)) return new Set();
-      return new Set(list.map(x => {
-        if (typeof x === 'number' || typeof x === 'string') return Number(x);
-        if (x && (x.alumno_id != null || x.id != null)) return Number(x.alumno_id ?? x.id);
-        return NaN;
-      }).filter(Number.isFinite));
-    };
-    async function fetchJSON(url){
-      const r = await fetch(url, { cache:'no-store' });
-      if (!r.ok) throw new Error('HTTP '+r.status);
-      const ct = r.headers.get('content-type') || '';
-      return ct.includes('application/json') ? r.json() : {};
-    }
-    async function setsFromAPI(){
-      try{
-        const j = await fetchJSON(`/eventos/${eventoId}/extras/tags`);
-        return { inv: toIdSet(j?.invitados), res: toIdSet(j?.reservas) };
-      }catch{
-        const [inv, res] = await Promise.allSettled([
-          fetchJSON(`/eventos/${eventoId}/extras/invitados`),
-          fetchJSON(`/eventos/${eventoId}/extras/reservas`),
-        ]);
-        return {
-          inv: toIdSet(inv.value || []),
-          res: toIdSet(res.value || []),
-        };
-      }
-    }
-  
-    // Pintado robusto: primero intenta DOM; si está vacío, prueba API.
-    async function paint(){
-      // 1) Espera a que existan las filas de alumnos
-      if (!$tbody.querySelector('tr[data-alumno]')) {
-        requestAnimationFrame(paint); return;
-      }
-      // 2) DOM de Extras
-      const domSets = setsFromExtrasDOM();
-      if (domSets && (domSets.inv.size || domSets.res.size)) {
-        apply(domSets.inv, domSets.res);
-        return;
-      }
-      // 3) API fallback
-      try{
-        const apiSets = await setsFromAPI();
-        apply(apiSets.inv, apiSets.res);
-      }catch(e){
-        // Último recurso: no hacer nada silenciosamente
-        console.warn('[inv/res] no se pudo obtener datos', e);
-      }
-    }
-  
-    // Inicial
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', paint, { once:true });
-    } else {
-      paint();
-    }
-  
-    // Repinta si cambian Extras (DOM) o si se añaden/quitán filas en alumnos
-    const obs1 = new MutationObserver(() => paint());
-    $extras && obs1.observe($extras, { childList:true, subtree:true });
-    const obs2 = new MutationObserver(() => paint());
-    obs2.observe($tbody, { childList:true });
-  
-    // Utilidad de depuración (opcional)
-    window.__INV_RES_FORCE__ = (id, kind) => { // kind: 'inv'|'res'|'' (limpiar)
-      const tr = $tbody.querySelector(`tr[data-alumno="${id}"]`);
-      if (!tr) return false;
-      clearMarks(tr);
-      if (kind === 'inv'){ tr.classList.add('is-invitado'); tr.dataset.status='inv'; putDot(tr,'inv'); }
-      else if (kind === 'res'){ tr.classList.add('is-reserva'); tr.dataset.status='res'; putDot(tr,'res'); }
-      return true;
-    };
-  })();
-  </script>
-  <!-- ====== INV/RES: HARNESS A PRUEBA DE BALAS ====== -->
-<script id="invres-harness">
-  (() => {
-    if (window.__INVRES_HARNESS__) return; window.__INVRES_HARNESS__ = true;
-    const $tbody = document.getElementById('asigBody');
-    if (!$tbody) { console.warn('[INV/RES] no hay #asigBody'); return; }
-    const eventoId = Number(<%= Number(evento.id) %>);
-  
-    // ===== Helpers super simples (sin CSS) =====
-    const mark = (tr, kind) => {
-      // Limpia marcas previas (por si re-pintamos)
-      tr.querySelectorAll('.mark-invres').forEach(n => n.remove());
-      tr.classList.remove('is-invitado','is-reserva');
-      tr.removeAttribute('data-status');
-  
-      const strong = tr.querySelector('td:first-child strong');
-      if (!strong) return;
-  
-      // Marca de texto visible SIEMPRE (no depende de CSS)
-      const sup = document.createElement('sup');
-      sup.className = 'mark-invres';
-      sup.textContent = (kind === 'inv') ? ' INV' : ' RES';
-      sup.style.cssText = 'margin-left:6px;font-size:11px;font-weight:700;'
-                        + (kind === 'inv' ? 'color:#2563eb' : 'color:#f59e0b');
-      strong.appendChild(sup);
-  
-      // Banda lateral como apoyo visual
-      if (kind === 'inv') tr.classList.add('is-invitado');
-      if (kind === 'res') tr.classList.add('is-reserva');
-    };
-  
-    const apply = (inv, res) => {
-      let cInv = 0, cRes = 0;
-      $tbody.querySelectorAll('tr[data-alumno]').forEach(tr => {
-        const id = Number(tr.dataset.alumno);
-        if (!Number.isFinite(id)) return;
-        if (inv.has(id)) { mark(tr, 'inv'); cInv++; }
-        else if (res.has(id)) { mark(tr, 'res'); cRes++; }
-      });
-      console.log('[INV/RES] aplicado → inv:', cInv, 'res:', cRes);
-    };
-  
-    // ===== Fuente 1: DOM de Extras (sin fetch) =====
-    const fromExtrasDOM = () => {
-      const wrap = document.getElementById('extrasWrap'); if (!wrap) return null;
-      const get = sel => Array.from(wrap.querySelectorAll(sel))
-        .map(tr => Number(tr.dataset.alumno)).filter(Number.isFinite);
-      const inv = new Set(get('table[data-tipo="invitados"] tbody tr'));
-      const res = new Set(get('table[data-tipo="reservas"]  tbody tr'));
-      return { inv, res };
-    };
-  
-    // ===== Fuente 2: API (fallback) =====
-    const toIdSet = list => new Set((Array.isArray(list)?list:[])
-      .map(x => typeof x === 'object' ? Number(x.alumno_id ?? x.id) : Number(x))
-      .filter(Number.isFinite));
-    const fetchJSON = async url => {
-      const r = await fetch(url, { cache: 'no-store' });
-      if (!r.ok) throw new Error('HTTP ' + r.status);
-      return r.json().catch(()=> ({}));
-    };
-    const fromAPI = async () => {
-      try {
-        const j = await fetchJSON(`/eventos/${eventoId}/extras/tags`);
-        return { inv: toIdSet(j.invitados), res: toIdSet(j.reservas) };
-      } catch {
-        const [a,b] = await Promise.allSettled([
-          fetchJSON(`/eventos/${eventoId}/extras/invitados`),
-          fetchJSON(`/eventos/${eventoId}/extras/reservas`)
-        ]);
-        return { inv: toIdSet(a.value), res: toIdSet(b.value) };
-      }
-    };
-  
-    // ===== Arranque: prueba visible “•” y marcados =====
-    const ready = async () => {
-      // Espera a que existan filas (por si llegan tarde)
-      for (let i=0; i<60 && !$tbody.querySelector('tr[data-alumno]'); i++) {
-        await new Promise(r => setTimeout(r, 50));
-      }
-      const firstStrong = $tbody.querySelector('tr[data-alumno] td:first-child strong');
-      if (firstStrong && !firstStrong.dataset._ping) {
-        firstStrong.dataset._ping = '1';
-        firstStrong.insertAdjacentText('beforeend', ' •'); // ← SI NO VES ESTE PUNTO, el script NO está corriendo
-      }
-  
-      // 1º: lee de Extras en DOM
-      const dom = fromExtrasDOM();
-      if (dom && (dom.inv.size || dom.res.size)) {
-        console.log('[INV/RES] usando DOM de Extras');
-        apply(dom.inv, dom.res);
-      } else {
-        // 2º: cae a API
-        console.log('[INV/RES] usando API /extras/*');
-        const api = await fromAPI().catch(e => { console.warn('[INV/RES] API falló', e); return { inv:new Set(), res:new Set() } });
-        apply(api.inv, api.res);
-      }
-  
-      // Reaccionar si cambian Extras o filas de alumnos
-      const wrap = document.getElementById('extrasWrap');
-      if (wrap) new MutationObserver(() => {
-        const d = fromExtrasDOM();
-        if (d && (d.inv.size || d.res.size)) apply(d.inv, d.res);
-      }).observe(wrap, { childList:true, subtree:true });
-  
-      new MutationObserver(() => {
-        const d = fromExtrasDOM();
-        if (d && (d.inv.size || d.res.size)) apply(d.inv, d.res);
-      }).observe($tbody, { childList:true });
-    };
-  
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', ready, { once:true });
-    } else {
-      ready();
-    }
-  
-    // Utilidad de prueba manual desde consola:
-    window.__INV_RES_FORCE__ = (alumnoId, kind) => {
-      const tr = $tbody.querySelector(`tr[data-alumno="${alumnoId}"]`);
-      if (!tr) return false;
-      mark(tr, kind === 'inv' ? 'inv' : 'res'); return true;
-    };
-  })();
-  </script>
-  
+    

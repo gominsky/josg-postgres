@@ -139,8 +139,6 @@ router.post('/token-login', async (req, res) => {
     return res.status(500).json({ error: 'internal_error' });
   }
 });
-
-
 // === Subida de archivos (adjuntos) ===
 const UPLOAD_ROOT = path.join(__dirname, 'uploads');
 function ensureDir(p){ if (!fs.existsSync(p)) fs.mkdirSync(p, { recursive:true }); }
@@ -324,8 +322,10 @@ router.get('/api/eventos/:id', async (req, res) => {
         e.fecha_fin,    e.hora_fin,
         e.observaciones, e.token, e.activo,
         e.grupo_id,
+        e.grace_minutes,
         g.nombre              AS grupo_nombre,
-        COALESCE(s.nombre,'') AS espacio
+        COALESCE(s.nombre,'') AS espacio,
+      COALESCE(e.grace_minutes, 15) AS grace_minutes
       FROM eventos e
       JOIN grupos g        ON g.id = e.grupo_id
       LEFT JOIN espacios s ON s.id = e.espacio_id
@@ -351,7 +351,8 @@ router.get('/api/eventos/:id', async (req, res) => {
       grupo_nombre: e.grupo_nombre,
       espacio: e.espacio || '',
       start: toIsoLocal(e.fecha_inicio, e.hora_inicio),
-      end:   toIsoLocal(e.fecha_fin,    e.hora_fin)
+      end:   toIsoLocal(e.fecha_fin,    e.hora_fin),
+      grace_minutes: e.grace_minutes ?? 15
     });
   }catch(err){
     console.error('GET /api/eventos/:id error:', err);
@@ -433,21 +434,45 @@ router.get('/api/eventos/:id/asistencias', async (req, res) => {
   }
 });
 
+// Asegúrate arriba del archivo:
+// const pool = require('../database/db');
+
 router.post('/api/firmar-alumnos', express.json(), async (req, res) => {
   const registros = Array.isArray(req.body?.registros) ? req.body.registros : [];
   if (!registros.length) return res.status(400).json({ success:false, ok:false, error:'registros requeridos' });
 
-  const GRACE = parseInt(process.env.QR_GRACE_MINUTES || '5', 10);
+  const DEFAULT_GRACE = parseInt(process.env.QR_GRACE_MINUTES || '15', 10);
 
-  const client = await db.connect();
-  try{
+  let client; // importante: declarar fuera para usar en catch/finally
+  try {
+    client = await db.connect();          // ← aquí antes ponía pool.connect()
     await client.query('BEGIN');
 
-    // Detecta columnas útiles en asistencias
+    // --- precarga minutos de cortesía por evento ---
+    const eventoIds = [...new Set(registros
+      .map(r => Number(r.evento_id))
+      .filter(Number.isFinite))];
+
+    let graceByEvento = new Map();
+    if (eventoIds.length) {
+      const { rows } = await client.query(
+        'SELECT id, grace_minutes FROM public.eventos WHERE id = ANY($1::int[])',
+        [eventoIds]
+      );
+      graceByEvento = new Map(
+        rows.map(r => [
+          Number(r.id),
+          (r.grace_minutes == null ? DEFAULT_GRACE : Number(r.grace_minutes))
+        ])
+      );
+    }
+
+    // --- detectar columnas opcionales en asistencias ---
     const cols = await client.query(`
       SELECT lower(column_name) AS c
       FROM information_schema.columns
-      WHERE table_schema='public' AND table_name = 'asistencias'`);
+      WHERE table_schema='public' AND table_name = 'asistencias'
+    `);
     const C = new Set(cols.rows.map(r=>r.c));
     const hasUpdatedAt = C.has('updated_at');
     const hasMinutos   = C.has('minutos_perdidos');
@@ -459,19 +484,25 @@ router.post('/api/firmar-alumnos', express.json(), async (req, res) => {
       const alumnoId = Number(r.alumno_id);
       const asistio  = !!r.asistio;
       const obs      = (r.observaciones || '').toString().slice(0,500);
+
       if (!eventoId || !alumnoId) { skipped++; continue; }
 
+      // cortesía (precargado; si no hay fila, cae al default)
+      const GRACE = graceByEvento.get(eventoId) ?? DEFAULT_GRACE;
+
+      // comprobar que está asignado al evento
       const ea = await client.query(
         `SELECT 1 FROM evento_asignaciones WHERE evento_id=$1 AND alumno_id=$2`,
-        [eventoId, alumnoId]);
+        [eventoId, alumnoId]
+      );
       if (!ea.rowCount) { notAssigned++; continue; }
+
       if (asistio) {
-        // calcula minutos de retraso en SQL (Europe/Madrid), usando hora asignada si existe
+        // SQL tal cual; GRACE va como $4
         const sql = `
   WITH base AS (
     SELECT
       e.fecha_inicio::date AS fecha,
-      -- Normaliza a TIME si el texto encaja con HH:MM[:SS]
       CASE
         WHEN trim(a.hora_inicio::text) ~ '^\\d{2}:\\d{2}(:\\d{2})?$'
           THEN split_part(trim(a.hora_inicio::text), ' ', 1)::time
@@ -492,8 +523,7 @@ router.post('/api/firmar-alumnos', express.json(), async (req, res) => {
     SELECT
       (now() at time zone 'Europe/Madrid')::date      AS hoy,
       (now() at time zone 'Europe/Madrid')::time      AS ahora,
-      (fecha::timestamp
-        + COALESCE(hora_asign, hora_evento))          AS start_local
+      (fecha::timestamp + COALESCE(hora_asign, hora_evento)) AS start_local
     FROM base
   ),
   calc AS (
@@ -525,22 +555,19 @@ router.post('/api/firmar-alumnos', express.json(), async (req, res) => {
     ${hasMinutos ? ', minutos_perdidos = COALESCE(EXCLUDED.minutos_perdidos, asistencias.minutos_perdidos)' : ''}
     ${hasUpdatedAt ? ', updated_at = NOW()' : ''}
 `;
-
         await client.query(sql, [eventoId, alumnoId, obs, GRACE]);
-      
-        // contadores (opcional, simple)
+
         const chk = await client.query(
           `SELECT 1 FROM asistencias WHERE evento_id=$1 AND alumno_id=$2`,
           [eventoId, alumnoId]
         );
         if (chk.rowCount) updated++; else inserted++;
+
       } else {
         const del = await client.query(
           `DELETE FROM asistencias WHERE evento_id=$1 AND alumno_id=$2`,
           [eventoId, alumnoId]
         );
-        // Limpia también la ausencia si se estaba usando para marcar no asistencia.
-        // Así evitamos que quede "atascada" una ausencia al desmarcar desde móvil.
         await client.query(
           `UPDATE evento_asignaciones
              SET ausencia_tipo_id = NULL
@@ -549,18 +576,18 @@ router.post('/api/firmar-alumnos', express.json(), async (req, res) => {
           [eventoId, alumnoId]
         );
         deleted += del.rowCount;
-      }  
-      
+      }
     }
 
     await client.query('COMMIT');
-    res.json({ success:true, ok:true, inserted, updated, deleted, skipped, notAssigned });
-  }catch(err){
-    await client.query('ROLLBACK');
+    return res.json({ success:true, ok:true, inserted, updated, deleted, skipped, notAssigned });
+
+  } catch (err) {
+    if (client) { try { await client.query('ROLLBACK'); } catch(_) {} }
     console.error('POST /api/firmar-alumnos error:', err);
-    res.status(500).json({ success:false, ok:false, error:'internal_error' });
-  }finally{
-    client.release();
+    return res.status(500).json({ success:false, ok:false, error:'internal_error' });
+  } finally {
+    if (client) client.release();
   }
 });
 
@@ -826,5 +853,23 @@ if (!usuarioId) return res.status(401).json({ success:false, error:'auth_require
     return res.status(500).json({ success:false, error: err.message || 'internal_error' });
   }
 });
+// PATCH /api/eventos/:id/grace  { grace_minutes: 0..120 }
+router.patch('/api/eventos/:id/grace', express.json(), async (req, res) => {
+  const id = Number(req.params.id);
+  if (!id) return res.status(400).json({ success:false, error:'id inválido' });
+
+  let minutes = parseInt(req.body?.minutes, 10);
+  if (!Number.isFinite(minutes) || minutes < 0) minutes = 0;
+  if (minutes > 120) minutes = 120;
+
+  try {
+    await db.query(`UPDATE eventos SET grace_minutes=$1 WHERE id=$2`, [minutes, id]);
+    res.json({ success:true, minutes });
+  } catch (err) {
+    console.error('PATCH /api/eventos/:id/grace error:', err);
+    res.status(500).json({ success:false, error:'No se pudo actualizar minutos de cortesía' });
+  }
+});
+
 
 module.exports = router;

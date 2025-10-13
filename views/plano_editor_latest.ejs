@@ -500,23 +500,117 @@
   $scRange?.addEventListener('input', e => { applyScaleToAll(Number(e.target.value)/100); });
 
   // Guardar layout + textos
-  $save?.addEventListener('click', async () => {
-    const prev = $save.textContent;
-    $save.disabled = true; $save.textContent = 'Guardando…';
+
+(function rebindSaveNoZoom(){
+  const oldBtn = document.getElementById('btnGuardarLayout');
+  if (!oldBtn) return;
+
+  // Limpia listeners antiguos clonando el botón
+  const btn = oldBtn.cloneNode(true);
+  oldBtn.replaceWith(btn);
+
+  function setState(s){
+    if (s === 'saving') {
+      btn.disabled = true; btn.setAttribute('aria-busy','true');
+      btn.textContent = 'Guardando…';
+    } else if (s === 'done') {
+      btn.disabled = false; btn.removeAttribute('aria-busy');
+      btn.textContent = 'Guardado ✓';
+    } else {
+      btn.disabled = false; btn.removeAttribute('aria-busy');
+      btn.textContent = 'Guardar diseño';
+    }
+  }
+
+  function withTimeout(promise, ms, label='operación'){
+    let t; const killer = new Promise((_, rej)=>{ t=setTimeout(()=>rej(new Error(label+' tardó demasiado')), ms); });
+    return Promise.race([ promise.finally(()=>clearTimeout(t)), killer ]);
+  }
+
+  async function saveTextsSmart(){
+    if (typeof collectCurrentCardData !== 'function') return;
+    const items = collectCurrentCardData();       // [{key,num,part},...]
+    if (!items.length) return;
+
+    // 1) Intento BULK (si el backend lo tiene)
     try {
-      await saveLayout();       // posiciones/ángulos
-      await flushCardData();    // número y I/II
-      // limpiar marcas de sucio tras guardar todo
-      SVG?.querySelectorAll('g.draggable.dirty')?.forEach(g => g.classList.remove('dirty'));
-      alert('Layout y textos guardados');
-    } catch (e) {
-      console.error(e);
-      alert('No se pudo guardar todo. Revisa la consola.');
-    } finally {
-      $save.disabled = false; $save.textContent = prev;
+      const r = await fetch('/plano/card-data/bulk', {
+        method: 'PUT',
+        headers: { 'Content-Type':'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ scope, scope_id: grupoId, items })
+      });
+      if (r.ok) {
+        // cache local
+        if (typeof getCardData === 'function' && typeof setCardData === 'function') {
+          const map = getCardData(); for (const it of items) map[it.key] = { num: it.num ?? undefined, part: it.part ?? undefined };
+          setCardData(map);
+        }
+        return;
+      }
+      if (r.status !== 404) {
+        const msg = await r.text().catch(()=>r.statusText);
+        console.warn('[bulk] fallo:', r.status, msg, '→ fallback por tandas');
+      }
+    } catch(e) {
+      console.warn('[bulk] excepción, uso fallback', e);
+    }
+
+    // 2) Fallback: tandas paralelas (12 en 12)
+    const putOne = (it) => fetch('/plano/card-data', {
+      method: 'PUT',
+      headers: { 'Content-Type':'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify({ scope, scope_id: grupoId, key: it.key, num: it.num, part: it.part })
+    }).then(async r => {
+      if (!r.ok) throw new Error(await r.text().catch(()=>r.statusText));
+    });
+
+    const CHUNK = 12;
+    for (let i = 0; i < items.length; i += CHUNK) {
+      const slice = items.slice(i, i + CHUNK);
+      await Promise.allSettled(slice.map(putOne)); // no paramos por fallos puntuales
+    }
+
+    // cache local
+    if (typeof getCardData === 'function' && typeof setCardData === 'function') {
+      const map = getCardData(); for (const it of items) map[it.key] = { num: it.num ?? undefined, part: it.part ?? undefined };
+      setCardData(map);
+    }
+  }
+
+  btn.addEventListener('click', async (e) => {
+    e.preventDefault();
+    if (btn.disabled) return;
+
+    if (typeof saveLayout !== 'function') {
+      alert('No se pudo guardar: funciones no disponibles.');
+      return;
+    }
+
+    setState('saving');
+
+    try {
+      // 1) Posiciones (10s máx)
+      await withTimeout(saveLayout(), 10000, 'Guardar diseño');
+
+      // 2) Textos: timeout dinámico según nº de fichas
+      const count = (typeof collectCurrentCardData === 'function') ? collectCurrentCardData().length : 0;
+      const textosTimeout = Math.min(45000, Math.max(8000, 2000 + count * 250));
+      await withTimeout(saveTextsSmart(), textosTimeout, 'Guardar textos');
+
+      // Limpia las marcas de sucio
+      (window.SVG?.querySelectorAll('g.draggable.dirty') || []).forEach(g => g.classList.remove('dirty'));
+
+      setState('done');
+      setTimeout(()=> setState('idle'), 700);
+    } catch (err) {
+      console.error('Error guardando:', err);
+      alert('No se pudo guardar: ' + (err?.message || err));
+      setState('idle');
     }
   });
-
+})();
   // ========= Arranque =========
   (function setPdfHrefInit(){
     const base = pdfBaseFor(grupoId);

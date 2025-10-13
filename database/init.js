@@ -272,6 +272,7 @@ async function init({ reset = false } = {}) {
         created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );
+      ALTER TABLE public.eventos ADD COLUMN IF NOT EXISTS grace_minutes integer;
       CREATE UNIQUE INDEX IF NOT EXISTS uq_eventos_token ON eventos(token) WHERE token IS NOT NULL;
       CREATE INDEX IF NOT EXISTS idx_eventos_grupo ON eventos(grupo_id);
       CREATE INDEX IF NOT EXISTS idx_eventos_activos_grupo ON eventos(grupo_id, fecha_inicio) WHERE activo IS TRUE;

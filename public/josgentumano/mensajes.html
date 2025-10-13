@@ -152,6 +152,33 @@
   .action-bar{ flex-wrap:wrap; }
   .action-right{ margin-left:auto; }
 }
+/* Barra de acciones centrada */
+.action-bar{
+  display:flex;
+  align-items:center;
+  justify-content:center;  /* centrado */
+  gap:.5rem;
+  margin-top:.25rem;
+}
+.action-left{ display:inline-flex; }
+.action-right{ display:inline-flex; margin-left:0; } /* sin empuje a la derecha */
+
+/* Botón “Leído” compacto (muy pequeño) */
+.mark-wrap [data-mark]{
+  all: unset !important;
+  display:inline-flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  font-size:.75rem !important;
+  line-height:1 !important;
+  padding:.22rem .55rem !important;
+  border:1px solid var(--mark-bdr) !important;
+  border-radius:999px !important;
+  background:var(--mark-bg) !important;
+  color:var(--mark-text) !important;
+  cursor:pointer !important;
+}
+.mark-wrap [data-mark]:hover{ background:#ffedd5 !important; }
 
 </style>
 </head>
@@ -458,7 +485,8 @@ function cardHTML(m, readSet){
         ${truncated ? `<a href="#" data-toggle="${idStr}">Ver más…</a>` : ``}
       </div>
       <div class="action-right">
-        ${!read ? `<button type="button" data-mark="${idStr}"><span aria-hidden="true">✓</span> Marcar como leído</button>` : ``}
+        ${!read ? `<button type="button" data-mark="${idStr}" aria-label="Marcar como leído">Leído</button>` : ``}
+
       </div>
     </div>
   `;
