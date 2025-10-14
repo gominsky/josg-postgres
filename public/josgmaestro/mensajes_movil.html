@@ -217,53 +217,112 @@ async function uploadAdjuntos(){ if(!state.adjuntos.length) return []; const fd 
 
     
     /* ====== Destinatarios (desplegable) ====== */
-    function bindDestinatario(){
-      const sel = $('#destinatario');
-      if (!sel) return;
-      sel.addEventListener('change', ()=>{
-        state.scope = sel.value || null;
-      });
-    }
-    async function cargarDestinatario(){
-      const sel  = $('#destinatario'); const help = $('#destinatario-help');
-      if (!sel) return;
-      sel.innerHTML = ''; help.textContent = '';
-      try{
-        if (rol === 'admin') {
-          const optTodos = document.createElement('option');
-          optTodos.value = 'todos'; optTodos.textContent = 'Todos';
-          sel.appendChild(optTodos);
-          const r = await fetch(`${API_BASE}/grupos`, { cache:'no-store', credentials:'same-origin' });
-          const nombres = await r.json();
-          state.scope = 'todos'; state.grupos = nombres;
-          for (const nombre of nombres) {
-            const o = document.createElement('option');
-            o.value = nombre; o.textContent = nombre;
-            sel.appendChild(o);
-          }
-          sel.value = 'todos';
-          help.textContent = 'Selecciona “Todos” o un grupo concreto.';
-        } else if (rol === 'docente') {
-          const r = await fetch(`${API_BASE}/mis-grupos`, { cache:'no-store', credentials:'same-origin' });
-          const grupos = await r.json();
-          state.scope = grupos[0]?.nombre || null; state.grupos = grupos.map(g => g.nombre);
-          for (const g of grupos) {
-            const o = document.createElement('option');
-            o.value = g.nombre; o.textContent = g.nombre;
-            sel.appendChild(o);
-          }
-          if (state.scope) sel.value = state.scope;
-          if (!grupos.length) sel.disabled = true;
-          help.textContent = grupos.length ? 'Solo puedes enviar a tus grupos.' : 'No tienes grupos asignados.';
-        } else {
-          sel.disabled = true;
-          help.textContent = 'Tu rol no permite enviar mensajes.';
+
+  function bindDestinatario(){
+    const sel = document.querySelector('#destinatario');
+    if (!sel) return;
+    sel.addEventListener('change', ()=>{
+      state.scope = sel.value || null;
+    });
+  }
+
+  // Normaliza arrays de grupos a nombres (acepta strings u objetos)
+  function toNombres(arr){
+    if (!Array.isArray(arr)) return [];
+    return arr.map(g => {
+      if (typeof g === 'string') return g;
+      if (g && typeof g === 'object') return g.nombre || g.name || '';
+      return '';
+    }).filter(Boolean);
+  }
+
+  async function getRolSeguro(){
+    // lee, normaliza y si no hay, intenta /josgmaestro/api/yo
+    let r = (localStorage.getItem('rol') || '').toLowerCase();
+    if (r) return r;
+    try{
+      const me = await fetch(`${API_BASE}/yo`, { credentials:'include', headers: authHeaders() });
+      if (me.ok){
+        const j = await me.json().catch(()=>null);
+        r = (j?.rol || j?.role || '').toLowerCase();
+        if (r) localStorage.setItem('rol', r);
+      }
+    }catch(e){}
+    return r;
+  }
+
+  async function cargarDestinatario(){
+    const sel  = document.querySelector('#destinatario');
+    const help = document.querySelector('#destinatario-help');
+    if (!sel) return;
+    sel.innerHTML = ''; help.textContent = ''; sel.disabled = false;
+
+    const rol = await getRolSeguro();
+
+    try{
+      if (rol === 'admin'){
+        // Opción “Todos”
+        const optTodos = document.createElement('option');
+        optTodos.value = 'todos'; optTodos.textContent = 'Todos';
+        sel.appendChild(optTodos);
+
+        // Pido grupos con auth header + cookies
+        const r = await fetch(`${API_BASE}/grupos`, {
+          cache:'no-store',
+          credentials:'include',
+          headers: authHeaders()
+        });
+        const data = await r.json().catch(()=>[]);
+        const nombres = toNombres(data);
+
+        state.scope  = 'todos';
+        state.grupos = nombres;
+
+        for (const nombre of nombres){
+          const o = document.createElement('option');
+          o.value = nombre; o.textContent = nombre;
+          sel.appendChild(o);
         }
-      }catch(e){
-        console.error(e); help.textContent = 'No se pudieron cargar los grupos.';
-      } finally { bindDestinatario(); }
+        sel.value = 'todos';
+        help.textContent = 'Selecciona “Todos” o un grupo concreto.';
+      } else if (rol === 'docente'){
+        const r = await fetch(`${API_BASE}/mis-grupos`, {
+          cache:'no-store',
+          credentials:'include',
+          headers: authHeaders()
+        });
+        const data   = await r.json().catch(()=>[]);
+        const nombres = toNombres(data); // por si el endpoint devuelve [{nombre}]
+
+        state.grupos = nombres;
+        state.scope  = nombres[0] || null;
+
+        for (const nombre of nombres){
+          const o = document.createElement('option');
+          o.value = nombre; o.textContent = nombre;
+          sel.appendChild(o);
+        }
+        if (state.scope) sel.value = state.scope;
+
+        sel.disabled = nombres.length === 0;
+        help.textContent = nombres.length
+          ? 'Solo puedes enviar a tus grupos.'
+          : 'No tienes grupos asignados.';
+      } else {
+        sel.disabled = true;
+        help.textContent = 'Tu rol no permite enviar mensajes.';
+      }
+    } catch(e){
+      console.error(e);
+      help.textContent = 'No se pudieron cargar los grupos.';
+      sel.disabled = true;
+    } finally {
+      bindDestinatario();
     }
-    cargarDestinatario();
+  }
+
+  // Lanza la carga tras definir authHeaders() en el fichero
+  document.addEventListener('DOMContentLoaded', cargarDestinatario);
 
     /* ====== Autenticación y envío ====== */
     function authHeaders() {
@@ -457,5 +516,6 @@ async function uploadAdjuntos(){ if(!state.adjuntos.length) return []; const fd 
       let tm=null; window.addEventListener('resize',()=>{clearTimeout(tm);tm=setTimeout(place,120);});
     })();
   </script>
+  
 </body>
 </html>
