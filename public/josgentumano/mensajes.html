@@ -192,6 +192,58 @@
 
 /* (Opcional) mejora lectura en fondos claros */
 .card .msg-body { color: #111827; } /* o el color que uses de texto */
+/* Panel sin caja blanca */
+.hero .panel{
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
+/* Un poco de aire vertical, ya sin caja */
+.hero .panel { padding-top: 16px !important; padding-bottom: 16px !important; }
+
+/* Opcional: separa la lista y las acciones del resto del héroe */
+.hero .panel #list{ margin-top: .25rem; }
+.hero .panel .actions{ margin-top: .9rem; }
+/* Opcional: tarjetas con fondo más limpio */
+/* --- Clip/adjuntos totalmente transparentes --- */
+.clip-btn{
+  all: unset !important;                /* quita estilos de botón */
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: .35rem !important;
+  cursor: pointer !important;
+  font-weight: 700 !important;
+  line-height: 1.2 !important;
+  color: #ea6b38 !important;            /* color de acento; cambia si quieres */
+}
+.clip-btn:hover{ text-decoration: underline !important; }
+.clip-btn:focus-visible{
+  outline: 2px solid currentColor !important;
+  outline-offset: 2px !important;
+}
+
+/* La lista y sus ítems sin caja ni borde */
+.att-list{ margin:.35rem 0 0 !important; padding:0 !important; list-style:none !important; }
+.att-list li{
+  border: 0 !important;
+  background: transparent !important;
+  padding: .25rem 0 !important;         /* mantiene aire entre adjuntos */
+  margin: 0 !important;
+}
+.att-list a{
+  text-decoration: none !important;
+  color: #ea6b38 !important;
+}
+.att-list a:hover{ text-decoration: underline !important; }
+.att-list a:focus-visible{
+  outline: 2px solid currentColor !important;
+  outline-offset: 2px !important;
+}
+@keyframes flashBg { 0%{background:#fff8e7;} 50%{background:#fff;} 100%{background:#fff8e7;} }
+.card.flash{ animation: flashBg 1.2s ease-in-out 2; }
 </style>
 </head>
 <body data-page="mensajes" class="orange-cards">
@@ -516,7 +568,7 @@ if (rawPrimary && !isAttachmentPath(rawPrimary)) {
 
   // --- Plantilla final ---
   return `
-    <article class="card">
+    <article class="card" data-id="${idStr}">
       <h3>${titulo}</h3>
       <div class="meta">${meta}</div>
       <div class="msg-body" data-expanded="false"
@@ -591,11 +643,7 @@ if (rawPrimary && !isAttachmentPath(rawPrimary)) {
         DATA = j.slice().sort((a,b)=> Number(b.id||0) - Number(a.id||0));  // recientes primero
         totalPages = Math.max(1, Math.ceil(DATA.length / PAGE_SIZE));
         renderPage(1);
-
-        if ('Notification' in window && Notification.permission === 'default'){
-          try{ Notification.requestPermission(); }catch{}
-        }
-      }catch(e){
+          }catch(e){
         console.error(e);
         $list.innerHTML = '';
         $pager.innerHTML = '';
@@ -746,6 +794,23 @@ document.addEventListener('visibilitychange', () => {
       let tm=null; window.addEventListener('resize',()=>{clearTimeout(tm);tm=setTimeout(place,120);});
     })();
   </script>
+  <script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.addEventListener('message', (ev) => {
+    const { tipo, mensaje_id, url } = ev.data || {};
+    if (tipo !== 'abrir-mensaje') return;
+    if (url) { window.open(url, '_blank', 'noopener') || (location.href = url); return; }
+    const card = document.querySelector(`.card[data-id="${mensaje_id}"]`);
+    if (card) {
+      card.classList.add('flash');
+      card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      setTimeout(() => card.classList.remove('flash'), 2000);
+    }
+  });
+}
+</script>
+
+  <script src="/josgentumano/push-init.js" defer></script>
 </body>
 </html>
 

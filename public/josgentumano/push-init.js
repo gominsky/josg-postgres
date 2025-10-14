@@ -5,7 +5,7 @@
 
   try {
     // registra el SW con scope /firmas
-    const reg = await navigator.serviceWorker.register('/firmas/sw.js', { scope: '/firmas/' });
+    const reg = await navigator.serviceWorker.register('/josgentumano/sw.js', { scope: '/josgentumano/' });
 
     // pide permiso si aún no se concedió
     const perm = await Notification.requestPermission();
@@ -18,16 +18,20 @@
       userVisibleOnly: true,
       applicationServerKey: urlBase64ToUint8Array(key)
     });
-
+    const token = localStorage.getItem('token');
     await fetch('/mensajes/push/subscribe', {
       method: 'POST',
-      headers: {'Content-Type':'application/json'},
+      headers: Object.assign(
+        { 'Content-Type': 'application/json' },
+        token ? { 'Authorization': 'Bearer ' + token } : {}
+      ),
       body: JSON.stringify({
         alumno_id: alumnoId,
         endpoint: sub.endpoint,
         keys: sub.toJSON().keys
       })
     });
+
   } catch (e) {
     console.error('❌ Registro push:', e);
   }
@@ -40,4 +44,5 @@
     for (let i = 0; i < rawData.length; ++i) outputArray[i] = rawData.charCodeAt(i);
     return outputArray;
   }
+  
 })();
