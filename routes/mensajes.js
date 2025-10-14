@@ -153,9 +153,40 @@ router.post('/', isAuthenticated, isDocente, upload.array('adjuntos', 5), async 
     }
 
     // helpers y resolución de destinatarios (sin cambios) …
-    async function getAlumnoIdsPorGrupo(client, grupos){ /* … */ }
-    async function getAlumnoIdsPorInstrumentos(client, instrumentos){ /* … */ }
+    // Devuelve IDs de alumno por grupo(s)
+async function getAlumnoIdsPorGrupo(client, grupos){
+  // Usa la tabla de relación (ajusta el nombre si difiere)
+  const { rows } = await client.query(
+    `SELECT DISTINCT ag.alumno_id
+       FROM alumno_grupo ag
+      WHERE ag.grupo_id = ANY($1::int[])`,
+    [grupos]
+  );
+  return rows.map(r => Number(r.alumno_id)).filter(Number.isInteger);
+}
 
+// Devuelve IDs de alumno por instrumento(s)
+async function getAlumnoIdsPorInstrumentos(client, instrumentos){
+  // 1) Intento con tabla relación alumno_instrumento
+  try{
+    const { rows } = await client.query(
+      `SELECT DISTINCT ai.alumno_id
+         FROM alumno_instrumento ai
+        WHERE ai.instrumento_id = ANY($1::int[])`,
+      [instrumentos]
+    );
+    if (rows.length) return rows.map(r => Number(r.alumno_id)).filter(Number.isInteger);
+  }catch{}
+
+  // 2) Fallback si guardas el instrumento en alumnos.instrumento_id
+  const { rows } = await client.query(
+    `SELECT DISTINCT a.id AS alumno_id
+       FROM alumnos a
+      WHERE a.instrumento_id = ANY($1::int[])`,
+    [instrumentos]
+  );
+  return rows.map(r => Number(r.alumno_id)).filter(Number.isInteger);
+}
     let destinatariosSet = new Set();
     const hasGroups = gruposArr.length > 0;
     const hasInstr  = instrArr.length > 0;

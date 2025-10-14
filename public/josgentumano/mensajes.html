@@ -244,6 +244,26 @@
 }
 @keyframes flashBg { 0%{background:#fff8e7;} 50%{background:#fff;} 100%{background:#fff8e7;} }
 .card.flash{ animation: flashBg 1.2s ease-in-out 2; }
+/* Estados visuales leído / no leído */
+.card{ 
+  transition: background-color .25s ease, border-color .25s ease, box-shadow .25s ease;
+}
+
+.card.unread{
+  background: #ffe9d9 !important;               /* más oscuro: sin leer */
+  border-color: rgba(234,107,56,.35) !important;
+  box-shadow: 0 6px 16px rgba(234,107,56,.12) !important;
+  border-left: 0 !important;                     /* asegura sin banda */
+}
+
+.card.read{
+  background: #fff7ef !important;                /* más claro: leído */
+  border-color: rgba(0,0,0,.08) !important;
+  box-shadow: 0 6px 16px rgba(0,0,0,.06) !important;
+  border-left: 0 !important;
+}
+
+
 </style>
 </head>
 <body data-page="mensajes" class="orange-cards">
@@ -568,7 +588,7 @@ if (rawPrimary && !isAttachmentPath(rawPrimary)) {
 
   // --- Plantilla final ---
   return `
-    <article class="card" data-id="${idStr}">
+    <article class="card ${read ? 'read' : 'unread'}" data-id="${idStr}">
       <h3>${titulo}</h3>
       <div class="meta">${meta}</div>
       <div class="msg-body" data-expanded="false"
@@ -715,31 +735,33 @@ if (moreEl){
 }
 
   // 3) Marcar como leído
-  const markBtn = ev.target.closest('button[data-mark]');
-  if (markBtn){
-    const id = String(markBtn.getAttribute('data-mark'));
-    try{
-      const token = localStorage.getItem('token');
-      const r = await fetch(`/firmas/api/alumno/${encodeURIComponent(alumno_id)}/mensajes/${id}/leer`, {
-        method: 'POST',
-        headers: Object.assign(
-          { 'Content-Type': 'application/json' },
-          token ? { 'Authorization': 'Bearer ' + token } : {}
-        )
-      });
-      if (!r.ok) throw new Error('No se pudo marcar como leído');
+const markBtn = ev.target.closest('button[data-mark]');
+if (markBtn){
+  const id = String(markBtn.getAttribute('data-mark'));
 
-      // Actualiza estado local y UI
-      const set = getReadSet(); set.add(id); saveReadSet(set);
-      markBtn.remove();
-      const card = markBtn.closest('.card');
-      const meta = card && card.querySelector('.meta');
-      if (meta && !/leído/.test(meta.textContent)) {
-        meta.textContent = (meta.textContent ? meta.textContent + ' · ' : '') + 'leído';
-      }
-    }catch(e){ console.error(e); }
-    return;
+  // Estado local primero (para que quede persistido)
+  const set = getReadSet(); set.add(id); saveReadSet(set);
+
+  // (opcional) desactiva el botón mientras tanto
+  markBtn.disabled = true;
+
+  try{
+    const token = localStorage.getItem('token');
+    await fetch(`/firmas/api/alumno/${encodeURIComponent(alumno_id)}/mensajes/${id}/leer`, {
+      method: 'POST',
+      headers: Object.assign(
+        { 'Content-Type': 'application/json' },
+        token ? { 'Authorization': 'Bearer ' + token } : {}
+      )
+    });
+  }catch(e){
+    console.warn('Servidor no confirmó lectura:', e);
   }
+
+  // Refresca la página para que se re-rendericen colores/estado
+  location.reload();
+  return;
+}
 });
 // Lanza la carga inicial y refrescos
 document.addEventListener('DOMContentLoaded', cargar);

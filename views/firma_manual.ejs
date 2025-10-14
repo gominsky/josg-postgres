@@ -630,7 +630,20 @@ async function doSave(nombre, descripcion){
   #extrasWrap.extras-narrow{ width:100%; max-width:800px; margin:0 auto; }
   @media (min-width:1400px){ #extrasWrap.extras-narrow{ max-width:560px; } }
   #extrasWrap.extras-narrow .extras-table{ width:100%; table-layout:auto; }
-   
+  /* Chips “Invitado / Reserva” junto al nombre (primer <td>) */
+#asigBody td:first-child .evt-badge{
+  display:inline-block !important;
+  padding:2px 8px;
+  font-size:12px;
+  font-weight:700;
+  line-height:1.2;
+  border-radius:999px;
+  margin-left:.45rem;
+  vertical-align:middle;
+  white-space:nowrap;
+}
+#asigBody td:first-child .evt-badge.inv{ background:#2563eb; color:#fff; }
+#asigBody td:first-child .evt-badge.res{ background:#6b7280; color:#fff; }
   </style>  
   
 <!-- ============ Utils compartidas ============ -->
@@ -826,25 +839,25 @@ $wrap.addEventListener('click', ev => {
 })();
 </script>
 <script>
-  // 🔒 Parche defensivo para MutationObserver.observe
-  (function(){
-    if (window.__MO_SAFE_PATCH__) return;
-    window.__MO_SAFE_PATCH__ = true;
-  
-    const origObserve = MutationObserver.prototype.observe;
-    MutationObserver.prototype.observe = function(target, options){
-      if (!(target instanceof Node)) {
-        // Log útil para localizar el selector o llamada problemática
-        try {
-          const at = (new Error('observe(target) inválido')).stack;
-          console.warn('[MO safeguard] Se ignoró observe() con', target, 'Opciones:', options, '\n', at);
-        } catch {}
-        return; // NO lances: evita el TypeError que rompe todo.
+  // Parche anti-crash: ignora observe() si el target no es un Node
+  (() => {
+    const NativeMO = window.MutationObserver || window.WebKitMutationObserver;
+    if (!NativeMO) return;
+    const _observe = NativeMO.prototype.observe;
+    NativeMO.prototype.observe = function(target, options){
+      try{
+        if (!target || !(target instanceof Node)) {
+          console.warn('[MO.guard] observe() ignorado: target no es Node =>', target);
+          return; // no lanzamos excepción
+        }
+        return _observe.call(this, target, options);
+      }catch(e){
+        console.warn('[MO.guard] observe() interceptó error:', e);
       }
-      return origObserve.call(this, target, options);
     };
   })();
-  </script>  
+  </script>
+  
 <!-- ============ Switches (mostrar/ocultar bloques) ============ -->
 <script>
 (() => {
@@ -2527,6 +2540,169 @@ function setMinutesCell(tr, val){
     }, true);
   })();
 </script>
-
+<script>
+  (() => {
+    // 0) por si había un observer roto
+    try { window.__BADGES_MO__?.disconnect?.(); } catch(e){}
+  
+    // Lee invitados/reservas del panel Extras (si está cargado)
+    function collectExtrasSets(){
+      const invSet = new Set();
+      const resSet = new Set();
+      document.querySelectorAll('#extrasWrap table[data-tipo="invitados"] tbody tr[data-alumno]')
+        .forEach(tr => { const id = tr.dataset.alumno; if (id) invSet.add(String(id)); });
+      document.querySelectorAll('#extrasWrap table[data-tipo="reservas"] tbody tr[data-alumno]')
+        .forEach(tr => { const id = tr.dataset.alumno; if (id) resSet.add(String(id)); });
+      return { invSet, resSet };
+    }
+  
+    // Decide el estado de una fila: data-status | clases antiguas | pertenencia a Extras
+    function inferStatus(tr, sets){
+      const ds = (tr.dataset.status || '').trim();           // "inv" | "res"
+      if (ds === 'inv' || ds === 'res') return ds;
+      if (tr.classList.contains('is-invitado')) return 'inv';
+      if (tr.classList.contains('is-reserva'))  return 'res';
+      const id = tr.dataset.alumno ? String(tr.dataset.alumno) : '';
+      if (id && sets){
+        if (sets.invSet.has(id)) return 'inv';
+        if (sets.resSet.has(id)) return 'res';
+      }
+      return '';
+    }
+  
+    function injectBadges(){
+      const tbody = document.getElementById('asigBody');
+      if (!tbody) return;
+      const sets = collectExtrasSets();
+  
+      tbody.querySelectorAll('tr[data-alumno]').forEach(tr => {
+        const st = inferStatus(tr, sets);
+        const td = tr.querySelector('td:first-child');
+        if (!td) return;
+  
+        // limpia badges previos para no duplicar
+        td.querySelectorAll('.evt-badge').forEach(el => el.remove());
+  
+        if (st === 'inv' || st === 'res'){
+          const badge = document.createElement('span');
+          badge.className = `evt-badge ${st}`;
+          badge.textContent = (st === 'inv' ? 'Invitado' : 'Reserva');
+          const anchor = td.querySelector('strong');
+          if (anchor) {
+            anchor.insertAdjacentElement('afterend', badge);
+          } else {
+            td.insertBefore(badge, td.firstChild);
+          }
+        }
+      });
+    }
+  
+    // Observa cambios de filas en #asigBody para reinyectar cuando se repinta
+    function safeObserve(){
+      const tbody = document.getElementById('asigBody');
+      if (!tbody || !(tbody instanceof Node)) return; // evita el TypeError
+      const mo = new MutationObserver(() => { injectBadges(); });
+      mo.observe(tbody, { childList: true });
+      window.__BADGES_MO__ = mo;
+    }
+  
+    // Lánzalo ya y tras acciones que mueven la tabla
+    function schedule(){
+      injectBadges();
+      setTimeout(injectBadges, 120);
+      setTimeout(injectBadges, 500);
+    }
+  
+    if (document.readyState === 'loading'){
+      document.addEventListener('DOMContentLoaded', () => { schedule(); safeObserve(); });
+    } else {
+      schedule(); safeObserve();
+    }
+  
+    // Reinyecta después de estas operaciones típicas
+    document.getElementById('tplApply')?.addEventListener('click', () => setTimeout(injectBadges, 350));
+    document.getElementById('btnRefreshAsign')?.addEventListener('click', () => setTimeout(injectBadges, 800));
+  
+    // Si tus scripts de “Extras” recargan sus tablas asincrónicamente, reintenta cuando acaben:
+    document.getElementById('extrasWrap')?.addEventListener('click', (ev) => {
+      // tras “Añadir seleccionados” suele venir un reload, pero por si no:
+      if (ev.target.closest('[data-action="add-sel"]')) setTimeout(injectBadges, 600);
+    }, true);
+  })();
+  </script>
+  <script>
+    (() => {
+      function collectExtrasSets(){
+        const inv = new Set(), res = new Set();
+        document.querySelectorAll('#extrasWrap table[data-tipo="invitados"] tbody tr[data-alumno]')
+          .forEach(tr => inv.add(String(tr.dataset.alumno)));
+        document.querySelectorAll('#extrasWrap table[data-tipo="reservas"] tbody tr[data-alumno]')
+          .forEach(tr => res.add(String(tr.dataset.alumno)));
+        return { inv, res };
+      }
+    
+      function inferStatus(tr, sets){
+        const ds = (tr.dataset.status || '').trim();            // "inv" | "res"
+        if (ds === 'inv' || ds === 'res') return ds;
+        if (tr.classList.contains('is-invitado')) return 'inv';
+        if (tr.classList.contains('is-reserva'))  return 'res';
+        const id = tr.dataset.alumno ? String(tr.dataset.alumno) : '';
+        if (id) {
+          if (sets.inv.has(id)) return 'inv';
+          if (sets.res.has(id)) return 'res';
+        }
+        return '';
+      }
+    
+      function injectBadges(){
+        const tbody = document.getElementById('asigBody');
+        if (!tbody) return false;
+        const sets = collectExtrasSets();
+    
+        let touched = 0;
+        tbody.querySelectorAll('tr[data-alumno]').forEach(tr => {
+          const td = tr.querySelector('td:first-child'); if (!td) return;
+          // limpia anteriores
+          td.querySelectorAll('.evt-badge').forEach(el => el.remove());
+    
+          const st = inferStatus(tr, sets);
+          if (st){
+            const badge = document.createElement('span');
+            badge.className = `evt-badge ${st}`;
+            badge.textContent = (st === 'inv' ? 'Invitado' : 'Reserva');
+            const anchor = td.querySelector('strong');
+            (anchor || td).insertAdjacentElement('afterend', badge);
+            touched++;
+          }
+        });
+        return touched > 0;
+      }
+    
+      // Ejecuta ya y reintenta un poco por si la tabla/extras llegan asíncronos
+      function runWithRetries(){
+        let tries = 0;
+        const timer = setInterval(() => {
+          tries++;
+          const ok = injectBadges();
+          if (ok || tries >= 12) clearInterval(timer); // hasta ~6s (12 x 500ms)
+        }, 500);
+        // primer disparo inmediato
+        injectBadges();
+      }
+    
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', runWithRetries);
+      } else {
+        runWithRetries();
+      }
+    
+      // Reinyecta tras acciones típicas de tu UI
+      document.getElementById('tplApply')?.addEventListener('click', () => setTimeout(injectBadges, 350));
+      document.getElementById('tplPersist')?.addEventListener('click', () => setTimeout(injectBadges, 800));
+      document.getElementById('btnRefreshAsign')?.addEventListener('click', () => setTimeout(injectBadges, 800));
+      document.getElementById('tplClear')?.addEventListener('click', () => setTimeout(injectBadges, 200));
+    })();
+    </script>
+    
   
     
