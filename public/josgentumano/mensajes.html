@@ -382,16 +382,27 @@ function domainLabel(href){
   try { return new URL(href, location.origin).hostname.replace(/^www\./,''); }
   catch { return 'Enlace'; }
 }
+// ¿Tiene pinta de URL http(s), protocolo relativo, ruta absoluta o dominio.tld?
+function isLikelyHttpUrl(u){
+  if (typeof u !== 'string') return false;
+  const s = u.trim();
+  if (!s) return false;
+  if (/^(https?:)?\/\//i.test(s)) return true; // http(s) o //host
+  if (s.startsWith('/')) return true;          // ruta absoluta (adjunto público, etc.)
+  if (/^[\w.-]+\.[a-z]{2,}(?::\d+)?(?:\/|$)/i.test(s)) return true; // dominio.tld[/...]
+  return false;
+}
 
 function cardHTML(m, readSet){
   // --- Helpers locales (no dependen de otras funciones externas) ---
   const _esc = s => String(s ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
   const ensureProto = u => (String(u||'').startsWith('/') || /^\w+:\/\//.test(u||'')) ? String(u) : 'https://' + String(u);
   const safeHref = u => {
-    const s = String(u||'').trim();
-    if (!s) return '#';
-    return s.startsWith('/') ? s : ensureProto(s);
-  };
+  if (typeof u !== 'string') return '';
+  const s = u.trim();
+  if (!s) return '';
+  return s.startsWith('/') || /^\w+:\/\//.test(s) ? s : ensureProto(s);
+};
   const domainLabel = href => { try { return new URL(ensureProto(href), location.origin).host.replace(/^www\./,''); } catch { return href; } };
   const fmtDate = v => { const d = new Date(v || m.created_at || m.fecha || m.sent_at || ''); return isNaN(d) ? '' : d.toLocaleString(); };
   const isRead = (mm, rs) =>
@@ -438,27 +449,25 @@ function cardHTML(m, readSet){
   };
 
   // Enlace principal por campo directo
-  const rawPrimary =
-  [m.url, m.enlace, m.link].find(v => typeof v === 'string' && v.trim()) || '';
-  if (rawPrimary && !isAttachmentPath(rawPrimary)) {
-    primaryHref = safeHref(rawPrimary);
-  }
+  const rawPrimary = [m.url, m.enlace, m.link].find(v => isLikelyHttpUrl(v)) || '';
+if (rawPrimary && !isAttachmentPath(rawPrimary)) {
+  primaryHref = safeHref(rawPrimary);
+}
 
   // Enlaces (urls[])
   for (const u of urlsRaw){
     const raw = typeof u === 'string' ? u : (u?.url ?? u?.href ?? u?.link ?? '');
     if (!raw) continue;
-
     if (isAttachmentPath(raw)){
-      const path = raw.startsWith('/mensajes/') ? baseMount + raw : raw;
-      const href  = safeHref(path);
-      const label = decodeURIComponent(String(raw).split('/').pop() || 'archivo').replace(/\?.*$/,'');
-      attachments.push({ href, label });
-    } else {
-      const href = safeHref(raw);
-      if (href === primaryHref) continue;         // evita duplicado del principal
-      links.push({ href, label: domainLabel(href), title: raw });
-    }
+  // adjunto...
+} else if (isLikelyHttpUrl(raw)) {
+  const href = safeHref(raw);
+  if (!href || href === primaryHref) continue;
+  links.push({ href, label: domainLabel(href), title: raw });
+} else {
+  // ni adjunto ni url válida → se ignora
+  continue;
+}
   }
 
   // Adjuntos propiamente dichos
