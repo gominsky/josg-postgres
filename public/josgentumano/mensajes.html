@@ -179,7 +179,19 @@
   cursor:pointer !important;
 }
 .mark-wrap [data-mark]:hover{ background:#ffedd5 !important; }
+/* Quitar caja/borde del cuerpo del mensaje */
+.card .msg-body{
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  padding: 0 !important;   /* el padding ya lo aporta .card */
+}
 
+/* Mantén el aire entre texto y acciones/chips */
+.card .msg-body{ margin: .35rem 0 .2rem; }
+
+/* (Opcional) mejora lectura en fondos claros */
+.card .msg-body { color: #111827; } /* o el color que uses de texto */
 </style>
 </head>
 <body data-page="mensajes" class="orange-cards">
@@ -382,7 +394,8 @@ function cardHTML(m, readSet){
   };
   const domainLabel = href => { try { return new URL(ensureProto(href), location.origin).host.replace(/^www\./,''); } catch { return href; } };
   const fmtDate = v => { const d = new Date(v || m.created_at || m.fecha || m.sent_at || ''); return isNaN(d) ? '' : d.toLocaleString(); };
-  const isRead = (mm, rs) => !!(mm.leido || mm.read || (rs?.has && rs.has(mm.id)) || (rs && rs[mm.id]));
+  const isRead = (mm, rs) =>
+  !!(mm.leido || mm.read || (rs?.has && rs.has(String(mm.id))) || (rs && rs[String(mm.id)]));
   const MAX = (typeof MAX_CHARS === 'number' ? MAX_CHARS : 240);
 
   // --- Datos base ---
@@ -403,7 +416,6 @@ function cardHTML(m, readSet){
   const metaParts = [];
   if (autor) metaParts.push('Por ' + _esc(autor));
   if (when)  metaParts.push(when);
-  metaParts.push(read ? 'leído' : 'no leído');
   const meta = metaParts.join(' · ');
 
   // --- Recogida de enlaces y adjuntos ---
@@ -426,8 +438,11 @@ function cardHTML(m, readSet){
   };
 
   // Enlace principal por campo directo
-  const rawPrimary = m.url || m.enlace || m.link || '';
-  if (rawPrimary && !isAttachmentPath(rawPrimary)) primaryHref = safeHref(rawPrimary);
+  const rawPrimary =
+  [m.url, m.enlace, m.link].find(v => typeof v === 'string' && v.trim()) || '';
+  if (rawPrimary && !isAttachmentPath(rawPrimary)) {
+    primaryHref = safeHref(rawPrimary);
+  }
 
   // Enlaces (urls[])
   for (const u of urlsRaw){
@@ -441,7 +456,6 @@ function cardHTML(m, readSet){
       attachments.push({ href, label });
     } else {
       const href = safeHref(raw);
-      if (!primaryHref) primaryHref = href;       // el primero será el “Abrir” si no hay m.url
       if (href === primaryHref) continue;         // evita duplicado del principal
       links.push({ href, label: domainLabel(href), title: raw });
     }

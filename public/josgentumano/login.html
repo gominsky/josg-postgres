@@ -40,10 +40,12 @@
       const btn     = document.getElementById('btn-login');
       const msg     = document.getElementById('mensaje');
 
-      const show = (t, ok)=>{ 
-        msg.textContent = t||''; 
-        msg.className = 'notice ' + (ok ? 'ok':'err'); 
-      };
+      const show = (t, ok) => {
+      const has = !!(t && String(t).trim());
+      msg.textContent = has ? t : '';
+      msg.className  = has ? ('notice ' + (ok ? 'ok' : 'err')) : 'notice';
+      msg.hidden = !has;
+    };
 
       // alumno en la MISMA carpeta que este login
       const toAlumno = ()=> {
