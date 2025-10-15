@@ -28,6 +28,25 @@
         </div>
 
         <p id="mensaje" class="notice" role="status" aria-live="polite"></p>
+        <!-- Selector de perfil cuando el usuario tiene varios roles -->
+        <div id="role-picker" class="role-picker" hidden>
+          <h3 style="margin:0 0 .5rem;">Elige tu perfil</h3>
+          <p class="muted" style="margin:.1rem 0 .6rem;">Con qué perfil quieres entrar:</p>
+
+          <div class="field" style="margin-bottom:.6rem;">
+            <label for="role-select" class="sr-only">Perfil</label>
+            <select id="role-select" class="input" style="width:100%;">
+              <option value="alumno">Alumno</option>
+              <option value="docente">Docente</option>
+            </select>
+          </div>
+
+          <div class="actions" style="gap:.5rem;">
+            <button id="btn-role-cancel" class="btn btn-secondary" type="button">Cancelar</button>
+            <button id="btn-role-continue" class="btn btn-primary" type="button">Continuar</button>
+          </div>
+        </div>
+
       </div>
     </div>
   </div>
@@ -109,43 +128,38 @@
             }
             return;
           }
+          // --- Caso 2: multirol → pedir elección mediante desplegable
+      const picked = await pickRole();
+      if (!picked) { btn.disabled = false; return; }
 
-          // --- Caso 2: multirol → pedir elección
-          const picked = (window.prompt('Tienes dos roles. Escribe "alumno" o "docente":', 'alumno') || '').toLowerCase().trim();
-          if (!picked) { btn.disabled = false; return; }
-          if (picked !== 'alumno' && picked !== 'docente'){
-            show('Opción inválida. Escribe "alumno" o "docente".', false);
-            btn.disabled = false; return;
-          }
+      const sw = await fetch('/auth/switch-role', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ role: picked, email })
+      });
+      let d = {}; try{ d = await sw.json(); }catch(_){}
+      if (!sw.ok || !d.success){
+        show(d.error || 'No se pudo activar el rol seleccionado.', false);
+        btn.disabled = false; return;
+      }
 
-          const sw = await fetch('/auth/switch-role', {
-            method:'POST',
-            headers:{'Content-Type':'application/json'},
-            body: JSON.stringify({ role: picked, email })
-          });
-          let d = {}; try{ d = await sw.json(); }catch(_){}
-          if (!sw.ok || !d.success){
-            show(d.error || 'No se pudo activar el rol seleccionado.', false);
-            btn.disabled = false; return;
-          }
+      localStorage.setItem('token', d.token);
+      if (picked === 'alumno') {
+        localStorage.setItem('rol','alumno');
+        if (d.usuario?.alumno_id)     localStorage.setItem('alumno_id', d.usuario.alumno_id);
+        if (d.usuario?.alumno_nombre) localStorage.setItem('alumno_nombre', d.usuario.alumno_nombre);
+        window.location.href = toAlumno();
+      } else {
+        localStorage.setItem('rol','docente');
+        if (d.usuario?.usuario_id)     localStorage.setItem('usuario_id', d.usuario.usuario_id);
+        if (d.usuario?.usuario_nombre) localStorage.setItem('usuario_nombre', d.usuario.usuario_nombre);
 
-          localStorage.setItem('token', d.token);
-          if (picked === 'alumno') {
-            localStorage.setItem('rol','alumno');
-            if (d.usuario?.alumno_id)     localStorage.setItem('alumno_id', d.usuario.alumno_id);
-            if (d.usuario?.alumno_nombre) localStorage.setItem('alumno_nombre', d.usuario.alumno_nombre);
-            window.location.href = toAlumno();
-          } else {
-            localStorage.setItem('rol','docente');
-            if (d.usuario?.usuario_id)     localStorage.setItem('usuario_id', d.usuario.usuario_id);
-            if (d.usuario?.usuario_nombre) localStorage.setItem('usuario_nombre', d.usuario.usuario_nombre);
+        // *** puente de sesión maestro ***
+        const ok = await ensureMaestroSession(email, password);
+        if (!ok){ show('No se pudo abrir sesión de Docencia. Inténtalo de nuevo.', false); btn.disabled = false; return; }
 
-            // *** puente de sesión maestro ***
-            const ok = await ensureMaestroSession(email, password);
-            if (!ok){ show('No se pudo abrir sesión de Docencia. Inténtalo de nuevo.', false); btn.disabled = false; return; }
-
-            window.location.href = toDocente();
-          }
+        window.location.href = toDocente();
+      }
 
         }catch(e){
           show('No se pudo conectar con el servidor. Inténtalo de nuevo.', false);
@@ -228,7 +242,84 @@
     window.addEventListener('pageshow', (e)=>{ if (e.persisted) setTimeout(place,0); });
     let tm=null; window.addEventListener('resize', ()=>{ clearTimeout(tm); tm=setTimeout(place,120); });
   })();
+  // Muestra el selector de rol y devuelve 'alumno' | 'docente' o null si se cancela
+    function pickRole(){
+      return new Promise(resolve => {
+        const box   = document.getElementById('role-picker');
+        const sel   = document.getElementById('role-select');
+        const okBtn = document.getElementById('btn-role-continue');
+        const noBtn = document.getElementById('btn-role-cancel');
+
+        if (!box || !sel || !okBtn || !noBtn) return resolve(null);
+
+        box.hidden = false;
+        sel.focus();
+
+        const cleanup = () => {
+          box.hidden = true;
+          okBtn.removeEventListener('click', onOk);
+          noBtn.removeEventListener('click', onNo);
+          sel.removeEventListener('keydown', onKey);
+          box.removeEventListener('keydown', onKey);
+        };
+        const onOk = () => { const v = (sel.value||'').toLowerCase(); cleanup(); resolve(v==='docente'?'docente':'alumno'); };
+        const onNo = () => { cleanup(); resolve(null); };
+        const onKey = (e) => { if (e.key === 'Enter') onOk(); if (e.key === 'Escape') onNo(); };
+
+        okBtn.addEventListener('click', onOk);
+        noBtn.addEventListener('click', onNo);
+        sel.addEventListener('keydown', onKey);
+        box.addEventListener('keydown', onKey);
+      });
+    }
+
   </script>
 </body>
 </html>
+<style>
+  .role-picker{
+    margin-top:.8rem;
+    border:1px solid rgba(0,0,0,.08);
+    border-radius:12px;
+    padding:12px 14px;
+    background:#fff;
+  }
+  /* accesibilidad básica si no tienes .sr-only ya definida */
+  .sr-only{
+    position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;
+  }
+  /* ====== Igualar altura del desplegable al resto de inputs ====== */
+.role-picker .field{ position: relative; }
+
+/* Mismo look & alto que los inputs */
+select.input{
+  display:block;
+  width:100%;
+  font: inherit;
+  padding: 12px 14px;        /* igual que tus inputs */
+  height: 44px;              /* fija el alto visual */
+  line-height: 1.2;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #fff;
+  box-sizing: border-box;
+
+  /* quita estilos nativos “estrechos” */
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+/* Flechita del select (sin imagen) */
+.role-picker .field::after{
+  content:"";
+  position:absolute;
+  right:12px; top:50%;
+  width:8px; height:8px;
+  border-right:2px solid #6b7280;
+  border-bottom:2px solid #6b7280;
+  transform: translateY(-50%) rotate(45deg);
+  pointer-events:none;
+}
+
+</style>
 

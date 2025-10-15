@@ -566,21 +566,20 @@ router.get('/:id/qr', async (req, res) => {
     const qrDataUrl = await QRCode.toDataURL(qrData);
 
     const fISO = toISODate(evento.fecha_inicio);
-    const hhmm = String(evento.hora_inicio || '00:00').slice(0, 5); // HH:MM
-    const fechaObj = fISO ? new Date(`${fISO}T${hhmm}:00`) : null;
+    const hhmm = String(evento.hora_inicio || '00:00').slice(0, 5);
 
-    const fechaFormateada = fechaObj
-      ? fechaObj.toLocaleString('es-ES', {
-          weekday: 'long',
-          year: 'numeric',
-          month: 'long',
-          day: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit',
-          timeZone: 'Europe/Madrid'
-        })
-      : (evento.fecha_inicio || '');
-
+    let fechaFormateada = evento.fecha_inicio || '';
+    if (fISO) {
+      const [y, m, d] = fISO.split('-').map(Number);
+      // Fecha “ancla” al mediodía UTC para que el día sea correcto en Madrid
+      const base = new Date(Date.UTC(y, (m || 1) - 1, d || 1, 12, 0, 0));
+      const fechaES = base.toLocaleDateString('es-ES', {
+        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+        timeZone: 'Europe/Madrid'
+      });
+      // Si quieres ocultar la hora si es 00:00, cambia esta línea
+      fechaFormateada = `${fechaES}, ${hhmm}`;
+    }
     res.send(`
       <html>
         <head>

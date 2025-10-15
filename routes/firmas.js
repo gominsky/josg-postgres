@@ -130,9 +130,6 @@ router.post('/login', async (req, res) => {
 
 /* ------------------------------ FIRMA POR QR ----------------------------- */
 // Protegido por JWT; toma el alumno_id del token (no del body)
-// minutos de cortesía (por defecto 5)
-const QR_GRACE_MINUTES = parseInt(process.env.QR_GRACE_MINUTES || '15', 10);
-
 async function handleFirmarQR(req, res) {
   try {
     const raw = req.body || {};
@@ -160,72 +157,72 @@ async function handleFirmarQR(req, res) {
     // y actualizando/insertando la asistencia en una sola sentencia.
     const QR_GRACE_MINUTES = parseInt(process.env.QR_GRACE_MINUTES || '15', 10);
     const sql = `
-  WITH base AS (
-    SELECT
-      e.id               AS evento_id,
-      $1::int            AS alumno_id,
-      e.fecha_inicio::date AS fecha,
-      -- Normaliza hora_asign y hora_evento a TIME solo si tienen formato HH:MM[:SS]
-      CASE
-        WHEN trim(a.hora_inicio::text) ~ '^\\d{2}:\\d{2}(:\\d{2})?$'
-          THEN split_part(trim(a.hora_inicio::text), ' ', 1)::time
-        ELSE NULL
-      END AS hora_asign,
-      CASE
-        WHEN trim(e.hora_inicio::text) ~ '^\\d{2}:\\d{2}(:\\d{2})?$'
-          THEN split_part(trim(e.hora_inicio::text), ' ', 1)::time
-        ELSE NULL
-      END AS hora_evento
-    FROM eventos e
-    LEFT JOIN evento_asignaciones a
-           ON a.evento_id = e.id AND a.alumno_id = $1::int
-    WHERE e.id = $2::int
-    LIMIT 1
-  ),
-  ref AS (
-    SELECT
-      b.evento_id,
-      b.alumno_id,
-      b.fecha,
-      (now() at time zone 'Europe/Madrid')::date      AS hoy,
-      (now() at time zone 'Europe/Madrid')::time      AS ahora,
-      -- Inicio local como DATE + TIME (timestamp sin tz)
-      CASE
-        WHEN COALESCE(b.hora_asign, b.hora_evento) IS NULL THEN NULL
-        ELSE (b.fecha::timestamp + COALESCE(b.hora_asign, b.hora_evento))
-      END AS start_local
-    FROM base b
-  ),
-  calc AS (
-    SELECT
-      CASE
-        WHEN r.start_local IS NULL THEN NULL
-        ELSE GREATEST(
-               CEIL(EXTRACT(EPOCH FROM (
-                 (now() at time zone 'Europe/Madrid')::timestamp - r.start_local
-               )) / 60.0)::int - $4::int,
-               0
-             )
-      END AS minutos
-    FROM ref r
-  )
-  INSERT INTO asistencias (alumno_id, evento_id, fecha, hora, tipo, ubicacion, minutos_perdidos)
-  VALUES (
-    $1::int, $2::int,
-    (now() at time zone 'Europe/Madrid')::date,
-    (now() at time zone 'Europe/Madrid')::time,
-    'qr', $3::text,
-    (SELECT minutos FROM calc)
-  )
-  ON CONFLICT (evento_id, alumno_id)
-  DO UPDATE SET
-    fecha = EXCLUDED.fecha,
-    hora  = EXCLUDED.hora,
-    tipo  = 'qr',
-    ubicacion = COALESCE(EXCLUDED.ubicacion, asistencias.ubicacion),
-    minutos_perdidos = COALESCE(EXCLUDED.minutos_perdidos, asistencias.minutos_perdidos)
-  RETURNING id, minutos_perdidos
-`;
+      -- CTE base: añade grace
+    WITH base AS (
+      SELECT
+        e.id AS evento_id,
+        $1::int AS alumno_id,
+        e.fecha_inicio::date AS fecha,
+        CASE
+          WHEN trim(a.hora_inicio::text) ~ '^\d{2}:\d{2}(:\d{2})?$'
+            THEN split_part(trim(a.hora_inicio::text), ' ', 1)::time
+          ELSE NULL
+        END AS hora_asign,
+        CASE
+          WHEN trim(e.hora_inicio::text) ~ '^\d{2}:\d{2}(:\d{2})?$'
+            THEN split_part(trim(e.hora_inicio::text), ' ', 1)::time
+          ELSE NULL
+        END AS hora_evento,
+        COALESCE(e.grace_minutes, $4::int) AS grace   -- <── NUEVO
+      FROM eventos e
+      LEFT JOIN evento_asignaciones a
+            ON a.evento_id = e.id AND a.alumno_id = $1::int
+      WHERE e.id = $2::int
+      LIMIT 1
+    ),
+    ref AS (
+      SELECT
+        b.evento_id, b.alumno_id, b.fecha, b.grace,                         -- <── pasar grace
+        (now() at time zone 'Europe/Madrid')::date AS hoy,
+        (now() at time zone 'Europe/Madrid')::time AS ahora,
+        CASE
+          WHEN COALESCE(b.hora_asign, b.hora_evento) IS NULL THEN NULL
+          ELSE (b.fecha::timestamp + COALESCE(b.hora_asign, b.hora_evento))
+        END AS start_local
+      FROM base b
+    ),
+    calc AS (
+      SELECT
+        CASE
+          WHEN r.start_local IS NULL THEN NULL
+          ELSE GREATEST(
+                CEIL(EXTRACT(EPOCH FROM (
+                  (now() at time zone 'Europe/Madrid')::timestamp - r.start_local
+                )) / 60.0)::int - r.grace, 0        -- <── usar grace del evento
+              )
+        END AS minutos
+      FROM ref r
+    )
+    -- resto INSERT ... ON CONFLICT sin cambios
+
+      )
+      INSERT INTO asistencias (alumno_id, evento_id, fecha, hora, tipo, ubicacion, minutos_perdidos)
+      VALUES (
+        $1::int, $2::int,
+        (now() at time zone 'Europe/Madrid')::date,
+        (now() at time zone 'Europe/Madrid')::time,
+        'qr', $3::text,
+        (SELECT minutos FROM calc)
+      )
+      ON CONFLICT (evento_id, alumno_id)
+      DO UPDATE SET
+        fecha = EXCLUDED.fecha,
+        hora  = EXCLUDED.hora,
+        tipo  = 'qr',
+        ubicacion = COALESCE(EXCLUDED.ubicacion, asistencias.ubicacion),
+        minutos_perdidos = COALESCE(EXCLUDED.minutos_perdidos, asistencias.minutos_perdidos)
+      RETURNING id, minutos_perdidos
+    `;
 
 const up = await db.query(sql, [alumno_id, evento_id, ubicacion, QR_GRACE_MINUTES]);
 
