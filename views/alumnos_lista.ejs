@@ -146,13 +146,16 @@
     </thead>
     <tbody id="tabla-alumnos-body">
       <% alumnos.forEach(a => { 
-           const fullName = `${a.nombre || ''} ${a.apellidos || ''}`.trim();
-           const inst = (a.instrumentos || '—');
-           const grps = (a.grupos || '—');
-           const activoNum = a.activo ? 1 : 0;
+     const nombre = (a.nombre || '').trim();
+     const apellidos = (a.apellidos || '').trim();
+     const fullName = `${nombre} ${apellidos}`.trim();
+     const sortName = (apellidos || nombre).toLowerCase() + ' ' + nombre.toLowerCase(); // <-- clave por apellidos
+     const inst = (a.instrumentos || '—');
+     const grps = (a.grupos || '—');
+     const activoNum = a.activo ? 1 : 0;
       %>
         <tr class="fila-enlace" onclick="location.href='/alumnos/<%= a.id %>'" style="cursor:pointer;">
-          <td data-sort="<%= fullName.toLowerCase() %>"><strong><%= fullName %></strong></td>
+          <td data-sort="<%= sortName %>"><strong><%= fullName %></strong></td>
           <td data-sort="<%= inst.toLowerCase() %>"><%= inst %></td>
           <td data-sort="<%= grps.toLowerCase() %>"><%= grps %></td>
           <td data-sort="<%= activoNum %>">
@@ -165,9 +168,7 @@
     </tbody>   
   </table>
 </div>
-
-  <% } %>
-
+ <% } %>
 <% } %>
 
 <div class="volver-bloque-izquierda">

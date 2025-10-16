@@ -353,7 +353,7 @@
     const getReadSet = () => new Set(JSON.parse(localStorage.getItem(LS_KEY) || '[]'));
     const saveReadSet = (set) => localStorage.setItem(LS_KEY, JSON.stringify([...set]));
     const isRead = (m, readSet) => (
-      !!(m.leido || m.leído || m.read || m.read_at || m.fecha_leido || m.f_leido || m.visto || m.visto_el)
+      !!(m.leido_at ||m.leido || m.leído || m.read || m.read_at || m.fecha_leido || m.f_leido || m.visto || m.visto_el)
       || readSet.has(String(m.id))
     );
 
@@ -478,7 +478,7 @@ function cardHTML(m, readSet){
   const domainLabel = href => { try { return new URL(ensureProto(href), location.origin).host.replace(/^www\./,''); } catch { return href; } };
   const fmtDate = v => { const d = new Date(v || m.created_at || m.fecha || m.sent_at || ''); return isNaN(d) ? '' : d.toLocaleString(); };
   const isRead = (mm, rs) =>
-  !!(mm.leido || mm.read || (rs?.has && rs.has(String(mm.id))) || (rs && rs[String(mm.id)]));
+  !!(mm.leido_at || mm.leido || mm.read || (rs?.has && rs.has(String(mm.id))) || (rs && rs[String(mm.id)]));
   const MAX = (typeof MAX_CHARS === 'number' ? MAX_CHARS : 240);
 
   // --- Datos base ---
