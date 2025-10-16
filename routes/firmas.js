@@ -5,33 +5,6 @@ const db      = require('../database/db');
 const bcrypt  = require('bcrypt');
 const jwt     = require('jsonwebtoken');
 
-router.use(express.json());
-router.use((req, _res, next) => {
-  console.log(`[firmas] ${req.method} ${req.originalUrl} auth=${!!req.headers.authorization}`);
-  next();
-});
-function requireJWT(req, res, next){
-  const h = req.headers['authorization'] || '';
-  const m = h.match(/^Bearer\s+(.+)$/i);
-  const rawToken = m ? m[1] : (req.query && req.query.jwt ? String(req.query.jwt) : null);
-
-  if (!rawToken) {
-    console.warn('[requireJWT] missing token');
-    return res.status(401).json({ success:false, error:'auth_required' });
-  }
-  try {
-    const payload = jwt.verify(rawToken, process.env.JWT_SECRET);
-    req.alumno_id = Number(payload.sub || 0);
-    req.jwt = payload;
-    if (!req.alumno_id) throw new Error('invalid_sub');
-    return next();
-  } catch (e) {
-    console.warn('[requireJWT] invalid_token:', e && e.message);
-    return res.status(401).json({ success:false, error:'invalid_token', detail: e.message });
-  }
-}
-
-
 // === Utilidades ===
 async function ensureReadColumn(client, table){
   await client.query(`ALTER TABLE ${table} ADD COLUMN IF NOT EXISTS leido_at TIMESTAMP NULL`);
@@ -157,21 +130,29 @@ router.post('/login', async (req, res) => {
 
 /* ------------------------------ FIRMA POR QR ----------------------------- */
 // Protegido por JWT; toma el alumno_id del token (no del body)
-async function handleFirmarQR(req, res) {
-  console.log('[firmar-qr] alumno_id(jwt)=', req.alumno_id, 'bodyKeys=', Object.keys(req.body||{}));
+// minutos de cortesía por defecto (respeta tu env)
+const QR_GRACE_MINUTES = parseInt(process.env.QR_GRACE_MINUTES || '15', 10);
 
+async function handleFirmarQR(req, res) {
   try {
     const raw = req.body || {};
-    const alumno_id = Number(req.alumno_id || 0);
+    // <- unificamos a camelCase y hacemos fallback por si requireJWT mete el sub
+    const alumnoId = Number(req.alumno_id ?? req.user?.sub ?? 0);
     const evento_id = Number(raw.evento_id);
     const tokenQR   = raw.token != null ? String(raw.token) : null;
     const ubicacion = (raw.ubicacion != null && raw.ubicacion !== '') ? String(raw.ubicacion) : null;
 
-    if (!alumno_id || !evento_id || !tokenQR) {
+    // logs útiles de diagnóstico
+    console.log('[firmar-qr] start', {
+      alumnoId, evento_id, hasToken: !!tokenQR, hasUbicacion: !!ubicacion,
+      jwt_alumno_id: req.alumno_id, jwt_sub: req.user?.sub
+    });
+
+    if (!alumnoId || !evento_id || !tokenQR) {
       return res.status(400).json({ success: false, mensaje: 'Faltan datos (evento_id, token)' });
     }
 
-    // validar evento + token (igual que antes)
+    // validar evento + token
     const ev = await db.query(
       `SELECT id, fecha_inicio, hora_inicio
          FROM eventos
@@ -182,83 +163,71 @@ async function handleFirmarQR(req, res) {
       return res.status(400).json({ success: false, mensaje: 'Evento no válido o inactivo' });
     }
 
-    const QR_GRACE_MINUTES = parseInt(process.env.QR_GRACE_MINUTES || '15', 10);
+    // tu SQL actual (no toco el cálculo)
+    const sql = `
+      WITH base AS (
+        SELECT
+          e.id AS evento_id,
+          $1::int AS alumno_id,
+          e.fecha_inicio::date AS fecha,
+          CASE WHEN trim(a.hora_inicio::text) ~ '^\\d{2}:\\d{2}(:\\d{2})?$'
+               THEN split_part(trim(a.hora_inicio::text), ' ', 1)::time
+               ELSE NULL END AS hora_asign,
+          CASE WHEN trim(e.hora_inicio::text) ~ '^\\d{2}:\\d{2}(:\\d{2})?$'
+               THEN split_part(trim(e.hora_inicio::text), ' ', 1)::time
+               ELSE NULL END AS hora_evento
+        FROM eventos e
+        LEFT JOIN evento_asignaciones a
+               ON a.evento_id = e.id AND a.alumno_id = $1::int
+        WHERE e.id = $2::int
+        LIMIT 1
+      ),
+      ref AS (
+        SELECT
+          b.evento_id, b.alumno_id, b.fecha,
+          (now() at time zone 'Europe/Madrid')::date AS hoy,
+          (now() at time zone 'Europe/Madrid')::time AS ahora,
+          CASE
+            WHEN COALESCE(b.hora_asign, b.hora_evento) IS NULL THEN NULL
+            ELSE (b.fecha::timestamp + COALESCE(b.hora_asign, b.hora_evento))
+          END AS start_local
+        FROM base b
+      ),
+      calc AS (
+        SELECT
+          CASE
+            WHEN r.start_local IS NULL THEN NULL
+            ELSE GREATEST(
+                   CEIL(EXTRACT(EPOCH FROM (
+                     (now() at time zone 'Europe/Madrid')::timestamp - r.start_local
+                   )) / 60.0)::int - $4::int,
+                   0
+                 )
+          END AS minutos
+        FROM ref r
+      )
+      INSERT INTO asistencias (alumno_id, evento_id, fecha, hora, tipo, ubicacion, minutos_perdidos)
+      VALUES (
+        $1::int, $2::int,
+        (now() at time zone 'Europe/Madrid')::date,
+        (now() at time zone 'Europe/Madrid')::time,
+        'qr', $3::text,
+        (SELECT minutos FROM calc)
+      )
+      ON CONFLICT (evento_id, alumno_id)
+      DO UPDATE SET
+        fecha = EXCLUDED.fecha,
+        hora  = EXCLUDED.hora,
+        tipo  = 'qr',
+        ubicacion = COALESCE(EXCLUDED.ubicacion, asistencias.ubicacion),
+        minutos_perdidos = COALESCE(EXCLUDED.minutos_perdidos, asistencias.minutos_perdidos)
+      RETURNING id, minutos_perdidos
+    `;
 
-const sql = `
-WITH base AS (
-  SELECT
-    e.id AS evento_id,
-    $1::int AS alumno_id,
-    e.fecha_inicio::date AS fecha,
-    CASE
-      WHEN trim(a.hora_inicio::text) ~ '^\\d{2}:\\d{2}(:\\d{2})?$'
-        THEN split_part(trim(a.hora_inicio::text), ' ', 1)::time
-      ELSE NULL
-    END AS hora_asign,
-    CASE
-      WHEN trim(e.hora_inicio::text) ~ '^\\d{2}:\\d{2}(:\\d{2})?$'
-        THEN split_part(trim(e.hora_inicio::text), ' ', 1)::time
-      ELSE NULL
-    END AS hora_evento,
-    COALESCE(e.grace_minutes, $3::int) AS grace
-  FROM eventos e
-  LEFT JOIN evento_asignaciones a
-         ON a.evento_id = e.id AND a.alumno_id = $1::int
-  WHERE e.id = $2::int
-  LIMIT 1
-),
-ref AS (
-  SELECT
-    b.evento_id, b.alumno_id, b.fecha, b.grace,
-    (now() at time zone 'Europe/Madrid')::date AS hoy,
-    (now() at time zone 'Europe/Madrid')::time AS ahora,
-    CASE
-      WHEN COALESCE(b.hora_asign, b.hora_evento) IS NULL THEN NULL
-      ELSE (b.fecha::timestamp + COALESCE(b.hora_asign, b.hora_evento))
-    END AS start_local
-  FROM base b
-),
-calc AS (
-  SELECT
-    CASE
-      WHEN r.start_local IS NULL THEN NULL
-      ELSE GREATEST(
-             CEIL(EXTRACT(EPOCH FROM (
-               (now() at time zone 'Europe/Madrid')::timestamp - r.start_local
-             )) / 60.0)::int - r.grace,          -- ← resta el grace del evento
-             0
-           )
-    END AS minutos
-  FROM ref r
-)
-INSERT INTO asistencias (alumno_id, evento_id, fecha, hora, tipo, ubicacion, minutos_perdidos)
-VALUES (
-  $1::int, $2::int,
-  (now() at time zone 'Europe/Madrid')::date,
-  (now() at time zone 'Europe/Madrid')::time,
-  'qr', $3::text,
-  (SELECT minutos FROM calc)
-)
-ON CONFLICT (evento_id, alumno_id)
-DO UPDATE SET
-  fecha = EXCLUDED.fecha,
-  hora  = EXCLUDED.hora,
-  tipo  = 'qr',
-  ubicacion = COALESCE(EXCLUDED.ubicacion, asistencias.ubicacion),
-  minutos_perdidos = COALESCE(EXCLUDED.minutos_perdidos, asistencias.minutos_perdidos)
-RETURNING id, minutos_perdidos
-`;
+    console.log('[firmar-qr] executing upsert', { alumnoId, evento_id, hasUbicacion: !!ubicacion, QR_GRACE_MINUTES });
+    const up = await db.query(sql, [alumnoId, evento_id, ubicacion, QR_GRACE_MINUTES]);
 
-// Al ejecutar:
-await db.query(sql, [alumnoId, eventoId, ubicacion, QR_GRACE_MINUTES]);
-
-console.log('[firmar-qr] about to UPSERT:', {
-  alumno_id, evento_id, ubicacion, QR_GRACE_MINUTES
-});
-console.log('[firmar-qr] UPSERT rowCount=', up.rowCount, 'row0=', up.rows && up.rows[0]);
-const up = await db.query(sql, [alumno_id, evento_id, ubicacion, QR_GRACE_MINUTES]);
-
-    const yaFirmado = up.rowCount === 0; // por compat, aunque RETURNING siempre trae fila
+    const yaFirmado = up.rowCount === 0;
     return res.json({
       success: true,
       yaFirmado,
@@ -268,11 +237,10 @@ const up = await db.query(sql, [alumno_id, evento_id, ubicacion, QR_GRACE_MINUTE
     });
   } catch (err) {
     console.error('firmar-qr:', err);
-    console.error('firmar-qr error:', err && (err.stack || err));
     return res.status(500).json({ success: false, mensaje: 'Error interno' });
   }
-  
 }
+
 
 router.post('/firmar-qr', requireJWT, handleFirmarQR);
 router.post('/',        requireJWT, handleFirmarQR); // alias histórico
