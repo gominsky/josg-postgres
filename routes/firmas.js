@@ -5,6 +5,33 @@ const db      = require('../database/db');
 const bcrypt  = require('bcrypt');
 const jwt     = require('jsonwebtoken');
 
+router.use(express.json());
+router.use((req, _res, next) => {
+  console.log(`[firmas] ${req.method} ${req.originalUrl} auth=${!!req.headers.authorization}`);
+  next();
+});
+function requireJWT(req, res, next){
+  const h = req.headers['authorization'] || '';
+  const m = h.match(/^Bearer\s+(.+)$/i);
+  const rawToken = m ? m[1] : (req.query && req.query.jwt ? String(req.query.jwt) : null);
+
+  if (!rawToken) {
+    console.warn('[requireJWT] missing token');
+    return res.status(401).json({ success:false, error:'auth_required' });
+  }
+  try {
+    const payload = jwt.verify(rawToken, process.env.JWT_SECRET);
+    req.alumno_id = Number(payload.sub || 0);
+    req.jwt = payload;
+    if (!req.alumno_id) throw new Error('invalid_sub');
+    return next();
+  } catch (e) {
+    console.warn('[requireJWT] invalid_token:', e && e.message);
+    return res.status(401).json({ success:false, error:'invalid_token', detail: e.message });
+  }
+}
+
+
 // === Utilidades ===
 async function ensureReadColumn(client, table){
   await client.query(`ALTER TABLE ${table} ADD COLUMN IF NOT EXISTS leido_at TIMESTAMP NULL`);
@@ -131,6 +158,8 @@ router.post('/login', async (req, res) => {
 /* ------------------------------ FIRMA POR QR ----------------------------- */
 // Protegido por JWT; toma el alumno_id del token (no del body)
 async function handleFirmarQR(req, res) {
+  console.log('[firmar-qr] alumno_id(jwt)=', req.alumno_id, 'bodyKeys=', Object.keys(req.body||{}));
+
   try {
     const raw = req.body || {};
     const alumno_id = Number(req.alumno_id || 0);
@@ -223,7 +252,10 @@ RETURNING id, minutos_perdidos
 // Al ejecutar:
 await db.query(sql, [alumnoId, eventoId, ubicacion, QR_GRACE_MINUTES]);
 
-
+console.log('[firmar-qr] about to UPSERT:', {
+  alumno_id, evento_id, ubicacion, QR_GRACE_MINUTES
+});
+console.log('[firmar-qr] UPSERT rowCount=', up.rowCount, 'row0=', up.rows && up.rows[0]);
 const up = await db.query(sql, [alumno_id, evento_id, ubicacion, QR_GRACE_MINUTES]);
 
     const yaFirmado = up.rowCount === 0; // por compat, aunque RETURNING siempre trae fila
@@ -236,8 +268,10 @@ const up = await db.query(sql, [alumno_id, evento_id, ubicacion, QR_GRACE_MINUTE
     });
   } catch (err) {
     console.error('firmar-qr:', err);
+    console.error('firmar-qr error:', err && (err.stack || err));
     return res.status(500).json({ success: false, mensaje: 'Error interno' });
   }
+  
 }
 
 router.post('/firmar-qr', requireJWT, handleFirmarQR);
