@@ -545,6 +545,46 @@ router.delete('/:id', async (req, res) => {
     res.status(500).json({ error: 'Error al eliminar evento' });
   }
 });
+// POST /eventos/:id/asignaciones/sincronizar-horas
+router.post('/:id/asignaciones/sincronizar-horas', async (req, res) => {
+  const eventoId = Number(req.params.id);
+  if (!Number.isInteger(eventoId)) {
+    return res.status(400).json({ ok:false, error:'ID inválido' });
+  }
+
+  const client = await db.connect();
+  try {
+    await client.query('BEGIN');
+
+    const ev = await client.query(
+      `SELECT hora_inicio, hora_fin FROM eventos WHERE id = $1`,
+      [eventoId]
+    );
+    if (!ev.rowCount) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ ok:false, error:'Evento no encontrado' });
+    }
+
+    const { hora_inicio, hora_fin } = ev.rows[0];
+
+    const upd = await client.query(
+      `UPDATE evento_asignaciones
+          SET hora_inicio = $1,
+              hora_fin    = $2
+        WHERE evento_id   = $3`,
+      [hora_inicio, hora_fin, eventoId]
+    );
+
+    await client.query('COMMIT');
+    res.json({ ok:true, updated: upd.rowCount });
+  } catch (err) {
+    try { await client.query('ROLLBACK'); } catch {}
+    console.error('[sync-horas] error:', err);
+    res.status(500).json({ ok:false, error:'Error al sincronizar horas' });
+  } finally {
+    client.release();
+  }
+});
 router.get('/:id/qr', async (req, res) => {
   const eventoId = req.params.id;
 

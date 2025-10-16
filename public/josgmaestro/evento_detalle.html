@@ -366,33 +366,35 @@
       }
       if(window.syncCards) syncCards();
     }
-    async function toggleQR() {
-  const next = !window.__qrActivo;
+    
+    <!-- evento_detalle.html -->
 
-  // UI optimista
-  window.__qrActivo = next;
-  document.getElementById('qr-estado').innerText = next ? 'QR activo' : 'QR desactivado';
-  if (!next) ocultarQR();
-  if (window.syncCards) syncCards();
+  async function toggleQR() {
+    const nuevo = !window.__qrActivo;
 
-  try {
-    const r = await fetch(`${API_BASE}/eventos/${evento_id}/activar`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'same-origin',
-      body: JSON.stringify({ activo: next })
-    });
-    if (!r.ok) throw new Error('No se pudo guardar el estado del QR');
-  } catch (e) {
-    // revertir si falla
-    window.__qrActivo = !next;
-    document.getElementById('qr-estado').innerText = window.__qrActivo ? 'QR activo' : 'QR desactivado';
-    if (!window.__qrActivo) ocultarQR();
+    // Optimista: refleja en la UI
+    window.__qrActivo = nuevo;
+    document.getElementById('qr-estado').innerText = nuevo ? 'QR activo' : 'QR desactivado';
+    if (!nuevo) ocultarQR();
     if (window.syncCards) syncCards();
-    alert('Error guardando el estado del QR.');
-  }
-}
 
+    try {
+      const res = await fetch(`${API_BASE}/eventos/${evento_id}/activar`, {
+        method: 'PATCH',
+        headers: { 'Content-Type':'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ activo: nuevo })
+      });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+    } catch (e) {
+      // Revertir si falla
+      window.__qrActivo = !nuevo;
+      document.getElementById('qr-estado').innerText = window.__qrActivo ? 'QR activo' : 'QR desactivado';
+      if (!window.__qrActivo) ocultarQR();
+      if (window.syncCards) syncCards();
+      alert('No se pudo actualizar el estado del QR');
+    }
+  }
     async function updateAusenciaAsignacion(alumnoId, ausenciaTipoId){
       const payload = { ausencia_tipo_id: ausenciaTipoId };
       const opts = { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify(payload) };

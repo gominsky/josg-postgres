@@ -152,6 +152,16 @@ document.addEventListener('DOMContentLoaded', () => {
         form.fecha_inicio.value = composeDTLocal(evento.fecha_inicio, evento.hora_inicio, '09:00');
         form.fecha_fin.value    = composeDTLocal(evento.fecha_fin,   evento.hora_fin,   '10:00');
         form.activo.checked     = Number(evento.activo) === 1;
+        // Guarda originales para detectar cambios y cuenta asignaciones
+form.dataset.origInicio = form.fecha_inicio.value || '';
+form.dataset.origFin    = form.fecha_fin.value || '';
+try {
+  const rResumen = await fetch(`/eventos/${evento.id}/asignaciones/resumen`);
+  const jResumen = rResumen.ok ? await rResumen.json() : { asignados: 0 };
+  form.dataset.asignados = String(jResumen.asignados || 0);
+} catch {
+  form.dataset.asignados = '0';
+}
 
         mostrarBtns();
         btnQR.onclick = () => window.open(`/eventos/${evento.id}/qr`, '_blank');
@@ -205,6 +215,9 @@ dateClick(info) {
   form.grupo_id.value     = '';
   form.fecha_inicio.value = `${info.dateStr}T09:00`;
   form.fecha_fin.value    = `${info.dateStr}T10:00`;
+  form.dataset.origInicio = form.fecha_inicio.value || '';
+  form.dataset.origFin    = form.fecha_fin.value || '';
+  form.dataset.asignados  = '0';
   form.activo.checked     = false;
   ocultarBtns();
   modalTitulo.innerText = 'Nuevo evento';
@@ -270,6 +283,16 @@ eventClick: async function(info){
   // Normaliza a datetime-local (ya tienes helpers arriba)
   form.fecha_inicio.value = composeDTLocal(evento.fecha_inicio, evento.hora_inicio, '09:00');
   form.fecha_fin.value    = composeDTLocal(evento.fecha_fin,   evento.hora_fin,   '10:00');
+  // Guarda originales para detectar cambios y cuenta asignaciones
+form.dataset.origInicio = form.fecha_inicio.value || '';
+form.dataset.origFin    = form.fecha_fin.value || '';
+try {
+  const rResumen = await fetch(`/eventos/${evento.id}/asignaciones/resumen`);
+  const jResumen = rResumen.ok ? await rResumen.json() : { asignados: 0 };
+  form.dataset.asignados = String(jResumen.asignados || 0);
+} catch {
+  form.dataset.asignados = '0';
+}
 
   form.activo.checked     = Number(evento.activo) === 1 || evento.activo === true;
 
@@ -294,34 +317,63 @@ eventDidMount(arg){
   }
 
   // --------------- GUARDAR (crear/editar) ---------------
-  form.addEventListener('submit', async e => {
-    e.preventDefault();
-    const data = new FormData(form);
-    const body = Object.fromEntries(data.entries());
-    body.activo = form.activo.checked ? '1' : '0';
+form.addEventListener('submit', async e => {
+  e.preventDefault();
 
-    const id = (inputId.value || '').trim();
-    const method = id ? 'PUT' : 'POST';
-    const url    = id ? `/eventos/${id}` : '/eventos';
-    if (!id) delete body.id; else body.id = id;
+  const data = new FormData(form);
+  const body = Object.fromEntries(data.entries());
+  body.activo = form.activo.checked ? '1' : '0';
 
-    try {
-      const res = await fetch(url, {
-        method,
-        headers: { 'Content-Type':'application/json' },
-        body: JSON.stringify(body)
-      });
-      if (!res.ok) {
-        const t = await res.text().catch(()=> 'Error');
-        throw new Error(t || 'Error al guardar');
-      }
-      modal.hide();
-      location.reload();
-    } catch(err) {
-      console.error(err);
-      alert('Error al guardar el evento');
+  const id     = (inputId.value || '').trim();
+  const method = id ? 'PUT' : 'POST';
+  const url    = id ? `/eventos/${id}` : '/eventos';
+  if (!id) delete body.id; else body.id = id;
+
+  // ¿Han cambiado fecha/hora y hay asignaciones?
+  const asignados   = Number(form.dataset.asignados || 0);
+  const origInicio  = form.dataset.origInicio || '';
+  const origFin     = form.dataset.origFin    || '';
+  const changedTime = !!id && (
+    (body.fecha_inicio || '') !== origInicio ||
+    (body.fecha_fin    || '') !== origFin
+  );
+
+  let syncHoras = false;
+  if (changedTime && asignados > 0) {
+    syncHoras = confirm(
+      `Este evento tiene ${asignados} asignación(es).\n\n` +
+      `Has cambiado la fecha/hora del evento. Si continúas, se ` +
+      `actualizarán las horas (inicio y fin) de TODAS las asignaciones actuales.\n\n` +
+      `¿Quieres actualizar también las asignaciones?`
+    );
+    // Si cancelas, solo se guardará el evento
+  }
+
+  try {
+    // 1) Guarda el evento
+    const res = await fetch(url, {
+      method,
+      headers: { 'Content-Type':'application/json' },
+      body: JSON.stringify(body)
+    });
+    if (!res.ok) {
+      const t = await res.text().catch(()=> 'Error');
+      throw new Error(t || 'Error al guardar');
     }
-  });
+
+    // 2) Si procede, sincroniza horas en bloque
+    if (syncHoras && id) {
+      const r2 = await fetch(`/eventos/${encodeURIComponent(id)}/asignaciones/sincronizar-horas`, { method:'POST' });
+      if (!r2.ok) alert('Evento guardado, pero no se pudieron actualizar las horas de las asignaciones.');
+    }
+
+    modal.hide();
+    location.reload();
+  } catch(err) {
+    console.error(err);
+    alert('Error al guardar el evento');
+  }
+});
 
   // --------------- ELIMINAR ---------------
   btnEliminar.addEventListener('click', async () => {
