@@ -153,26 +153,25 @@ async function handleFirmarQR(req, res) {
       return res.status(400).json({ success: false, mensaje: 'Evento no válido o inactivo' });
     }
 
-    // Calcular minutos de retraso (Europe/Madrid), usando hora asignada si existe
-    // y actualizando/insertando la asistencia en una sola sentencia.
     const QR_GRACE_MINUTES = parseInt(process.env.QR_GRACE_MINUTES || '15', 10);
-    const sql = `
-      -- CTE base (SIN grace)
+
+const sql = `
 WITH base AS (
   SELECT
     e.id AS evento_id,
     $1::int AS alumno_id,
     e.fecha_inicio::date AS fecha,
     CASE
-      WHEN trim(a.hora_inicio::text) ~ '^\d{2}:\d{2}(:\d{2})?$'
+      WHEN trim(a.hora_inicio::text) ~ '^\\d{2}:\\d{2}(:\\d{2})?$'
         THEN split_part(trim(a.hora_inicio::text), ' ', 1)::time
       ELSE NULL
     END AS hora_asign,
     CASE
-      WHEN trim(e.hora_inicio::text) ~ '^\d{2}:\d{2}(:\d{2})?$'
+      WHEN trim(e.hora_inicio::text) ~ '^\\d{2}:\\d{2}(:\\d{2})?$'
         THEN split_part(trim(e.hora_inicio::text), ' ', 1)::time
       ELSE NULL
-    END AS hora_evento
+    END AS hora_evento,
+    COALESCE(e.grace_minutes, $4::int) AS grace
   FROM eventos e
   LEFT JOIN evento_asignaciones a
          ON a.evento_id = e.id AND a.alumno_id = $1::int
@@ -181,7 +180,7 @@ WITH base AS (
 ),
 ref AS (
   SELECT
-    b.evento_id, b.alumno_id, b.fecha,
+    b.evento_id, b.alumno_id, b.fecha, b.grace,
     (now() at time zone 'Europe/Madrid')::date AS hoy,
     (now() at time zone 'Europe/Madrid')::time AS ahora,
     CASE
@@ -195,36 +194,35 @@ calc AS (
     CASE
       WHEN r.start_local IS NULL THEN NULL
       ELSE GREATEST(
-             CEIL(
-               EXTRACT(EPOCH FROM (
-                 (now() at time zone 'Europe/Madrid')::timestamp - r.start_local
-               )) / 60.0
-             )::int,
+             CEIL(EXTRACT(EPOCH FROM (
+               (now() at time zone 'Europe/Madrid')::timestamp - r.start_local
+             )) / 60.0)::int - r.grace,          -- ← resta el grace del evento
              0
            )
     END AS minutos
   FROM ref r
 )
--- resto INSERT ... ON CONFLICT sin cambios
+INSERT INTO asistencias (alumno_id, evento_id, fecha, hora, tipo, ubicacion, minutos_perdidos)
+VALUES (
+  $1::int, $2::int,
+  (now() at time zone 'Europe/Madrid')::date,
+  (now() at time zone 'Europe/Madrid')::time,
+  'qr', $3::text,
+  (SELECT minutos FROM calc)
+)
+ON CONFLICT (evento_id, alumno_id)
+DO UPDATE SET
+  fecha = EXCLUDED.fecha,
+  hora  = EXCLUDED.hora,
+  tipo  = 'qr',
+  ubicacion = COALESCE(EXCLUDED.ubicacion, asistencias.ubicacion),
+  minutos_perdidos = COALESCE(EXCLUDED.minutos_perdidos, asistencias.minutos_perdidos)
+RETURNING id, minutos_perdidos
+`;
 
-      )
-      INSERT INTO asistencias (alumno_id, evento_id, fecha, hora, tipo, ubicacion, minutos_perdidos)
-      VALUES (
-        $1::int, $2::int,
-        (now() at time zone 'Europe/Madrid')::date,
-        (now() at time zone 'Europe/Madrid')::time,
-        'qr', $3::text,
-        (SELECT minutos FROM calc)
-      )
-      ON CONFLICT (evento_id, alumno_id)
-      DO UPDATE SET
-        fecha = EXCLUDED.fecha,
-        hora  = EXCLUDED.hora,
-        tipo  = 'qr',
-        ubicacion = COALESCE(EXCLUDED.ubicacion, asistencias.ubicacion),
-        minutos_perdidos = COALESCE(EXCLUDED.minutos_perdidos, asistencias.minutos_perdidos)
-      RETURNING id, minutos_perdidos
-    `;
+// Al ejecutar:
+await db.query(sql, [alumnoId, eventoId, ubicacion, QR_GRACE_MINUTES]);
+
 
 const up = await db.query(sql, [alumno_id, evento_id, ubicacion, QR_GRACE_MINUTES]);
 
