@@ -171,7 +171,7 @@ WITH base AS (
         THEN split_part(trim(e.hora_inicio::text), ' ', 1)::time
       ELSE NULL
     END AS hora_evento,
-    COALESCE(e.grace_minutes, $4::int) AS grace
+    COALESCE(e.grace_minutes, $3::int) AS grace
   FROM eventos e
   LEFT JOIN evento_asignaciones a
          ON a.evento_id = e.id AND a.alumno_id = $1::int
