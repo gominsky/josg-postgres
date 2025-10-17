@@ -33,6 +33,9 @@ router.post('/login', async (req, res) => {
       nombre: user.nombre,
       rol: user.rol
     };
+    req.session.usuario_id  = user.id;
+    req.session.usuario_rol = user.rol;
+
     res.redirect('/');
   } catch (err) {
     console.error('Error al buscar usuario:', err);

@@ -70,6 +70,10 @@ function toUrlArray(x, max = 10) {
   return out;
 }
 
+router.get('/ayuda', (req, res) => {
+  res.render('ayuda_mensajes');
+});
+
 /* ---------------------------- crear/enviar ---------------------------- */
 router.post('/', isAuthenticated, isDocente, upload.array('adjuntos', 5), async (req, res) => {
   // Campos vienen ahora vía multipart/form-data (pero tu toIntArray/toUrlArray siguen sirviendo)

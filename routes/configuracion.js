@@ -13,5 +13,9 @@ router.get('/', isAdmin, (req, res) => {
     usuario: req.session.usuario
   });
 });
+// Ayuda específica de Configuración
+router.get('/ayuda/configuracion', (_req, res) => {
+  res.render('ayuda_configuracion', { title: 'Ayuda · Configuración', hero: false });
+});
 
 module.exports = router;

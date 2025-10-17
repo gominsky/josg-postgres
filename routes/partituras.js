@@ -38,6 +38,10 @@ function normIds(val){
   return [Number(val)].filter(Number.isInteger);
 }
 
+router.get('/ayuda', (_req, res) => {
+  res.render('ayuda_partituras', { title: 'Ayuda · Partituras', hero: false });
+});
+
 // ====== LISTA / VISTA ======
 router.get('/', async (req, res) => {
   const q = (req.query.q || '').trim();

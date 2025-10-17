@@ -6,7 +6,8 @@ yarn-error.log*
 
 # Subidas (fotos de alumnos, etc.)
 uploads/
-public/uploads/
+public/partituren/
+public/mensajes/
 
 # Archivos temporales
 *.log

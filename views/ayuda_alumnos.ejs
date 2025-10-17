@@ -1,151 +1,207 @@
-<% title = 'Ayuda · Músicos' %>
+<% title = 'Ayuda · Alumnos (gestión de músicos)' %>
 <% hero  = false %>
+
 <link rel="stylesheet" href="/styles/estilos_help.css">
 
-
-<div class="help-wrap">
-  
-
+<div class="help-wrap" data-help-theme="blue">
   <div class="panel">
     <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
-      <h1 class="h1">Ayuda · Músicos</h1>
-      <div class="cta">
-        <a href="/alumnos">Ir al listado →</a>
-        <a href="/alumnos/nuevo">Nuevo músico →</a>
-      </div>
+      <h1 class="h1">Ayuda · Alumnos <span style="opacity:.6">(gestión de músicos)</span></h1>
+      <!-- sin CTA superior -->
     </div>
 
-    <!-- Índice -->
-    <nav class="toc" aria-label="Índice">
-      <a href="#flujo">Flujo rápido</a>
-      <a href="#listado">Listado y filtros</a>
-      <a href="#nuevo">Nuevo / Editar</a>
-      <a href="#ficha">Ficha del músico</a>
-      <a href="#finanzas">Cuotas y pagos</a>
-      <a href="#foto">Foto y ficheros</a>
-      <a href="#bajas">Bajas y eliminación</a>
-      <a href="#faq">FAQ</a>
-    </nav>
+```
+<!-- Índice -->
+<nav class="toc" aria-label="Índice">
+  <a href="#que">Qué puedes hacer</a>
+  <a href="#alta">Alta y edición</a>
+  <a href="#foto">Foto de perfil</a>
+  <a href="#app">Acceso “¡Josg en tu mano!”</a>
+  <a href="#validaciones">Validaciones (DNI / email)</a>
+  <a href="#asignacion">Asignación a grupos e instrumentos</a>
+  <a href="#listado">Listado (tarjetas/tabla)</a>
+  <a href="#ficha">Ficha del alumno</a>
+  <a href="#finanzas">Finanzas: cuotas y pagos</a>
+  <a href="#faq">FAQ</a>
+</nav>
 
-    <!-- Flujo rápido -->
-    <section id="flujo" class="section">
-      <h2>Flujo rápido</h2>
+<!-- Qué puedes hacer -->
+<section id="que" class="section">
+  <h2>Qué puedes hacer</h2>
+  <ul class="list">
+    <li>Dar de <strong>alta</strong> y <strong>editar</strong> músicos con datos personales y de contacto.</li>
+    <li>Subir y mantener la <strong>foto de perfil</strong>.</li>
+    <li>Gestionar acceso a la app móvil <strong>“¡Josg en tu mano!”</strong> (registro y contraseña).</li>
+    <li>Asignar <strong>instrumentos</strong> y <strong>grupos</strong>.</li>
+    <li>Ver el <strong>listado</strong> (tarjetas o tabla) con filtros, búsqueda y <strong>ordenación</strong>.</li>
+    <li>Consultar la <strong>ficha</strong> con resumen y detalles.</li>
+    <li>Crear <strong>cuotas</strong>, registrar <strong>pagos</strong> y revisar el <strong>resumen financiero</strong>.</li>
+  </ul>
+</section>
+
+<!-- Alta y edición -->
+<section id="alta" class="section">
+  <h2>Alta y edición</h2>
+  <div class="grid-2">
+    <div class="card">
+      <h3>Nuevo músico</h3>
       <ol class="list">
-        <li>Abre <span class="kbd">Listado de músicos</span> y filtra por <em>Estado</em>, <em>Grupo</em> o usa <em>Buscar</em>.</li>
-        <li>Pulsa <strong>+ Añadir músico</strong> para crear uno nuevo y asignarle <em>grupos</em> e <em>instrumentos</em>.</li>
-        <li>Desde la <strong>ficha</strong> del músico puedes ver datos, instrumentos/grupos y su <em>resumen financiero</em>.</li>
-        <li>Genera <em>cuotas</em> mensuales por rango y registra <em>pagos</em> con recibo PDF.</li>
+        <li>En el listado, pulsa <strong>+ Añadir músico</strong>.</li>
+        <li>Rellena los <strong>datos personales</strong>, <strong>contacto</strong> y <strong>centro</strong>.</li>
+        <li>Opcional: configura el acceso a <em>“¡Josg en tu mano!”</em> (registrado/contraseña).</li>
+        <li>Asigna <strong>grupos</strong> e <strong>instrumentos</strong>.</li>
+        <li>Elige el <strong>estado</strong> (Activo / No activo) y guarda.</li>
       </ol>
-    </section>
-
-    <!-- Listado y filtros -->
-    <section id="listado" class="section">
-      <h2>Listado y filtros</h2>
+    </div>
+    <div class="card">
+      <h3>Editar</h3>
       <ul class="list">
-        <li>Filtros por <strong>Estado</strong> (todos/activos/pasivos), <strong>Grupo</strong> y <strong>Búsqueda</strong> (nombre, apellidos, instrumentos).</li>
-        <li>Botón <strong>+ Añadir músico</strong> en la cabecera; cada tarjeta enlaza a la ficha.</li>
-        <li>El backend soporta los filtros y devuelve instrumentos agregados por alumno.</li>
+        <li>Abre la ficha y pulsa <strong>Editar</strong>.</li>
+        <li>Todos los campos son editables; las relaciones de grupos/instrumentos se reescriben con la selección actual.</li>
+        <li>Si cambias <em>Estado</em> a “No activo”, el <strong>registro en app</strong> se desactiva automáticamente.</li>
       </ul>
-      <p class="notice info">La búsqueda del listado filtra en vivo sobre las tarjetas visibles.</p>
-    </section>
-
-    <!-- Nuevo / Editar -->
-    <section id="nuevo" class="section">
-      <h2>Nuevo / Editar músico</h2>
-      <div class="grid-2">
-        <div class="card">
-          <h3 style="margin:.1rem 0 .35rem;">Campos principales</h3>
-          <ul class="list">
-            <li>Datos personales y de contacto (nombre, apellidos, fecha de nacimiento, dirección, etc.).</li>
-            <li><strong>Asignación</strong>: selección múltiple de <em>Grupos</em> e <em>Instrumentos</em>.</li>
-            <li><strong>Estado</strong>: Activo / No activo. Al desactivar se guardará fecha de baja.</li>
-          </ul>
-        </div>
-        <div class="card">
-          <h3 style="margin:.1rem 0 .35rem;">Foto e importes</h3>
-          <ul class="list">
-            <li>Sube una <strong>Foto</strong> (campo de archivo). Si ya hay, se muestra y se conserva si no subes otra.</li>
-            <li>La imagen se guarda en <span class="kbd">/uploads</span> con nombre único mediante <em>multer</em>.</li>
-          </ul>
-        </div>
-      </div>
-    </section>
-
-    <!-- Ficha -->
-    <section id="ficha" class="section">
-      <h2>Ficha del músico</h2>
-      <ul class="list">
-        <li>Datos de contacto y situación (alta/baja, activo). Muestra foto si está disponible.</li>
-        <li><strong>Instrumentos</strong> y <strong>Grupos</strong> como etiquetas.</li>
-        <li>Botones rápidos: <em>Volver</em> y <em>Editar</em>.</li>
-      </ul>
-    </section>
-
-    <!-- Finanzas -->
-    <section id="finanzas" class="section">
-      <h2>Cuotas y pagos</h2>
-      <div class="grid-2">
-        <div class="card">
-          <h3 style="margin:.1rem 0 .35rem;">Resumen financiero</h3>
-          <ul class="list">
-            <li>Totales: generadas, pagado y pendiente; botón para mostrar/ocultar el bloque.</li>
-            <li>Tablas con las <em>últimas 5 cuotas</em> y <em>últimos 5 pagos</em> con botones “Ver más”.</li>
-            <li>Cada pago tiene enlace a <strong>PDF</strong> del recibo.</li>
-          </ul>
-        </div>
-        <div class="card">
-          <h3 style="margin:.1rem 0 .35rem;">Acciones</h3>
-          <ul class="list">
-            <li><strong>Generar cuotas</strong> por rango (desde/hasta) y tipo de cuota.</li>
-            <li><strong>Registrar nuevo pago</strong> desde la ficha del alumno.</li>
-            <li>Eliminar cuota (si no está pagada) desde la tabla de cuotas.</li>
-          </ul>
-        </div>
-      </div>
-      <p class="notice info">Las tablas soportan carga paginada por AJAX con botones “Ver más”.</p>
-    </section>
-
-    <!-- Foto y ficheros -->
-    <section id="foto" class="section">
-      <h2>Foto y ficheros</h2>
-      <ul class="list">
-        <li>Las fotos se suben al directorio <span class="kbd">/uploads</span> y se eliminan del disco si borras el músico.</li>
-        <li>Formatos típicos de imagen; se conserva la foto anterior si no subes otra.</li>
-      </ul>
-    </section>
-
-    <!-- Bajas y eliminación -->
-    <section id="bajas" class="section">
-      <h2>Bajas y eliminación</h2>
-      <ul class="list">
-        <li>Al marcar <em>No activo</em>, se guarda <strong>fecha de baja</strong> automáticamente.</li>
-        <li>Eliminar un músico borra sus relaciones (grupos/instrumentos) y su foto del disco si existía.</li>
-      </ul>
-    </section>
-
-    <!-- FAQ -->
-    <section id="faq" class="section">
-      <h2>FAQ</h2>
-      <div class="grid-2">
-        <div class="card">
-          <h3 style="margin:.1rem 0 .35rem;">¿Cómo asigno varios instrumentos?</h3>
-          <p>Usa el selector múltiple de la sección <em>Asignación</em> del formulario (Ctrl/Cmd + clic).</p>
-        </div>
-        <div class="card">
-          <h3 style="margin:.1rem 0 .35rem;">¿Dónde veo los pagos y cuotas?</h3>
-          <p>En la <em>Ficha del músico</em>, dentro del bloque de <strong>Resumen financiero</strong>.</p>
-        </div>
-        <div class="card">
-          <h3 style="margin:.1rem 0 .35rem;">¿Puedo filtrar por grupo y estado a la vez?</h3>
-          <p>Sí. El listado soporta ambos filtros simultáneamente además de búsqueda por texto.</p>
-        </div>
-      </div>
-    </section>
-
-    <div class="section" style="display:flex;gap:10px;flex-wrap:wrap;">
-      <a class="cta" href="/alumnos"><span class="pill">← Volver al listado</span></a>
-      <a class="cta" href="/"><span class="pill">← Volver al inicio</span></a>
     </div>
   </div>
-</div>
+  <p class="notice info">La <strong>fecha de baja</strong> puede rellenarse automática cuando un alumno pasa a “No activo”.</p>
+</section>
 
+<!-- Foto de perfil -->
+<section id="foto" class="section">
+  <h2>Foto de perfil</h2>
+  <div class="grid-2">
+    <div class="card">
+      <h3>Reglas</h3>
+      <ul class="list">
+        <li>Si ya existe foto, primero pulsa <strong>Eliminar foto actual</strong> para poder subir una nueva.</li>
+        <li>Previsualiza la imagen antes de guardar; puedes <em>Quitar</em> la selección si te equivocas.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>Buenas prácticas</h3>
+      <ul class="list">
+        <li>Usa imágenes centradas y bien iluminadas.</li>
+        <li>Evita archivos muy pesados.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- App móvil -->
+<section id="app" class="section">
+  <h2>Acceso “¡Josg en tu mano!”</h2>
+  <ul class="list">
+    <li><strong>Registrado</strong>: controla si la persona puede entrar en la app móvil.</li>
+    <li><strong>Nueva contraseña</strong>: se guarda de forma <em>cifrada</em>. Déjala vacía si no quieres cambiarla.</li>
+    <li>Si el alumno está <strong>No activo</strong>, el registro se fuerza a <em>No</em>.</li>
+  </ul>
+  <p class="notice info">El <strong>email</strong> del alumno se normaliza en minúsculas para evitar duplicidades.</p>
+</section>
+
+<!-- Validaciones -->
+<section id="validaciones" class="section">
+  <h2>Validaciones (DNI / email)</h2>
+  <ul class="list">
+    <li>El <strong>DNI</strong> no puede repetirse.</li>
+    <li>El <strong>email</strong> no puede repetirse y se comprueba en vivo al teclear en el formulario.</li>
+  </ul>
+  <p class="notice info">Si se detecta duplicado al guardar, aparecerá un mensaje y no se creará/actualizará el registro.</p>
+</section>
+
+<!-- Asignación -->
+<section id="asignacion" class="section">
+  <h2>Asignación a grupos e instrumentos</h2>
+  <ul class="list">
+    <li>Selecciona uno o varios <strong>grupos</strong> en la lista múltiple.</li>
+    <li>Selecciona uno o varios <strong>instrumentos</strong>.</li>
+    <li>En edición, la selección <strong>reemplaza</strong> la asignación previa.</li>
+  </ul>
+</section>
+
+<!-- Listado -->
+<section id="listado" class="section">
+  <h2>Listado (tarjetas o tabla)</h2>
+  <div class="grid-2">
+    <div class="card">
+      <h3>Filtros y búsqueda</h3>
+      <ul class="list">
+        <li><strong>Estado</strong>: Todos, Activos, No activos.</li>
+        <li><strong>Grupo</strong>: Todos o uno concreto.</li>
+        <li><strong>Buscar</strong>: por nombre, apellidos o instrumentos.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>Vistas y ordenación</h3>
+      <ul class="list">
+        <li><strong>Tarjetas</strong>: cuadrícula rápida con nombre e instrumento.</li>
+        <li><strong>Tabla</strong>: compacta, con cabeceras <em>ordenables</em>.</li>
+        <li>Columna <strong>Nombre</strong> ordena por <em>apellidos</em> (y nombre si empata).</li>
+      </ul>
+    </div>
+  </div>
+  <p class="notice info">Usa el <strong>switch</strong> de la cabecera para alternar entre <em>Tarjetas</em> y <em>Lista</em>.</p>
+</section>
+
+<!-- Ficha del alumno -->
+<section id="ficha" class="section">
+  <h2>Ficha del alumno</h2>
+  <div class="grid-2">
+    <div class="card">
+      <h3>Resumen</h3>
+      <ul class="list">
+        <li><strong>Estado</strong> (Activo / Pasivo) y <strong>Registro en la app</strong> con <em>badges</em>.</li>
+        <li><strong>Contacto y dirección</strong> (dirección, CP, municipio, provincia, email, teléfono).</li>
+        <li><strong>Identificación y fechas</strong> (DNI, nacimiento, alta/baja).</li>
+        <li><strong>Centro educativo</strong> y <strong>profesor</strong>.</li>
+        <li><strong>Instrumentos</strong> y <strong>Grupos</strong> como <em>chips</em>.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>Acciones</h3>
+      <ul class="list">
+        <li><strong>Editar</strong> los datos del alumno.</li>
+        <li><strong>Eliminar</strong> alumno (acción irreversible).</li>
+        <li>Acceso rápido a <strong>Finanzas</strong> y creación de cuotas.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- Finanzas -->
+<section id="finanzas" class="section">
+  <h2>Finanzas: cuotas y pagos</h2>
+  <ul class="list">
+    <li><strong>Resumen financiero</strong> plegable: total de cuotas, pagado y pendiente.</li>
+    <li><strong>Cuotas</strong>: listado con estado (pagada/pendiente) y opción de eliminar si está pendiente.</li>
+    <li><strong>Pagos</strong>: listado con fecha, importe, medio, cuota y <strong>PDF</strong> de recibo.</li>
+    <li><strong>Generar cuotas</strong>: selecciona <em>tipo</em> y rango de fechas para crear mensualidades.</li>
+    <li><strong>Registrar pago</strong>: acceso directo desde la ficha.</li>
+  </ul>
+  <p class="notice info">El bloque de finanzas se puede <strong>mostrar/ocultar</strong> con un botón en la propia ficha.</p>
+</section>
+
+<!-- FAQ -->
+<section id="faq" class="section">
+  <h2>Preguntas frecuentes (FAQ)</h2>
+  <div class="grid-2">
+    <div class="card">
+      <h3>El email aparece como ocupado</h3>
+      <p>Comprueba mayúsculas/minúsculas y espacios. El sistema normaliza a minúsculas y no admite duplicados.</p>
+    </div>
+    <div class="card">
+      <h3>No puedo subir una nueva foto</h3>
+      <p>Si existe foto, elimina la actual antes de seleccionar otra.</p>
+    </div>
+    <div class="card">
+      <h3>No veo instrumentos o grupos</h3>
+      <p>Revisa que estén creados en sus catálogos y selecciona con la lista múltiple.</p>
+    </div>
+    <div class="card">
+      <h3>Ordenación en la tabla</h3>
+      <p>La columna “Nombre” ordena por apellidos (y nombre si es necesario). Pulsa de nuevo para invertir o limpiar.</p>
+    </div>
+  </div>
+</section>
+```
+
+  </div>
+</div>

@@ -1,249 +1,372 @@
-<% title = 'Ayuda · ¡JOSG en tu mano!' %>
+<% title = 'Ayuda · App (Alumnos y Docentes) — JOSG en tu mano' %>
 <% hero  = false %>
 <link rel="stylesheet" href="/styles/estilos_help.css">
+
+<style>
+/* Pestañas muy ligeras para alternar vistas */
+.seg-tabs{display:flex;gap:.5rem;flex-wrap:wrap;margin:.25rem 0 .75rem;position:relative;z-index:2}
+.seg-tabs a{display:inline-flex;align-items:center;padding:.4rem .9rem;border:1.5px solid #e5e7eb;border-radius:999px;text-decoration:none;font-weight:800;font-size:.95rem;background:#f3f4f6;color:#111;letter-spacing:.2px}
+.seg-tabs a.is-active{background:#111;color:#fff;border-color:#111;box-shadow:0 1px 0 rgba(17,17,17,.2) inset}
+/* Separador visual bajo el switch */
+.seg-tabs::after{content:"";display:block;width:100%;height:1px;background:#e5e7eb;margin-top:.6rem}
+/* Panel de contenido más definido */
+.view{display:none;margin-top:1rem;padding:12px 14px;border:1px solid #e5e7eb;border-radius:14px;background:#fff}
+.view.is-active{display:block}
+</style>
 
 <div class="help-wrap" data-help-theme="blue">
   <div class="panel">
     <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
-      <h1 class="h1">Ayuda · ¡JOSG en tu mano!</h1>
-      <div class="cta">
-        <a href="/webapp/index.html">Inicio →</a>
-        <a href="/webapp/login.html">Iniciar sesión →</a>
-        <a href="/webapp/registro.html">Registrarse →</a>
-        <a href="/webapp/firma.html">Firmar asistencia →</a>
-      </div>
+      <h1 class="h1">Ayuda · ¡Josg en tu mano! <span style="opacity:.6"></span></h1>
+      <!-- cta superior eliminada por petición -->
     </div>
 
-    <!-- Índice -->
-    <nav class="toc" aria-label="Índice">
-      <a href="#que-es">Qué es la app</a>
-      <a href="#acceso">Acceso (Registro / Login)</a>
-      <a href="#firma">Firmar asistencia (QR)</a>
-      <a href="#agenda">Agenda y eventos</a>
-      <a href="#partituras">Partituras</a>
-      <a href="#mensajes">Mensajes</a>
-      <a href="#privacidad">Privacidad y seguridad</a>
-      <a href="#errores">Errores comunes</a>
-      <a href="#faq">FAQ</a>
-      <a href="#enlaces">Enlaces rápidos</a>
+    <!-- Pestañas de segmento -->
+    <nav class="seg-tabs" aria-label="Segmento">
+      <a href="#alumnos" id="tab-alumnos" class="is-active">Músicos</a>
+      <a href="#docentes" id="tab-docentes">Docentes</a>
     </nav>
 
-    <!-- Qué es -->
-    <section id="que-es" class="section">
-      <h2>¿Qué es “¡JOSG en tu mano!”?</h2>
-      <p>
-        Es la aplicación web oficial para alumnos y familias. Desde tu móvil u ordenador puedes:
-      </p>
-      <ul class="list">
-        <li><strong>Firmar asistencia</strong> a eventos mediante código QR.</li>
-        <li>Consultar tu <strong>Agenda</strong> con fechas, horarios y ubicaciones.</li>
-        <li>Acceder a <strong>Partituras</strong> y materiales vinculados a tus grupos.</li>
-        <li>Leer <strong>Mensajes</strong> del centro con enlaces y recordatorios.</li>
-      </ul>
-      <p class="notice info">
-        No necesitas instalar nada: es una <em>app web</em> que funciona en navegadores modernos.
-      </p>
-    </section>
-
-    <!-- Acceso -->
-    <section id="acceso" class="section">
-      <h2>Acceso (Registro / Login)</h2>
-      <div class="grid-2">
-        <div class="card">
-          <h3 style="margin:.1rem 0 .35rem;">Registrarse</h3>
-          <ul class="list">
-            <li>Introduce tu <strong>Email</strong>, <strong>DNI</strong> y una <strong>Contraseña</strong>.</li>
-            <li>Si el registro se valida, se inicia sesión automáticamente.</li>
-          </ul>
-          <p class="notice info">
-            Si ya te registraste anteriormente, usa <em>Iniciar sesión</em>.
-          </p>
-        </div>
-        <div class="card">
-          <h3 style="margin:.1rem 0 .35rem;">Iniciar sesión</h3>
-          <ul class="list">
-            <li>Escribe tu email y contraseña.</li>
-            <li>Accederás al inicio con accesos directos a <em>Firma</em>, <em>Agenda</em>, <em>Partituras</em> y <em>Mensajes</em>.</li>
-          </ul>
-        </div>
-      </div>
-      <p class="notice info">
-        La sesión se guarda en tu dispositivo (localStorage). Si cambias de móvil o borras datos del navegador, tendrás que iniciar sesión de nuevo.
-      </p>
-    </section>
-
-    <!-- Firmar con QR -->
-    <section id="firma" class="section">
-      <h2>Firmar asistencia (QR)</h2>
-      <div class="grid-2">
-        <div class="card">
-          <h3 style="margin:.1rem 0 .35rem;">Cómo funciona</h3>
-          <ol class="list">
-            <li>Entra en <em>Firmar asistencia</em> y concede permiso a la cámara.</li>
-            <li>Apunta al <strong>QR del evento</strong> facilitado por la organización.</li>
-            <li>Si el QR es válido, se registra la asistencia y verás la confirmación.</li>
-          </ol>
-          <p class="notice info">
-            Tras firmar con éxito, el lector se detiene automáticamente para evitar duplicados.
-          </p>
-        </div>
-        <div class="card">
-          <h3 style="margin:.1rem 0 .35rem;">Consejos de escaneo</h3>
-          <ul class="list">
-            <li>Usa buena iluminación y evita reflejos.</li>
-            <li>Mantén el QR estable y encuadrado.</li>
-            <li>Si algo falla, vuelve a pulsar <em>Firmar asistencia</em> para reiniciar el lector.</li>
-          </ul>
+    <!-- ======================== -->
+    <!--        ALUMNOS           -->
+    <!-- ======================== -->
+    <section id="alumnos" class="view is-active" aria-labelledby="tab-alumnos">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+        <h2 class="h1" style="margin:0">Músicos<span style="opacity:.6"></span></h2>
+        <div class="cta">
+          <a href="/firmas/app/login.html">Iniciar sesión →</a>
+          <a href="/firmas/app/registro.html">Registrarse →</a>
         </div>
       </div>
 
-      <h3>Ubicación (opcional)</h3>
-      <p>
-        Si das permiso de ubicación, la app adjuntará tu posición aproximada a la firma.
-        Si lo deniegas o falla, <strong>la firma se registra igualmente</strong>.
-      </p>
+      <nav class="toc" aria-label="Índice alumnos">
+        <a href="#a-que">Qué es y requisitos</a>
+        <a href="#a-cuenta">Cuenta</a>
+        <a href="#a-inicio">Inicio</a>
+        <a href="#a-firma">Firma (QR)</a>
+        <a href="#a-agenda">Agenda</a>
+        <a href="#a-evento">Detalle del evento</a>
+        <a href="#a-mensajes">Mensajes</a>
+        <a href="#a-partituras">Partituras</a>
+        <a href="#a-perfil">Perfil</a>
+        <a href="#a-privacidad">Privacidad</a>
+        <a href="#a-faq">FAQ</a>
+      </nav>
 
-      <h3>Mensajes de estado</h3>
-      <ul class="list">
-        <li><span class="badge">✅ Asistencia registrada correctamente</span> — Firma realizada.</li>
-        <li><span class="badge">✅ Ya estaba registrada</span> — No es necesario repetirla.</li>
-        <li><span class="badge">❌ QR inválido</span> — El código no corresponde a un evento activo.</li>
-        <li><span class="badge">❌ Error de red</span> — Revisa tu conexión y vuelve a intentar.</li>
-      </ul>
-    </section>
+      <section id="a-que" class="section">
+        <h3>Qué es y requisitos</h3>
+        <ul class="list">
+          <li>Consulta de <strong>agenda</strong>, <strong>mensajes</strong>, <strong>partituras</strong> y <strong>firma de asistencia</strong>.</li>
+          <li>Funciona en móvil y ordenador. Recomendamos navegador actualizado.</li>
+          <li>Para firmar por QR: permiso de <strong>cámara</strong>; ubicación opcional si el evento lo pide.</li>
+        </ul>
+      </section>
 
-    <!-- Agenda -->
-    <section id="agenda" class="section">
-      <h2>Agenda y eventos</h2>
-      <ul class="list">
-        <li>Consulta el calendario en vista <strong>Mes</strong> o <strong>Lista</strong>.</li>
-        <li>Toca un evento para ver <strong>título, grupo, espacio/ubicación y horario asignado</strong>.</li>
-        <li>Si el evento incluye ubicación, verás un enlace directo a <strong>Google Maps</strong>.</li>
-      </ul>
-      <p class="notice info">
-        La agenda muestra <em>tus</em> eventos según tu asignación: puede diferir de la agenda general del centro.
-      </p>
-    </section>
-
-    <!-- Partituras -->
-    <section id="partituras" class="section">
-      <h2>Partituras</h2>
-      <ul class="list">
-        <li>Explora el listado y usa el buscador por <strong>título</strong> o <strong>autor</strong>.</li>
-        <li>Accede a <strong>enlaces</strong> de partitura y/o <strong>audio</strong> (cuando estén disponibles).</li>
-        <li>El catálogo se filtra por los <strong>grupos</strong> en los que estás matriculado.</li>
-      </ul>
-    </section>
-
-    <!-- Mensajes -->
-    <section id="mensajes" class="section">
-      <h2>Mensajes</h2>
-      <ul class="list">
-        <li>Recibe comunicados del centro con <strong>fecha</strong>, <strong>autor</strong> y <strong>enlaces</strong> útiles.</li>
-        <li>Los enlaces aparecen como <em>chips</em> (Enlace 1, Enlace 2, …) para abrir en una pestaña nueva.</li>
-        <li>Marca como leído para llevar el control de lo que ya revisaste.</li>
-      </ul>
-    </section>
-
-    <!-- Privacidad -->
-    <section id="privacidad" class="section">
-      <h2>Privacidad y seguridad</h2>
-      <ul class="list">
-        <li>El acceso usa <strong>token JWT</strong> guardado en tu dispositivo.</li>
-        <li>Puedes <strong>cerrar sesión</strong> desde la pantalla de inicio (icono de salida).</li>
-        <li>La <strong>ubicación</strong> solo se solicita al firmar y es <strong>opcional</strong>.</li>
-      </ul>
-      <p class="notice info">
-        Si compartes dispositivo, recuerda cerrar sesión al finalizar para proteger tu cuenta.
-      </p>
-    </section>
-
-    <!-- Errores comunes -->
-    <section id="errores" class="section">
-      <h2>Errores comunes y solución</h2>
-      <div class="grid-2">
-        <div class="card">
-          <h3 style="margin:.1rem 0 .35rem;">No puedo iniciar sesión</h3>
-          <ul class="list">
-            <li>Comprueba email y contraseña (respeta mayúsculas/minúsculas).</li>
-            <li>Si olvidaste la contraseña, contacta con la organización para restablecerla.</li>
-          </ul>
+      <section id="a-cuenta" class="section">
+        <h3>Cuenta: registro e inicio</h3>
+        <div class="grid-2">
+          <div class="card">
+            <h4 style="margin:.1rem 0 .35rem;">Registro</h4>
+            <ol class="list">
+              <li>Abre <em>Registrarse</em> e introduce <strong>email</strong>, <strong>DNI</strong> y <strong>contraseña</strong>.</li>
+              <li>Si el registro es correcto, podrás entrar directamente o iniciar sesión.</li>
+            </ol>
+            <p class="notice info">El email será tu usuario. Guarda la contraseña en un lugar seguro.</p>
+          </div>
+          <div class="card">
+            <h4 style="margin:.1rem 0 .35rem;">Iniciar sesión</h4>
+            <ul class="list">
+              <li>Introduce <strong>email</strong> y <strong>contraseña</strong>.</li>
+              <li>Si tu cuenta tiene varios roles, elige <strong>Alumno</strong>.</li>
+            </ul>
+          </div>
         </div>
-        <div class="card">
-          <h3 style="margin:.1rem 0 .35rem;">La cámara no se activa</h3>
-          <ul class="list">
-            <li>Revisa los <strong>permisos de cámara</strong> del navegador.</li>
-            <li>Cierra otras apps que estén usando la cámara.</li>
-            <li>Recarga la página de <em>Firmar asistencia</em>.</li>
-          </ul>
+      </section>
+
+      <section id="a-inicio" class="section">
+        <h3>Inicio y acciones principales</h3>
+        <div class="grid-2">
+          <div class="card">
+            <h4 style="margin:.1rem 0 .35rem;">Accesos rápidos</h4>
+            <ul class="list">
+              <li><strong>Firma</strong> (lector de QR).</li>
+              <li><strong>Agenda</strong> con tus eventos.</li>
+              <li><strong>Mensajes</strong> con contador de no leídos.</li>
+              <li><strong>Partituras</strong> (buscador y enlaces).</li>
+              <li><strong>Notificar ausencia</strong> (formulario).</li>
+            </ul>
+          </div>
+          <div class="card">
+            <h4 style="margin:.1rem 0 .35rem;">Próximos eventos</h4>
+            <ul class="list">
+              <li>Tarjetas con fecha, título y lugar.</li>
+              <li>Toca una tarjeta para abrir el <strong>detalle</strong>.</li>
+            </ul>
+          </div>
         </div>
-        <div class="card">
-          <h3 style="margin:.1rem 0 .35rem;">El QR no se lee</h3>
-          <ul class="list">
-            <li>Aumenta el brillo o evita reflejos.</li>
-            <li>Acércate/Aléjate ligeramente hasta enfocar.</li>
-            <li>Pide a la organización un QR de sustitución si está dañado.</li>
-          </ul>
+      </section>
+
+      <section id="a-firma" class="section">
+        <h3>Firmar asistencia (QR)</h3>
+        <div class="grid-2">
+          <div class="card">
+            <h4 style="margin:.1rem 0 .35rem;">Cómo firmar</h4>
+            <ol class="list">
+              <li>Entra en <strong>Firma</strong> y permite el acceso a la <strong>cámara</strong>.</li>
+              <li>Apunta al QR del evento; la app lo detectará.</li>
+              <li>Verás el mensaje de <strong>asistencia registrada</strong> si todo es correcto.</li>
+            </ol>
+          </div>
+          <div class="card">
+            <h4 style="margin:.1rem 0 .35rem;">Consejos y problemas</h4>
+            <ul class="list">
+              <li>Si no se abre la cámara, revisa los <strong>permisos</strong> o elige cámara manualmente.</li>
+              <li>Si pone “evento inactivo”, el QR no acepta firmas aún.</li>
+              <li>Algunos eventos pueden pedir <strong>ubicación</strong> para validar.</li>
+            </ul>
+          </div>
         </div>
-        <div class="card">
-          <h3 style="margin:.1rem 0 .35rem;">No veo mis eventos/partituras</h3>
-          <ul class="list">
-            <li>Asegúrate de haber iniciado sesión con tu <strong>email correcto</strong>.</li>
-            <li>Pulsa <em>Actualizar</em> o recarga la página.</li>
-            <li>Consulta con el centro si tu <strong>asignación de grupo</strong> es correcta.</li>
-          </ul>
+      </section>
+
+      <section id="a-agenda" class="section">
+        <h3>Agenda</h3>
+        <ul class="list">
+          <li>Vista mensual o <strong>Lista</strong> de eventos.</li>
+          <li>Toca un evento para su <strong>detalle</strong> (título, grupo, horario, lugar, notas).</li>
+          <li>Usa <em>Hoy</em> para volver a la fecha actual.</li>
+        </ul>
+      </section>
+
+      <section id="a-evento" class="section">
+        <h3>Detalle del evento</h3>
+        <div class="grid-2">
+          <div class="card">
+            <h4 style="margin:.1rem 0 .35rem;">Información</h4>
+            <ul class="list">
+              <li><strong>Título y grupo</strong>.</li>
+              <li><strong>Fecha/horario</strong> y <strong>ubicación</strong> (enlace a mapas si hay dirección).</li>
+              <li><strong>Descripción/observaciones</strong> si existen.</li>
+            </ul>
+          </div>
+          <div class="card">
+            <h4 style="margin:.1rem 0 .35rem;">Navegación</h4>
+            <ul class="list">
+              <li>Botón <strong>Volver</strong> para regresar.</li>
+              <li>Acceso directo a la <strong>Agenda</strong>.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section id="a-mensajes" class="section">
+        <h3>Mensajes</h3>
+        <ul class="list">
+          <li>Lista con <strong>paginación</strong> y botón “<strong>Ver más…</strong>”.</li>
+          <li><strong>Marcar como leído</strong> actualiza el contador del inicio.</li>
+          <li>Adjuntos/enlaces aparecen debajo del mensaje.</li>
+        </ul>
+      </section>
+
+      <section id="a-partituras" class="section">
+        <h3>Partituras</h3>
+        <ul class="list">
+          <li>Busca por <strong>título</strong> o <strong>autor</strong>.</li>
+          <li>Acceso a <strong>descargas/enlaces</strong> de materiales.</li>
+          <li>Chips con accesos a partes/movimientos cuando existan.</li>
+        </ul>
+      </section>
+
+      <section id="a-perfil" class="section">
+        <h3>Perfil y sesión</h3>
+        <ul class="list">
+          <li>Píldora con tu nombre e inicial.</li>
+          <li>Botón de <strong>cerrar sesión</strong>.</li>
+        </ul>
+      </section>
+
+      <section id="a-privacidad" class="section">
+        <h3>Privacidad y permisos</h3>
+        <ul class="list">
+          <li>Se guardan localmente: <strong>token</strong> e <strong>identificador/nombre</strong> para la sesión.</li>
+          <li>Permisos: <strong>cámara</strong> (QR) y <strong>ubicación</strong> si el evento lo requiere.</li>
+        </ul>
+      </section>
+
+      <section id="a-faq" class="section">
+        <h3>FAQ</h3>
+        <div class="grid-2">
+          <div class="card"><h4>No veo mis eventos</h4><p>Comprueba sesión y toca <em>Hoy</em> en la agenda.</p></div>
+          <div class="card"><h4>No puedo firmar</h4><p>Permite <strong>cámara</strong>; si el evento está inactivo, no admite firmas.</p></div>
+          <div class="card"><h4>No me llegan mensajes</h4><p>Revisa Mensajes y conexión. Asegúrate de estar logueado.</p></div>
+          <div class="card"><h4>Cambié de móvil</h4><p>Inicia sesión con tu email y contraseña.</p></div>
+        </div>
+      </section>
+    </section>
+
+    <!-- ======================== -->
+    <!--        DOCENTES          -->
+    <!-- ======================== -->
+    <section id="docentes" class="view" aria-labelledby="tab-docentes">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+        <h2 class="h1" style="margin:0">Docentes <span style="opacity:.6"></span></h2>
+        <div class="cta">
+          <a href="/josgentumano/portal_maestro.html">Portal →</a>
+          <a href="/josgentumano/eventos.html">Eventos →</a>
+          <a href="/josgentumano/mensajes_movil.html">Mensajes →</a>
         </div>
       </div>
-    </section>
 
-    <!-- FAQ -->
-    <section id="faq" class="section">
-      <h2>Preguntas frecuentes (FAQ)</h2>
-      <div class="grid-2">
-        <div class="card">
-          <h3>¿Necesito instalar algo?</h3>
-          <p>No. Es una app web que funciona en navegadores actuales.</p>
-        </div>
-        <div class="card">
-          <h3>¿Puedo firmar sin conexión?</h3>
-          <p>Necesitas conexión en el momento de firmar para enviar la asistencia.</p>
-        </div>
-        <div class="card">
-          <h3>¿Qué pasa si deniego la ubicación?</h3>
-          <p>La firma se registra igualmente; la ubicación es opcional.</p>
-        </div>
-        <div class="card">
-          <h3>¿Cómo cierro sesión?</h3>
-          <p>Desde la pantalla de inicio, usa el icono de <em>Cerrar sesión</em>.</p>
-        </div>
-      </div>
-    </section>
+      <nav class="toc" aria-label="Índice docentes">
+        <a href="#d-que">Qué es y acceso</a>
+        <a href="#d-portal">Portal docente</a>
+        <a href="#d-eventos">Agenda de eventos</a>
+        <a href="#d-detalle">Detalle del evento</a>
+        <a href="#d-registro">Registro de firmas</a>
+        <a href="#d-mensajes">Mensajes a grupos</a>
+        <a href="#d-perfil">Perfil</a>
+        <a href="#d-privacidad">Privacidad</a>
+        <a href="#d-faq">FAQ</a>
+      </nav>
 
-    <!-- Enlaces rápidos -->
-    <section id="enlaces" class="section">
-      <h2>Enlaces rápidos</h2>
-      <div class="grid-2">
-        <div class="card">
-          <h3>Accesos</h3>
-          <ul class="list">
-            <li><a href="/webapp/index.html">Inicio</a></li>
-            <li><a href="/webapp/login.html">Iniciar sesión</a></li>
-            <li><a href="/webapp/registro.html">Registrarse</a></li>
-          </ul>
+      <section id="d-que" class="section">
+        <h3>Qué es y acceso</h3>
+        <ul class="list">
+          <li>Panel con <strong>próximos eventos</strong>, acceso a <strong>agenda</strong>, <strong>detalle</strong> de eventos y <strong>mensajería</strong> a grupos.</li>
+          <li>Inicia sesión con tu cuenta y entra como <strong>docente</strong> en el selector de rol.</li>
+        </ul>
+      </section>
+
+      <section id="d-portal" class="section">
+        <h3>Portal docente</h3>
+        <div class="grid-2">
+          <div class="card">
+            <h4 style="margin:.1rem 0 .35rem;">Acciones</h4>
+            <ul class="list">
+              <li><strong>Mensajes</strong> a tus grupos.</li>
+              <li><strong>Eventos</strong> (agenda mensual/agenda).</li>
+              <li><strong>Accesos directos</strong> publicados por la organización.</li>
+            </ul>
+          </div>
+          <div class="card">
+            <h4 style="margin:.1rem 0 .35rem;">Próximos eventos</h4>
+            <ul class="list">
+              <li>Tarjetas tipo <em>poster</em> con fecha y título; toca para abrir el <strong>detalle</strong>.</li>
+              <li>Si no hay próximos, se muestran los más recientes.</li>
+            </ul>
+          </div>
         </div>
-        <div class="card">
-          <h3>Módulos</h3>
-          <ul class="list">
-            <li><a href="/webapp/firma.html">Firmar asistencia (QR)</a></li>
-            <li><a href="/webapp/agenda.html">Agenda</a></li>
-            <li><a href="/webapp/partituras.html">Partituras</a></li>
-            <li><a href="/webapp/mensajes.html">Mensajes</a></li>
-          </ul>
+      </section>
+
+      <section id="d-eventos" class="section">
+        <h3>Agenda de eventos</h3>
+        <ul class="list">
+          <li>Calendario mensual con vista alternativa <strong>Agenda</strong>.</li>
+          <li>Toca un evento para ir al <strong>Detalle del evento</strong>.</li>
+          <li>Botón <em>Hoy</em> para volver a la fecha actual.</li>
+        </ul>
+      </section>
+
+      <section id="d-detalle" class="section">
+        <h3>Detalle del evento</h3>
+        <div class="grid-2">
+          <div class="card">
+            <h4 style="margin:.1rem 0 .35rem;">Información</h4>
+            <ul class="list">
+              <li><strong>Título</strong>, <strong>grupo</strong>, <strong>fecha/horario</strong> y <strong>ubicación</strong>.</li>
+              <li><strong>Observaciones generales</strong> editables.</li>
+              <li><strong>Retraso sin penalizar</strong> (min.) configurable.</li>
+            </ul>
+          </div>
+          <div class="card">
+            <h4 style="margin:.1rem 0 .35rem;">Acciones rápidas</h4>
+            <ul class="list">
+              <li><strong>Activar/Desactivar QR</strong> (sincroniza con la web).</li>
+              <li><strong>Mostrar/Ocultar QR</strong> en pantalla.</li>
+              <li><strong>Mostrar/Ocultar músicos</strong> (asistencia manual).</li>
+              <li><strong>Ver registro de firmas</strong>.</li>
+            </ul>
+          </div>
         </div>
-      </div>
-      <p class="notice info">
-        Si algún enlace no carga, verifica tu conexión y que tu sesión esté activa.
-      </p>
+        <p class="notice info">Si el evento está inactivo, el QR no permitirá firmar.</p>
+      </section>
+
+      <section id="d-registro" class="section">
+        <h3>Registro de firmas</h3>
+        <ul class="list">
+          <li>Listado con <strong>nombre</strong>, <strong>fecha/hora</strong>, <strong>tipo</strong> (asistencia, retraso, ausencia) y <strong>ubicación</strong> si existe (mapa).</li>
+          <li>Volver al detalle con el botón <em>Volver</em>.</li>
+        </ul>
+      </section>
+
+      <section id="d-mensajes" class="section">
+        <h3>Mensajes a grupos</h3>
+        <div class="grid-2">
+          <div class="card">
+            <h4 style="margin:.1rem 0 .35rem;">Redactar</h4>
+            <ul class="list">
+              <li><strong>Título</strong> y <strong>Mensaje</strong> obligatorios.</li>
+              <li><strong>Enlace</strong> opcional (“Abrir”).</li>
+              <li><strong>Adjuntos</strong> (hasta 5; máx. 10 MB; PDF, imágenes o audio).</li>
+            </ul>
+          </div>
+          <div class="card">
+            <h4 style="margin:.1rem 0 .35rem;">Destinatarios</h4>
+            <ul class="list">
+              <li>Como <strong>docente</strong>: envías a tus grupos.</li>
+              <li>Como <strong>admin</strong>: puedes elegir <em>Todos</em> o un grupo concreto.</li>
+            </ul>
+          </div>
+        </div>
+        <p class="notice info">Los adjuntos se suben antes del envío; si falla la subida, se cancela el envío.</p>
+      </section>
+
+      <section id="d-perfil" class="section">
+        <h3>Perfil y sesión</h3>
+        <ul class="list">
+          <li>Píldora con inicial y nombre en la parte superior.</li>
+          <li><strong>Cerrar sesión</strong> (botón ⎋) limpia los datos locales.</li>
+        </ul>
+      </section>
+
+      <section id="d-privacidad" class="section">
+        <h3>Privacidad y permisos</h3>
+        <ul class="list">
+          <li>Permisos de <strong>cámara</strong> (mostrar/leer QR) y <strong>ubicación</strong> (si se adjunta a firmas).</li>
+          <li>Datos locales: <strong>token</strong> y <strong>nombre</strong> para la sesión.</li>
+        </ul>
+      </section>
+
+      <section id="d-faq" class="section">
+        <h3>FAQ</h3>
+        <div class="grid-2">
+          <div class="card"><h4>El QR no funciona</h4><p>Comprueba que el evento está <strong>activo</strong>.</p></div>
+          <div class="card"><h4>No veo alumnos</h4><p>Usa <em>Mostrar músicos</em> o revisa la configuración del evento.</p></div>
+          <div class="card"><h4>No puedo enviar mensajes</h4><p>Verifica tu <strong>rol</strong>. Docentes y admins tienen permisos distintos.</p></div>
+          <div class="card"><h4>¿Dónde veo firmas?</h4><p>Entra en <strong>Detalle del evento</strong> → <em>Ver registro de firmas</em>.</p></div>
+        </div>
+      </section>
     </section>
   </div>
 </div>
+
+<script>
+(function(){
+  const views = { alumnos: document.getElementById('alumnos'), docentes: document.getElementById('docentes') };
+  const tabs  = { alumnos: document.getElementById('tab-alumnos'), docentes: document.getElementById('tab-docentes') };
+  function show(which){
+    for(const k of Object.keys(views)){
+      views[k]?.classList.toggle('is-active', k===which);
+      tabs[k]?.classList.toggle('is-active', k===which);
+    }
+  }
+  function init(){
+    const h = (location.hash||'#alumnos').replace('#','');
+    show(h==='docentes' ? 'docentes' : 'alumnos');
+  }
+  tabs.alumnos?.addEventListener('click', e=>{e.preventDefault(); history.replaceState(null,'','#alumnos'); show('alumnos');});
+  tabs.docentes?.addEventListener('click', e=>{e.preventDefault(); history.replaceState(null,'','#docentes'); show('docentes');});
+  window.addEventListener('hashchange', init);
+  init();
+})();
+</script>
+
