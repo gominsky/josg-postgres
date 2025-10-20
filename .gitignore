@@ -5,7 +5,7 @@ yarn-debug.log*
 yarn-error.log*
 
 # Subidas (fotos de alumnos, etc.)
-uploads/
+#uploads/
 public/partituren/
 public/mensajes/
 
