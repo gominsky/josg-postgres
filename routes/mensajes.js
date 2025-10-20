@@ -44,6 +44,30 @@ const upload = multer({
 });
 
 /* --------------------------- utilidades --------------------------- */
+async function borrarAdjuntosFisicos(client, mensajeId) {
+  // lee los adjuntos ANTES de borrar filas
+  const { rows } = await client.query(
+    'SELECT filename FROM mensaje_adjuntos WHERE mensaje_id = $1',
+    [mensajeId]
+  );
+
+  for (const r of rows) {
+    const stored = String(r.filename || '');     // p.ej. "/mensajes/ARCHIVO__123abc.pdf"
+    const fileOnDisk = path.join(
+      PUBLIC_MSG_DIR,
+      path.basename(stored)                       // => "ARCHIVO__123abc.pdf"
+    );
+    try {
+      await fs.promises.unlink(fileOnDisk);
+      // console.log('🗑️ borrado', fileOnDisk);
+    } catch (e) {
+      if (e.code !== 'ENOENT') {
+        console.warn('No se pudo borrar adjunto:', fileOnDisk, e.message);
+      }
+    }
+  }
+}
+
 function toIntArray(x) {
   if (!x) return [];
   if (Array.isArray(x)) return x.map(n => parseInt(n, 10)).filter(Number.isInteger);
@@ -394,7 +418,6 @@ router.get('/ultimos', isAuthenticated, isDocente, async (req, res) => {
   }
 });
 
-/* --------------------------- eliminar msg ------------------------- */
 /** DELETE /mensajes/:id */
 router.delete('/:id', isAuthenticated, isDocente, async (req, res) => {
   const id = parseInt(req.params.id, 10);
@@ -404,14 +427,23 @@ router.delete('/:id', isAuthenticated, isDocente, async (req, res) => {
   try {
     await client.query('BEGIN');
 
-    // Si las FK no tienen ON DELETE CASCADE, limpiamos a mano:
+    // 1) borrar ficheros físicos de los adjuntos
+    await borrarAdjuntosFisicos(client, id);
+
+    // 2) limpiar tablas dependientes (si no tienes CASCADE en todas)
     await client.query('DELETE FROM mensaje_entrega WHERE mensaje_id = $1', [id]);
     await client.query('DELETE FROM mensaje_destino WHERE mensaje_id = $1', [id]);
+    // Si NO tienes ON DELETE CASCADE en mensaje_adjuntos, descomenta:
+    // await client.query('DELETE FROM mensaje_adjuntos WHERE mensaje_id = $1', [id]);
 
+    // 3) borrar el mensaje
     const del = await client.query('DELETE FROM mensajes WHERE id = $1', [id]);
+
     await client.query('COMMIT');
 
-    if (del.rowCount === 0) return res.status(404).json({ error: 'Mensaje no encontrado' });
+    if (del.rowCount === 0) {
+      return res.status(404).json({ error: 'Mensaje no encontrado' });
+    }
     res.json({ success: true });
   } catch (e) {
     try { await client.query('ROLLBACK'); } catch {}
@@ -421,5 +453,6 @@ router.delete('/:id', isAuthenticated, isDocente, async (req, res) => {
     client.release();
   }
 });
+
 
 module.exports = router;

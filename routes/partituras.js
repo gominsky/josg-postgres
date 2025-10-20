@@ -2,12 +2,13 @@
 const express = require('express');
 const path = require('path');
 const fs = require('fs');
+const fsp = fs.promises;
 const multer = require('multer');
 const db = require('../database/db');
 
 const router = express.Router();
 
-// ====== Multer: subida a /public/partituras ======
+// ====== Multer: subida a /public/partituren ======
 const uploadDir = path.join(__dirname, '..', 'public', 'partituren');
 fs.mkdirSync(uploadDir, { recursive: true });
 
@@ -36,6 +37,32 @@ function normIds(val){
   if (val == null) return [];
   if (Array.isArray(val)) return val.map(Number).filter(Number.isInteger);
   return [Number(val)].filter(Number.isInteger);
+}
+
+// ✅ util: detectar si es un archivo local de /partituren
+function isLocalPartituraPath(href){
+  if (!href || typeof href !== 'string') return false;
+  const s = href.trim();
+  return s.startsWith('/partituren/');
+}
+
+// ✅ util: resolver ruta absoluta segura bajo /public/partituren
+function resolveAbsFromPublic(rel){
+  const clean = String(rel || '').replace(/^\/+/, ''); // quita prefijo "/"
+  const abs = path.join(__dirname, '..', 'public', clean);
+  // protección: debe estar dentro de uploadDir
+  if (!abs.startsWith(uploadDir + path.sep) && abs !== uploadDir) return null;
+  return abs;
+}
+
+// ✅ util: borrar si existe (silencioso)
+async function safeUnlink(abs){
+  if (!abs) return;
+  try {
+    await fsp.unlink(abs);
+  } catch (e) {
+    if (e.code !== 'ENOENT') console.warn('[partituras] unlink fallo:', abs, e.code || e.message);
+  }
 }
 
 router.get('/ayuda', (_req, res) => {
@@ -84,11 +111,11 @@ router.post('/', upload.single('archivo_partitura'), async (req, res) => {
     if (!/^[a-zA-Z][\w+.-]*:\/\//.test(s)) s = 'https://' + s;
     try { new URL(s); return s; } catch { return null; }
   };
-  const toIntOrNull = (v) => {
+  const toIntOrNullLocal = (v) => {
     const n = Number(v);
     return Number.isInteger(n) ? n : null;
   };
-  const toBool = (v) => !(v === 'false' || v === false || v === 0 || v === '0');
+  const toBoolLocal = (v) => !(v === 'false' || v === false || v === 0 || v === '0');
 
   const {
     titulo, autor, arreglista, grupo_id,
@@ -107,7 +134,7 @@ router.post('/', upload.single('archivo_partitura'), async (req, res) => {
 
   // 2) Validaciones mínimas
   const tituloNorm  = (titulo || '').trim();
-  const grupoIdNorm = toIntOrNull(grupo_id);
+  const grupoIdNorm = toIntOrNullLocal(grupo_id);
 
   if (!tituloNorm || !grupoIdNorm || !enlace_partitura) {
     return res
@@ -121,7 +148,7 @@ router.post('/', upload.single('archivo_partitura'), async (req, res) => {
     (autor || '').trim() || null,
     (arreglista || '').trim() || null,
     grupoIdNorm,
-    toBool(activo),
+    toBoolLocal(activo),
     (duracion || '').trim() || null,
     (genero || '').trim() || null,
     enlace_partitura,                               // <-- nunca null aquí
@@ -162,7 +189,6 @@ router.post('/', upload.single('archivo_partitura'), async (req, res) => {
     await client.query('ROLLBACK');
     console.error('[partituras] POST / error:', err);
     if (err.code === '23502') {
-      // por si alguna mutación rara volviera a generar NULL
       return res.status(400).send('El enlace de la partitura es obligatorio y debe ser válido.');
     }
     res.status(500).send('Error guardando partitura');
@@ -171,8 +197,7 @@ router.post('/', upload.single('archivo_partitura'), async (req, res) => {
   }
 });
 
-
-// ====== EDITAR ======
+// ====== EDITAR (POST /:id desde formulario) ======
 router.post('/:id', upload.single('archivo_partitura'), async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id)) return res.status(400).send('ID inválido');
@@ -190,31 +215,45 @@ router.post('/:id', upload.single('archivo_partitura'), async (req, res) => {
   const tagsArr = parseTags(tags);
   const instrumentosIds = normIds(req.body.instrumentos);
 
-  const sql = `
-    UPDATE partituras SET
-      titulo = $1, autor = $2, arreglista = $3, grupo_id = $4, activo = $5,
-      duracion = $6, genero = $7, enlace_partitura = $8, enlace_audio = $9,
-      descripcion = $10, tags = $11, updated_at = NOW()
-    WHERE id = $12
-  `;
-  const params = [
-    titulo?.trim(),
-    autor?.trim() || null,
-    arreglista?.trim() || null,
-    toIntOrNull(grupo_id),
-    toBool(activo),
-    duracion?.trim() || null,
-    genero?.trim() || null,
-    enlace_partitura,
-    (enlace_audio || '').trim() || null,
-    (descripcion || '').trim() || null,
-    tagsArr,
-    id
-  ];
+  // Preparar borrado del anterior si se sube archivo nuevo (sólo si el viejo era local)
+  let toDeleteAbs = null;
 
   const client = await db.connect();
   try {
     await client.query('BEGIN');
+
+    // lee el anterior para decidir si eliminar tras commit
+    const prevRes = await client.query(
+      'SELECT enlace_partitura FROM partituras WHERE id = $1 FOR UPDATE',
+      [id]
+    );
+    if (!prevRes.rowCount) {
+      await client.query('ROLLBACK');
+      return res.status(404).send('No encontrada');
+    }
+    const prevHref = prevRes.rows[0].enlace_partitura;
+
+    const sql = `
+      UPDATE partituras SET
+        titulo = $1, autor = $2, arreglista = $3, grupo_id = $4, activo = $5,
+        duracion = $6, genero = $7, enlace_partitura = $8, enlace_audio = $9,
+        descripcion = $10, tags = $11, updated_at = NOW()
+      WHERE id = $12
+    `;
+    const params = [
+      titulo?.trim(),
+      autor?.trim() || null,
+      arreglista?.trim() || null,
+      toIntOrNull(grupo_id),
+      toBool(activo),
+      (duracion || '').trim() || null,
+      (genero || '').trim() || null,
+      enlace_partitura,
+      (enlace_audio || '').trim() || null,
+      (descripcion || '').trim() || null,
+      tagsArr,
+      id
+    ];
 
     await client.query(sql, params);
 
@@ -229,6 +268,15 @@ router.post('/:id', upload.single('archivo_partitura'), async (req, res) => {
     }
 
     await client.query('COMMIT');
+
+    // Borrado físico del archivo anterior si:
+    // - había archivo local antes, y
+    // - lo hemos sustituido por un archivo NUEVO (req.file) o por un enlace externo
+    if (isLocalPartituraPath(prevHref) && (req.file || !isLocalPartituraPath(enlace_partitura))) {
+      toDeleteAbs = resolveAbsFromPublic(prevHref);
+      await safeUnlink(toDeleteAbs);
+    }
+
     return res.redirect('/partituras');
   } catch (err) {
     await client.query('ROLLBACK');
@@ -273,7 +321,6 @@ router.put('/:id', upload.single('archivo_partitura'), async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id)) return res.status(400).send('ID inválido');
 
-    // mismas utilidades que en POST
   const normalizeUrl = (u) => {
     let s = String(u || '').trim();
     if (!s) return null;
@@ -290,39 +337,49 @@ router.put('/:id', upload.single('archivo_partitura'), async (req, res) => {
 
   let enlace_partitura = null;
   if (req.file) {
-    enlace_partitura = '/partituren/' + req.file.filename;   // subido a /public/partituren
+    enlace_partitura = '/partituren/' + req.file.filename;
   } else {
-    enlace_partitura = normalizeUrl(enlace_input);            // externa (https://…)
+    enlace_partitura = normalizeUrl(enlace_input);
   }
 
   const tagsArr = parseTags(tags);
   const instrumentosIds = normIds(req.body.instrumentos || req.body['instrumentos[]']);
 
-  const sql = `
-    UPDATE partituras SET
-      titulo = $1, autor = $2, arreglista = $3, grupo_id = $4, activo = $5,
-      duracion = $6, genero = $7, enlace_partitura = $8, enlace_audio = $9,
-      descripcion = $10, tags = $11, updated_at = NOW()
-    WHERE id = $12
-  `;
-  const params = [
-    titulo?.trim(),
-    autor?.trim() || null,
-    arreglista?.trim() || null,
-    toIntOrNull(grupo_id),
-    toBool(activo),
-    duracion?.trim() || null,
-    genero?.trim() || null,
-    enlace_partitura,
-    (enlace_audio || '').trim() || null,
-    (descripcion || '').trim() || null,
-    tagsArr,
-    id
-  ];
+  // borrar anterior si corresponde
+  let prevHref = null;
 
   const client = await db.connect();
   try {
     await client.query('BEGIN');
+
+    const prev = await client.query('SELECT enlace_partitura FROM partituras WHERE id = $1 FOR UPDATE', [id]);
+    if (!prev.rowCount) {
+      await client.query('ROLLBACK');
+      return res.status(404).send('No encontrada');
+    }
+    prevHref = prev.rows[0].enlace_partitura;
+
+    const sql = `
+      UPDATE partituras SET
+        titulo = $1, autor = $2, arreglista = $3, grupo_id = $4, activo = $5,
+        duracion = $6, genero = $7, enlace_partitura = $8, enlace_audio = $9,
+        descripcion = $10, tags = $11, updated_at = NOW()
+      WHERE id = $12
+    `;
+    const params = [
+      (titulo || '').trim(),
+      (autor || '').trim() || null,
+      (arreglista || '').trim() || null,
+      toIntOrNull(grupo_id),
+      toBool(activo),
+      (duracion || '').trim() || null,
+      (genero || '').trim() || null,
+      enlace_partitura,
+      (enlace_audio || '').trim() || null,
+      (descripcion || '').trim() || null,
+      tagsArr,
+      id
+    ];
 
     const result = await client.query(sql, params);
     if (result.rowCount === 0) {
@@ -340,6 +397,13 @@ router.put('/:id', upload.single('archivo_partitura'), async (req, res) => {
     }
 
     await client.query('COMMIT');
+
+    // borrar físico si el anterior era local y lo hemos cambiado por otro/externo
+    if (isLocalPartituraPath(prevHref) && (req.file || !isLocalPartituraPath(enlace_partitura))) {
+      const abs = resolveAbsFromPublic(prevHref);
+      await safeUnlink(abs);
+    }
+
     res.status(200).send('OK');
   } catch (err) {
     await client.query('ROLLBACK');
@@ -355,12 +419,31 @@ router.delete('/:id', async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id)) return res.status(400).send('ID inválido');
 
+  let prevHref = null;
+
   const client = await db.connect();
   try {
     await client.query('BEGIN');
+
+    // lee enlace para borrar archivo después
+    const prev = await client.query('SELECT enlace_partitura FROM partituras WHERE id = $1 FOR UPDATE', [id]);
+    if (!prev.rowCount) {
+      await client.query('ROLLBACK');
+      return res.status(404).send('No encontrada');
+    }
+    prevHref = prev.rows[0].enlace_partitura;
+
     await client.query('DELETE FROM partitura_instrumento WHERE partitura_id = $1', [id]);
     const r = await client.query('DELETE FROM partituras WHERE id = $1', [id]);
+
     await client.query('COMMIT');
+
+    // eliminar archivo físico si era local
+    if (isLocalPartituraPath(prevHref)) {
+      const abs = resolveAbsFromPublic(prevHref);
+      await safeUnlink(abs);
+    }
+
     if (r.rowCount === 0) return res.status(404).send('No encontrada');
     res.status(204).end();
   } catch (err) {
