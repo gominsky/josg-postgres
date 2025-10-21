@@ -2,16 +2,18 @@
 
 const express = require('express');
 const session = require('express-session');
-const { isAuthenticated, isAdmin, isDocente } = require('./middleware/auth');
+const PgStore = require('connect-pg-simple')(session);
 const app = express();
 const path = require('path');
 const db = require('./database/db');
 const expressLayouts = require('express-ejs-layouts');
 const methodOverride = require('method-override');
 require('dotenv').config();
-
+const { isAuthenticated, isAdmin, isDocente } = require('./middleware/auth');
+app.set('trust proxy', 1);
 app.use('/eventos/styles', express.static(path.join(__dirname, 'public', 'styles')));
-// --- Logs de proceso (como tenías) ---
+
+// --- Logs de proceso  ---
 process.on('beforeExit', (code) => console.log('[proc] beforeExit code=', code));
 process.on('exit',       (code) => console.log('[proc] exit code=', code));
 process.on('uncaughtException', (err) => {
@@ -24,20 +26,23 @@ process.on('unhandledRejection', (reason) => {
 // --- Parsers ---
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
-
-// --- Sesión (antes de cualquier router/guard) ---
+app.use(methodOverride('_method'));
 app.use(session({
   secret: process.env.SESSION_SECRET || 'SESSION_SECRET',
+  store: new PgStore({
+    db,
+    tableName: 'session',           // por defecto es 'session'
+    createTableIfMissing: true      // <- crea la tabla si no existe
+  }),
   resave: false,
   saveUninitialized: false,
   cookie: {
     httpOnly: true,
-    secure: false,   // dev HTTP
-    sameSite: 'lax', // mismo origen
-    path: '/',
-  },
+    sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production',
+    maxAge: 1000 * 60 * 60 * 24 * 7
+  }
 }));
-
 // --- COMPuERTA TEMPRANA PARA API (nunca redirige) ---
 app.use((req, res, next) => {
   if (req.originalUrl.startsWith('/josgmaestro/api')) {
@@ -80,13 +85,10 @@ app.use((req, res, next) => {
   delete req.session.error;
   next();
 });
-
+const uploadsDir = path.join(__dirname, 'uploads');
+app.use('/uploads', express.static(uploadsDir));
 const authRoutes = require('./routes/auth');
 app.use(authRoutes);
-
-// Method override (para PUT/DELETE en formularios)
-app.use(methodOverride('_method'));
-app.use('/josgmaestro', requireAuthPage, express.static(path.join(__dirname, 'public/josgmaestro')));
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/uploads', express.static('uploads'));
 
@@ -103,6 +105,7 @@ app.locals.formatDate = (isoString) => {
   if (isNaN(date)) return isoString;
   return date.toLocaleDateString('es-ES'); // formato DD/MM/YYYY
 };
+
 // Rutas
 const usuariosRoutes = require('./routes/usuarios');
 const profesoresRoutes = require('./routes/profesores');
@@ -110,13 +113,13 @@ const alumnosRoutes = require('./routes/alumnos');
 const gruposRoutes = require('./routes/grupos');
 const cuotasRoutes = require('./routes/cuotas');
 const eventosRoutes = require('./routes/eventos');
-const firmasRoutes = require('./routes/firmas','routes/josgentumano');
+//const firmasRoutes = require('./routes/firmas','routes/josgentumano');
+const firmasRoutes = require('./routes/firmas');
 const informesRoutes = require('./routes/informes');
 const guardiasRoutes = require('./routes/guardias');
 const instrumentosRoutes = require('./routes/instrumentos');
 const tipos_cuotasRoutes = require('./routes/tipos_cuotas');
 const pagosRoutes = require('./routes/pagos');
-//const josgmaestroRoutes = require('./routes/josgmaestro');
 const configuracionRoutes = require('./routes/configuracion');
 const planoRoutes = require('./routes/plano');
 const contabilidadRoutes = require('./routes/contabilidad');
@@ -134,6 +137,7 @@ const plantillasRoutes = require('./routes/plantillas');
 const mensajesRoutes = require('./routes/mensajes');
 const atrilRoutes = require('./routes/atril');
 const authUnificado = require('./routes/auth_unificado');
+
 app.use('/auth', authUnificado);
 app.use('/configuracion', isAdmin, configuracionRoutes);
 app.use('/usuarios', isAuthenticated,usuariosRoutes);        
@@ -148,7 +152,6 @@ app.use('/guardias', isAuthenticated, guardiasRoutes);
 app.use('/instrumentos', isAdmin, instrumentosRoutes);
 app.use('/tipos_cuotas', isAdmin, tipos_cuotasRoutes); 
 app.use('/pagos', isAdmin, pagosRoutes);                
-//app.use('/josgmaestro', josgmaestroRoutes);
 app.use('/plano', isAuthenticated, planoRoutes);
 app.use('/contabilidad', isAdmin, contabilidadRoutes);
 app.use('/proveedores', isAdmin, proveedoresRoutes);

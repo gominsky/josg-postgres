@@ -140,7 +140,8 @@
 
     <div id="bloque-foto-actual" style="display:block; margin-top:.5rem;">
       <strong>Foto actual</strong><br>
-      <img src="/uploads/<%= alumno.foto %>" class="foto-perfil" alt="Foto del alumno" style="max-height:120px;">
+      <img src="/uploads/<%= alumno.foto %>" class="foto-perfil"
+     alt="Foto del alumno" loading="lazy" decoding="async" style="max-height:120px;">
       <div style="margin-top:.5rem; display:flex; gap:.5rem; flex-wrap:wrap;">
         <a href="/uploads/<%= alumno.foto %>" target="_blank" class="btn-main-blanco">Ver tamaño completo</a>
         <button type="button" id="btn-eliminar-foto-actual" class="btn-main-blanco">

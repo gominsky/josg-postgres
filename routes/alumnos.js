@@ -6,16 +6,25 @@ const fs = require('fs');
 const multer = require('multer');
 const path = require('path');
 const { toISODate } = require('../utils/fechas');
-
+const fsp = require('fs').promises;
+const UPLOADS_DIR = path.join(__dirname, '..', 'uploads');
+fs.mkdirSync(UPLOADS_DIR, { recursive: true });
 // ───────────── Multer ─────────────
 const storage = multer.diskStorage({
-  destination: './uploads',
+  destination: (_req, _file, cb) => cb(null, UPLOADS_DIR),
   filename: (req, file, cb) => {
     const uniqueName = Date.now() + path.extname(file.originalname);
     cb(null, uniqueName);
   }
 });
-const upload = multer({ storage });
+const upload = multer({
+  storage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+  fileFilter: (_req, file, cb) => {
+    const ok = ['image/jpeg','image/png','image/webp','image/gif'].includes(file.mimetype);
+    cb(ok ? null : new Error('Formato de imagen no permitido'), ok);
+  }
+});
 
 // ───────────── Helpers de DB/metadata ─────────────
 async function tableExists(name) {
@@ -60,6 +69,12 @@ const toDateOrNull = (v) => {
   const s = String(v);
   return s.includes('T') ? s.slice(0, 10) : s.slice(0, 10);
 };
+async function safeUnlinkFromUploads(filename) {
+  if (!filename) return;
+  const abs = path.join(UPLOADS_DIR, filename);
+  try { await fsp.unlink(abs); } 
+  catch (e) { if (e.code !== 'ENOENT') console.warn('[alumnos] unlink fallo:', abs, e.code || e.message); }
+}
 
 // ───────────── Credenciales app alumnos ─────────────
 async function upsertCreds({ alumnoId, email, registrado, plainPassword }) {
@@ -352,14 +367,12 @@ let foto = fotoActualNombre;
 
 // Si el usuario intenta subir una nueva foto sin eliminar la actual, la descartamos para no ocupar disco
 if (req.file && fotoActualNombre && eliminar_foto !== '1') {
-  try { fs.unlinkSync(path.join('./uploads', req.file.filename)); } catch {}
-  // mantenemos la foto existente
+  await safeUnlinkFromUploads(req.file.filename);
 }
 
 // Si marca eliminar, borramos la actual y dejamos foto en null
 if (eliminar_foto === '1' && fotoActualNombre) {
-  const p = path.join('./uploads', fotoActualNombre);
-  if (fs.existsSync(p)) { try { fs.unlinkSync(p); } catch {} }
+  await safeUnlinkFromUploads(fotoActualNombre);
   foto = null;
 }
 
@@ -834,23 +847,15 @@ router.get('/:id', async (req, res) => {
 router.post('/:id/eliminar', async (req, res) => {
   const id = parseInt(req.params.id, 10);
   try {
-    // Obtener nombre de archivo de foto
-    const result = await db.query('SELECT foto FROM alumnos WHERE id = $1', [id]);
-    const foto = result.rows[0]?.foto;
+    const { rows } = await db.query('SELECT foto FROM alumnos WHERE id = $1', [id]);
+    const foto = rows[0]?.foto;
 
-    // Borrar relaciones
     await db.query('DELETE FROM alumno_grupo WHERE alumno_id = $1', [id]);
     await db.query('DELETE FROM alumno_instrumento WHERE alumno_id = $1', [id]);
     await db.query('DELETE FROM cuotas_alumno WHERE alumno_id = $1', [id]);
-    // Borrar alumno
     await db.query('DELETE FROM alumnos WHERE id = $1', [id]);
 
-    // Borrar foto si existe
-    if (foto) {
-      const p = `./uploads/${foto}`;
-      if (fs.existsSync(p)) fs.unlinkSync(p);
-    }
-
+    await safeUnlinkFromUploads(foto);
     res.redirect('/alumnos');
   } catch (err) {
     console.error('❌ Error al eliminar alumno:', err);

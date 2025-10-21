@@ -173,7 +173,8 @@
   <section class="grupo-campos ficha-grupo" aria-labelledby="perfil-title">
     <div class="info-flex">
       <% if (alumno.foto) { %>
-        <img src="/uploads/<%= alumno.foto %>" alt="Foto del alumno" class="foto-perfil">
+        <img src="/uploads/<%= alumno.foto %>" class="foto-perfil"
+        alt="Foto del alumno" loading="lazy" decoding="async" style="max-height:120px;">
       <% } else { %>
         <div class="foto-perfil d-flex align-items-center justify-content-center bg-light text-muted" aria-label="Sin foto">
           <svg viewBox="0 0 96 96" width="56" height="56" aria-hidden="true" focusable="false" style="opacity:.6">

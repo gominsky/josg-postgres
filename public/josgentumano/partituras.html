@@ -107,7 +107,7 @@
     <!-- HERO musical que ENVUELVE buscador + lista -->
     <div class="hero" aria-label="Bienvenida">
       <div class="motifs-layer" aria-hidden="true"></div>
-      <img class="hero-logo" src="../imagenes/logoJOSG.png" alt="JOSG">
+      <img class="hero-logo" src="/imagenes/logoJOSG.png" alt="JOSG">
       <h1>¡En tu mano!</h1>
       <p>Partituras</p>
 
@@ -119,7 +119,9 @@
         <div id="list" class="row-scroll"></div>
 
         <div class="actions" style="margin-top:.9rem;">
-          <button class="btn btn-primary" onclick="location.href='index.html'">&larr; Inicio</button>
+          <button class="btn btn-primary" onclick="location.href='/josgentumano/index.html'">
+          &larr; Inicio
+        </button>
         </div>
       </div>
     </div>
@@ -154,7 +156,7 @@
           localStorage.removeItem('alumno_id');
           localStorage.removeItem('alumno_nombre');
         }catch(e){}
-        location.href = 'login.html';
+        location.href = '/josgentumano/login.html';
       }
       if (btn){
         btn.addEventListener('click', doLogout);
