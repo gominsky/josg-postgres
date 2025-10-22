@@ -4,15 +4,33 @@ const db = require('../database/db');
 const multer = require('multer');
 const path = require('path');
 const bcrypt = require('bcrypt');
-// Configuración de multer
+const crypto = require('crypto');
+const fs = require('fs');
+const fsp = fs.promises;
+// --- Subidas: ruta absoluta y carpeta garantizada ---
+const UPLOADS_DIR = path.join(__dirname, '..', 'uploads');
+fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+// --- Multer con límites y tipos ---
 const storage = multer.diskStorage({
-  destination: './uploads',
-  filename: (req, file, cb) => {
-    const uniqueName = Date.now() + path.extname(file.originalname);
+  destination: (_req, _file, cb) => cb(null, UPLOADS_DIR),
+  filename: (_req, file, cb) => {
+    const uniqueName = `${crypto.randomUUID()}${path.extname(file.originalname).toLowerCase()}`;
     cb(null, uniqueName);
   }
 });
-const upload = multer({ storage });
+const upload = multer({
+  storage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+  fileFilter: (_req, file, cb) => {
+    const ok = ['image/jpeg','image/png','image/webp','image/gif'].includes(file.mimetype);
+    cb(ok ? null : new Error('Formato de imagen no permitido'), ok);
+  }
+});
+async function safeUnlinkFromUploads(filename) {
+  if (!filename) return;
+  try { await fsp.unlink(path.join(UPLOADS_DIR, filename)); }
+  catch (e) { if (e.code !== 'ENOENT') console.warn('[profesores] unlink:', filename, e.code); }
+}
 router.get('/:id/editar', async (req, res) => {
   const id = req.params.id;
   try {
@@ -88,51 +106,71 @@ router.get('/nuevo', async (req, res) => {
   }
 });
 // POST: Crear profesor
-router.post('/', upload.single('foto'), async (req, res) => {
-  const {
-    nombre, apellidos, email, telefono,
-    direccion, fecha_nacimiento, especialidad,
-    instrumentos, grupos
-  } = req.body;
-  const activo = req.body.activo === '1';
-  const foto = req.file ? req.file.filename : null;
-
-  const query = `
-    INSERT INTO profesores (nombre, apellidos, email, telefono, direccion, fecha_nacimiento, especialidad, foto, activo)
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-    RETURNING id
-  `;
-  const params = [nombre, apellidos, email, telefono, direccion, fecha_nacimiento, especialidad, foto, activo];
-
+  router.post('/', upload.single('foto'), async (req, res) => {
+  const client = await db.connect();
   try {
-    const result = await db.query(query, params);
-    const profesorId = result.rows[0].id;
+    const {
+      nombre, apellidos, email, telefono,
+      direccion, fecha_nacimiento, especialidad,
+      instrumentos, grupos
+    } = req.body;
 
-    const instrumentosArray = Array.isArray(instrumentos) ? instrumentos : instrumentos ? [instrumentos] : [];
-    const gruposArray = Array.isArray(grupos) ? grupos : grupos ? [grupos] : [];
+    const activo = req.body.activo === '1';
+    const foto = req.file ? req.file.filename : null;
 
-    for (const instId of instrumentosArray) {
-      await db.query('INSERT INTO profesor_instrumento (profesor_id, instrumento_id) VALUES ($1, $2)', [profesorId, instId]);
+    await client.query('BEGIN');
+
+    const insert = await client.query(`
+      INSERT INTO profesores (
+        nombre, apellidos, email, telefono, direccion,
+        fecha_nacimiento, especialidad, foto, activo
+      )
+      VALUES (
+        $1, $2, $3, $4, $5,
+        NULLIF($6,'')::date, $7, $8, $9
+      )
+      RETURNING id
+    `, [nombre, apellidos, email, telefono, direccion, fecha_nacimiento || '', especialidad, foto, activo]);
+
+    const profesorId = insert.rows[0].id;
+
+    const toArr = v => Array.isArray(v) ? v : (v ? [v] : []);
+
+    for (const instId of toArr(instrumentos)) {
+      await client.query(
+        'INSERT INTO profesor_instrumento (profesor_id, instrumento_id) VALUES ($1, $2)',
+        [profesorId, instId]
+      );
     }
 
-    for (const grupoId of gruposArray) {
-      await db.query('INSERT INTO profesor_grupo (profesor_id, grupo_id) VALUES ($1, $2)', [profesorId, grupoId]);
+    for (const grupoId of toArr(grupos)) {
+      await client.query(
+        'INSERT INTO profesor_grupo (profesor_id, grupo_id) VALUES ($1, $2)',
+        [profesorId, grupoId]
+      );
     }
 
-    res.redirect('/profesores');
+    await client.query('COMMIT');
+    return res.redirect('/profesores');
+
   } catch (err) {
+    try { await client.query('ROLLBACK'); } catch {}
+    if (req.file?.filename) { await safeUnlinkFromUploads(req.file.filename); }
     if (err.code === '23505') {
       return renderFormularioConError('El correo electrónico ya está registrado.');
     }
-    res.status(500).send('Error al registrar el profesor');
+    console.error('Error al registrar el profesor:', err);
+    return res.status(500).send('Error al registrar el profesor');
+  } finally {
+    client.release();
   }
 
   async function renderFormularioConError(mensaje) {
     try {
       const gruposAll = (await db.query('SELECT * FROM grupos')).rows;
-      const instrumentosAll = (await db.query('SELECT * FROM instrumentos')).rows;
+      const instrumentosAll = (await db.query('SELECT * DE instrumentos')).rows;
 
-      res.render('profesor_form', {
+      return res.render('profesor_form', {
         error: mensaje,
         profesor: {
           nombre, apellidos, email, telefono,
@@ -144,11 +182,12 @@ router.post('/', upload.single('foto'), async (req, res) => {
         gruposProfesor: Array.isArray(grupos) ? grupos.map(Number) : grupos ? [Number(grupos)] : [],
         instrumentosProfesor: Array.isArray(instrumentos) ? instrumentos.map(Number) : instrumentos ? [Number(instrumentos)] : []
       });
-    } catch (err) {
-      res.status(500).send('Error al cargar formulario con error');
+    } catch (e) {
+      return res.status(500).send('Error al cargar formulario con error');
     }
   }
 });
+
 // GET: Ficha
 router.get('/:id', async (req, res) => {
   const id = req.params.id;
@@ -193,11 +232,25 @@ router.put('/:id', upload.single('foto'), async (req, res) => {
     fecha_nacimiento, // puede venir '' desde <input type="date">
     especialidad,
     instrumentos,
-    grupos
+    grupos,
+    eliminar_foto,
+    fotoActual
   } = req.body;
 
   const activo = req.body.activo === '1';
-  const foto = req.file ? req.file.filename : null;
+    // --- Reglas foto (igual que alumnos): eliminar/descartar/aceptar ---
+  const fotoActualNombre = fotoActual || null;
+  let foto = fotoActualNombre;
+  if (req.file && fotoActualNombre && eliminar_foto !== '1') {
+    await safeUnlinkFromUploads(req.file.filename); // descarta nueva
+  }
+  if (eliminar_foto === '1' && fotoActualNombre) {
+    await safeUnlinkFromUploads(fotoActualNombre);
+    foto = null;
+  }
+  if (!foto && req.file) {
+    foto = req.file.filename; // no había foto → acepta
+  }
 
   if (!nombre || !apellidos || !email) {
     return recargarFormulario('Nombre, apellidos y correo electrónico son obligatorios.');
@@ -228,7 +281,7 @@ router.put('/:id', upload.single('foto'), async (req, res) => {
     set('especialidad', especialidad);
     set('activo', activo);
 
-    if (foto) set('foto', foto);
+     if (typeof foto !== 'undefined') set('foto', foto);
 
     params.push(id);
     const updateQuery = `UPDATE profesores SET ${campos.join(', ')} WHERE id = $${params.length}`;
@@ -256,15 +309,17 @@ router.put('/:id', upload.single('foto'), async (req, res) => {
       );
     }
 
-    res.redirect(`/profesores/${id}`);
+    return res.redirect(`/profesores/${id}`);
   } catch (err) {
     console.error('❌ Error actualizando profesor:', err);
 
     if (err.code === '23505') {
+      if (req.file?.filename) { await safeUnlinkFromUploads(req.file.filename); }
       return recargarFormulario('El correo electrónico ya está registrado.');
     }
 
-    res.status(500).send('Error al actualizar el profesor');
+    if (req.file?.filename) { await safeUnlinkFromUploads(req.file.filename); }
+    return res.status(500).send('Error al actualizar el profesor');
   }
 
   // Función auxiliar
@@ -301,36 +356,44 @@ router.put('/:id', upload.single('foto'), async (req, res) => {
 
 // DELETE: Eliminar profesor
 router.post('/:id/eliminar', async (req, res) => {
-  const { id } = req.params;
-  console.log('Eliminando profesor:', id);
-  try {
-    // 1. Buscar la foto del profesor
-    const result = await db.query('SELECT foto FROM profesores WHERE id = $1', [id]);
-    const profesor = result.rows[0];
+  const id = parseInt(req.params.id, 10);
+  if (!Number.isFinite(id)) return res.status(400).send('ID inválido');
 
-    if (!profesor) {
+  const client = await db.connect();
+  try {
+    await client.query('BEGIN');
+
+    // 1) Obtener la foto antes de borrar
+    const { rows } = await client.query(
+      'SELECT foto FROM profesores WHERE id = $1',
+      [id]
+    );
+    if (!rows.length) {
+      await client.query('ROLLBACK');
       return res.status(404).send('Profesor no encontrado');
     }
+    const foto = rows[0].foto;
 
-    // 2. Eliminar relaciones
-    await db.query('DELETE FROM profesor_instrumento WHERE profesor_id = $1', [id]);
-    await db.query('DELETE FROM profesor_grupo WHERE profesor_id = $1', [id]);
+    // 2) Borrar relaciones
+    await client.query('DELETE FROM profesor_instrumento WHERE profesor_id = $1', [id]);
+    await client.query('DELETE FROM profesor_grupo WHERE profesor_id = $1', [id]);
 
-    // 3. Eliminar profesor
-    await db.query('DELETE FROM profesores WHERE id = $1', [id]);
+    // 3) Borrar el profesor
+    await client.query('DELETE FROM profesores WHERE id = $1', [id]);
 
-    // 4. Borrar archivo de foto si existe
-    if (profesor.foto) {
-      const filePath = path.join(__dirname, '..', 'uploads', profesor.foto);
-      if (fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath);
-      }
-    }
+    await client.query('COMMIT');
 
-    res.redirect('/profesores');
+    // 4) Borrar la foto del disco (fuera de la transacción)
+    await safeUnlinkFromUploads(foto);
+
+    return res.redirect('/profesores');
   } catch (err) {
+    try { await client.query('ROLLBACK'); } catch {}
     console.error('❌ Error al eliminar profesor:', err);
-    res.status(500).send('Error al eliminar profesor');
+    return res.status(500).send('Error al eliminar profesor');
+  } finally {
+    client.release();
   }
 });
+
 module.exports = router;

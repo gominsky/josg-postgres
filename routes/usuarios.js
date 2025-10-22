@@ -48,6 +48,9 @@ router.post('/nuevo', async (req, res) => {
   const email     = String(req.body?.email || '').trim().toLowerCase();
   const password  = String(req.body?.password || '');
   const rol       = String(req.body?.rol || '').trim();
+  const allowedRoles = new Set(['usuario','docente','admin']);
+  if (!allowedRoles.has(rol)) return res.status(400).send('Rol inválido.');
+  if (password.length < 8) return res.status(400).send('La contraseña debe tener al menos 8 caracteres.');
 
   if (!email || !password) {
     return res.status(400).send('Faltan email y/o contraseña.');
@@ -123,7 +126,12 @@ router.post('/:id/editar', async (req, res) => {
   const emailNew  = String(req.body?.email || '').trim().toLowerCase();
   const password  = String(req.body?.password || '');
   const rol       = String(req.body?.rol || '').trim();
-
+  const allowedRoles = new Set(['usuario','docente','admin']);
+  if (!allowedRoles.has(rol)) return res.status(400).send('Rol inválido.');
+  if (password && password.trim() !== '' && password.length < 8) {
+    return res.status(400).send('La contraseña debe tener al menos 8 caracteres.');
+  }
+  
   try {
     // Cargar usuario actual (para conocer el email anterior)
     const { rows: [oldUser] } = await db.query('SELECT * FROM usuarios WHERE id = $1', [id]);

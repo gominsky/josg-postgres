@@ -75,6 +75,9 @@
 
   <div class="grupo-campos">
     <h2>Foto</h2>
+    <% if (isEdicion && profesor?.foto) { %>
+      <input type="hidden" name="fotoActual" value="<%= profesor.foto %>">
+    <% } %>
     <label>Subir nueva:
       <input type="file" name="foto" accept="image/*">
     </label>
@@ -82,22 +85,24 @@
     <% if (profesor?.foto) { %>
       <div class="foto-actual">
         <strong>Foto actual:</strong><br>
-        <img src="/uploads/<%= profesor.foto %>" alt="Foto del profesor" class="foto-perfil">
+        <img src="/uploads/<%= profesor.foto %>" alt="Foto del profesor" class="foto-perfil" loading="lazy" decoding="async" width="96" height="96">
+        <div style="margin-top:.5rem">
+          <label style="display:inline-flex;gap:.5rem;align-items:center;">
+            <input type="checkbox" name="eliminar_foto" value="1">
+            Eliminar foto actual
+          </label>
+        </div>
       </div>
     <% } %>
   </div>
-
- <div class="acciones-finales d-flex justify-content-between align-items-center mt-4">
-  <a href="/profesores" class="enlace-final-naranja">← Volver</a>
-
-  <div class="d-flex gap-3">
-   <form action="<%= isEdicion ? '/profesores/' + profesor.id + '?_method=PUT' : '/profesores' %>" method="POST" enctype="multipart/form-data">
+    <div class="acciones-finales d-flex justify-content-between align-items-center mt-4">
+    <a href="/profesores" class="enlace-final-naranja">← Volver</a>
+    <div class="d-flex gap-3">
       <button type="submit" class="btn-main-blanco">
         <%= isEdicion ? 'Actualizar' : 'Registrar' %>
       </button>
-    </form>
+    </div>
   </div>
-</div> 
 </form>
 <% if (isEdicion) { %>
   <form method="POST" action="/profesores/<%= profesor.id %>/eliminar" onsubmit="return confirm('¿Estás seguro de que quieres eliminar este profesor?');" class="text-center mt-3">

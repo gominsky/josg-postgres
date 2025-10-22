@@ -5,17 +5,19 @@ const bcrypt = require('bcrypt');
 const fs = require('fs');
 const multer = require('multer');
 const path = require('path');
+const crypto = require('crypto');
 const { toISODate } = require('../utils/fechas');
 const fsp = require('fs').promises;
 const UPLOADS_DIR = path.join(__dirname, '..', 'uploads');
 fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+
 // ───────────── Multer ─────────────
 const storage = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, UPLOADS_DIR),
-  filename: (req, file, cb) => {
-    const uniqueName = Date.now() + path.extname(file.originalname);
-    cb(null, uniqueName);
-  }
+  filename: (_req, file, cb) => {
+  const uniqueName = `${crypto.randomUUID()}${path.extname(file.originalname).toLowerCase()}`;
+  cb(null, uniqueName);
+}
 });
 const upload = multer({
   storage,
@@ -25,7 +27,6 @@ const upload = multer({
     cb(ok ? null : new Error('Formato de imagen no permitido'), ok);
   }
 });
-
 // ───────────── Helpers de DB/metadata ─────────────
 async function tableExists(name) {
   const { rows } = await db.query('SELECT to_regclass($1) t', [`public.${name}`]);
@@ -53,22 +54,16 @@ async function ensureAlumnosApp() {
 }
 
 // ───────────── Helpers de saneo (NUEVO: globales) ─────────────
-const toStrOrNull = (v) => {
-  if (v === undefined || v === null) return null;
-  const s = String(v).trim();
-  return s === '' ? null : s;
-};
 const toIntOrNull = (v) => {
   if (v === undefined || v === null) return null;
   if (typeof v === 'string' && v.trim() === '') return null;
   const n = parseInt(v, 10);
   return Number.isFinite(n) ? n : null;
 };
-const toDateOrNull = (v) => {
-  if (!v) return null;
-  const s = String(v);
-  return s.includes('T') ? s.slice(0, 10) : s.slice(0, 10);
-};
+
+const toStrOrNull = (v) => (v === undefined || v === null) ? null : (String(v).trim() || null);
+const toDateOrNull = (v) => v ? String(v).slice(0, 10) : null;
+
 async function safeUnlinkFromUploads(filename) {
   if (!filename) return;
   const abs = path.join(UPLOADS_DIR, filename);
@@ -153,12 +148,11 @@ router.post('/', upload.single('foto'), async (req, res) => {
     } = req.body;
 
     // normalizaciones
-    const normEmail = (e) => (e ?? '').toString().trim().toLowerCase() || null;
     const normalizedEmail = normEmail(email);
     const DNI_val = (DNI ?? dni ?? '').trim() || null;
     const codigo_postal_val = codigo_postal ?? cp ?? null;
     const fecha_matriculacion_val =
-      fecha_matriculacion ?? fecha_alta ?? new Date().toISOString().slice(0, 10);
+    fecha_matriculacion ?? fecha_alta ?? new Date().toISOString().slice(0, 10);
     const fecha_baja_val = fecha_baja ?? null;
 
     // booleans reales
@@ -177,7 +171,7 @@ router.post('/', upload.single('foto'), async (req, res) => {
         [DNI_val]
       );
       if (dupDni.rowCount > 0) {
-        if (req.file?.filename) { try { fs.unlinkSync(path.join('./uploads', req.file.filename)); } catch {} }
+        if (req.file?.filename) { await safeUnlinkFromUploads(req.file.filename); }
         await client.query('ROLLBACK');
         return res.status(409).send('El DNI ya está registrado');
       }
@@ -188,7 +182,8 @@ router.post('/', upload.single('foto'), async (req, res) => {
         [normalizedEmail]
       );
       if (dupEmail.rowCount > 0) {
-        if (req.file?.filename) { try { fs.unlinkSync(path.join('./uploads', req.file.filename)); } catch {} }
+        if (req.file?.filename) { await safeUnlinkFromUploads(req.file.filename); }
+
         await client.query('ROLLBACK');
         return res.status(409).send('El email ya está registrado');
       }
@@ -215,7 +210,7 @@ router.post('/', upload.single('foto'), async (req, res) => {
       repertorio_id: toIntOrNull(repertorio_id),
       foto: toStrOrNull(foto),
       activo: activoBool,
-      password: toStrOrNull(password),
+      //password: toStrOrNull(password),
       registrado: registradoBool,
       fecha_matriculacion: toDateOrNull(fecha_matriculacion_val),
       fecha_baja: toDateOrNull(fecha_baja_val)
@@ -268,6 +263,9 @@ router.post('/', upload.single('foto'), async (req, res) => {
     }
 
     // ---------- Credenciales app (si tienes la función arriba en el archivo) ----------
+ 
+    await client.query('COMMIT');
+    // ---------- Credenciales app (fuera de la transacción) ----------
     if (typeof upsertCreds === 'function') {
       await upsertCreds({
         alumnoId: newId,
@@ -276,14 +274,14 @@ router.post('/', upload.single('foto'), async (req, res) => {
         plainPassword: password || ''
       });
     }
-    await client.query('COMMIT');
+
     res.redirect('/alumnos');
   } catch (err) {
     await client.query('ROLLBACK');
     console.error('Error al crear alumno:', err);
     // limpiar foto subida si algo falla
     if (req.file?.filename) {
-      try { fs.unlinkSync(path.join('./uploads', req.file.filename)); } catch {}
+      if (req.file?.filename) { await safeUnlinkFromUploads(req.file.filename); }
     }
     res.status(500).send('Error al crear alumno');
   } finally {
@@ -326,6 +324,27 @@ router.get('/api/check-email', async (req, res) => {
     return res.status(500).json({ ok: false });
   }
 });
+// API: comprobar si un DNI está libre. Opcionalmente excluir un id (edición)
+router.get('/api/check-dni', async (req, res) => {
+  try {
+    const dni = (req.query.dni ?? '').toString().trim();
+    const excludeId = parseInt(req.query.excludeId, 10) || null;
+    if (!dni) return res.json({ ok: true }); // vacío: no bloquea
+
+    const params = [dni];
+    let sql = `SELECT 1 FROM alumnos WHERE dni = $1`;
+    if (excludeId) {
+      sql += ` AND id <> $2`;
+      params.push(excludeId);
+    }
+
+    const { rows } = await db.query(sql, params);
+    return res.json({ ok: rows.length === 0 });
+  } catch (err) {
+    console.error('[check-dni] error:', err);
+    return res.status(500).json({ ok: false });
+  }
+});
 
 // Actualizar alumno (sin bloqueos: upsertCreds tras COMMIT)
 router.put('/:id', upload.single('foto'), async (req, res) => {
@@ -349,7 +368,6 @@ router.put('/:id', upload.single('foto'), async (req, res) => {
     } = req.body;
 
     // Normalizaciones
-    const normEmail = (e) => (e ?? '').toString().trim().toLowerCase() || null;
     const normalizedEmail = normEmail(email);
     const codigo_postal_val = codigo_postal ?? cp ?? null;
 
@@ -398,7 +416,7 @@ if (!foto && req.file) {
         [normalizedEmail, id]
       );
       if (dupEmail.rowCount > 0) {
-        if (req.file?.filename) { try { fs.unlinkSync(path.join('./uploads', req.file.filename)); } catch {} }
+        if (req.file?.filename) { await safeUnlinkFromUploads(req.file.filename); }
         await client.query('ROLLBACK');
         return res.status(409).send('El email ya está registrado');
       }
@@ -411,7 +429,7 @@ if (!foto && req.file) {
         [DNI_val, id]
       );
       if (dupDni.rowCount > 0) {
-        if (req.file?.filename) { try { fs.unlinkSync(path.join('./uploads', req.file.filename)); } catch {} }
+        if (req.file?.filename) { await safeUnlinkFromUploads(req.file.filename); }
         await client.query('ROLLBACK');
         return res.status(409).send('El DNI ya está registrado');
       }
@@ -846,22 +864,29 @@ router.get('/:id', async (req, res) => {
 // ───────────── Eliminar ─────────────
 router.post('/:id/eliminar', async (req, res) => {
   const id = parseInt(req.params.id, 10);
+  const client = await db.connect();
   try {
-    const { rows } = await db.query('SELECT foto FROM alumnos WHERE id = $1', [id]);
+    const { rows } = await client.query('SELECT foto FROM alumnos WHERE id = $1', [id]);
     const foto = rows[0]?.foto;
 
-    await db.query('DELETE FROM alumno_grupo WHERE alumno_id = $1', [id]);
-    await db.query('DELETE FROM alumno_instrumento WHERE alumno_id = $1', [id]);
-    await db.query('DELETE FROM cuotas_alumno WHERE alumno_id = $1', [id]);
-    await db.query('DELETE FROM alumnos WHERE id = $1', [id]);
+    await client.query('BEGIN');
+    await client.query('DELETE FROM alumno_grupo WHERE alumno_id = $1', [id]);
+    await client.query('DELETE FROM alumno_instrumento WHERE alumno_id = $1', [id]);
+    await client.query('DELETE FROM cuotas_alumno WHERE alumno_id = $1', [id]);
+    await client.query('DELETE FROM alumnos WHERE id = $1', [id]);
+    await client.query('COMMIT');
 
     await safeUnlinkFromUploads(foto);
     res.redirect('/alumnos');
   } catch (err) {
+    try { await client.query('ROLLBACK'); } catch {}
     console.error('❌ Error al eliminar alumno:', err);
     res.status(500).send('Error al eliminar alumno');
+  } finally {
+    client.release();
   }
 });
+
 
 module.exports = router;
 

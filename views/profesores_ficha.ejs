@@ -11,7 +11,7 @@
     <h2>Información del docente</h2>
     <div class="info-flex">
       <% if (profesor.foto) { %>
-        <img src="/uploads/<%= profesor.foto %>" alt="Foto del profesor" class="foto-perfil">
+        <img src="/uploads/<%= profesor.foto %>" alt="Foto del profesor" class="foto-perfil" loading="lazy" decoding="async" width="96" height="96">
       <% } else { %>
         <div class="foto-perfil d-flex align-items-center justify-content-center bg-light text-muted">
           Sin foto

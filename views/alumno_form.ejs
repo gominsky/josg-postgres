@@ -23,7 +23,8 @@
         <input type="date" name="fecha_nacimiento" value="<%= alumno?.fecha_nacimiento || '' %>">
       </label>
       <label>DNI:
-        <input type="text" name="DNI" value="<%= alumno?.DNI || alumno?.dni || '' %>" />
+        <input type="text" name="DNI" id="dni-input" value="<%= alumno?.DNI || alumno?.dni || '' %>">
+          <small id="dni-msg" style="display:block; color:#ffcc00; min-height:1em;"></small>
       </label>
       <label>Dirección:
         <input type="text" name="direccion" value="<%= alumno?.direccion || '' %>">
@@ -125,8 +126,6 @@
       </label>
     </div>
   </div>
-
-  <!-- ===== Foto ===== -->
   <!-- ===== Foto ===== -->
 <div class="grupo-campos">
   <h2>Foto</h2>
@@ -325,5 +324,55 @@
     });
   })();
 </script>
+<script>
+(function () {
+  const form = document.querySelector('form.formulario-alumno');
+  const alumnoId = <%= (alumno && alumno.id) ? alumno.id : 'null' %>;
+
+  // --- DNI ---
+  const dniInput = document.getElementById('dni-input');
+  const dniMsg   = document.getElementById('dni-msg');
+
+  async function checkDni() {
+    const dni = (dniInput?.value || '').trim();
+    dniMsg.textContent = '';
+    dniInput?.classList.remove('is-invalid');
+
+    if (!dni) return true; // vacío no bloquea
+    const url = new URL('/alumnos/api/check-dni', window.location.origin);
+    url.searchParams.set('dni', dni);
+    if (alumnoId) url.searchParams.set('excludeId', alumnoId);
+
+    try {
+      const r = await fetch(url);
+      const data = await r.json();
+      if (!data.ok) {
+        dniMsg.textContent = 'Ese DNI ya está registrado';
+        dniInput.classList.add('is-invalid');
+        return false;
+      }
+      return true;
+    } catch {
+      // si el API falla, no bloqueamos, pero marcamos aviso suave
+      dniMsg.textContent = 'No se pudo verificar el DNI ahora';
+      return true;
+    }
+  }
+
+  dniInput?.addEventListener('blur', checkDni);
+
+  // Bloquear envío si DNI duplicado
+  form.addEventListener('submit', async (e) => {
+    const okDni = await checkDni();
+    if (!okDni) {
+      e.preventDefault();
+      dniInput.focus();
+    }
+  });
+})();
+</script>
+<style>
+  .is-invalid { outline: 2px solid #ff4d4f; border-color: #ff4d4f; }
+</style>
 
   
