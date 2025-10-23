@@ -416,12 +416,9 @@ async function uploadAdjuntos(){ if(!state.adjuntos.length) return []; const fd 
     try { const res = await Notification.requestPermission(); return res === 'granted'; }
     catch { return false; }
   }
-  async function getRegistration(){
+    async function getRegistration(){
     if (!('serviceWorker' in navigator)) return null;
-    const existing = await navigator.serviceWorker.getRegistration();
-    if (existing) return existing;
-    // Registrar solamente tu SW global
-    return await navigator.serviceWorker.register('/sw.js');
+    return await navigator.serviceWorker.getRegistration();
   }
   async function getVapid(){
     const meta = document.querySelector('meta[name="vapid"]');
@@ -462,7 +459,7 @@ async function uploadAdjuntos(){ if(!state.adjuntos.length) return []; const fd 
       return resp.ok;
     }catch(e){ return false; }
   }
-  
+
   async function setupPush(){
     if (!('PushManager' in window)) return;
     if (!(await ensurePermission())) return;
