@@ -80,7 +80,7 @@ async function init({ reset = false } = {}) {
         email            CITEXT      NOT NULL UNIQUE,
         password_hash    TEXT        NOT NULL,
         rol              TEXT        NOT NULL DEFAULT 'usuario'
-                          CHECK (rol IN ('admin','docente','usuario')),
+                          CHECK (rol IN ('admin','docente','usuario','guardia_josg','guardia_oeg')),
         created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         updated_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );

@@ -71,6 +71,19 @@ router.post('/logout', (req, res) => {
   }
   res.json({ success: true });
 });
+// === Mapear roles guardia_* -> nombre de grupo
+const ROLE_GROUP_NAME_MAP = {
+  guardia_josg: 'JOSG',
+  guardia_oeg:  'OEG'
+};
+const isGuardRole = (rol) => typeof rol === 'string' && rol.toLowerCase().startsWith('guardia_');
+
+async function getGroupIdForGuardRole(rol){
+  const name = ROLE_GROUP_NAME_MAP[String(rol || '').toLowerCase()];
+  if (!name) return null;
+  const rs = await db.query(`SELECT id FROM grupos WHERE UPPER(nombre)=UPPER($1) LIMIT 1`, [name]);
+  return rs.rowCount ? rs.rows[0].id : null;
+}
 
 // === AUTH PÚBLICO (fuera del guard /api) =====================================
 // POST /josgmaestro/login
@@ -211,6 +224,12 @@ router.get('/api/eventos', async (req, res) => {
       if (!grupoIds.length) return res.json([]);
       where.push(`e.grupo_id = ANY($${args.length+1})`);
       args.push(grupoIds);
+      
+    } else if (isGuardRole(user.rol)) {
+      const gid = await getGroupIdForGuardRole(user.rol);
+      if (!gid) return res.json([]); // rol guardia sin grupo mapeado por nombre
+      where.push(`e.grupo_id = $${args.length+1}`);
+      args.push(gid);
     }
 
     // Helpers seguros: regex SIEMPRE sobre TEXT; cast a DATE/TIME solo si válido
@@ -243,12 +262,20 @@ router.get('/api/eventos', async (req, res) => {
     }
 
     else {
-      // Por defecto (portal): solo próximos eventos desde hoy y con fecha válida
-      where.push(`(${EVENT_END} >= CURRENT_DATE)`);
-      where.push(`${EVENT_START} IS NOT NULL`);
-    }
-    // Límite: calendario (con rango) hasta 1000; portal (sin rango) hasta ?limit o 5 por defecto
-    const limitRows = (start && end) ? 1000 : 5;
+      if (isGuardRole(user.rol)) {
+        // Próximo evento del grupo del guardia: a partir de HOY (incluido)
+        where.push(`${EVENT_START} >= CURRENT_DATE`);
+        where.push(`${EVENT_START} IS NOT NULL`);
+      } else {
+        // Comportamiento existente para admin/docente
+        where.push(`(${EVENT_END} >= CURRENT_DATE)`);
+        where.push(`${EVENT_START} IS NOT NULL`);
+      }
+     }
+      
+        // Límite: calendario (con rango) hasta 1000; portal (sin rango) hasta ?limit o 5 por defecto
+    let limitRows = (start && end) ? 1000 : 5;
+    if (!start && !end && isGuardRole(user.rol)) limitRows = 1;
 
     const sql = `
       SELECT
@@ -847,6 +874,36 @@ if (!usuarioId) return res.status(401).json({ success:false, error:'auth_require
       client.release();
     }
 
+        // Enviar notificación push a los destinatarios (igual que en /mensajes)
+    try {
+      const { rows: dests } = await db.query(
+        `SELECT DISTINCT alumno_id FROM mensaje_destino WHERE mensaje_id=$1`,
+        [mensajeId]
+      );
+      const alumnoIds = dests.map(r => r.alumno_id).filter(Number.isInteger);
+      if (alumnoIds.length) {
+        const { rows: subs } = await db.query(
+          `SELECT endpoint, p256dh, auth
+             FROM push_suscripciones
+            WHERE alumno_id = ANY($1::int[])`,
+          [alumnoIds]
+        );
+        const notifTitle = `Notificación JOSG: ${titulo}`;
+        const payload = { tipo:'mensaje', mensaje_id: mensajeId, titulo: notifTitle, cuerpo, url: url || null, urls: links };
+        for (const s of subs) {
+          try {
+            const ret = await enviarPush({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, payload);
+            if (ret === 'expired') {
+              await db.query('DELETE FROM push_suscripciones WHERE endpoint = $1', [s.endpoint]);
+            }
+          } catch (e) {
+            console.warn('Aviso: fallo enviando push:', e?.statusCode || e?.message);
+          }
+        }
+      }
+    } catch (e) {
+      console.error('POST /api/mensajes push error:', e);
+    }
     return res.json({ success:true, mensaje_id: mensajeId, enviados });
   } catch (err) {
     console.error('POST /api/mensajes error:', err);
@@ -871,5 +928,19 @@ router.patch('/api/eventos/:id/grace', express.json(), async (req, res) => {
   }
 });
 
+router.get('/api/yo', async (req, res) => {
+  try {
+    const usuarioId = req.session?.usuario_id || req.user?.id || null;
+    if (!usuarioId) return res.status(401).json({ error: 'auth_required' });
+    const { rows } = await db.query(
+      'SELECT id, nombre, rol FROM usuarios WHERE id=$1 LIMIT 1',
+      [usuarioId]
+    );
+    if (!rows[0]) return res.status(404).json({ error: 'usuario_not_found' });
+    res.json(rows[0]);
+  } catch (_e) {
+    res.status(500).json({ error: 'internal_error' });
+  }
+});
 
 module.exports = router;

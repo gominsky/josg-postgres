@@ -400,7 +400,7 @@ async function uploadAdjuntos(){ if(!state.adjuntos.length) return []; const fd 
 <script>
 /* === Push desde servidor: SOLO /sw.js + autodetección de VAPID y endpoints === */
 (function(){
-  const API_BASES = ['/josgmaestro/api', '/api'];
+  const SUBSCRIBE_URL = '/mensajes/push/subscribe';
 
   function urlBase64ToUint8Array(base64String) {
     const padding = '='.repeat((4 - base64String.length % 4) % 4);
@@ -444,20 +444,25 @@ async function uploadAdjuntos(){ if(!state.adjuntos.length) return []; const fd 
     }
     return sub;
   }
-  async function sendSubscription(sub){
-    for (const base of API_BASES){
-      try{
-        const resp = await fetch(`${base}/push/subscribe`, {
-          method:'POST',
-          headers:{ 'content-type':'application/json' },
-          credentials:'include',
-          body: JSON.stringify({ subscription: sub, topic: 'mensajes' })
-        });
-        if (resp.ok) return true;
-      }catch(e){}
-    }
-    return false;
+    async function sendSubscription(sub){
+    try{
+      const token = localStorage.getItem('token');
+      const resp = await fetch(SUBSCRIBE_URL, {
+        method:'POST',
+        credentials:'include',
+        headers: Object.assign(
+          { 'content-type':'application/json' },
+          token ? { 'Authorization':'Bearer '+token } : {}
+        ),
+        body: JSON.stringify({
+          endpoint: sub.endpoint,
+          keys: sub.toJSON().keys
+        })
+      });
+      return resp.ok;
+    }catch(e){ return false; }
   }
+  
   async function setupPush(){
     if (!('PushManager' in window)) return;
     if (!(await ensurePermission())) return;

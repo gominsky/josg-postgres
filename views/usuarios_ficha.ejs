@@ -27,11 +27,14 @@
       <label><%= isEdicion ? 'Contraseña (deja vacío para mantener)' : 'Contraseña' %>:
         <input type="password" name="password" id="password" <%= isEdicion ? '' : 'required' %>>
       </label>
-      <label>Rol:
+            <label>Rol:
         <select name="rol" id="rol" required>
-          <option value="usuario" <%= usuario?.rol === 'usuario' ? 'selected' : '' %>>Usuario</option>
-          <option value="docente" <%= usuario?.rol === 'docente' ? 'selected' : '' %>>Docente</option>
-          <option value="admin" <%= usuario?.rol === 'admin' ? 'selected' : '' %>>Admin</option>
+          <option value="admin"        <%= usuario?.rol === 'admin'        ? 'selected' : '' %>>Admin</option>
+          <option value="docente"      <%= usuario?.rol === 'docente'      ? 'selected' : '' %>>Docente</option>
+          <option value="usuario"      <%= usuario?.rol === 'usuario'      ? 'selected' : '' %>>Usuario</option>
+          <!-- Nuevos roles de guardia -->
+          <option value="guardia_josg" <%= usuario?.rol === 'guardia_josg' ? 'selected' : '' %>>Guardia JOSG</option>
+          <option value="guardia_oeg"  <%= usuario?.rol === 'guardia_oeg'  ? 'selected' : '' %>>Guardia OEG</option>
         </select>
       </label>
     </div>

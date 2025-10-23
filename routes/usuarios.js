@@ -47,8 +47,8 @@ router.post('/nuevo', async (req, res) => {
   const apellidos = String(req.body?.apellidos || '').trim();
   const email     = String(req.body?.email || '').trim().toLowerCase();
   const password  = String(req.body?.password || '');
-  const rol       = String(req.body?.rol || '').trim();
-  const allowedRoles = new Set(['usuario','docente','admin']);
+  const rol       = String(req.body?.rol || '').trim().toLowerCase();
+  const allowedRoles = new Set(['usuario','docente','admin','guardia_josg','guardia_oeg']);
   if (!allowedRoles.has(rol)) return res.status(400).send('Rol inválido.');
   if (password.length < 8) return res.status(400).send('La contraseña debe tener al menos 8 caracteres.');
 
@@ -125,8 +125,8 @@ router.post('/:id/editar', async (req, res) => {
   const apellidos = String(req.body?.apellidos || '').trim();
   const emailNew  = String(req.body?.email || '').trim().toLowerCase();
   const password  = String(req.body?.password || '');
-  const rol       = String(req.body?.rol || '').trim();
-  const allowedRoles = new Set(['usuario','docente','admin']);
+  const rol       = String(req.body?.rol || '').trim().toLowerCase();
+  const allowedRoles = new Set(['usuario','docente','admin','guardia_josg','guardia_oeg']);
   if (!allowedRoles.has(rol)) return res.status(400).send('Rol inválido.');
   if (password && password.trim() !== '' && password.length < 8) {
     return res.status(400).send('La contraseña debe tener al menos 8 caracteres.');

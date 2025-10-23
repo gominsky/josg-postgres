@@ -7,10 +7,8 @@ self.addEventListener('push', (event) => {
   const options = {
     body: data.cuerpo || '',
     data: { mensaje_id: data.mensaje_id, url: data.url || null },
-    badge: '/josgentumano/badge.png',
-    icon: '/josgentumano/icon-192.png',
-    badge: data.badge || self.asset('/imagenes/push/badge.png'),
-    icon:  data.icon  || self.asset('/imagenes/push/icon-192.png')
+    badge: data.badge || self.asset('/imagenes/badge.png'),
+    icon:  data.icon  || self.asset('/imagenes/icon-192.png')
   };
   event.waitUntil(self.registration.showNotification(title, options));
 });

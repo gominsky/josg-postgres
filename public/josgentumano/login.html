@@ -106,17 +106,18 @@
             passEl.value = ''; passEl.focus();
             return;
           }
-
-          // --- Caso 1: backend ya decidió rol
+           // --- Caso 1: backend ya decidió rol
           if (data.role) {
             localStorage.setItem('token', data.token);
-            if (data.role === 'alumno') {
-              localStorage.setItem('rol', 'alumno');
+            const rol = String(data.role || '').toLowerCase();
+            localStorage.setItem('rol', rol);
+
+            if (rol === 'alumno') {
               if (data.usuario?.alumno_id)     localStorage.setItem('alumno_id', data.usuario.alumno_id);
               if (data.usuario?.alumno_nombre) localStorage.setItem('alumno_nombre', data.usuario.alumno_nombre);
               window.location.href = toAlumno();
             } else {
-              localStorage.setItem('rol', 'docente');
+              // Portal (docente, admin, usuario, guardia_*)
               if (data.usuario?.usuario_id)     localStorage.setItem('usuario_id', data.usuario.usuario_id);
               if (data.usuario?.usuario_nombre) localStorage.setItem('usuario_nombre', data.usuario.usuario_nombre);
 
@@ -128,6 +129,7 @@
             }
             return;
           }
+          
           // --- Caso 2: multirol → pedir elección mediante desplegable
       const picked = await pickRole();
       if (!picked) { btn.disabled = false; return; }
@@ -143,14 +145,14 @@
         btn.disabled = false; return;
       }
 
-      localStorage.setItem('token', d.token);
-      if (picked === 'alumno') {
-        localStorage.setItem('rol','alumno');
+         localStorage.setItem('token', d.token);
+      const rolSel = String(picked || '').toLowerCase();
+      localStorage.setItem('rol', rolSel);
+      if (rolSel === 'alumno') {
         if (d.usuario?.alumno_id)     localStorage.setItem('alumno_id', d.usuario.alumno_id);
         if (d.usuario?.alumno_nombre) localStorage.setItem('alumno_nombre', d.usuario.alumno_nombre);
         window.location.href = toAlumno();
       } else {
-        localStorage.setItem('rol','docente');
         if (d.usuario?.usuario_id)     localStorage.setItem('usuario_id', d.usuario.usuario_id);
         if (d.usuario?.usuario_nombre) localStorage.setItem('usuario_nombre', d.usuario.usuario_nombre);
 

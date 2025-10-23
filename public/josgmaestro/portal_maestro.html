@@ -100,7 +100,20 @@
       </div>
     </div>
   </div>
-
+    <script>
+  (async function () {
+    try{
+      const r = await fetch('/josgmaestro/api/yo', { credentials: 'same-origin' });
+      if (!r.ok) return;
+      const me  = await r.json();
+      const rol = String(me?.rol || '').toLowerCase();
+      if (rol === 'usuario' || rol.startsWith('guardia_')) {
+        const link = document.querySelector('.grid-actions a[href="mensajes_movil.html"]');
+        if (link) link.remove(); // o link.style.display='none';
+      }
+    }catch(_){}
+  })();
+  </script>
   <!-- Lógica portal (pill + logout + próximos) -->
   <script>
     (function () {
