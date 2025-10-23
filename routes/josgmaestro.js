@@ -249,32 +249,36 @@ router.get('/api/eventos', async (req, res) => {
 
     const HORA_FIN = `CASE WHEN ${HORA_FIN_TXT} ~ '^\\d{2}:\\d{2}(:\\d{2})?$'
                            THEN (split_part(${HORA_FIN_TXT}, ' ', 1))::time END`;
-
+    
+    // Fin efectivo del evento (fecha_fin o fecha_inicio) + hora_fin (o 23:59:59 si no hay)
+    const END_TS = `COALESCE(${EVENT_END}, ${EVENT_START}) + COALESCE(${HORA_FIN}, '23:59:59'::time)`;
     // Rango opcional (?start=YYYY-MM-DD&end=YYYY-MM-DD)
     const { start, end } = req.query || {};
     if (start && end) {
       args.push(start, end);
       // solapamiento: eventEnd >= viewStart AND eventStart < viewEnd
       where.push(`(${EVENT_END} >= $${args.length-1}::date AND ${EVENT_START} < $${args.length}::date)`);
+      // además: excluir eventos ya finalizados a "ahora"
+      where.push(`${END_TS} >= NOW()`);
       // y sólo eventos con fecha válida
       where.push(`${EVENT_START} IS NOT NULL`);
     }
-
     else {
-      if (guardGroupId) {
-        // Próximo evento del grupo del guardia: a partir de HOY (incluido)
-        where.push(`${EVENT_START} >= CURRENT_DATE`);
-        where.push(`${EVENT_START} IS NOT NULL`);
-      } else {
-        // Comportamiento existente para admin/docente
-        where.push(`(${EVENT_END} >= CURRENT_DATE)`);
-        where.push(`${EVENT_START} IS NOT NULL`);
-      }
-     }
+            if (guardGroupId) {
+              // Guardias: mostrar (a) los de HOY que no han terminado + (b) los futuros
+              // → así si hay dos HOY (uno en curso y otro luego), salen ambos
+              where.push(`( (${EVENT_START} = CURRENT_DATE AND ${END_TS} >= NOW()) OR (${EVENT_START} > CURRENT_DATE) )`);
+              where.push(`${EVENT_START} IS NOT NULL`);
+            } else {
+              // Admin/Docente, sin cambios
+              where.push(`(${EVENT_END} >= CURRENT_DATE)`);
+              where.push(`${EVENT_START} IS NOT NULL`);
+            }
+          }
       
         // Límite: calendario (con rango) hasta 1000; portal (sin rango) hasta ?limit o 5 por defecto
     let limitRows = (start && end) ? 1000 : 5;
-    if (!start && !end && guardGroupId) limitRows = 1;
+    if (!start && !end && guardGroupId) limitRows = 2;
 
     const sql = `
       SELECT
