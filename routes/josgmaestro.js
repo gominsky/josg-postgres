@@ -888,8 +888,30 @@ if (!usuarioId) return res.status(401).json({ success:false, error:'auth_require
             WHERE alumno_id = ANY($1::int[])`,
           [alumnoIds]
         );
-        const notifTitle = `Notificación JOSG: ${titulo}`;
-        const payload = { tipo:'mensaje', mensaje_id: mensajeId, titulo: notifTitle, cuerpo, url: url || null, urls: links };
+        // (continuación de josgmaestro.js)
+    const notifTitle = `Notificación JOSG: ${titulo}`;
+    const payload = { 
+      tipo: 'mensaje', 
+      mensaje_id: mensajeId, 
+      titulo: notifTitle, 
+      cuerpo, 
+      url: url || null,
+      icono: '/imagenes/icon-192.png',
+      badge: '/imagenes/badge.png'
+    };
+    // 👇 AÑADIR ESTE BUCLE PARA ENVIAR LAS NOTIFICACIONES
+    for (const s of subs) {
+        try {
+            await enviarPush(s, payload);
+        } catch (e) {
+            // Eliminar suscripción expirada (código de ejemplo)
+            if (e?.statusCode === 410) { 
+              await db.query('DELETE FROM push_suscripciones WHERE endpoint = $1', [s.endpoint]);
+            }
+            console.warn('Aviso: fallo enviando push:', e?.statusCode || e?.message);
+        }
+    }
+    // 👆 FIN DEL CÓDIGO A AÑADIR
         for (const s of subs) {
           try {
             const ret = await enviarPush({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, payload);

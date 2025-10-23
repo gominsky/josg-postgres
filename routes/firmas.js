@@ -39,7 +39,20 @@ function mustMatchAlumnoParam(req, res, next){
   }
   next();
 }
-
+router.get('/mensajes.html', requireJWT, (req, res) => {
+  // 💡 IMPORTANTE: Ajusta esta ruta si el archivo 'mensajes.html' no está
+  // en 'public/josgentumano/' respecto a la raíz de tu proyecto.
+  const filePath = path.join(__dirname, '..', 'public', 'josgentumano', 'mensajes.html');
+  
+  // Sirve el archivo HTML
+  res.sendFile(filePath, (err) => {
+      if (err) {
+          console.error('Error sirviendo /firmas/mensajes.html:', err);
+          // Esto es un fallback si el archivo no existe en la ruta esperada
+          res.status(404).send('Página no disponible. (Código 404)');
+      }
+  });
+});
 /* -------------------------------- PÁGINAS -------------------------------- */
 router.get('/ayuda', (_req, res) => {
   res.render('ayuda_firmas', { title: 'Ayuda · Alumnos', hero: false });

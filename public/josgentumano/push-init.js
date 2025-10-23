@@ -4,7 +4,7 @@
   if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
 
   try {
-    // registra el SW con scope /firmas
+    // registra el SW con scope
     const reg = await navigator.serviceWorker.register('/josgentumano/sw.js', { scope: '/josgentumano/' });
 
     // pide permiso si aún no se concedió
