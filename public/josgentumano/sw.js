@@ -1,4 +1,5 @@
 /* global self, clients */
+self.asset = (p) => new URL(p, self.registration.scope).toString();
 self.addEventListener('push', (event) => {
   let data = {};
   try { data = event.data.json(); } catch {}
@@ -7,7 +8,9 @@ self.addEventListener('push', (event) => {
     body: data.cuerpo || '',
     data: { mensaje_id: data.mensaje_id, url: data.url || null },
     badge: '/josgentumano/badge.png',
-    icon: '/josgentumano/icon-192.png'
+    icon: '/josgentumano/icon-192.png',
+    badge: data.badge || self.asset('/imagenes/push/badge.png'),
+    icon:  data.icon  || self.asset('/imagenes/push/icon-192.png')
   };
   event.waitUntil(self.registration.showNotification(title, options));
 });
