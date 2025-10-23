@@ -215,7 +215,7 @@ router.get('/api/eventos', async (req, res) => {
     // si docente → sus grupos; si admin → todos
     let where = [];
     let args  = [];
-
+    const guardGroupId = isGuardRole(user.rol) ? await getGroupIdForGuardRole(user.rol) : null;
     if (user.rol === 'docente') {
       const profesorId = await getProfesorIdByEmail(user.email);
       if (!profesorId) return res.json([]);
@@ -224,13 +224,12 @@ router.get('/api/eventos', async (req, res) => {
       if (!grupoIds.length) return res.json([]);
       where.push(`e.grupo_id = ANY($${args.length+1})`);
       args.push(grupoIds);
-      
-    } else if (isGuardRole(user.rol)) {
-      const gid = await getGroupIdForGuardRole(user.rol);
-      if (!gid) return res.json([]); // rol guardia sin grupo mapeado por nombre
-      where.push(`e.grupo_id = $${args.length+1}`);
-      args.push(gid);
     }
+    if (guardGroupId) {
+      where.push(`e.grupo_id = $${args.length+1}`);
+      args.push(guardGroupId);
+    }
+    
 
     // Helpers seguros: regex SIEMPRE sobre TEXT; cast a DATE/TIME solo si válido
     const FECHA_INI_TXT = `trim(e.fecha_inicio::text)`;
@@ -262,7 +261,7 @@ router.get('/api/eventos', async (req, res) => {
     }
 
     else {
-      if (isGuardRole(user.rol)) {
+      if (guardGroupId) {
         // Próximo evento del grupo del guardia: a partir de HOY (incluido)
         where.push(`${EVENT_START} >= CURRENT_DATE`);
         where.push(`${EVENT_START} IS NOT NULL`);
@@ -275,7 +274,7 @@ router.get('/api/eventos', async (req, res) => {
       
         // Límite: calendario (con rango) hasta 1000; portal (sin rango) hasta ?limit o 5 por defecto
     let limitRows = (start && end) ? 1000 : 5;
-    if (!start && !end && isGuardRole(user.rol)) limitRows = 1;
+    if (!start && !end && guardGroupId) limitRows = 1;
 
     const sql = `
       SELECT
