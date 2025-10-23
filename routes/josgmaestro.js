@@ -236,20 +236,18 @@ router.get('/api/eventos', async (req, res) => {
     const FECHA_FIN_TXT = `trim(e.fecha_fin::text)`;
     const HORA_INI_TXT  = `trim(e.hora_inicio::text)`;
     const HORA_FIN_TXT  = `trim(e.hora_fin::text)`;
-
     const EVENT_START = `CASE WHEN ${FECHA_INI_TXT} ~ '^\\d{4}-\\d{2}-\\d{2}$'
                              THEN (e.fecha_inicio)::date END`;
-
     const EVENT_END   = `CASE WHEN ${FECHA_FIN_TXT} ~ '^\\d{4}-\\d{2}-\\d{2}$'
                              THEN (e.fecha_fin)::date
                              ELSE ${EVENT_START} END`;
-
     const HORA_INI = `CASE WHEN ${HORA_INI_TXT} ~ '^\\d{2}:\\d{2}(:\\d{2})?$'
                            THEN (split_part(${HORA_INI_TXT}, ' ', 1))::time END`;
-
     const HORA_FIN = `CASE WHEN ${HORA_FIN_TXT} ~ '^\\d{2}:\\d{2}(:\\d{2})?$'
                            THEN (split_part(${HORA_FIN_TXT}, ' ', 1))::time END`;
-    
+    const NOW_MAD    = `(NOW() AT TIME ZONE 'Europe/Madrid')`;
+    const TODAY_MAD  = `(${NOW_MAD})::date`;
+    const START_TS = `COALESCE(${EVENT_START}, ${TODAY_MAD}) + COALESCE(${HORA_INI}, '00:00:00'::time)`;
     // Fin efectivo del evento (fecha_fin o fecha_inicio) + hora_fin (o 23:59:59 si no hay)
     const END_TS = `COALESCE(${EVENT_END}, ${EVENT_START}) + COALESCE(${HORA_FIN}, '23:59:59'::time)`;
     // Rango opcional (?start=YYYY-MM-DD&end=YYYY-MM-DD)
@@ -258,27 +256,25 @@ router.get('/api/eventos', async (req, res) => {
       args.push(start, end);
       // solapamiento: eventEnd >= viewStart AND eventStart < viewEnd
       where.push(`(${EVENT_END} >= $${args.length-1}::date AND ${EVENT_START} < $${args.length}::date)`);
-      // además: excluir eventos ya finalizados a "ahora"
-      where.push(`${END_TS} >= NOW()`);
+      where.push(`${END_TS} >= ${NOW_MAD}`);
       // y sólo eventos con fecha válida
       where.push(`${EVENT_START} IS NOT NULL`);
     }
-    else {
+        else {
             if (guardGroupId) {
-              // Guardias: mostrar (a) los de HOY que no han terminado + (b) los futuros
-              // → así si hay dos HOY (uno en curso y otro luego), salen ambos
-              where.push(`( (${EVENT_START} = CURRENT_DATE AND ${END_TS} >= NOW()) OR (${EVENT_START} > CURRENT_DATE) )`);
+             
+              where.push(`( ((${START_TS})::date = ${TODAY_MAD} AND ${END_TS} >= ${NOW_MAD}) OR ((${START_TS})::date > ${TODAY_MAD}) )`);
               where.push(`${EVENT_START} IS NOT NULL`);
             } else {
-              // Admin/Docente, sin cambios
-              where.push(`(${EVENT_END} >= CURRENT_DATE)`);
+             
+              where.push(`(${EVENT_END} >= ${TODAY_MAD})`);
               where.push(`${EVENT_START} IS NOT NULL`);
             }
           }
       
         // Límite: calendario (con rango) hasta 1000; portal (sin rango) hasta ?limit o 5 por defecto
-    let limitRows = (start && end) ? 1000 : 5;
-    if (!start && !end && guardGroupId) limitRows = 2;
+        let limitRows = (start && end) ? 1000 : 5;
+        if (!start && !end && guardGroupId) limitRows = 2;
 
     const sql = `
       SELECT
@@ -325,8 +321,7 @@ router.get('/api/eventos', async (req, res) => {
       ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
 
       ORDER BY
-        ${EVENT_START} NULLS LAST,
-        ${HORA_INI}   NULLS LAST,
+        ${START_TS}   NULLS LAST,
         e.id ASC
       LIMIT ${limitRows}
     `;
@@ -878,13 +873,15 @@ if (!usuarioId) return res.status(401).json({ success:false, error:'auth_require
     }
 
     try {
-      // 1. Obtener los IDs de los alumnos destinatarios
-      const { rows: dests } = await db.query(
-        `SELECT DISTINCT alumno_id FROM mensaje_destino WHERE mensaje_id=$1`,
-        [mensajeId]
-      );
-      const alumnoIds = dests.map(r => r.alumno_id).filter(Number.isInteger);
-      
+           // 1) Obtener los destinatarios finales: SIEMPRE desde mensaje_entrega
+           const { rows: dests } = await db.query(
+             `SELECT DISTINCT alumno_id
+                FROM mensaje_entrega
+               WHERE mensaje_id = $1
+                 AND alumno_id IS NOT NULL`,
+             [mensajeId]
+           );
+           const alumnoIds = dests.map(r => r.alumno_id).filter(Number.isInteger);
       if (alumnoIds.length) {
         
         // 2. Obtener las suscripciones Push
@@ -901,21 +898,19 @@ if (!usuarioId) return res.status(401).json({ success:false, error:'auth_require
         }
         
         console.log(`[JOSGMAESTRO PUSH] Subs encontrados: ${subs.length}`);
-        
         if (subs.length > 0) {
-          // 3. Preparar el payload
+          // 3) Payload que entiende tu SW (icon/badge)
           const notifTitle = `Notificación JOSG: ${titulo}`;
-          const payload = { 
-            tipo: 'mensaje', 
-            mensaje_id: mensajeId, 
-            titulo: notifTitle, 
-            cuerpo, 
+          const payload = {
+            tipo: 'mensaje',
+            mensaje_id: mensajeId,
+            titulo: notifTitle,
+            cuerpo,
             url: url || null,
-            icono: '/imagenes/icon-192.png',
+            icon: '/imagenes/icon-192.png',
             badge: '/imagenes/badge.png'
           };
-          
-          // 4. Bucle para enviar las notificaciones (¡CORREGIDO!)
+            // 4. Bucle para enviar las notificaciones 
           for (const s of subs) {
             try {
               // La función enviarPush requiere el objeto de suscripción completo o las claves separadas
