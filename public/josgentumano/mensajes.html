@@ -513,8 +513,11 @@ function cardHTML(m, readSet){
   const attachments = []; // {href,label}
   const links = [];       // {href,label,title}
   let primaryHref = '';   // para chip "Abrir"
-
-  const baseMount = location.pathname.startsWith('/josgmaestro/') ? '/josgmaestro' : '';
+  const baseMount =
+  location.pathname.startsWith('/josgmaestro/')   ? '/josgmaestro'   :
+  location.pathname.startsWith('/josgentumano/')  ? '/josgentumano'  :
+  '';
+    
   const isAttachmentPath = p => {
     const s = String(p||'');
     return s.startsWith('/mensajes/') || s.startsWith(baseMount + '/mensajes/');
@@ -531,8 +534,13 @@ if (rawPrimary && !isAttachmentPath(rawPrimary)) {
     const raw = typeof u === 'string' ? u : (u?.url ?? u?.href ?? u?.link ?? '');
     if (!raw) continue;
     if (isAttachmentPath(raw)){
-  // adjunto...
-} else if (isLikelyHttpUrl(raw)) {
+      // ✅ Tratar URLs /mensajes/... como adjuntos
+      const path  = raw.startsWith('/mensajes/') ? baseMount + raw : raw;
+      const href  = safeHref(path);
+      const label = decodeURIComponent(String(raw).split('/').pop() || 'archivo').replace(/\?.*$/,'');
+      attachments.push({ href, label });
+      continue;
+    } else if (isLikelyHttpUrl(raw)) {
   const href = safeHref(raw);
   if (!href || href === primaryHref) continue;
   links.push({ href, label: domainLabel(href), title: raw });

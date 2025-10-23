@@ -236,6 +236,28 @@ async function init({ reset = false } = {}) {
         created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         PRIMARY KEY (profesor_id, grupo_id)
       );
+            -- Endurecer/normalizar FKs para borrados en cascada de relaciones
+      ALTER TABLE IF EXISTS partitura_instrumento
+        DROP CONSTRAINT IF EXISTS partitura_instrumento_instrumento_id_fkey,
+        ADD  CONSTRAINT partitura_instrumento_instrumento_id_fkey
+            FOREIGN KEY (instrumento_id)
+            REFERENCES instrumentos(id)
+            ON DELETE CASCADE;
+
+      -- (Opcional defensivo) Asegurar cascada en relaciones ya previstas:
+      ALTER TABLE IF EXISTS alumno_instrumento
+        DROP CONSTRAINT IF EXISTS alumno_instrumento_instrumento_id_fkey,
+        ADD  CONSTRAINT alumno_instrumento_instrumento_id_fkey
+            FOREIGN KEY (instrumento_id)
+            REFERENCES instrumentos(id)
+            ON DELETE CASCADE;
+
+      ALTER TABLE IF EXISTS profesor_instrumento
+        DROP CONSTRAINT IF EXISTS profesor_instrumento_instrumento_id_fkey,
+        ADD  CONSTRAINT profesor_instrumento_instrumento_id_fkey
+            FOREIGN KEY (instrumento_id)
+            REFERENCES instrumentos(id)
+            ON DELETE CASCADE;
 
       CREATE INDEX IF NOT EXISTS idx_alumno_instr_alumno   ON alumno_instrumento(alumno_id);
       CREATE INDEX IF NOT EXISTS idx_alumno_instr_instr    ON alumno_instrumento(instrumento_id);
@@ -826,10 +848,51 @@ async function init({ reset = false } = {}) {
 
   -- 2) Relación N-a-N con instrumentos
   CREATE TABLE IF NOT EXISTS partitura_instrumento (
-    partitura_id   INT NOT NULL REFERENCES partituras(id)   ON DELETE CASCADE,
-    instrumento_id INT NOT NULL REFERENCES instrumentos(id) ON DELETE RESTRICT,
-    PRIMARY KEY (partitura_id, instrumento_id)
-  );
+  partitura_id   INT NOT NULL REFERENCES partituras(id)   ON DELETE CASCADE,
+  instrumento_id INT NOT NULL REFERENCES instrumentos(id) ON DELETE CASCADE,
+  PRIMARY KEY (partitura_id, instrumento_id)
+);
+  
+      -- ====== MIGRACIÓN FK: poner ON DELETE CASCADE en relaciones N–N ======
+-- Alumno-Grupo
+ALTER TABLE IF EXISTS alumno_grupo
+  DROP CONSTRAINT IF EXISTS alumno_grupo_grupo_id_fkey,
+  ADD  CONSTRAINT alumno_grupo_grupo_id_fkey
+       FOREIGN KEY (grupo_id) REFERENCES grupos(id) ON DELETE CASCADE;
+
+ALTER TABLE IF EXISTS alumno_grupo
+  DROP CONSTRAINT IF EXISTS alumno_grupo_alumno_id_fkey,
+  ADD  CONSTRAINT alumno_grupo_alumno_id_fkey
+       FOREIGN KEY (alumno_id) REFERENCES alumnos(id) ON DELETE CASCADE;
+
+-- Profesor-Grupo
+ALTER TABLE IF EXISTS profesor_grupo
+  DROP CONSTRAINT IF EXISTS profesor_grupo_grupo_id_fkey,
+  ADD  CONSTRAINT profesor_grupo_grupo_id_fkey
+       FOREIGN KEY (grupo_id) REFERENCES grupos(id) ON DELETE CASCADE;
+
+ALTER TABLE IF EXISTS profesor_grupo
+  DROP CONSTRAINT IF EXISTS profesor_grupo_profesor_id_fkey,
+  ADD  CONSTRAINT profesor_grupo_profesor_id_fkey
+       FOREIGN KEY (profesor_id) REFERENCES profesores(id) ON DELETE CASCADE;
+
+-- Alumno-Instrumento
+ALTER TABLE IF EXISTS alumno_instrumento
+  DROP CONSTRAINT IF EXISTS alumno_instrumento_instrumento_id_fkey,
+  ADD  CONSTRAINT alumno_instrumento_instrumento_id_fkey
+       FOREIGN KEY (instrumento_id) REFERENCES instrumentos(id) ON DELETE CASCADE;
+
+-- Profesor-Instrumento
+ALTER TABLE IF EXISTS profesor_instrumento
+  DROP CONSTRAINT IF EXISTS profesor_instrumento_instrumento_id_fkey,
+  ADD  CONSTRAINT profesor_instrumento_instrumento_id_fkey
+       FOREIGN KEY (instrumento_id) REFERENCES instrumentos(id) ON DELETE CASCADE;
+
+-- Partitura-Instrumento (antes estaba RESTRICT)
+ALTER TABLE IF EXISTS partitura_instrumento
+  DROP CONSTRAINT IF EXISTS partitura_instrumento_instrumento_id_fkey,
+  ADD  CONSTRAINT partitura_instrumento_instrumento_id_fkey
+       FOREIGN KEY (instrumento_id) REFERENCES instrumentos(id) ON DELETE CASCADE;
 
   CREATE INDEX IF NOT EXISTS idx_partitura_instrumento_instr
     ON partitura_instrumento (instrumento_id);

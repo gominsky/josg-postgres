@@ -80,15 +80,32 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-// DELETE: Eliminar instrumento
+// DELETE: Eliminar instrumento limpiando relaciones (NO borra alumnos/profesores) y avisando
 router.delete('/:id', async (req, res) => {
   const { id } = req.params;
+
   try {
-    await db.query('DELETE FROM instrumentos WHERE id = $1', [id]);
-    res.redirect('/instrumentos');
+    await db.query('BEGIN');
+
+    // 1) Borrar filas de tablas puente (solo relaciones)
+    const delAI   = await db.query('DELETE FROM alumno_instrumento    WHERE instrumento_id = $1', [id]);
+    const delPI   = await db.query('DELETE FROM profesor_instrumento  WHERE instrumento_id = $1', [id]);
+    const delPIns = await db.query('DELETE FROM partitura_instrumento WHERE instrumento_id = $1', [id]); // relación partitura-instrumento
+
+    // 2) Borrar el instrumento
+    const delI = await db.query('DELETE FROM instrumentos WHERE id = $1', [id]);
+
+    await db.query('COMMIT');
+
+    const msg = delI.rowCount
+      ? `Instrumento borrado. Relaciones eliminadas: ${delAI.rowCount} alumno(s), ${delPI.rowCount} profesor(es), ${delPIns.rowCount} partitura(s)-instrumento.`
+      : 'El instrumento no existía (0 filas).';
+    return res.redirect(`/instrumentos?notice=${encodeURIComponent(msg)}`);
   } catch (err) {
-    console.error('❌ Error al eliminar instrumento:', err.message);
-    res.status(500).send('Error al eliminar instrumento');
+    console.error('❌ Error al eliminar instrumento:', err);
+    await db.query('ROLLBACK');
+    const warn = 'No se pudo borrar el instrumento. Revisa relaciones o permisos.';
+    return res.redirect(`/instrumentos?warning=${encodeURIComponent(warn)}`);
   }
 });
 

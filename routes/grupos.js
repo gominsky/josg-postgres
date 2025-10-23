@@ -99,17 +99,33 @@ router.post('/eliminar/:id', async (req, res) => {
   }
 });
 
-// DELETE: Eliminar grupo (REST)
+// DELETE: Eliminar grupo limpiando relaciones (NO borra alumnos/profesores) y avisando
 router.delete('/:id', async (req, res) => {
-  const id = req.params.id;
+  const { id } = req.params;
 
   try {
-    await db.query('DELETE FROM grupos WHERE id = $1', [id]);
-    res.redirect('/grupos');
+    await db.query('BEGIN');
+
+    // 1) Borrar filas de tablas puente (solo relaciones)
+    const delAG = await db.query('DELETE FROM alumno_grupo   WHERE grupo_id = $1', [id]);
+    const delPG = await db.query('DELETE FROM profesor_grupo WHERE grupo_id = $1', [id]);
+
+    // 2) Borrar el grupo
+    const delG = await db.query('DELETE FROM grupos WHERE id = $1', [id]);
+
+    await db.query('COMMIT');
+
+    const msg = delG.rowCount
+      ? `Grupo borrado. Relaciones eliminadas: ${delAG.rowCount} alumno(s)-grupo y ${delPG.rowCount} profesor(es)-grupo.`
+      : 'El grupo no existía (0 filas).';
+    return res.redirect(`/grupos?notice=${encodeURIComponent(msg)}`);
   } catch (err) {
     console.error('Error al eliminar grupo:', err);
-    res.status(500).send('Error al eliminar grupo');
+    await db.query('ROLLBACK');
+    const warn = 'No se pudo borrar el grupo. Revisa relaciones o permisos.';
+    return res.redirect(`/grupos?warning=${encodeURIComponent(warn)}`);
   }
 });
+
 
 module.exports = router;

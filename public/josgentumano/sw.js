@@ -20,7 +20,7 @@ self.addEventListener('notificationclick', (event) => {
   const data = event.notification.data || {};
   const href = (typeof data.url === 'string' && /^https?:\/\//i.test(data.url))
     ? data.url
-    : '/firmass/mensajes.html'; // siempre absoluta y correcta
+    : `/josgentumano/mensajes.html${data.mensaje_id ? `?m=${encodeURIComponent(data.mensaje_id)}` : ''}`;
 
   event.waitUntil((async () => {
     const all = await clients.matchAll({ type: 'window', includeUncontrolled: true });
