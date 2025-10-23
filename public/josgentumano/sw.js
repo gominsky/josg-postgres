@@ -1,4 +1,3 @@
-/* global self, clients */
 self.asset = (p) => new URL(p, self.registration.scope).toString();
 self.addEventListener('push', (event) => {
   let data = {};
@@ -19,10 +18,15 @@ self.addEventListener('notificationclick', (event) => {
   event.waitUntil((async () => {
     const all = await clients.matchAll({ type: 'window', includeUncontrolled: true });
     if (all.length) {
-      all[0].focus();
-      all[0].postMessage({ tipo: 'abrir-mensaje', mensaje_id, url });
+      const c = all[0];
+      await c.focus();
+      // avisa a la página para que haga scroll/flash al mensaje, o abra el enlace
+      c.postMessage({ tipo: 'abrir-mensaje', mensaje_id, url });
+      // si la notificación tenía un URL directo y la ventana puede navegar, úsalo
+      if (url && 'navigate' in c) { try { await c.navigate(url); } catch {} }
     } else {
-      await clients.openWindow('/josgentumano/mensajes.html');
+      const dest = url ? url : self.asset('/mensajes.html');
+      await clients.openWindow(dest);
     }
   })());
 });
