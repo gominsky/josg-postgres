@@ -874,58 +874,70 @@ if (!usuarioId) return res.status(401).json({ success:false, error:'auth_require
       client.release();
     }
 
-        // Enviar notificación push a los destinatarios (igual que en /mensajes)
     try {
+      // 1. Obtener los IDs de los alumnos destinatarios
       const { rows: dests } = await db.query(
         `SELECT DISTINCT alumno_id FROM mensaje_destino WHERE mensaje_id=$1`,
         [mensajeId]
       );
       const alumnoIds = dests.map(r => r.alumno_id).filter(Number.isInteger);
+      
       if (alumnoIds.length) {
-        const { rows: subs } = await db.query(
-          `SELECT endpoint, p256dh, auth
-             FROM push_suscripciones
-            WHERE alumno_id = ANY($1::int[])`,
-          [alumnoIds]
-        );
-        // (continuación de josgmaestro.js)
-    const notifTitle = `Notificación JOSG: ${titulo}`;
-    const payload = { 
-      tipo: 'mensaje', 
-      mensaje_id: mensajeId, 
-      titulo: notifTitle, 
-      cuerpo, 
-      url: url || null,
-      icono: '/imagenes/icon-192.png',
-      badge: '/imagenes/badge.png'
-    };
-    // 👇 AÑADIR ESTE BUCLE PARA ENVIAR LAS NOTIFICACIONES
-    for (const s of subs) {
+        
+        // 2. Obtener las suscripciones Push
+        let subs = [];
         try {
-            await enviarPush(s, payload);
+          const { rows } = await db.query(
+            `SELECT endpoint, p256dh, auth FROM push_suscripciones WHERE alumno_id = ANY($1::int[])`,
+            [alumnoIds]
+          );
+          subs = rows;
         } catch (e) {
-            // Eliminar suscripción expirada (código de ejemplo)
-            if (e?.statusCode === 410) { 
-              await db.query('DELETE FROM push_suscripciones WHERE endpoint = $1', [s.endpoint]);
-            }
-            console.warn('Aviso: fallo enviando push:', e?.statusCode || e?.message);
+          // 🚨 ESTE LOG DEBE APARECER: Muestra si hay un error de DB (p. ej., sintaxis SQL o tipo)
+          console.error('🚨 ERROR EN CONSULTA DE SUBSCRIPCIONES PUSH (SQL):', e.message || e);
         }
-    }
-    // 👆 FIN DEL CÓDIGO A AÑADIR
-        for (const s of subs) {
-          try {
-            const ret = await enviarPush({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, payload);
-            if (ret === 'expired') {
-              await db.query('DELETE FROM push_suscripciones WHERE endpoint = $1', [s.endpoint]);
+        
+        console.log(`[JOSGMAESTRO PUSH] Subs encontrados: ${subs.length}`);
+        
+        if (subs.length > 0) {
+          // 3. Preparar el payload
+          const notifTitle = `Notificación JOSG: ${titulo}`;
+          const payload = { 
+            tipo: 'mensaje', 
+            mensaje_id: mensajeId, 
+            titulo: notifTitle, 
+            cuerpo, 
+            url: url || null,
+            icono: '/imagenes/icon-192.png',
+            badge: '/imagenes/badge.png'
+          };
+          
+          // 4. Bucle para enviar las notificaciones (¡CORREGIDO!)
+          for (const s of subs) {
+            try {
+              // La función enviarPush requiere el objeto de suscripción completo o las claves separadas
+              const ret = await enviarPush(
+                { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, 
+                payload
+              );
+              // Lógica de expiración (si aplica)
+              if (ret === 'expired' || ret?.statusCode === 410) {
+                await db.query('DELETE FROM push_suscripciones WHERE endpoint = $1', [s.endpoint]);
+              }
+              console.log(`[JOSGMAESTRO PUSH] ✅ Push enviado a: ${s.endpoint.slice(-8)}`);
+            } catch (e) {
+              // ⚠️ LOG CLAVE: Muestra si el envío falla (p. ej., suscripción caducada 410)
+              console.warn('Aviso: fallo enviando push:', e?.statusCode || e?.message);
             }
-          } catch (e) {
-            console.warn('Aviso: fallo enviando push:', e?.statusCode || e?.message);
           }
         }
       }
     } catch (e) {
-      console.error('POST /api/mensajes push error:', e);
+      // Este catch solo debería capturar errores en el bloque superior (obtener dests)
+      console.error('POST /api/mensajes push error (Bloque Superior):', e);
     }
+    
+    // El return final de la ruta va aquí:
     return res.json({ success:true, mensaje_id: mensajeId, enviados });
   } catch (err) {
     console.error('POST /api/mensajes error:', err);

@@ -592,7 +592,7 @@
     const j = await r.json();
     if(!r.ok || !j.success) throw new Error(j.error || 'No se pudo enviar');
 
-    showToast(`✅ Enviado (id ${j.mensaje_id}) a ${j.enviados} alumno(s).`, true);
+    showToast(`✅ Enviado a ${j.enviados} alumno(s).`, true);
 
     fetchPage(1); // refresca “últimos”
 
