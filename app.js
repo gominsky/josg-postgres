@@ -86,16 +86,27 @@ app.use((req, res, next) => {
   delete req.session.error;
   next();
 });
+
 const UPLOADS_DIR = process.env.UPLOADS_DIR || path.join(process.cwd(), 'uploads');
 fs.mkdirSync(UPLOADS_DIR, { recursive: true });
-const authRoutes = require('./routes/auth');
-app.use(authRoutes);
-app.use(express.static(path.join(__dirname, 'public')));
+
+console.log('[BOOT] UPLOADS_DIR =', UPLOADS_DIR);
+try {
+  fs.accessSync(UPLOADS_DIR, fs.constants.W_OK);
+  console.log('[BOOT] UPLOADS_DIR es ESCRITURABLE');
+} catch (e) {
+  console.error('[BOOT] UPLOADS_DIR NO es escribible:', e.message);
+}
 app.use('/uploads', express.static(UPLOADS_DIR, {
   maxAge: '7d',
   dotfiles: 'deny',
   fallthrough: false
 }));
+
+const authRoutes = require('./routes/auth');
+app.use(authRoutes);
+app.use(express.static(path.join(__dirname, 'public')));
+
 
 // Plantillas EJS
 app.use(expressLayouts);
