@@ -18,10 +18,19 @@ self.addEventListener('notificationclick', (event) => {
   event.notification.close();
 
   const data = event.notification.data || {};
-  const href = (typeof data.url === 'string' && /^https?:\/\//i.test(data.url))
-    ? data.url
-    : `/josgentumano/mensajes.html${data.mensaje_id ? `?m=${encodeURIComponent(data.mensaje_id)}` : ''}`;
-
+    // Si la notificación trae una URL:
+  // - si es absoluta (http/https) -> ábrela tal cual
+  // - si es interna (empieza por "/") -> ve a login con next=<esa url>
+  // Si no trae URL -> ve a login con next=/josgentumano/mensajes.html?m=<id>
+  let href;
+  if (typeof data.url === 'string' && /^https?:\/\//i.test(data.url)) {
+    href = data.url;
+  } else if (typeof data.url === 'string' && data.url.startsWith('/')) {
+    href = `/josgentumano/login.html?next=${encodeURIComponent(data.url)}`;
+  } else {
+    const base = `/josgentumano/mensajes.html${data.mensaje_id ? `?m=${encodeURIComponent(data.mensaje_id)}` : ''}`;
+    href = `/josgentumano/login.html?next=${encodeURIComponent(base)}`;
+  }
   event.waitUntil((async () => {
     const all = await clients.matchAll({ type: 'window', includeUncontrolled: true });
     if (all.length) {

@@ -6,6 +6,7 @@
   <title>¡JOSG en tu mano! · Iniciar sesión</title>
   <link rel="stylesheet" href="../styles/estilos_app.css" />
 </head>
+
 <body>
   <div class="container">
     <div class="hero" aria-label="Bienvenida">
@@ -13,7 +14,27 @@
       <img class="hero-logo" src="../imagenes/logoJOSG.png" alt="JOSG">
       <h1>¡En tu mano!</h1>
       <p>Inicia sesión para continuar.</p>
-
+      <script>
+        (function(){
+          const params = new URLSearchParams(location.search);
+          const next = params.get('next');
+        
+          const token = localStorage.getItem('token');
+          const rol   = (localStorage.getItem('rol') || '').toLowerCase();
+        
+          if (token && rol) {
+            if (rol === 'alumno') {
+              location.replace(next || '/josgentumano/index.html'); // o toAlumno()
+              return;
+            }
+            if (rol === 'docente' || rol === 'admin' || rol.startsWith('guardia_')) {
+              location.replace('/josgmaestro/portal_maestro.html'); // o toDocente()
+              return;
+            }
+          }
+        })();
+        </script>
+        
       <div class="panel" role="region" aria-labelledby="tit-login">
         <div class="field">
           <input type="email" id="email" placeholder="Email" required autocomplete="username" />
