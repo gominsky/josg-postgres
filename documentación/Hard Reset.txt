@@ -1,0 +1,12 @@
+BEGIN;
+
+--⚠️ Esto elimina TODO lo del esquema public
+DROP SCHEMA IF EXISTS public CASCADE;
+
+CREATE SCHEMA public;
+ALTER SCHEMA public OWNER TO CURRENT_USER;
+
+-- Privilegios por defecto típicos
+GRANT USAGE, CREATE ON SCHEMA public TO PUBLIC;
+
+COMMIT;

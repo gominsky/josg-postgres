@@ -1,0 +1,20 @@
+BEGIN;
+
+DO $$
+DECLARE
+  stm TEXT;
+BEGIN
+  SELECT 'TRUNCATE TABLE '
+         || string_agg(format('%I.%I', schemaname, tablename), ', ')
+         || ' RESTART IDENTITY CASCADE;'
+  INTO stm
+  FROM pg_tables
+  WHERE schemaname = 'public';
+
+  IF stm IS NOT NULL THEN
+    EXECUTE stm;
+  END IF;
+END
+$$;
+
+COMMIT;

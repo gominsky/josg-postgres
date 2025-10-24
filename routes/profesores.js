@@ -11,26 +11,38 @@ const fsp = fs.promises;
 const UPLOADS_DIR = path.join(__dirname, '..', 'uploads');
 fs.mkdirSync(UPLOADS_DIR, { recursive: true });
 // --- Multer con límites y tipos ---
+const ALLOWED = new Set([
+  'image/jpeg', 'image/png', 'image/webp', 'image/gif',
+  'image/heic', 'image/heif'
+]);
+const EXT_BY_MIME = {
+  'image/jpeg': '.jpg', 'image/png': '.png', 'image/webp': '.webp',
+  'image/gif': '.gif', 'image/heic': '.heic', 'image/heif': '.heif'
+};
+
 const storage = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, UPLOADS_DIR),
   filename: (_req, file, cb) => {
-    const uniqueName = `${crypto.randomUUID()}${path.extname(file.originalname).toLowerCase()}`;
-    cb(null, uniqueName);
+    const ext = EXT_BY_MIME[file.mimetype] || (path.extname(file.originalname) || '').toLowerCase() || '.bin';
+    cb(null, `${crypto.randomUUID()}${ext}`);
   }
 });
+
 const upload = multer({
   storage,
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB como alumnos
   fileFilter: (_req, file, cb) => {
-    const ok = ['image/jpeg','image/png','image/webp','image/gif'].includes(file.mimetype);
-    cb(ok ? null : new Error('Formato de imagen no permitido'), ok);
+    const ok = ALLOWED.has(file.mimetype);
+    cb(ok ? null : new Error('Formato no permitido (JPG/PNG/WEBP/HEIC)'), ok);
   }
 });
+
 async function safeUnlinkFromUploads(filename) {
   if (!filename) return;
   try { await fsp.unlink(path.join(UPLOADS_DIR, filename)); }
   catch (e) { if (e.code !== 'ENOENT') console.warn('[profesores] unlink:', filename, e.code); }
 }
+
 router.get('/:id/editar', async (req, res) => {
   const id = req.params.id;
   try {
@@ -168,7 +180,7 @@ router.get('/nuevo', async (req, res) => {
   async function renderFormularioConError(mensaje) {
     try {
       const gruposAll = (await db.query('SELECT * FROM grupos')).rows;
-      const instrumentosAll = (await db.query('SELECT * DE instrumentos')).rows;
+      const instrumentosAll = (await db.query('SELECT * FROM instrumentos')).rows;
 
       return res.render('profesor_form', {
         error: mensaje,
