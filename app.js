@@ -8,6 +8,7 @@ const path = require('path');
 const db = require('./database/db');
 const expressLayouts = require('express-ejs-layouts');
 const methodOverride = require('method-override');
+const fs   = require('fs'); 
 require('dotenv').config();
 const { isAuthenticated, isAdmin, isDocente } = require('./middleware/auth');
 app.set('trust proxy', 1);
@@ -85,12 +86,16 @@ app.use((req, res, next) => {
   delete req.session.error;
   next();
 });
-const uploadsDir = path.join(__dirname, 'uploads');
-app.use('/uploads', express.static(uploadsDir));
+const UPLOADS_DIR = process.env.UPLOADS_DIR || path.join(process.cwd(), 'uploads');
+fs.mkdirSync(UPLOADS_DIR, { recursive: true });
 const authRoutes = require('./routes/auth');
 app.use(authRoutes);
 app.use(express.static(path.join(__dirname, 'public')));
-app.use('/uploads', express.static('uploads'));
+app.use('/uploads', express.static(UPLOADS_DIR, {
+  maxAge: '7d',
+  dotfiles: 'deny',
+  fallthrough: false
+}));
 
 // Plantillas EJS
 app.use(expressLayouts);

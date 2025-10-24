@@ -250,6 +250,74 @@ document.addEventListener('DOMContentLoaded', () => {
   // Borde negro al form de búsqueda
   const searchForm = document.getElementById('filtroQ')?.form;
   if (searchForm) searchForm.classList.add('borde-negro');
+  // === Filtro en vivo para la lista de partituras (según se escribe) ===
+const inputQ = document.getElementById('filtroQ');
+const tbody  = document.querySelector('#tablaPartituras tbody');
+
+function normalize(s){
+  return (s||'').toString().toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'') // quita acentos
+    .trim();
+}
+
+function rowText(r){
+  return [
+    r.dataset.titulo,
+    r.dataset.autor,
+    r.dataset.grupo_nombre,
+    r.dataset.duracion,
+    r.dataset.genero
+  ].map(normalize).join(' ');
+}
+
+function ensureNoResultsRow(){
+  let noRow = document.getElementById('noResultsRow');
+  if (!noRow) {
+    noRow = document.createElement('tr');
+    noRow.id = 'noResultsRow';
+    const td = document.createElement('td');
+    td.colSpan = 8; // coincide con tus 8 columnas
+    td.className = 'text-center text-muted';
+    td.textContent = 'Sin resultados';
+    noRow.appendChild(td);
+    tbody.appendChild(noRow);
+  }
+  return noRow;
+}
+
+let lastQ = '';
+function applyFilter(q){
+  const nq = normalize(q);
+  if (nq === lastQ) return;
+  lastQ = nq;
+
+  const tokens = nq.split(/\s+/).filter(Boolean);
+  let visibles = 0;
+
+  tbody.querySelectorAll('tr.partitura-row').forEach(r => {
+    const haystack = rowText(r);
+    const ok = tokens.every(t => haystack.includes(t));
+    r.style.display = ok ? '' : 'none';
+    if (ok) visibles++;
+  });
+
+  const noRow = ensureNoResultsRow();
+  noRow.style.display = visibles === 0 ? '' : 'none';
+
+  const url = new URL(location.href);
+  if (nq) url.searchParams.set('q', q); else url.searchParams.delete('q');
+  history.replaceState(null, '', url);
+}
+
+if (inputQ) {
+  inputQ.addEventListener('input', () => applyFilter(inputQ.value));
+  inputQ.form?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    applyFilter(inputQ.value);
+  });
+  // Filtro inicial por si viene ?q=... o hay valor en el input
+  applyFilter(inputQ.value || '');
+}
 
   // Normaliza rutas a URL absoluta (evita error en <input type="url">)
   function toAbsoluteUrl(v) {

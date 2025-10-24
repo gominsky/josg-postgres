@@ -1,32 +1,63 @@
 const express = require('express');
 const router = express.Router();
+
 const db = require('../database/db');
 const bcrypt = require('bcrypt');
-const fs = require('fs');
-const multer = require('multer');
 const path = require('path');
+const fs = require('fs');
+const fsp = require('fs').promises;
+const multer = require('multer');
 const crypto = require('crypto');
 const { toISODate } = require('../utils/fechas');
-const fsp = require('fs').promises;
-const UPLOADS_DIR = path.join(__dirname, '..', 'uploads');
+
+const UPLOADS_DIR = process.env.UPLOADS_DIR || path.join(process.cwd(), 'uploads');
 fs.mkdirSync(UPLOADS_DIR, { recursive: true });
 
 // ───────────── Multer ─────────────
+const ALLOWED = new Set([
+  'image/jpeg', 'image/png', 'image/webp', 'image/gif',
+  'image/heic', 'image/heif' // iPhone
+]);
+
+const EXT_BY_MIME = {
+  'image/jpeg': '.jpg',
+  'image/png':  '.png',
+  'image/webp': '.webp',
+  'image/gif':  '.gif',
+  'image/heic': '.heic',
+  'image/heif': '.heif'
+};
+
 const storage = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, UPLOADS_DIR),
   filename: (_req, file, cb) => {
-  const uniqueName = `${crypto.randomUUID()}${path.extname(file.originalname).toLowerCase()}`;
-  cb(null, uniqueName);
-}
-});
-const upload = multer({
-  storage,
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
-  fileFilter: (_req, file, cb) => {
-    const ok = ['image/jpeg','image/png','image/webp','image/gif'].includes(file.mimetype);
-    cb(ok ? null : new Error('Formato de imagen no permitido'), ok);
+    const ext = EXT_BY_MIME[file.mimetype] ||
+                (path.extname(file.originalname) || '').toLowerCase() || '.bin';
+    cb(null, `${crypto.randomUUID()}${ext}`);
   }
 });
+
+const upload = multer({
+  storage,
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+  fileFilter: (_req, file, cb) => {
+    const ok = ALLOWED.has(file.mimetype);
+    cb(ok ? null : new Error('Formato no permitido (JPG/PNG/WEBP/HEIC)'), ok);
+  }
+});
+function withUpload(handler) {
+  return (req, res, next) => {
+    upload.single('foto')(req, res, (err) => {
+      if (!err) return handler(req, res, next);
+      console.error('[upload] fallo:', err);
+      const msg = err.code === 'LIMIT_FILE_SIZE'
+        ? 'La imagen supera el tamaño máximo (10MB).'
+        : (err.message || 'No se pudo subir la imagen.');
+      return res.status(400).send(msg);
+    });
+  };
+}
+
 // ───────────── Helpers de DB/metadata ─────────────
 async function tableExists(name) {
   const { rows } = await db.query('SELECT to_regclass($1) t', [`public.${name}`]);
