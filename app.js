@@ -109,7 +109,7 @@ app.use(authRoutes);
 app.get(
   ['/josgentumano/mensajes.html', '/firmas/mensajes.html', '/mensajes.html'],
   (req, res) => {
-    res.redirect(302, '/firmas/login.html');
+    res.redirect(302, '/josgentumano/login.html');
   }
 );
 app.use(express.static(path.join(__dirname, 'public')));
