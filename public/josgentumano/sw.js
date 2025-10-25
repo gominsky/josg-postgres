@@ -15,29 +15,17 @@ self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', e => e.waitUntil(self.clients.claim()));
 
 self.addEventListener('notificationclick', (event) => {
-  event.notification.close();
-
-  const data = event.notification.data || {};
-    // Si la notificación trae una URL:
-  // - si es absoluta (http/https) -> ábrela tal cual
-  // - si es interna (empieza por "/") -> ve a login con next=<esa url>
-  // Si no trae URL -> ve a login con next=/josgentumano/mensajes.html?m=<id>
-  let href;
-  if (typeof data.url === 'string' && /^https?:\/\//i.test(data.url)) {
-    href = data.url;
-  } else if (typeof data.url === 'string' && data.url.startsWith('/')) {
-    href = `/josgentumano/login.html?next=${encodeURIComponent(data.url)}`;
-  } else {
-    const base = `/josgentumano/mensajes.html${data.mensaje_id ? `?m=${encodeURIComponent(data.mensaje_id)}` : ''}`;
-    href = `/josgentumano/login.html?next=${encodeURIComponent(base)}`;
-  }
-  event.waitUntil((async () => {
-    const all = await clients.matchAll({ type: 'window', includeUncontrolled: true });
-    if (all.length) {
-      const c = all[0];
-      try { await c.focus(); } catch {}
-      try { c.postMessage({ tipo:'abrir-mensaje', mensaje_id: data.mensaje_id, url: data.url || null }); } catch {}
-    }
-    await clients.openWindow(href);
-  })());
+    event.notification.close();
+    const { url, mensaje_id } = event.notification.data || {};
+    event.waitUntil((async () => {
+      const all = await clients.matchAll({ type: 'window', includeUncontrolled: true });
+      if (all.length) {
+        all[0].focus();
+        all[0].postMessage({ tipo: 'abrir-mensaje', mensaje_id, url });
+        return;
+      }
+      // No hay ventana: llevar a login con redirección a la bandeja
+      const next = encodeURIComponent(`/josgentumano/mensajes.html${mensaje_id ? `?m=${mensaje_id}` : ''}`);
+      await clients.openWindow(`/josgentumano/login.html?next=${next}`);
+    })());
 });

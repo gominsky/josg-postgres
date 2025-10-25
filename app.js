@@ -105,8 +105,14 @@ app.use('/uploads', express.static(UPLOADS_DIR, {
 
 const authRoutes = require('./routes/auth');
 app.use(authRoutes);
+// ✅ Redirección simple (sin next) a login
+app.get(
+  ['/josgentumano/mensajes.html', '/firmas/mensajes.html', '/mensajes.html'],
+  (req, res) => {
+    res.redirect(302, '/firmas/login.html');
+  }
+);
 app.use(express.static(path.join(__dirname, 'public')));
-
 
 // Plantillas EJS
 app.use(expressLayouts);
