@@ -1,0 +1,65 @@
+<% const isEdicion = Boolean(baremo && baremo.id); %>
+<% title = isEdicion ? 'Editar baremo' : 'Nuevo baremo'; %>
+<% hero = false; %>
+
+<h1 class="h1-titulo"><%= title %></h1>
+
+<form
+  id="form-baremo"
+  method="POST"
+  action="<%= isEdicion ? '/baremos/editar/' + baremo.id : '/baremos' %>"
+  class="formulario-alumno"
+  style="border: 2px solid #FF9501; border-radius: 0.75rem; padding: 1rem;"
+>
+
+  <div class="grupo-campos">
+    <h2>Datos del baremo</h2>
+    <div class="form-grid-2">
+      <label>Tipo:
+        <input
+          type="text"
+          name="tipo"
+          id="tipo"
+          value="<%= baremo?.tipo || '' %>"
+          required
+        >
+      </label>
+
+      <label>Porcentaje:
+        <input
+          type="number"
+          name="porcentaje"
+          id="porcentaje"
+          min="0"
+          max="100"
+          step="0.01"
+          value="<%= baremo?.porcentaje || '' %>"
+          required
+        > %
+      </label>
+    </div>
+  </div>
+
+  <div class="acciones-finales d-flex justify-content-between align-items-center mt-4">
+    <a href="/baremos" class="enlace-final">← Volver</a>
+    <div class="d-flex align-items-center gap-2">
+      <button type="submit" class="btn-main-blanco">
+        <%= isEdicion ? 'Actualizar' : 'Registrar' %>
+      </button>
+
+      <% if (isEdicion) { %>
+        <button
+          type="submit"
+          class="btn-main-blanco"
+          form="form-baremo"
+          formaction="/baremos/eliminar/<%= baremo.id %>"
+          formmethod="POST"
+          onclick="return confirm('¿Eliminar este baremo?');"
+        >
+          Eliminar
+        </button>
+      <% } %>
+    </div>
+  </div>
+
+</form>

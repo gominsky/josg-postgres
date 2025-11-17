@@ -291,6 +291,7 @@ async function init({ reset = false } = {}) {
         espacio_id    INTEGER,
         token         TEXT,
         activo        BOOLEAN NOT NULL DEFAULT FALSE,
+        baremo_id     INTEGER,
         created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );
@@ -390,6 +391,14 @@ async function init({ reset = false } = {}) {
       );
       ALTER TABLE plantillas_evento ADD COLUMN IF NOT EXISTS horas JSONB DEFAULT '{}'::jsonb;
       
+      CREATE TABLE IF NOT EXISTS baremos (
+        id           INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+        tipo         TEXT NOT NULL UNIQUE,
+        porcentaje   NUMERIC(5,2) NOT NULL CHECK (porcentaje >= 0 AND porcentaje <= 100),
+        created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+
       CREATE TABLE IF NOT EXISTS public.atril_clasificacion (
         id                   BIGSERIAL PRIMARY KEY,
         grupo_id             INT  NOT NULL REFERENCES grupos(id)   ON DELETE CASCADE,
@@ -1198,8 +1207,27 @@ ALTER TABLE IF EXISTS partitura_instrumento
         console.log('⚠️ Usa ADMIN_PASSWORD en .env para cambiar la contraseña en producción.');
       }
     }
+    // ... (después de la verificación/creación de grupos base)
+    //console.log('Grupos base verificados/creados.');
 
-    // Layout ejemplo (typo arreglado)
+    // Baremos base (idempotente)
+    const baremosBase = [
+      { tipo: 'Máximo',         porcentaje: 100 },
+      { tipo: 'Medio',          porcentaje: 50 },
+      { tipo: 'Caso de Empate', porcentaje: 0 }
+    ];
+    const resBaremos = await run('SELECT COUNT(*) FROM baremos', 'seed:baremos-count');
+    if (parseInt(resBaremos.rows[0].count, 10) === 0) {
+      for (const b of baremosBase) {
+        await run(
+          `INSERT INTO baremos (tipo, porcentaje)
+           VALUES ('${b.tipo.replace(/'/g, "''")}', ${b.porcentaje})
+           ON CONFLICT (tipo) DO NOTHING`
+        );
+      }
+      console.log('Baremos base insertados.');
+    }
+
     await run(`
       DO $$
       BEGIN
