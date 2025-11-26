@@ -187,6 +187,7 @@ router.get('/listado', async (_req, res) => {
       e2.grupo_id,
       e2.activo,
       e2.espacio_id,
+      e2.baremo_id,
       e2.sin_configurar,
       g.nombre  AS grupo_nombre,
       es.nombre AS espacio_nombre,
@@ -236,6 +237,7 @@ router.get('/listado', async (_req, res) => {
         grupo: grupo,
         espacio_id: r.espacio_id,
         espacio: cleanText(r.espacio_nombre || ''),
+        baremo_id: r.baremo_id,
         activo: r.activo,
         sin_configurar: muted,
 
@@ -268,7 +270,7 @@ router.get('/', async (req, res) => {
     try {
       const { rows: grupos }   = await db.query('SELECT id, nombre FROM grupos   ORDER BY nombre');
       const { rows: espacios } = await db.query('SELECT id, nombre FROM espacios ORDER BY nombre');
-  
+      const { rows: baremos }  = await db.query('SELECT id, tipo FROM baremos ORDER BY tipo');
       // Si hay rango => Vista LISTA
       if (desde && hasta) {
         const sql = `
@@ -288,7 +290,8 @@ router.get('/', async (req, res) => {
           title: 'Eventos',
           eventos,
           grupos,
-          espacios,                 // 👈 necesario para los selects de espacio
+          espacios,  
+          baremos,              
           enLista: true,
           filtros: { desde, hasta, grupo: grupoId ? String(grupoId) : 'todos' }
         });
@@ -299,7 +302,8 @@ router.get('/', async (req, res) => {
         title: 'Eventos',
         eventos: null,
         grupos,
-        espacios,                   // 👈 necesario para los modales
+        espacios, 
+        baremos,                 
         filtros: null,
         enLista: false
       });
@@ -335,7 +339,8 @@ router.get('/:id', async (req, res) => {
         grupo:        cleanText(e.grupo_nombre || ''),
         espacio_id:   e.espacio_id,     // 👈
         espacio:      cleanText(e.espacio_nombre || ''),
-        activo:       e.activo
+        activo:       e.activo,
+        baremo_id:    e.baremo_id 
       });
     } catch (err) {
       console.error('[eventos] GET /:id error:', err);
@@ -343,8 +348,7 @@ router.get('/:id', async (req, res) => {
     }
 });
 router.post('/', async (req, res) => {
-    const { titulo, descripcion, fecha_inicio, fecha_fin, grupo_id, activo, espacio_id } = req.body;
-  
+    const { titulo, descripcion, fecha_inicio, fecha_fin, grupo_id, activo, espacio_id, baremo_id } = req.body;
     const activoValue = (String(activo) === '1' || activo === true);
     const { fechaISO: fIniISO, horaHHMM: hiFromIni } = splitISODateTime(fecha_inicio);
     const { fechaISO: fFinISO, horaHHMM: hfFromFin } = splitISODateTime(fecha_fin);
@@ -353,12 +357,13 @@ router.post('/', async (req, res) => {
     const hora_inicio = hhmmOrNull(hiFromIni);
     const hora_fin    = hhmmOrNull(hfFromFin);
     const token = Math.random().toString(36).substring(2, 10);
-  
+    const baremoIdVal = baremo_id ? Number(baremo_id) : null;
+
     const sql = `
       INSERT INTO eventos (
-        titulo, descripcion, fecha_inicio, fecha_fin, grupo_id,
-        activo, hora_inicio, hora_fin, token, espacio_id
-      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+      titulo, descripcion, fecha_inicio, fecha_fin, grupo_id,
+      activo, hora_inicio, hora_fin, token, espacio_id, baremo_id
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
       RETURNING id
     `;
     const params = [
@@ -371,7 +376,8 @@ router.post('/', async (req, res) => {
       hora_inicio,
       hora_fin,
       token,
-      (espacio_id ? Number(espacio_id) : null)
+      (espacio_id ? Number(espacio_id) : null),
+      baremoIdVal
     ];
   
     try {
@@ -488,8 +494,8 @@ router.put('/:id', async (req, res) => {
     const id = parseInt(req.params.id, 10);
     if (!Number.isInteger(id)) return res.status(400).json({ error: 'ID inválido' });
   
-    const { titulo, descripcion, fecha_inicio, fecha_fin, grupo_id, activo, espacio_id } = req.body;
-  
+    const { titulo, descripcion, fecha_inicio, fecha_fin, grupo_id, activo, espacio_id, baremo_id } = req.body;
+    const baremoIdVal = baremo_id ? Number(baremo_id) : null;
     const activoValue = (String(activo) === '1' || activo === true);
     const { fechaISO: fIniISO, horaHHMM: hiFromIni } = splitISODateTime(fecha_inicio);
     const { fechaISO: fFinISO, horaHHMM: hfFromFin } = splitISODateTime(fecha_fin);
@@ -508,8 +514,9 @@ router.put('/:id', async (req, res) => {
           activo       = $6,
           hora_inicio  = $7,
           hora_fin     = $8,
-          espacio_id   = $9
-      WHERE id = $10
+          espacio_id   = $9,
+          baremo_id    = $10
+      WHERE id = $11
     `;
     const params = [
       titulo?.trim() || null,
@@ -521,6 +528,7 @@ router.put('/:id', async (req, res) => {
       hora_inicio,
       hora_fin,
       (espacio_id ? Number(espacio_id) : null),
+      baremoIdVal,
       id
     ];
   

@@ -45,7 +45,20 @@
             <% } %>
           </select>
         </div>
-
+        <div class="mb-3">
+          <label for="baremo_id" class="form-label">Baremo</label>
+          <select name="baremo_id" id="baremo_id" class="form-select">
+            <option value="">— Sin baremo —</option>
+            <% (baremos || []).forEach(function(b) { 
+                const tipoLower = (b.tipo || '').toString().toLowerCase();
+                const esMaximo  = (tipoLower === 'máximo' || tipoLower === 'maximo');
+            %>
+              <option value="<%= b.id %>" <%= esMaximo ? 'selected' : '' %>>
+                <%= b.tipo %>
+              </option>
+            <% }) %>
+          </select>
+        </div>
         <div class="row when-row">
           <div class="col-sm-6">
             <label for="fecha_inicio" class="form-label">Fecha y hora de inicio</label>
@@ -149,6 +162,7 @@ document.addEventListener('DOMContentLoaded', () => {
         form.espacio_id.value = (evento.espacio_id || '');
         form.descripcion.value  = evento.descripcion || '';
         form.grupo_id.value     = evento.grupo_id || '';
+        form.baremo_id.value    = evento.baremo_id || '';
         form.fecha_inicio.value = composeDTLocal(evento.fecha_inicio, evento.hora_inicio, '09:00');
         form.fecha_fin.value    = composeDTLocal(evento.fecha_fin,   evento.hora_fin,   '10:00');
         form.activo.checked     = Number(evento.activo) === 1;
@@ -248,7 +262,8 @@ eventClick: async function(info){
       hora_fin:     '',
       grupo_id:     x.grupo_id || '',
       activo:       x.activo,
-      espacio_id:   x.espacio_id || ''   // 👈 usar espacio_id
+      espacio_id:   x.espacio_id || '',   // 👈 usar espacio_id
+      baremo_id:    x.baremo_id || ''
     };
   } else {
     // Respaldo al backend si faltan props
@@ -278,6 +293,7 @@ eventClick: async function(info){
   form.titulo.value       = evento.titulo || '';
   form.descripcion.value  = evento.descripcion || '';
   form.grupo_id.value     = evento.grupo_id || '';
+  form.baremo_id.value    = evento.baremo_id || '';
   form.espacio_id.value   = evento.espacio_id || ''; // 👈 CORRECTO
 
   // Normaliza a datetime-local (ya tienes helpers arriba)
