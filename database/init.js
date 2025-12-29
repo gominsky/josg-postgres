@@ -1292,6 +1292,14 @@ ALTER TABLE IF EXISTS partitura_instrumento
 // 1) FK en eventos → espacios (idempotente: drop if exists + add)
 await run(`
   ALTER TABLE public.eventos DROP CONSTRAINT IF EXISTS fk_eventos_espacio;
+  ALTER TABLE eventos
+  ADD COLUMN IF NOT EXISTS baremo_id INTEGER;
+
+ALTER TABLE eventos
+  ADD CONSTRAINT eventos_baremo_fk
+  FOREIGN KEY (baremo_id) REFERENCES baremos(id)
+  ON DELETE SET NULL;
+
   ALTER TABLE public.eventos
     ADD CONSTRAINT fk_eventos_espacio
     FOREIGN KEY (espacio_id)

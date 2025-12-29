@@ -809,86 +809,106 @@ router.get('/horas', isAuthenticated, async (req, res) => {
   
     const sql = `
       WITH ea AS (
-        SELECT
-          asig.alumno_id AS alumno_id,
-          ev.id          AS evento_id,
-          ev.grupo_id    AS grupo_id,
-          (
-            ev.fecha_inicio::date
-            + COALESCE(
-                NULLIF(asig.hora_inicio::text,'')::time,
-                NULLIF(ev.hora_inicio::text,'')::time,
-                TIME '00:00'
-              )
-          )::timestamp AS start_ts,
-          (
-            ev.fecha_fin::date
-            + COALESCE(
-                NULLIF(asig.hora_fin::text,'')::time,
-                NULLIF(ev.hora_fin::text,'')::time,
-                TIME '23:59:59'
-              )
-          )::timestamp AS end_ts
-        FROM evento_asignaciones asig
-        JOIN eventos ev ON ev.id = asig.evento_id
-      ),
-      base AS (
-        SELECT
-          ea.alumno_id,
-          ea.evento_id,
-          ea.grupo_id,
-          EXTRACT(EPOCH FROM (ea.end_ts - ea.start_ts)) / 3600.0 AS horas_evento
-        FROM ea
-        WHERE
-          ($1::timestamp IS NULL OR ea.start_ts >= $1::timestamp)
-          AND ($2::timestamp IS NULL OR ea.end_ts   <= $2::timestamp)
-          AND ($3::int       IS NULL OR ea.grupo_id  = $3::int)
-      ),
-      agregados AS (
-        SELECT
-          b.alumno_id,
-          SUM(b.horas_evento) AS total_horas,  -- 100%
-          GREATEST(
-            COALESCE(SUM(CASE
-              -- Se considera asistido si hay fila de asistencia válida
-              WHEN asi.id IS NOT NULL AND asi.tipo IN ('manual','qr') THEN b.horas_evento
-              ELSE 0
-            END), 0)
-            - COALESCE(SUM(CASE
-              WHEN asi.id IS NOT NULL AND asi.tipo IN ('manual','qr') THEN asi.minutos_perdidos
-              ELSE 0
-            END), 0) / 60.0,                  -- minutos → horas
-            0
-          ) AS horas_asistidas
-        FROM base b
-        JOIN alumnos a ON a.id = b.alumno_id AND a.activo = TRUE
-        LEFT JOIN asistencias asi
-               ON asi.alumno_id = b.alumno_id
-              AND asi.evento_id = b.evento_id
-        WHERE
-          ($4::int IS NULL OR EXISTS (
-            SELECT 1
-            FROM alumno_instrumento ai
-            WHERE ai.alumno_id = b.alumno_id
-              AND ai.instrumento_id = $4::int
-          ))
-        GROUP BY b.alumno_id
-        HAVING SUM(b.horas_evento) > 0
-      )
-      SELECT
-        a.id                                         AS alumno_id,
-        a.nombre || ' ' || a.apellidos               AS alumno,
-        ROUND(ag.total_horas::numeric, 2)            AS total_horas,
-        ROUND(ag.horas_asistidas::numeric, 2)        AS horas_asistidas,
-        ROUND(
-          CASE WHEN ag.total_horas > 0
-               THEN (ag.horas_asistidas / ag.total_horas) * 100
-               ELSE 0 END
-          ::numeric, 1
-        )                                            AS porcentaje_asistencia
-      FROM agregados ag
-      JOIN alumnos a ON a.id = ag.alumno_id
-      ORDER BY porcentaje_asistencia DESC, alumno;
+  SELECT
+    asig.alumno_id AS alumno_id,
+    ev.id          AS evento_id,
+    ev.grupo_id    AS grupo_id,
+
+    (
+      ev.fecha_inicio::date
+      + COALESCE(
+          NULLIF(asig.hora_inicio::text,'')::time,
+          NULLIF(ev.hora_inicio::text,'')::time,
+          TIME '00:00'
+        )
+    )::timestamp AS start_ts,
+
+    (
+      ev.fecha_fin::date
+      + COALESCE(
+          NULLIF(asig.hora_fin::text,'')::time,
+          NULLIF(ev.hora_fin::text,'')::time,
+          TIME '23:59:59'
+        )
+    )::timestamp AS end_ts,
+
+    -- ✅ Factor de baremo: si no hay baremo → 1.0 (100%)
+    COALESCE(bm.porcentaje, 100)::numeric / 100.0 AS baremo_factor
+
+  FROM evento_asignaciones asig
+  JOIN eventos ev ON ev.id = asig.evento_id
+  LEFT JOIN baremos bm ON bm.id = ev.baremo_id
+),
+
+base AS (
+  SELECT
+    ea.alumno_id,
+    ea.evento_id,
+    ea.grupo_id,
+
+    -- ✅ Horas del evento ponderadas por baremo
+    (EXTRACT(EPOCH FROM (ea.end_ts - ea.start_ts)) / 3600.0) * ea.baremo_factor AS horas_evento,
+
+    -- ✅ Guardamos el factor para ponderar también minutos_perdidos
+    ea.baremo_factor
+  FROM ea
+  WHERE
+    ($1::timestamp IS NULL OR ea.start_ts >= $1::timestamp)
+    AND ($2::timestamp IS NULL OR ea.end_ts   <= $2::timestamp)
+    AND ($3::int       IS NULL OR ea.grupo_id  = $3::int)
+),
+
+agregados AS (
+  SELECT
+    b.alumno_id,
+
+    -- ✅ Total de horas (denominador) ya ponderado
+    SUM(b.horas_evento) AS total_horas,
+
+    -- ✅ Asistidas ponderadas: horas_evento - minutos_perdidos (también ponderados)
+    GREATEST(
+      COALESCE(SUM(CASE
+        WHEN asi.id IS NOT NULL AND asi.tipo IN ('manual','qr') THEN b.horas_evento
+        ELSE 0
+      END), 0)
+      - COALESCE(SUM(CASE
+        WHEN asi.id IS NOT NULL AND asi.tipo IN ('manual','qr') THEN (COALESCE(asi.minutos_perdidos,0) / 60.0) * b.baremo_factor
+        ELSE 0
+      END), 0),
+      0
+    ) AS horas_asistidas
+
+  FROM base b
+  JOIN alumnos a ON a.id = b.alumno_id AND a.activo = TRUE
+  LEFT JOIN asistencias asi
+         ON asi.alumno_id = b.alumno_id
+        AND asi.evento_id = b.evento_id
+  WHERE
+    ($4::int IS NULL OR EXISTS (
+      SELECT 1
+      FROM alumno_instrumento ai
+      WHERE ai.alumno_id = b.alumno_id
+        AND ai.instrumento_id = $4::int
+    ))
+  GROUP BY b.alumno_id
+  HAVING SUM(b.horas_evento) > 0
+)
+
+SELECT
+  a.id                           AS alumno_id,
+  a.nombre || ' ' || a.apellidos AS alumno,
+  ROUND(ag.total_horas::numeric, 2)      AS total_horas,
+  ROUND(ag.horas_asistidas::numeric, 2)  AS horas_asistidas,
+  ROUND(
+    CASE WHEN ag.total_horas > 0
+         THEN (ag.horas_asistidas / ag.total_horas) * 100
+         ELSE 0 END
+    ::numeric, 1
+  ) AS porcentaje_asistencia
+FROM agregados ag
+JOIN alumnos a ON a.id = ag.alumno_id
+ORDER BY porcentaje_asistencia DESC, alumno;
+
     `;
   
     const result = await db.query(sql, params);
