@@ -42,6 +42,7 @@
         <th class="sortable">Alumno</th>
         <th class="sortable">Horas</th>
         <th class="sortable">% sobre total</th>
+        <th class="sortable">% Caso de empate</th>
       </tr>
     </thead>
     <tbody>
@@ -50,6 +51,7 @@
           <td data-value="<%= r.id %>"><%= r.alumno %></td>
           <td data-value="<%= r.horas %>"><%= r.horas %> h</td>
           <td data-value="<%= r.porcentaje %>"><%= r.porcentaje %> %</td>
+          <td data-value="<%= r.porcentaje_empate %>"><%= r.porcentaje_caso_empate %> %
         </tr>
       <% }) %>
     </tbody>

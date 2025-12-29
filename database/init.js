@@ -1214,6 +1214,7 @@ ALTER TABLE IF EXISTS partitura_instrumento
     const baremosBase = [
       { tipo: 'Máximo',         porcentaje: 100 },
       { tipo: 'Medio',          porcentaje: 50 },
+      { tipo: 'Sin peso',          porcentaje: 0 },
       { tipo: 'Caso de Empate', porcentaje: 0 }
     ];
     const resBaremos = await run('SELECT COUNT(*) FROM baremos', 'seed:baremos-count');
@@ -1294,8 +1295,8 @@ await run(`
   ALTER TABLE public.eventos DROP CONSTRAINT IF EXISTS fk_eventos_espacio;
   ALTER TABLE eventos
   ADD COLUMN IF NOT EXISTS baremo_id INTEGER;
-
-ALTER TABLE eventos
+  ALTER TABLE eventos DROP CONSTRAINT IF EXISTS eventos_baremo_fk;
+  ALTER TABLE eventos
   ADD CONSTRAINT eventos_baremo_fk
   FOREIGN KEY (baremo_id) REFERENCES baremos(id)
   ON DELETE SET NULL;
