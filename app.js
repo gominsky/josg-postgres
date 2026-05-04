@@ -28,8 +28,15 @@ process.on('unhandledRejection', (reason) => {
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(methodOverride('_method'));
+if (!process.env.SESSION_SECRET) {
+  throw new Error('[BOOT] SESSION_SECRET no está definido. Revisa tu archivo .env');
+}
+if (!process.env.JWT_SECRET) {
+  throw new Error('[BOOT] JWT_SECRET no está definido. Revisa tu archivo .env');
+}
+
 app.use(session({
-  secret: process.env.SESSION_SECRET || 'SESSION_SECRET',
+  secret: process.env.SESSION_SECRET,
   store: new PgStore({
     db,
     tableName: 'session',           // por defecto es 'session'
