@@ -28,3 +28,5 @@ Thumbs.db
 
 #No modificar db.js
 database/db.js
+
+.env
