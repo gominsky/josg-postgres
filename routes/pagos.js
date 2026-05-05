@@ -166,63 +166,80 @@ router.post('/', async (req, res) => {
 
 
 // Generar cuotas (por rango y tipo)
+// ─────────────────────────────────────────────────────────────────
+// REEMPLAZA únicamente esta función en routes/pagos.js
+// Busca: router.post('/generar-cuotas', ...
+// ─────────────────────────────────────────────────────────────────
+
+// ✅ CORREGIDO: de N queries en bucle → 1 INSERT masivo con unnest
+// ✅ CORREGIDO: usa cliente dedicado + transacción
+// ✅ CORREGIDO: ON CONFLICT DO NOTHING evita duplicados sin SELECT previo
+//    (requiere: UNIQUE(alumno_id, cuota_id, fecha_vencimiento) — ya la creamos en cuotas.js)
 router.post('/generar-cuotas', async (req, res) => {
   const { alumno_id, cuota_id, fecha_inicio, fecha_fin } = req.body;
   const inicioISO = toISOorNull(fecha_inicio);
-  const finISO = toISOorNull(fecha_fin);
+  const finISO    = toISOorNull(fecha_fin);
 
   if (!alumno_id || !cuota_id || !inicioISO || !finISO) {
     return res.status(400).send('Datos inválidos para generar cuotas');
   }
 
+  const client = await db.connect();
   try {
-    const tipoRes = await db.query(`
-      SELECT tc.tipo FROM cuotas c
-      JOIN tipos_cuota tc ON c.tipo_id = tc.id
-      WHERE c.id = $1
-    `, [cuota_id]);
+    // 1) Tipo de cuota para saber la periodicidad
+    const { rows: tipoRows } = await client.query(
+      `SELECT tc.tipo FROM cuotas c
+       JOIN tipos_cuota tc ON c.tipo_id = tc.id
+       WHERE c.id = $1`,
+      [cuota_id]
+    );
+    if (!tipoRows.length) return res.status(400).send('Tipo de cuota no encontrado');
+    const tipo = tipoRows[0].tipo;
 
-    if (tipoRes.rows.length === 0) throw new Error('Tipo de cuota no encontrado');
-    const tipo = tipoRes.rows[0].tipo;
-
+    // 2) Generar todas las fechas de vencimiento en memoria
+    const fechas = [];
     let fechaActual = new Date(`${inicioISO}T00:00:00`);
-    const fin = new Date(`${finISO}T23:59:59`);
+    const fin       = new Date(`${finISO}T23:59:59`);
 
     while (fechaActual <= fin) {
       const año = fechaActual.getFullYear();
       const mes = String(fechaActual.getMonth() + 1).padStart(2, '0');
       const dia = String(fechaActual.getDate()).padStart(2, '0');
-      const fechaVenc = `${año}-${mes}-${dia}`;
-
-      const { rows } = await db.query(
-        `SELECT 1 FROM cuotas_alumno WHERE alumno_id = $1 AND cuota_id = $2 AND fecha_vencimiento = $3`,
-        [alumno_id, cuota_id, fechaVenc]
-      );
-
-      if (rows.length === 0) {
-        await db.query(
-          `INSERT INTO cuotas_alumno (alumno_id, cuota_id, fecha_vencimiento, pagado)
-           VALUES ($1, $2, $3, false)`,
-          [alumno_id, cuota_id, fechaVenc]
-        );
-      }
+      fechas.push(`${año}-${mes}-${dia}`);
 
       if (tipo === 'Mensual') {
         fechaActual.setMonth(fechaActual.getMonth() + 1);
       } else if (tipo === 'Semanal') {
         fechaActual.setDate(fechaActual.getDate() + 7);
-      } else if (tipo === 'Puntual') {
-        break;
       } else {
-        // por si aparece un tipo nuevo, evita bucle infinito
+        // Puntual u otro tipo desconocido: solo una fecha
         break;
       }
     }
 
-    res.redirect('/alumnos/' + alumno_id + '?tab=finanzas');
+    if (!fechas.length) {
+      return res.status(400).send('El rango de fechas no genera ningún vencimiento.');
+    }
+
+    // 3) Un solo INSERT masivo — ON CONFLICT DO NOTHING evita duplicados
+    await client.query('BEGIN');
+    await client.query(
+      `INSERT INTO cuotas_alumno (alumno_id, cuota_id, fecha_vencimiento, pagado)
+       SELECT $1, $2, t.fecha, false
+       FROM unnest($3::date[]) AS t(fecha)
+       ON CONFLICT (alumno_id, cuota_id, fecha_vencimiento) DO NOTHING`,
+      [alumno_id, cuota_id, fechas]
+    );
+    await client.query('COMMIT');
+
+    console.log(`[pagos/generar-cuotas] alumno=${alumno_id} cuota=${cuota_id} fechas=${fechas.length}`);
+    res.redirect(`/alumnos/${alumno_id}?tab=finanzas`);
   } catch (err) {
-    console.error('Error al generar cuotas:', err);
+    await client.query('ROLLBACK');
+    console.error('[pagos/generar-cuotas] Error:', err);
     res.status(500).send('Error al generar cuotas');
+  } finally {
+    client.release();
   }
 });
 

@@ -1,0 +1,137 @@
+/*
+ * base.css — Reset, body, layout estructural y accesibilidad.
+ * No contiene componentes concretos (botones, tablas, etc.) — eso va en components.css.
+ */
+
+/* ── Reset ───────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  font-family: var(--font);
+  color: var(--ink);
+  background: var(--bg);
+}
+
+footer { margin-top: auto; }
+
+/* ── Tipografía base ─────────────────────────────────────────── */
+h1, h2, h3, h4, h5, h6 { margin: 0 0 .5rem; line-height: 1.2; }
+
+p { margin: .25rem 0; }
+
+a {
+  color: var(--accent-dark);
+  text-decoration: none;
+}
+a:hover {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
+/* ── Accesibilidad ───────────────────────────────────────────── */
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: auto;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+.skip-link:focus {
+  left: 16px;
+  top: 12px;
+  width: auto;
+  height: auto;
+  padding: .5rem .75rem;
+  background: var(--bg);
+  border: 2px solid var(--negro);
+  border-radius: 10px;
+  z-index: 9999;
+}
+
+:where(a, button, input, select, textarea, .tile-sb, .sb-exit):focus-visible {
+  outline: 3px solid var(--amarillo);
+  outline-offset: 2px;
+}
+
+/* ── Contenedor general ──────────────────────────────────────── */
+.container {
+  max-width: var(--container-w);
+  width: min(var(--container-w), 100%);
+  margin-inline: auto;
+  padding-inline: 16px;
+}
+
+/* ── Scaffolding de página ───────────────────────────────────── */
+.hero-header {
+  padding-top: var(--top-offset);
+  min-height: calc(100vh - var(--footer-h));
+  position: relative;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+
+.page-wrap { margin-top: var(--lift); padding-bottom: 48px; }
+
+.hero-header .panel-usuario-overlay {
+  position: absolute;
+  top: var(--top-offset);
+  left: 50%;
+  transform: translateX(-50%);
+  margin-top: 0;
+}
+
+/* ── Tema cortinas (activado por JS con body.theme-curtains) ─── */
+body.theme-curtains {
+  background-color: var(--negro) !important;
+  background-image:
+    linear-gradient(90deg, var(--curtain-left, var(--azul)) 0 14%, transparent 14%),
+    linear-gradient(270deg, var(--amarillo) 0 14%, transparent 14%),
+    linear-gradient(0deg, transparent 0 74%, var(--rojo) 74% 88%, transparent 88%);
+  background-repeat: no-repeat, no-repeat, no-repeat;
+  background-position: left top, right top, center bottom;
+  background-size: 16% 100%, 16% 100%, 100% 28%;
+  background-attachment: fixed, fixed, fixed;
+}
+@media (max-width: 768px) {
+  body.theme-curtains { background-attachment: scroll !important; }
+}
+body.theme-curtains.theme-image {
+  background-image: var(--bg-image) !important;
+  background-size: cover !important;
+  background-repeat: no-repeat !important;
+  background-position: center !important;
+  background-attachment: fixed !important;
+}
+@media (max-width: 768px) {
+  body.theme-curtains.theme-image { background-attachment: scroll !important; }
+}
+
+/* ── Utilidades mínimas ──────────────────────────────────────── */
+.muted    { color: var(--muted); }
+.text-end  { text-align: right; }
+.d-flex    { display: flex; }
+.align-items-center { align-items: center; }
+.gap-2    { gap: .5rem; }
+
+.soft-hr {
+  border: 0;
+  border-top: 1px solid var(--border);
+  margin: 12px 0;
+}
+
+/* Número tabular (para tablas de precios/fechas) */
+.num {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}

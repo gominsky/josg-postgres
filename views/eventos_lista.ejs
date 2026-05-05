@@ -7,10 +7,8 @@
 title = 'Agenda de Eventos';
 hero  = false;
 
-// (en modo lista, el backend actual pasa { eventos, grupos })
 const enLista = Array.isArray(eventos);
 
-// Helpers (como en la vista original)
 const opts = { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit', timeZone:'Europe/Madrid' };
 const isValidDate = (d) => d instanceof Date && !isNaN(d.getTime());
 const toISO = (v) => {
@@ -32,122 +30,9 @@ const composeDT = (fecha, hora, fallbackHora='00:00') => {
 };
 %>
 
-<style>
-/* ===== Ajustes globales suaves para la vista ===== */
-.toolbar-right { padding-right: .25rem; }
-.switch-wrap { position: relative; top: 2px; } /* baja un pelín el switch para alinearlo con botones */
-.form-check.form-switch .form-check-input.big-switch{ transform: scale(1.2); }
-.switch-wrap.ms-4 { margin-left: 1.25rem !important; }
-
-/* ===== Estilo del formulario (compacto, neutro) ===== */
-/* Paleta sobria y contraste alto */
-:root{
-    --fg:#111; --muted:#6b7280; --border:#e5e7eb; --accent:#111; --accent-ghost:#f3f4f6;
-    --ring:0 0 0 3px rgba(17,17,17,.08);
-  }
-
-  #eventosFiltrosForm.filtros-card{
-    border:1px solid var(--border); border-radius:16px; background:#fff;
-    padding:12px 14px; box-shadow:0 1px 2px rgba(0,0,0,.04);
-  }
-
-  /* Cabecera más apretada */
-  #eventosFiltrosForm .filtros-header{ margin-bottom:6px; }
-  #eventosFiltrosForm .h1-titulo{
-    font-size:1.1rem; font-weight:800; letter-spacing:.2px; color:var(--fg); margin:0;
-  }
-
-  /* Labels micro, en mayúsculas, pegadas al control */
-  #eventosFiltrosForm .form-label{
-    margin-bottom:.15rem; font-size:.72rem; font-weight:800;
-    text-transform:uppercase; letter-spacing:.06em; color:var(--muted);
-  }
-
-  /* Campos compactos */
-  #eventosFiltrosForm .form-control-sm,
-  #eventosFiltrosForm .form-select-sm{
-    min-height:34px; padding:.3rem .5rem; font-size:.9rem; border-radius:10px;
-    border:1.5px solid var(--border);
-  }
-  #eventosFiltrosForm .form-control-sm:focus,
-  #eventosFiltrosForm .form-select-sm:focus{
-    outline:none; border-color:var(--accent); box-shadow:var(--ring);
-  }
-
-  /* Fechas: ancho consistente en desktop */
-  @media (min-width: 992px){
-    #eventosFiltrosForm .date-input{ width:10.25rem!important; }
-  }
-
-  /* Chips tipo segmented control */
-  #chipsRango{ display:flex; flex-wrap:wrap; gap:.35rem; }
-  #chipsRango .chip{
-    display:inline-flex; align-items:center; gap:.35rem;
-    padding:.28rem .6rem; font-size:.82rem; font-weight:700;
-    border:1.5px solid var(--border); border-radius:999px;
-    background:var(--accent-ghost); color:#1f2937; user-select:none; cursor:pointer;
-    transition:transform .05s ease, border-color .15s ease, background .15s ease, color .15s ease;
-  }
-  #chipsRango .chip:hover{ transform:translateY(-1px); border-color:#c7cad0; }
-  #chipsRango .chip.active{ background:var(--accent); color:#fff; border-color:var(--accent); }
-
-  /* Fila grupo + botón en línea, muy compacta */
-  #eventosFiltrosForm .inline-row{ margin-top:.25rem; }
-  #eventosFiltrosForm .inline-row .d-flex{ gap:.5rem; }
-  #eventosFiltrosForm label[for="grupo"]{ margin-bottom:.1rem!important; }
-
-  /* Botón con presencia, pero pequeño */
-  .btn-accent{
-    background:var(--accent); color:#fff; border:1px solid var(--accent); border-radius:12px;
-    padding:.45rem .8rem; line-height:1; font-weight:800; letter-spacing:.2px;
-    transition:transform .05s ease, box-shadow .15s ease, opacity .15s ease;
-  }
-  .btn-accent:hover{ box-shadow:0 6px 18px rgba(0,0,0,.12); transform:translateY(-1px); }
-  .btn-accent:active{ transform:translateY(0); }
-
-  /* Respiración general entre filas, pero compacta */
-  #eventosFiltrosForm .row.g-2{ --bs-gutter-x:.6rem; --bs-gutter-y:.4rem; }
-
-  /* Ajustes finos en móviles: todo en dos filas muy cortas */
-  @media (max-width: 575.98px){
-    #eventosFiltrosForm .h1-titulo{ font-size:1rem; }
-  }
-
-/* ===== Modal masivo: capas seguras y tamaño ===== */
-.modal { z-index: 1055; }
-.modal-backdrop { z-index: 1050; }
-#eventoMasivoModal .modal-dialog { max-width: 600px; }
-@media (min-height: 680px) { #eventoMasivoModal .modal-body { max-height: none; } }
-@media (max-height: 679px) { #eventoMasivoModal .modal-body { max-height: 65vh; overflow: auto; } }
-
-/* Cabecera negra como el resto */
-.sheet-head { display:flex; align-items:center; gap:12px; padding:12px 14px; background:#111; color:#fff; }
-
-/* Flatpickr más compacto */
-#multiDaysPickerHost { max-width:100%; overflow:hidden; }
-#eventoMasivoModal .flatpickr-calendar { transform: scale(.9); transform-origin: top left; }
-#eventoMasivoModal .flatpickr-day { width:32px; height:28px; line-height:28px; font-size:12px; }
-#eventoMasivoModal .flatpickr-months .flatpickr-month, #eventoMasivoModal .flatpickr-weekdays { font-size:12px; }
-/* Selección naranja */
-#eventoMasivoModal .flatpickr-day.selected,
-#eventoMasivoModal .flatpickr-day.start,
-#eventoMasivoModal .flatpickr-day.end { background:#ff7a18!important; border-color:#ff7a18!important; color:#fff!important; }
-#eventoMasivoModal .flatpickr-day.selected:hover,
-#eventoMasivoModal .flatpickr-day.start:hover,
-#eventoMasivoModal .flatpickr-day.end:hover { background:#e56700!important; border-color:#e56700!important; }
-#eventoMasivoModal .flatpickr-day.inRange { background: rgba(255,122,24,.15)!important; border-color:#ff7a18!important; }
-.fc-event.sin-configurar, 
-.fc .sin-configurar .fc-event-main {
-  opacity: 0.8;
-  filter: saturate(0.6);
-}
-
-</style>
-
 <!-- Barra superior -->
 <div class="d-flex align-items-center mb-3">
   <div class="ms-auto me-5 d-flex toolbar-right">
-    <!-- Pila: switch arriba, botón abajo -->
     <div class="d-flex flex-column align-items-end gap-2">
       <!-- Switch Calendario ⇄ Lista -->
       <div class="switch-wrap" title="Alternar vista">
@@ -157,7 +42,7 @@ const composeDT = (fecha, hora, fallbackHora='00:00') => {
         </div>
       </div>
 
-      <!-- Botón Eventos masivos (debajo del switch) -->
+      <!-- Botón Eventos masivos -->
       <button type="button" class="btn-main-blanco fw-bold px-3 py-2"
               data-bs-toggle="modal" data-bs-target="#eventoMasivoModal">
         Eventos masivos
@@ -166,20 +51,18 @@ const composeDT = (fecha, hora, fallbackHora='00:00') => {
   </div>
 </div>
 
-
 <% if (!enLista) { %>
-  <!-- ============== CALENDARIO (sin formulario visible) ============== -->
+  <!-- ============== CALENDARIO ============== -->
   <div id="calendar" class="bg-white p-4 rounded shadow" style="margin-top: 2rem;"></div>
 
 <% } else { %>
-  <!-- ============== FORMULARIO (compacto y neutro) ============== -->
+  <!-- ============== FORMULARIO DE FILTROS ============== -->
   <div id="ev-wrap" class="container my-3">
     <form id="eventosFiltrosForm" action="/eventos" method="GET" class="filtros-card">
       <div class="filtros-header">
         <h1 class="h1-titulo">Listado de eventos</h1>
       </div>
-    
-      <!-- Fila 1: Fechas + Chips -->
+
       <div class="row g-2 align-items-end">
         <div class="col-12 col-sm-6 col-lg-3">
           <label for="fecha" class="form-label">Fecha inicio</label>
@@ -198,8 +81,7 @@ const composeDT = (fecha, hora, fallbackHora='00:00') => {
           </div>
         </div>
       </div>
-    
-      <!-- Fila 2: Grupo + botón en la misma línea -->
+
       <div class="row g-2 align-items-end inline-row">
         <div class="col-12 col-md-8 col-lg-6">
           <label for="grupo" class="form-label">Grupo</label>
@@ -217,10 +99,9 @@ const composeDT = (fecha, hora, fallbackHora='00:00') => {
     </form>
   </div>
 
-  <!-- ============== LISTA (tabla original, sin cambios de formato) ============== -->
+  <!-- ============== LISTA ============== -->
   <div class="container mt-4 contenedor-borde">
     <div class="text-center">
-      <!-- Tabla EXACTA de la vista original -->
       <table class="tabla-estilizada">
         <thead>
           <tr>
@@ -268,31 +149,27 @@ const composeDT = (fecha, hora, fallbackHora='00:00') => {
   </div>
 <% } %>
 
-<!-- ===== JS: filtros (chips + presets) y switch de vista ===== -->
+<!-- JS: filtros, chips y switch de vista -->
 <script>
 (function(){
   const $ = (s, r=document) => r.querySelector(s);
 
-  // Switch Calendario ⇄ Lista
   const vistaSwitch = $('#vistaSwitch');
-  if (vistaSwitch){
+  if (vistaSwitch) {
     vistaSwitch.addEventListener('change', () => {
-      if (vistaSwitch.checked){
-        // Ir a LISTA: usa filtros guardados o, si no hay, mes actual entero + grupo=todos
+      if (vistaSwitch.checked) {
         let qs = null;
         try {
           const saved = JSON.parse(localStorage.getItem('ev_filtros') || 'null');
-          if (saved?.desde && saved?.hasta){
+          if (saved?.desde && saved?.hasta) {
             qs = new URLSearchParams({ desde: saved.desde, hasta: saved.hasta, grupo: saved.grupo || 'todos' });
           }
         } catch {}
-        if (!qs){
+        if (!qs) {
           const now = new Date();
           const y = now.getFullYear(), m = now.getMonth();
-          const start = new Date(y, m, 1);
-          const end   = new Date(y, m + 1, 0);
           const toISO = d => d.toISOString().slice(0,10);
-          qs = new URLSearchParams({ desde: toISO(start), hasta: toISO(end), grupo: 'todos' });
+          qs = new URLSearchParams({ desde: toISO(new Date(y,m,1)), hasta: toISO(new Date(y,m+1,0)), grupo: 'todos' });
         }
         location.href = `/eventos?${qs.toString()}`;
       } else {
@@ -301,63 +178,50 @@ const composeDT = (fecha, hora, fallbackHora='00:00') => {
     });
   }
 
-  // Presets del formulario (solo en LISTA)
-  const fDesde = document.getElementById('fecha');     // name="desde"
-  const fHasta = document.getElementById('fecha_fin'); // name="hasta"
+  const fDesde = document.getElementById('fecha');
+  const fHasta = document.getElementById('fecha_fin');
   const fGrupo = document.getElementById('grupo');
   const chips  = document.getElementById('chipsRango');
 
-  if (fDesde && fHasta){
+  if (fDesde && fHasta) {
     const toISO = d => d.toISOString().slice(0,10);
 
-    function setRange(kind){
+    function setRange(kind) {
       const now = new Date();
-      const y = now.getFullYear();
-      const m = now.getMonth();
+      const y = now.getFullYear(), m = now.getMonth();
       let start, end;
-
-      if (kind === 'mon'){                  // Mes actual entero
-        start = new Date(y, m, 1);
-        end   = new Date(y, m + 1, 0);
-      } else if (kind === 'q'){             // Trimestre en curso entero
-        const qStartM = Math.floor(m / 3) * 3;
-        start = new Date(y, qStartM, 1);
-        end   = new Date(y, qStartM + 3, 0);
-      } else if (kind === 'y'){             // Año actual entero
-        start = new Date(y, 0, 1);
-        end   = new Date(y, 12, 0);
-      } else {                              // fallback: mes actual
-        start = new Date(y, m, 1);
-        end   = new Date(y, m + 1, 0);
-      }
+      if (kind === 'mon')      { start = new Date(y,m,1);                     end = new Date(y,m+1,0); }
+      else if (kind === 'q')   { const q = Math.floor(m/3)*3; start = new Date(y,q,1); end = new Date(y,q+3,0); }
+      else if (kind === 'y')   { start = new Date(y,0,1);                     end = new Date(y,12,0); }
+      else                     { start = new Date(y,m,1);                     end = new Date(y,m+1,0); }
       fDesde.value = toISO(start);
       fHasta.value = toISO(end);
     }
 
-    function setChipActive(kind){
-      chips?.querySelectorAll('.chip').forEach(c=>c.classList.remove('active'));
+    function setChipActive(kind) {
+      chips?.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
       if (!kind) return;
       chips?.querySelector(`[data-range="${kind}"]`)?.classList.add('active');
     }
 
-    (function preloadFromURL(){
+    (function preloadFromURL() {
       const p = new URLSearchParams(location.search);
-      const hadRange = p.get('desde') || p.get('hasta');
-      if (hadRange){
+      if (p.get('desde') || p.get('hasta')) {
         if (p.get('desde')) fDesde.value = p.get('desde');
         if (p.get('hasta')) fHasta.value = p.get('hasta');
         const g = p.get('grupo') || 'todos';
-        if (fGrupo && [...fGrupo.options].some(o=>String(o.value)===String(g))) fGrupo.value = g;
-      } else { setRange('mon'); setChipActive('mon'); }
+        if (fGrupo && [...fGrupo.options].some(o => String(o.value) === String(g))) fGrupo.value = g;
+      } else {
+        setRange('mon'); setChipActive('mon');
+      }
     })();
 
-    chips?.addEventListener('click', (e)=>{
-      const el = e.target.closest('.chip'); if(!el) return;
+    chips?.addEventListener('click', (e) => {
+      const el = e.target.closest('.chip'); if (!el) return;
       setChipActive(el.dataset.range);
       setRange(el.dataset.range);
     });
 
-    // Guardar filtros al enviar (recordar al volver con el switch)
     const form = document.getElementById('eventosFiltrosForm');
     form?.addEventListener('submit', () => {
       const desde = form.querySelector('[name="desde"]')?.value || '';
@@ -369,20 +233,17 @@ const composeDT = (fecha, hora, fallbackHora='00:00') => {
 })();
 </script>
 
-<!-- ===== Cargas necesarias ANTES del parcial (orden importante) ===== -->
-<!-- FullCalendar para que el calendario se pinte en la vista correspondiente -->
+<!-- Dependencias externas -->
 <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/locales-all.global.min.js"></script>
-<!-- Flatpickr para el modal de eventos masivos -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
 <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/es.js"></script>
 
-<!-- ===== Modal para creación MASIVA ===== -->
+<!-- Modal eventos masivos -->
 <div class="modal fade modal-sheet" id="eventoMasivoModal" tabindex="-1" aria-labelledby="eventoMasivoTitulo" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
     <form id="eventoMasivoForm" class="modal-content">
-      <!-- Cabecera -->
       <div class="sheet-head">
         <h5 class="modal-title mb-0" id="eventoMasivoTitulo">Crear eventos masivos</h5>
         <button type="button" class="btn-close ms-auto" data-bs-dismiss="modal" aria-label="Cerrar"></button>
@@ -401,12 +262,11 @@ const composeDT = (fecha, hora, fallbackHora='00:00') => {
               <option value="<%= es.id %>"><%= es.nombre %></option>
             <% }) %>
           </select>
-        </div>        
+        </div>
         <div class="mb-2">
           <label class="form-label">Descripción</label>
           <textarea name="descripcion" class="form-control form-control-sm" rows="2"></textarea>
         </div>
-
         <div class="mb-2">
           <label class="form-label">Grupo</label>
           <select name="grupo_id" class="form-select form-select-sm" required>
@@ -420,7 +280,6 @@ const composeDT = (fecha, hora, fallbackHora='00:00') => {
             <% } %>
           </select>
         </div>
-
         <div class="row g-2">
           <div class="col-sm-6">
             <label class="form-label">Hora inicio</label>
@@ -431,14 +290,11 @@ const composeDT = (fecha, hora, fallbackHora='00:00') => {
             <input type="time" name="hora_fin" class="form-control form-control-sm" value="10:00" required>
           </div>
         </div>
-
         <div class="form-check form-switch mt-2">
           <input type="checkbox" name="activo" id="activoMasivo" class="form-check-input">
           <label for="activoMasivo" class="form-check-label ms-2">Activar QR</label>
         </div>
-
         <hr class="my-2">
-
         <div class="mb-2">
           <label class="form-label">Días</label>
           <input id="multiDaysPicker" class="form-control form-control-sm" placeholder="Elige varios días…" readonly>
@@ -455,10 +311,10 @@ const composeDT = (fecha, hora, fallbackHora='00:00') => {
   </div>
 </div>
 
-<!-- ===== Incluye el parcial con el modal CRUD individual (editar/crear/eliminar) ===== -->
+<!-- Parcial con modal CRUD individual -->
 <%- include('eventos_modal_scripts') %>
 
-<!-- ===== Eventos masivos: lógica robusta (abrir, flatpickr, POST) ===== -->
+<!-- Lógica eventos masivos -->
 <script>
 document.addEventListener('DOMContentLoaded', () => {
   const masivoBtn   = document.querySelector('[data-bs-target="#eventoMasivoModal"]');
@@ -467,36 +323,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (!masivoModal || !masivoForm) return;
 
-  // Mueve el modal al body para evitar clipping/z-index
   if (masivoModal.parentNode !== document.body) document.body.appendChild(masivoModal);
 
-  // Fallback: forzar apertura manual por JS (por si el data API no engancha)
-  if (masivoBtn){
-    masivoBtn.addEventListener('click', (ev) => {
-      // si ya abre por data-api, esto no molesta; si no, lo forzamos
-      try {
-        const instance = bootstrap.Modal.getOrCreateInstance(masivoModal);
-        instance.show();
-      } catch {}
+  if (masivoBtn) {
+    masivoBtn.addEventListener('click', () => {
+      try { bootstrap.Modal.getOrCreateInstance(masivoModal).show(); } catch {}
     });
   }
 
-  // Inicialización perezosa de Flatpickr (una sola vez)
-  function ensureFlatpickr(){
+  function ensureFlatpickr() {
     if (!window.flatpickr || masivoModal._fp) return masivoModal._fp || null;
     const host  = masivoModal.querySelector('#multiDaysPickerHost');
     const input = masivoModal.querySelector('#multiDaysPicker');
     if (!host || !input) return null;
 
-    if (flatpickr.l10ns && flatpickr.l10ns.es) flatpickr.localize(flatpickr.l10ns.es);
+    if (flatpickr.l10ns?.es) flatpickr.localize(flatpickr.l10ns.es);
 
     const fp = flatpickr(host, {
-      inline: true,
-      mode: 'multiple',
-      dateFormat: 'Y-m-d',
-      showMonths: 2,
-      clickOpens: false,
-      defaultDate: []
+      inline: true, mode: 'multiple', dateFormat: 'Y-m-d',
+      showMonths: 2, clickOpens: false, defaultDate: []
     });
 
     fp.set('onChange', (dates, _s, inst) => {
@@ -509,28 +354,25 @@ document.addEventListener('DOMContentLoaded', () => {
     return fp;
   }
 
-  // Al mostrar: init y saltar al mes del filtro (en LISTA)
   masivoModal.addEventListener('shown.bs.modal', () => {
     const fp = ensureFlatpickr(); if (!fp) return;
-    const fDesde = document.getElementById('fecha'); // filtro lista
+    const fDesde = document.getElementById('fecha');
     if (fDesde?.value) { try { fp.jumpToDate(fDesde.value, true); } catch {} }
   });
 
-  // Limpieza al cerrar
   masivoModal.addEventListener('hidden.bs.modal', () => {
     const input = masivoModal.querySelector('#multiDaysPicker');
-    if (masivoModal._fp){ masivoModal._fp.clear(); }
+    if (masivoModal._fp) masivoModal._fp.clear();
     if (input) input.value = '';
   });
 
-  // Submit: crear eventos masivos
   masivoForm.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const fd = new FormData(masivoForm);
+    const fd   = new FormData(masivoForm);
     const body = Object.fromEntries(fd.entries());
     body.activo = masivoForm.querySelector('[name="activo"]').checked ? '1' : '0';
 
-    const fp = masivoModal._fp;
+    const fp     = masivoModal._fp;
     const fechas = (fp && fp._selectedIso) ? fp._selectedIso : [];
     if (!fechas.length) { alert('Selecciona al menos un día'); return; }
     body.fechas = fechas;
@@ -538,10 +380,10 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       const res = await fetch('/eventos/masivo', {
         method: 'POST',
-        headers: { 'Content-Type':'application/json' },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body)
       });
-      if (!res.ok) throw new Error(await res.text().catch(()=> 'Error al crear eventos'));
+      if (!res.ok) throw new Error(await res.text().catch(() => 'Error al crear eventos'));
       bootstrap.Modal.getOrCreateInstance(masivoModal).hide();
       location.reload();
     } catch (err) {

@@ -1,45 +1,5 @@
 <% title = 'Registrar pago'; hero = false; %>
 <div class="container my-4">
-<style>
-  /* === Estética sobria, sin naranja === */
-  .panel-card{
-    background:#fff; border:1px solid #e5e7eb; border-radius:14px;
-    padding:16px; max-width:860px; margin:0 auto; overflow:visible; /* <- no recorta el desplegable */
-  }
-  .h1-center{ text-align:center; margin:0 0 1rem; }
-  .grupo-campos{ margin-bottom:1rem; }
-  .grupo-campos > h2{ font-size:1.05rem; margin:0 0 .6rem; font-weight:700; }
-  .form-grid-2{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:.75rem; }
-  .form-grid-4{ display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:.75rem; }
-
-  /* Top grid específico del selector de proveedor */
-  .topgrid{ display:grid; grid-template-columns:minmax(280px,1fr) auto; gap:.75rem; }
-  @media (max-width: 640px){ .topgrid{ grid-template-columns:1fr; } }
-
-  .form-input, .form-select, .form-control, textarea{
-    width:100%; padding:.55rem .6rem; border:1px solid #d0d5dd; border-radius:.5rem; background:#fff;
-  }
-  /* Asegura que el <select> se muestre completo y con flecha correcta en todos los navegadores */
-  .form-select{
-    appearance:auto; -webkit-appearance:menulist; -moz-appearance:auto;
-    min-height:40px; padding-right:2rem; /* deja espacio a la flecha */
-    background:#fff;
-  }
-
-  .form-label{ display:block; font-size:.92rem; margin-bottom:.25rem; }
-  .acciones-finales{ display:flex; justify-content:space-between; align-items:center; margin-top:1rem; }
-  .btn-main{ border:1px solid #111; background:#111; color:#fff; border-radius:.6rem; padding:.5rem .9rem; }
-  .btn-outline{ border:1px solid #d0d5dd; background:#fff; color:#111; border-radius:.6rem; padding:.45rem .8rem; }
-  .btn-outline:hover{ background:#f7f7f7; }
-  .btn-sm{ padding:.35rem .6rem; font-size:.9rem; }
-  .small-muted{ color:#6b7280; font-size:.92rem; }
-  .num{ white-space:nowrap; }
-  .table{ width:100%; border-collapse:collapse; }
-  .table th, .table td{ border:1px solid #e5e7eb; padding:.5rem .6rem; vertical-align:middle; }
-  .table thead th{ background:#fafafa; }
-  .table-responsive{ overflow:auto; }
-  .inline-note{ margin:.3rem 0 0; color:#6b7280; font-size:.9rem; }
-</style>
 <!-- === Paso 1: elegir proveedor (sobrio) === -->
 <div class="panel-card" style="margin-bottom:1rem;">
   <h1 class="h1-center">Registrar pago</h1>

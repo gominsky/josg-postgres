@@ -12,7 +12,7 @@
         <div class="tile-sb is-yellow h1 w2" role="alert" aria-live="polite"><span><%= error %></span></div>
       <% } %>
 
-      <form method="POST" action="/login" class="sb-auth-form" autocomplete="on" novalidate style="background-color: transparent;">
+      <form method="POST" action="/login" class="sb-auth-form" autocomplete="on" novalidate>
         <div class="tile-sb is-yellow h1 w2 sb-auth-card">
           <div class="sb-form-head sb-form-head--framed">
             <img src="/imagenes/logoJOSG.png" alt="JOSG" class="sb-login-logo" loading="lazy">
@@ -37,7 +37,7 @@
 
         <div class="tile-sb is-yellow h1 w2 sb-auth-actions">
           <button type="submit" class="btn-auth">Entrar</button>
-          <a href="/obras" class="link-aux">¿Olvidaste la contraseña?</a>
+          <a href="/recuperar" class="link-aux">¿Olvidaste la contraseña?</a>
         </div>
       </form>
     </section>
@@ -78,21 +78,18 @@
       <div id="canvas-wrap" class="canvas-wrap" data-menu="index">
         <div id="menu-principal" class="sb-grid">
           <% if (usuario.rol === 'admin' || usuario.rol === 'docente') { %>
-            <a data-id="alumnos"        href="/alumnos"             class="tile-sb is-yellow h1 w1"><span>Músicos</span></a>
-            <a data-id="eventos"        href="/eventos"             class="tile-sb is-rust   h1 w1"><span>Eventos</span></a>
-            <a data-id="informes"       href="/informes"            class="tile-sb is-black  h1 w1"><span>Informes</span></a>
-            <a data-id="mensajes"       href="/mensajes/nuevo"      class="tile-sb is-blue   h1 w1"><span>Mensajes</span></a>
-            <a data-id="partituras"     href="/partituras"          class="tile-sb is-orange h1 w1"><span>Partituras</span></a>
-           <!-- <a data-id="contabilidad"   href="/contabilidad"        class="tile-sb is-yellow h1 w1"><span>Finanzas</span></a>-->
-            <a data-id="config"         href="/configuracion"       class="tile-sb is-cream  h1 w1"><span>Configuración</span></a>
-            <a data-id="ayuda"          href="/configuracion/ayuda" class="tile-sb is-rust   h1 w1"><span>Ayuda</span></a>
-            
+            <a data-id="alumnos"    href="/alumnos"             class="tile-sb is-yellow h1 w1"><span>Músicos</span></a>
+            <a data-id="eventos"    href="/eventos"             class="tile-sb is-rust   h1 w1"><span>Eventos</span></a>
+            <a data-id="informes"   href="/informes"            class="tile-sb is-black  h1 w1"><span>Informes</span></a>
+            <a data-id="mensajes"   href="/mensajes/nuevo"      class="tile-sb is-blue   h1 w1"><span>Mensajes</span></a>
+            <a data-id="partituras" href="/partituras"          class="tile-sb is-orange h1 w1"><span>Partituras</span></a>
+            <a data-id="config"     href="/configuracion"       class="tile-sb is-cream  h1 w1"><span>Configuración</span></a>
+            <a data-id="ayuda"      href="/configuracion/ayuda" class="tile-sb is-rust   h1 w1"><span>Ayuda</span></a>
           <% } else { %>
-            <a data-id="alumnos"        href="/alumnos"       class="tile-sb is-yellow h2 w1"><span>Músicos</span></a>
-            <a data-id="eventos"        href="/eventos"       class="tile-sb is-rust   h1 w2"><span>Eventos</span></a>
-            <a data-id="informes"       href="/informes"      class="tile-sb is-black  h2 w2"><span>Informes</span></a>
-            <a data-id="ayuda"          href="/configuracion/ayuda" class="tile-sb is-cream h2 w1"><span>Ayuda</span></a>
-           
+            <a data-id="alumnos"  href="/alumnos"             class="tile-sb is-yellow h2 w1"><span>Músicos</span></a>
+            <a data-id="eventos"  href="/eventos"             class="tile-sb is-rust   h1 w2"><span>Eventos</span></a>
+            <a data-id="informes" href="/informes"            class="tile-sb is-black  h2 w2"><span>Informes</span></a>
+            <a data-id="ayuda"    href="/configuracion/ayuda" class="tile-sb is-cream  h2 w1"><span>Ayuda</span></a>
           <% } %>
         </div>
       </div>
@@ -101,146 +98,42 @@
   <% } %>
 </header>
 
-<style>
-  .container.page-wrap .sb-grid { margin-top: 22px; }
-
-  .canvas-wrap{ position: relative; }
-  .canvas-wrap.free,
-  .canvas-wrap.free-view{
-    height: 1200px;
-    border: 1px dashed rgba(0,0,0,.08);
-    border-radius: 12px;
-    padding: 8px;
-  }
-  .canvas-wrap.free  #menu-principal,
-  .canvas-wrap.free-view #menu-principal{
-    display: block !important;
-    position: relative;
-    height: 100%;
-  }
-  .canvas-wrap.free #menu-principal .tile-sb,
-  .canvas-wrap.free-view #menu-principal .tile-sb{
-    position: absolute !important;
-    margin: 0 !important;
-    min-width: 180px; min-height: 120px;
-    box-shadow: 0 4px 18px rgba(0,0,0,.08);
-    user-select: none;
-    touch-action: none;
-  }
-
-  .sb-grid .tile-sb.is-black,
-  .sb-grid .tile-sb.is-blue,
-  .sb-grid .tile-sb.is-orange,
-  .sb-grid .tile-sb.is-rust { color:#fff; }
-  .sb-grid .tile-sb.is-cream,
-  .sb-grid .tile-sb.is-yellow { color:#111; }
-
-  .tile-tools{ display:none; }
-  .canvas-wrap:not(.free) .tile-tools { display: none !important; }
-  .canvas-wrap.free .tile-tools{
-    position:absolute; top:6px; right:6px; display:flex; gap:6px; z-index:2;
-  }
-  .canvas-wrap.free .tile-tools button{
-    border:1px solid rgba(0,0,0,.15); background:#fff; border-radius:6px;
-    padding:4px 8px; font-size:12px; line-height:1; cursor:pointer;
-    box-shadow:0 1px 2px rgba(0,0,0,.08);
-  }
-  .canvas-wrap.free .tile-tools button:hover{ background:#f5f5f5; }
-
-  .dragging{ outline: 2px dashed rgba(0,0,0,.25); outline-offset: 0; }
-
-  /* Lienzo (modo libre y “solo ver”) */
-  .canvas-wrap{ position: relative; }
-  .canvas-wrap.free,
-  .canvas-wrap.free-view{
-    height: 1200px;
-    border: 1px dashed rgba(0,0,0,.08);
-    border-radius: 12px;
-    padding: 8px;
-  }
-  .canvas-wrap.free #menu-principal,
-  .canvas-wrap.free-view #menu-principal{
-    display: block !important;
-    position: relative;
-    height: 100%;
-  }
-  .canvas-wrap.free #menu-principal .tile-sb,
-  .canvas-wrap.free-view #menu-principal .tile-sb{
-    position: absolute !important;
-    margin: 0 !important;
-    min-width: 180px; min-height: 120px;
-    box-shadow: 0 4px 18px rgba(0,0,0,.08);
-    user-select: none;
-    touch-action: none;
-  }
-
-  /* Contrastes de color (texto según fondo) */
-  .sb-grid .tile-sb.is-black,
-  .sb-grid .tile-sb.is-blue,
-  .sb-grid .tile-sb.is-orange,
-  .sb-grid .tile-sb.is-rust { color:#fff; }
-  .sb-grid .tile-sb.is-cream,
-  .sb-grid .tile-sb.is-yellow { color:#111; }
-
-  /* Toolbars (solo en edición) */
-  .tile-tools{ display:none; }
-  .canvas-wrap:not(.free) .tile-tools { display: none !important; }
-  .canvas-wrap.free .tile-tools{
-    position:absolute; top:6px; right:6px; display:flex; gap:6px; z-index:2;
-  }
-  .canvas-wrap.free .tile-tools button{
-    border:1px solid rgba(0,0,0,.15); background:#fff; border-radius:6px;
-    padding:4px 8px; font-size:12px; line-height:1; cursor:pointer;
-    box-shadow:0 1px 2px rgba(0,0,0,.08);
-  }
-  .canvas-wrap.free .tile-tools button:hover{ background:#f5f5f5; }
-
-  .dragging{ outline: 2px dashed rgba(0,0,0,.25); outline-offset: 0; }
-</style>
-
-</style>
-
 <script>
-  // Toggle mostrar contraseña (página de login)
   (function(){
     var t = document.getElementById('toggle-pass');
     var p = document.getElementById('password');
-    if(t && p){
+    if (t && p) {
       t.addEventListener('change', function(){
-        var showing = t.checked;
-        p.type = showing ? 'text' : 'password';
-        t.setAttribute('aria-pressed', showing ? 'true' : 'false');
+        p.type = t.checked ? 'text' : 'password';
+        t.setAttribute('aria-pressed', t.checked ? 'true' : 'false');
       });
     }
   })();
 
   document.addEventListener('DOMContentLoaded', function(){
-    document.body.classList.add('theme-curtains','shapes-rect','theme-image');
+    document.body.classList.add('theme-curtains', 'shapes-rect', 'theme-image');
   });
 </script>
 
 <% if (usuario) { %>
   <script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
-<script src="/menu/layoutMenus.js"></script>
-<script>
-  // Inicializa el util para el menú de inicio
-  LayoutMenus.init({
-    wrapSelector:     '#canvas-wrap',
-    gridSelector:     '#menu-principal',
-    tileSelector:     'a.tile-sb',
-    btnFreeSelector:  '#btnLibre',
-    btnResetSelector: '#btnReset',
-    menuSlug:         'index'   // ← clave para guardar/cargar por usuario y menú
-  });
-  
-</script>
-<% if (error) { %>
+  <script src="/menu/layoutMenus.js"></script>
   <script>
-    // Si el servidor nos devolvió la vista con error, vaciamos la contraseña al cargar
-    document.addEventListener('DOMContentLoaded', function(){
-      var p = document.getElementById('password');
-      if (p) { p.value = ''; p.type = 'password'; p.focus(); }
+    LayoutMenus.init({
+      wrapSelector:    '#canvas-wrap',
+      gridSelector:    '#menu-principal',
+      tileSelector:    'a.tile-sb',
+      btnFreeSelector: '#btnLibre',
+      btnResetSelector:'#btnReset',
+      menuSlug:        'index'
     });
   </script>
+  <% if (error) { %>
+    <script>
+      document.addEventListener('DOMContentLoaded', function(){
+        var p = document.getElementById('password');
+        if (p) { p.value = ''; p.type = 'password'; p.focus(); }
+      });
+    </script>
   <% } %>
 <% } %>

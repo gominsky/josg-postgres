@@ -3,64 +3,6 @@
   hero  = false;
   const VISTA = (typeof vista !== 'undefined' && vista === 'lista') ? 'lista' : 'tarjetas';
 %>
-<style>
-  .header-compact{ display:flex; align-items:center; gap:12px; }
-
-  /* Empuja todo el bloque a la derecha
-     y sácalo un poco del contenedor para “pegarlo” al borde de la página */
-  .header-actions{
-    margin-left:auto;
-    display:flex; align-items:center; gap:.75rem;
-    position:relative;
-    right:-14px;          /* sobresale 14px: casi pegado al borde */
-  }
-  @media (min-width: 992px){
-    .header-actions{ right:-22px; }  /* un pelín más fuera en desktop */
-  }
-  
-  /* Tabla compacta y estrecha */
-  .tabla-compacta-wrap{
-    max-width: 980px;      /* límite de ancho total de la tabla */
-    margin: 0 auto;        /* centrada dentro del contenedor */
-  }
-  @media (min-width: 1280px){
-    .tabla-compacta-wrap{ max-width: 920px; }  /* aún más estrecha en pantallas grandes */
-  }
-
-  .tabla-compacta{
-    width: 100%;
-    table-layout: fixed;   /* evita columnas gigantes por textos largos */
-    font-size: .86rem;     /* texto más pequeño */
-  }
-  .tabla-compacta th,
-  .tabla-compacta td{
-    padding: .30rem .45rem;   /* celdas bajitas */
-    line-height: 1.15;
-    white-space: nowrap;      /* que no salte de línea (mejor densidad) */
-    overflow: hidden;
-    text-overflow: ellipsis;  /* … si se corta */
-  }
-
-  /* Reparte el ancho de columnas */
-  .tabla-compacta thead th:nth-child(1){ width: 36%; }  /* Nombre */
-  .tabla-compacta thead th:nth-child(2){ width: 28%; }  /* Instrumentos */
-  .tabla-compacta thead th:nth-child(3){ width: 26%; }  /* Grupos */
-  .tabla-compacta thead th:nth-child(4){ width: 10%; }  /* Estado */
-
-  /* Badges más pequeñas */
-  .tabla-compacta .badge{
-    font-size: .72rem;
-    padding: .12rem .35rem;
-    border-radius: 999px;
-      /* Ordenable */
-  .th-sortable { cursor: pointer; user-select: none; position: relative; }
-  .th-sortable::after{
-    content: '↕'; font-size:.8em; opacity:.4; margin-left:.35rem;
-  }
-  .th-sortable[aria-sort="ascending"]::after { content: '↑'; opacity:.9; }
-  .th-sortable[aria-sort="descending"]::after{ content: '↓'; opacity:.9; }
-  }
-</style>
 
 <div class="header-compact">
   <h1 class="h1-titulo">Músicos</h1>
@@ -76,6 +18,7 @@
     </div>
   </div>
 </div>
+
 <form method="GET" id="filtro-form" class="formulario-centrado filtro-card--shape">
   <div class="campo-filtro">
     <label for="estado">Estado</label>
@@ -108,67 +51,62 @@
            value="<%= typeof busqueda !== 'undefined' ? busqueda : '' %>">
   </div>
 
-  <!-- Mantener la vista actual al cambiar filtros -->
   <input type="hidden" name="vista" value="<%= VISTA %>">
 </form>
 
 <% if (alumnos.length > 0) { %>
-
   <% if (VISTA === 'tarjetas') { %>
-    <!-- ===== Tarjetas ===== -->
     <div class="dashboard-grid" id="grid-alumnos">
       <% alumnos.forEach(alumno => { %>
-        <a href="/alumnos/<%= alumno.id %>" class="card <%= alumno.activo === false ? 'pasivo' : 'activo' %>"
+        <a href="/alumnos/<%= alumno.id %>"
+           class="card <%= alumno.activo === false ? 'pasivo' : 'activo' %>"
            data-fulltext="<%= (alumno.nombre + ' ' + alumno.apellidos + ' ' + (alumno.instrumentos||'')).toLowerCase() %>">
           <div class="alumno-nombre" title="<%= alumno.nombre %> <%= alumno.apellidos %>">
             <%= alumno.nombre %> <%= alumno.apellidos %>
           </div>
           <% if (alumno.instrumentos) { %>
-            <div style="font-size:.85rem; color:#666; margin-top:.2rem;">
-              <%= alumno.instrumentos %>
-            </div>
+            <div class="muted" style="font-size:.85rem;margin-top:.2rem;"><%= alumno.instrumentos %></div>
           <% } %>
         </a>
       <% }) %>
     </div>
 
   <% } else { %>
-    <!-- ===== Lista (tabla compacta) ===== -->
-<div class="table-responsive tabla-compacta-wrap" style="padding: 0;">
-  <table class="tabla-estilizada tabla-compacta">
-    <thead>
-      <tr>
-        <th class="th-sortable" data-col="0" scope="col" tabindex="0" aria-sort="none">Nombre</th>
-        <th class="th-sortable" data-col="1" scope="col" tabindex="0" aria-sort="none">Instrumentos</th>
-        <th class="th-sortable" data-col="2" scope="col" tabindex="0" aria-sort="none">Grupos</th>
-        <th class="th-sortable" data-col="3" scope="col" tabindex="0" aria-sort="none">Estado</th>
-      </tr>
-    </thead>
-    <tbody id="tabla-alumnos-body">
-      <% alumnos.forEach(a => { 
-     const nombre = (a.nombre || '').trim();
-     const apellidos = (a.apellidos || '').trim();
-     const fullName = `${nombre} ${apellidos}`.trim();
-     const sortName = (apellidos || nombre).toLowerCase() + ' ' + nombre.toLowerCase(); // <-- clave por apellidos
-     const inst = (a.instrumentos || '—');
-     const grps = (a.grupos || '—');
-     const activoNum = a.activo ? 1 : 0;
-      %>
-        <tr class="fila-enlace" onclick="location.href='/alumnos/<%= a.id %>'" style="cursor:pointer;">
-          <td data-sort="<%= sortName %>"><strong><%= fullName %></strong></td>
-          <td data-sort="<%= inst.toLowerCase() %>"><%= inst %></td>
-          <td data-sort="<%= grps.toLowerCase() %>"><%= grps %></td>
-          <td data-sort="<%= activoNum %>">
-            <span class="badge bg-<%= a.activo ? 'success' : 'danger' %>">
-              <%= a.activo ? 'Activo' : 'No activo' %>
-            </span>
-          </td>
-        </tr>
-      <% }) %>
-    </tbody>   
-  </table>
-</div>
- <% } %>
+    <div class="table-responsive tabla-compacta-wrap">
+      <table class="tabla-estilizada tabla-compacta">
+        <thead>
+          <tr>
+            <th class="th-sortable" data-col="0" scope="col" tabindex="0" aria-sort="none">Nombre</th>
+            <th class="th-sortable" data-col="1" scope="col" tabindex="0" aria-sort="none">Instrumentos</th>
+            <th class="th-sortable" data-col="2" scope="col" tabindex="0" aria-sort="none">Grupos</th>
+            <th class="th-sortable" data-col="3" scope="col" tabindex="0" aria-sort="none">Estado</th>
+          </tr>
+        </thead>
+        <tbody id="tabla-alumnos-body">
+          <% alumnos.forEach(a => {
+            const nombre    = (a.nombre   || '').trim();
+            const apellidos = (a.apellidos || '').trim();
+            const fullName  = `${nombre} ${apellidos}`.trim();
+            const sortName  = (apellidos || nombre).toLowerCase() + ' ' + nombre.toLowerCase();
+            const inst      = (a.instrumentos || '—');
+            const grps      = (a.grupos || '—');
+            const activoNum = a.activo ? 1 : 0;
+          %>
+            <tr class="fila-enlace" onclick="location.href='/alumnos/<%= a.id %>'" style="cursor:pointer;">
+              <td data-sort="<%= sortName %>"><strong><%= fullName %></strong></td>
+              <td data-sort="<%= inst.toLowerCase() %>"><%= inst %></td>
+              <td data-sort="<%= grps.toLowerCase() %>"><%= grps %></td>
+              <td data-sort="<%= activoNum %>">
+                <span class="badge bg-<%= a.activo ? 'success' : 'danger' %>">
+                  <%= a.activo ? 'Activo' : 'No activo' %>
+                </span>
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  <% } %>
 <% } %>
 
 <div class="volver-bloque-izquierda">
@@ -180,7 +118,6 @@
 </div>
 
 <script>
-  // Filtro en vivo (sólo tarjetas)
   document.getElementById('busqueda-alumnos')?.addEventListener('input', function () {
     const filtro = this.value.toLowerCase().trim();
     document.querySelectorAll('#grid-alumnos .card')?.forEach(t => {
@@ -189,7 +126,6 @@
     });
   });
 
-  // Switch: cambia ?vista=lista|tarjetas sin depender del form
   (function(){
     const sw = document.getElementById('vistaSwitch');
     if (!sw) return;
@@ -199,67 +135,51 @@
       location.href = url.toString();
     });
   })();
-</script>
-<script>
+
   (function(){
     const tbody = document.getElementById('tabla-alumnos-body');
     if (!tbody) return;
-  
     const ths = Array.from(document.querySelectorAll('.th-sortable'));
-    let sortState = { col: null, dir: 'none' }; // 'asc' | 'desc' | 'none'
-  
-    function cmp(a, b, numeric=false){
-      if (numeric){
-        const na = Number(a)||0, nb = Number(b)||0;
-        return na - nb;
-      }
-      // texto
-      return a.localeCompare(b, 'es', { sensitivity:'base' });
+    let sortState = { col: null, dir: 'none' };
+
+    function cmp(a, b, numeric = false) {
+      if (numeric) { const na = Number(a)||0, nb = Number(b)||0; return na - nb; }
+      return a.localeCompare(b, 'es', { sensitivity: 'base' });
     }
-  
-    function sortBy(colIdx){
-      const rows = Array.from(tbody.querySelectorAll('tr'));
+
+    function sortBy(colIdx) {
+      const rows    = Array.from(tbody.querySelectorAll('tr'));
       const isEstado = colIdx === 3;
       const nextDir =
         (sortState.col !== colIdx) ? 'asc' :
         (sortState.dir === 'asc' ? 'desc' : (sortState.dir === 'desc' ? 'none' : 'asc'));
-  
-      // reset aria
-      ths.forEach(th => th.setAttribute('aria-sort','none'));
-  
-      if (nextDir === 'none'){
-        // restaurar orden original (DOM order): recarga ligera
-        location.replace(location.href); // simple y efectivo en vista lista
-        return;
-      }
-  
-      // marca cabecera
+
+      ths.forEach(th => th.setAttribute('aria-sort', 'none'));
+      if (nextDir === 'none') { location.replace(location.href); return; }
+
       const th = ths.find(t => Number(t.dataset.col) === colIdx);
       if (th) th.setAttribute('aria-sort', nextDir === 'asc' ? 'ascending' : 'descending');
-  
-      rows.sort((r1, r2)=>{
+
+      rows.sort((r1, r2) => {
         const t1 = r1.children[colIdx]?.getAttribute('data-sort') || r1.children[colIdx]?.textContent || '';
         const t2 = r2.children[colIdx]?.getAttribute('data-sort') || r2.children[colIdx]?.textContent || '';
         const res = cmp(String(t1), String(t2), isEstado);
         return nextDir === 'asc' ? res : -res;
       });
-  
-      // reinyecta
+
       const frag = document.createDocumentFragment();
       rows.forEach(r => frag.appendChild(r));
       tbody.innerHTML = '';
       tbody.appendChild(frag);
-  
       sortState = { col: colIdx, dir: nextDir };
     }
-  
-    // click + teclado accesible (Enter/Espacio)
-    ths.forEach(th=>{
+
+    ths.forEach(th => {
       const col = Number(th.dataset.col);
-      th.addEventListener('click', ()=> sortBy(col));
-      th.addEventListener('keydown', (e)=>{
+      th.addEventListener('click', () => sortBy(col));
+      th.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); sortBy(col); }
       });
     });
   })();
-  </script>  
+</script>

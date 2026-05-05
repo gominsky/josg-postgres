@@ -16,54 +16,43 @@ const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, PUBLIC_MSG_DIR),
   filename: (req, file, cb) => {
     const safeBase = String(file.originalname || 'archivo')
-      .replace(/[^\w.\-()+\s]/g, '')      // quita caracteres raros
+      .replace(/[^\w.\-()+\s]/g, '')
       .replace(/\s+/g, '_')
       .slice(0, 80);
     const ext = path.extname(safeBase).toLowerCase();
     const base = path.basename(safeBase, ext);
-    const unique = Date.now() + '_' + Math.random().toString(36).slice(2,8);
+    const unique = Date.now() + '_' + Math.random().toString(36).slice(2, 8);
     cb(null, base + '__' + unique + ext);
   }
 });
 
-// (opcional) filtro de tipos y tamaño (10 MB)
 const upload = multer({
   storage,
   limits: { fileSize: 10 * 1024 * 1024 },
-  fileFilter(req, file, cb){
+  fileFilter(req, file, cb) {
     const okTypes = [
       'application/pdf',
-      'image/png','image/jpeg','image/webp',
-      'application/zip','application/x-zip-compressed',
-      'application/msword','application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      'application/vnd.ms-excel','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      'image/png', 'image/jpeg', 'image/webp',
+      'application/zip', 'application/x-zip-compressed',
+      'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     ];
-    if (okTypes.includes(file.mimetype)) return cb(null, true);
-    cb(null, true); // o pon false para bloquear; aquí lo dejamos permisivo
+    cb(null, okTypes.includes(file.mimetype));
   }
 });
 
-/* --------------------------- utilidades --------------------------- */
+/* ====== utilidades ====== */
 async function borrarAdjuntosFisicos(client, mensajeId) {
-  // lee los adjuntos ANTES de borrar filas
   const { rows } = await client.query(
     'SELECT filename FROM mensaje_adjuntos WHERE mensaje_id = $1',
     [mensajeId]
   );
-
   for (const r of rows) {
-    const stored = String(r.filename || '');     // p.ej. "/mensajes/ARCHIVO__123abc.pdf"
-    const fileOnDisk = path.join(
-      PUBLIC_MSG_DIR,
-      path.basename(stored)                       // => "ARCHIVO__123abc.pdf"
-    );
+    const fileOnDisk = path.join(PUBLIC_MSG_DIR, path.basename(String(r.filename || '')));
     try {
       await fs.promises.unlink(fileOnDisk);
-      // console.log('🗑️ borrado', fileOnDisk);
     } catch (e) {
-      if (e.code !== 'ENOENT') {
-        console.warn('No se pudo borrar adjunto:', fileOnDisk, e.message);
-      }
+      if (e.code !== 'ENOENT') console.warn('[mensajes] No se pudo borrar adjunto:', fileOnDisk, e.message);
     }
   }
 }
@@ -74,14 +63,15 @@ function toIntArray(x) {
   if (typeof x === 'string') return x.split(',').map(n => parseInt(n, 10)).filter(Number.isInteger);
   return [];
 }
+
 function sanitizeUrl(u) {
   if (!u) return null;
   let s = String(u).trim();
   if (!s) return null;
-  // añade https:// si el usuario pegó "ejemplo.com"
   if (!/^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//.test(s)) s = 'https://' + s;
   return s;
 }
+
 function toUrlArray(x, max = 10) {
   if (!x) return [];
   const arr = Array.isArray(x) ? x : [x];
@@ -94,23 +84,58 @@ function toUrlArray(x, max = 10) {
   return out;
 }
 
+// ✅ CORREGIDO: movidas al nivel del módulo, fuera de cualquier handler
+async function getAlumnoIdsPorGrupo(client, grupos) {
+  const { rows } = await client.query(
+    `SELECT DISTINCT ag.alumno_id
+       FROM alumno_grupo ag
+      WHERE ag.grupo_id = ANY($1::int[])`,
+    [grupos]
+  );
+  return rows.map(r => Number(r.alumno_id)).filter(Number.isInteger);
+}
+
+// ✅ CORREGIDO: catch{} vacío reemplazado por catch con log
+async function getAlumnoIdsPorInstrumentos(client, instrumentos) {
+  // 1) Intento con tabla relación alumno_instrumento
+  try {
+    const { rows } = await client.query(
+      `SELECT DISTINCT ai.alumno_id
+         FROM alumno_instrumento ai
+        WHERE ai.instrumento_id = ANY($1::int[])`,
+      [instrumentos]
+    );
+    if (rows.length) return rows.map(r => Number(r.alumno_id)).filter(Number.isInteger);
+  } catch (e) {
+    console.warn('[mensajes] alumno_instrumento no disponible, usando fallback:', e.message);
+  }
+
+  // 2) Fallback: instrumento directo en alumnos.instrumento_id
+  const { rows } = await client.query(
+    `SELECT DISTINCT a.id AS alumno_id
+       FROM alumnos a
+      WHERE a.instrumento_id = ANY($1::int[])`,
+    [instrumentos]
+  );
+  return rows.map(r => Number(r.alumno_id)).filter(Number.isInteger);
+}
+
 router.get('/ayuda', (req, res) => {
   res.render('ayuda_mensajes');
 });
 
-/* ---------------------------- crear/enviar ---------------------------- */
+/* ====== crear/enviar ====== */
 router.post('/', isAuthenticated, isDocente, upload.array('adjuntos', 5), async (req, res) => {
-  // Campos vienen ahora vía multipart/form-data (pero tu toIntArray/toUrlArray siguen sirviendo)
   const titulo = (req.body.titulo || '').trim();
   const cuerpo = (req.body.cuerpo || '').trim();
   const url    = sanitizeUrl(req.body.url || null);
-  const links  = toUrlArray(req.body.links, 10); // admite múltiples 'links' en el form
+  const links  = toUrlArray(req.body.links, 10);
 
   const broadcast = String(req.body.broadcast) === 'true' || req.body.broadcast === true;
-  const gruposArr = toIntArray(req.body.grupos);         // admite "1,2,3" o múltiples campos
+  const gruposArr = toIntArray(req.body.grupos);
   const instrArr  = toIntArray(req.body.instrumentos);
 
-  // Resolver por nombre (igual que antes)
+  // Resolver grupos por nombre si se enviaron así
   const nombresUnicos = [];
   if (req.body?.grupo_nombre) nombresUnicos.push(String(req.body.grupo_nombre).trim());
   if (Array.isArray(req.body?.grupos_nombres)) {
@@ -126,7 +151,9 @@ router.post('/', isAuthenticated, isDocente, upload.array('adjuntos', 5), async 
       const rs = await db.query('SELECT id FROM grupos WHERE nombre = ANY($1::text[])', [gruposNombres]);
       const ids = rs.rows.map(r => Number(r.id)).filter(Number.isInteger);
       if (ids.length) gruposArr.push(...ids);
-    } catch (e) { console.error('Error resolviendo grupos por nombre:', e.message); }
+    } catch (e) {
+      console.error('[mensajes] Error resolviendo grupos por nombre:', e.message);
+    }
   }
 
   if (!titulo || !cuerpo) {
@@ -137,7 +164,7 @@ router.post('/', isAuthenticated, isDocente, upload.array('adjuntos', 5), async 
   try {
     await client.query('BEGIN');
 
-    // 1) crear mensaje (añadimos urls JSON como ya hacías)
+    // 1) Crear mensaje
     const userId = req.session.usuario.id;
     const { rows } = await client.query(
       `INSERT INTO mensajes (titulo, cuerpo, url, urls, creado_por)
@@ -147,28 +174,22 @@ router.post('/', isAuthenticated, isDocente, upload.array('adjuntos', 5), async 
     );
     const mensajeId = rows[0].id;
 
-    // 1.b) guardar adjuntos si llegaron (guardar ruta pública /mensajes/...)
+    // 1b) Guardar adjuntos
     if (Array.isArray(req.files) && req.files.length) {
       const vals = req.files.map((f, i) =>
-        `($1, $${i*4+2}, $${i*4+3}, $${i*4+4}, $${i*4+5})`
+        `($1, $${i * 4 + 2}, $${i * 4 + 3}, $${i * 4 + 4}, $${i * 4 + 5})`
       ).join(',');
       const params = [mensajeId];
       for (const f of req.files) {
-        params.push(
-          '/mensajes/' + f.filename,     // 👈 ahora bajo /public/mensajes
-          f.originalname || null,
-          f.mimetype || null,
-          Number(f.size) || null
-        );
+        params.push('/mensajes/' + f.filename, f.originalname || null, f.mimetype || null, Number(f.size) || null);
       }
       await client.query(
-        `INSERT INTO mensaje_adjuntos (mensaje_id, filename, original_name, mime, size_bytes)
-         VALUES ${vals}`,
+        `INSERT INTO mensaje_adjuntos (mensaje_id, filename, original_name, mime, size_bytes) VALUES ${vals}`,
         params
       );
     }
 
-    // 2) registrar destinos (igual que tenías)
+    // 2) Registrar destinos
     if (broadcast) {
       await client.query('INSERT INTO mensaje_destino (mensaje_id) VALUES ($1)', [mensajeId]);
     }
@@ -180,41 +201,7 @@ router.post('/', isAuthenticated, isDocente, upload.array('adjuntos', 5), async 
       );
     }
 
-    // helpers y resolución de destinatarios (sin cambios) …
-    // Devuelve IDs de alumno por grupo(s)
-async function getAlumnoIdsPorGrupo(client, grupos){
-  // Usa la tabla de relación (ajusta el nombre si difiere)
-  const { rows } = await client.query(
-    `SELECT DISTINCT ag.alumno_id
-       FROM alumno_grupo ag
-      WHERE ag.grupo_id = ANY($1::int[])`,
-    [grupos]
-  );
-  return rows.map(r => Number(r.alumno_id)).filter(Number.isInteger);
-}
-
-// Devuelve IDs de alumno por instrumento(s)
-async function getAlumnoIdsPorInstrumentos(client, instrumentos){
-  // 1) Intento con tabla relación alumno_instrumento
-  try{
-    const { rows } = await client.query(
-      `SELECT DISTINCT ai.alumno_id
-         FROM alumno_instrumento ai
-        WHERE ai.instrumento_id = ANY($1::int[])`,
-      [instrumentos]
-    );
-    if (rows.length) return rows.map(r => Number(r.alumno_id)).filter(Number.isInteger);
-  }catch{}
-
-  // 2) Fallback si guardas el instrumento en alumnos.instrumento_id
-  const { rows } = await client.query(
-    `SELECT DISTINCT a.id AS alumno_id
-       FROM alumnos a
-      WHERE a.instrumento_id = ANY($1::int[])`,
-    [instrumentos]
-  );
-  return rows.map(r => Number(r.alumno_id)).filter(Number.isInteger);
-}
+    // 3) Resolver destinatarios — ahora usa las funciones del nivel del módulo
     let destinatariosSet = new Set();
     const hasGroups = gruposArr.length > 0;
     const hasInstr  = instrArr.length > 0;
@@ -249,7 +236,7 @@ async function getAlumnoIdsPorInstrumentos(client, instrumentos){
       );
     }
 
-    // push (igual que antes)
+    // 4) Enviar push
     if (alumnoIds.length) {
       const subs = await client.query(
         `SELECT endpoint, p256dh, auth
@@ -258,12 +245,14 @@ async function getAlumnoIdsPorInstrumentos(client, instrumentos){
         [alumnoIds]
       );
       const notifTitle = `Notificación JOSG: ${titulo}`;
-      const payload = { tipo:'mensaje', mensaje_id: mensajeId, titulo: notifTitle, cuerpo, url: url || null, urls: links };
+      const payload = { tipo: 'mensaje', mensaje_id: mensajeId, titulo: notifTitle, cuerpo, url: url || null, urls: links };
       for (const s of subs.rows) {
         try {
           const ret = await enviarPush({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, payload);
           if (ret === 'expired') await client.query('DELETE FROM push_suscripciones WHERE endpoint = $1', [s.endpoint]);
-        } catch (e) { console.warn('Aviso: fallo enviando push:', e?.statusCode || e?.message); }
+        } catch (e) {
+          console.warn('[mensajes] Fallo enviando push:', e?.statusCode || e?.message);
+        }
       }
     }
 
@@ -271,15 +260,14 @@ async function getAlumnoIdsPorInstrumentos(client, instrumentos){
     res.json({ success: true, mensaje_id: mensajeId, enviados: alumnoIds.length });
   } catch (err) {
     try { await client.query('ROLLBACK'); } catch {}
-    console.error('❌ Crear/enviar mensaje:', err);
+    console.error('[mensajes] Error al crear/enviar mensaje:', err);
     res.status(500).json({ error: 'Error creando o enviando el mensaje' });
   } finally {
     client.release();
   }
 });
 
-/* ---------------------- suscripción web push ---------------------- */
-/** body: { endpoint, keys: { p256dh, auth } } */
+/* ====== suscripción web push ====== */
 router.post('/push/subscribe', requireAlumno, async (req, res) => {
   const alumno_id = req.alumno_id;
   const { endpoint, keys } = req.body || {};
@@ -287,21 +275,21 @@ router.post('/push/subscribe', requireAlumno, async (req, res) => {
     return res.status(400).json({ error: 'Suscripción inválida' });
   }
   try {
-    await db.query(`
-      INSERT INTO push_suscripciones (alumno_id, endpoint, p256dh, auth)
-      VALUES ($1,$2,$3,$4)
-      ON CONFLICT (endpoint) DO UPDATE
-        SET alumno_id = EXCLUDED.alumno_id, p256dh = EXCLUDED.p256dh, auth = EXCLUDED.auth
-    `, [alumno_id, endpoint, keys.p256dh, keys.auth]);
+    await db.query(
+      `INSERT INTO push_suscripciones (alumno_id, endpoint, p256dh, auth)
+       VALUES ($1,$2,$3,$4)
+       ON CONFLICT (endpoint) DO UPDATE
+         SET alumno_id = EXCLUDED.alumno_id, p256dh = EXCLUDED.p256dh, auth = EXCLUDED.auth`,
+      [alumno_id, endpoint, keys.p256dh, keys.auth]
+    );
     res.json({ success: true });
   } catch (e) {
-    console.error('❌ Guardando suscripción', e);
+    console.error('[mensajes] Error guardando suscripción:', e);
     res.status(500).json({ error: 'No se pudo guardar la suscripción' });
   }
 });
 
-/* ------------------------- bandeja (app) -------------------------- */
-/** GET /mensajes/app/mensajes?desde_id=0 */
+/* ====== bandeja (app alumno) ====== */
 router.get('/app/mensajes', requireAlumno, async (req, res) => {
   const alumnoId = req.alumno_id;
   if (!alumnoId) return res.status(400).json({ error: 'alumno_id requerido' });
@@ -311,41 +299,33 @@ router.get('/app/mensajes', requireAlumno, async (req, res) => {
     const { rows } = await db.query(`
       SELECT
         m.id, m.titulo, m.cuerpo, m.url,
-        -- Normaliza 'urls' a JSONB funcione siendo TEXT o JSON/JSONB
         COALESCE(NULLIF(m.urls::text, '')::jsonb, '[]'::jsonb) AS urls,
         m.created_at, me.leido_at,
         m.creado_por,
-        COALESCE(NULLIF(TRIM(COALESCE(u.nombre,'') || ' ' || COALESCE(u.apellidos,'')), ''),
-                 u.email,
-                 'Sistema') AS autor,
+        COALESCE(NULLIF(TRIM(COALESCE(u.nombre,'') || ' ' || COALESCE(u.apellidos,'')), ''), u.email, 'Sistema') AS autor,
         COALESCE(a.adjuntos, '[]'::json) AS adjuntos
       FROM mensaje_entrega me
       JOIN mensajes m ON m.id = me.mensaje_id
       LEFT JOIN usuarios u ON u.id = m.creado_por
       LEFT JOIN LATERAL (
         SELECT json_agg(json_build_object(
-          'filename', ma.filename,
-          'original_name', ma.original_name,
-          'mime', ma.mime,
-          'size', ma.size_bytes
+          'filename', ma.filename, 'original_name', ma.original_name,
+          'mime', ma.mime, 'size', ma.size_bytes
         ) ORDER BY ma.id ASC) AS adjuntos
-        FROM mensaje_adjuntos ma
-        WHERE ma.mensaje_id = m.id
+        FROM mensaje_adjuntos ma WHERE ma.mensaje_id = m.id
       ) a ON true
       WHERE me.alumno_id = $1 AND m.id > $2
       ORDER BY m.id DESC
       LIMIT 50
     `, [alumnoId, desdeId]);
-
     res.json(rows);
   } catch (e) {
-    console.error('❌ Listando mensajes', e);
+    console.error('[mensajes] Error listando mensajes:', e);
     res.status(500).json({ error: 'No se pudo obtener mensajes' });
   }
 });
 
-/* ---------------------- marcar como leído (app) ------------------- */
-/** POST /mensajes/app/mensajes/:id/leer */
+/* ====== marcar como leído ====== */
 router.post('/app/mensajes/:id/leer', requireAlumno, async (req, res) => {
   const alumnoId = req.alumno_id;
   const id = parseInt(req.params.id, 10);
@@ -359,66 +339,53 @@ router.post('/app/mensajes/:id/leer', requireAlumno, async (req, res) => {
     );
     res.json({ success: true });
   } catch (e) {
-    console.error('❌ Marcando leído', e);
+    console.error('[mensajes] Error marcando leído:', e);
     res.status(500).json({ error: 'No se pudo actualizar' });
   }
 });
 
-/* ---------------------- últimos 5 (admin web) --------------------- */
+/* ====== últimos mensajes (admin web) ====== */
 router.get('/ultimos', isAuthenticated, isDocente, async (req, res) => {
-  const limit = Math.min(parseInt(req.query.limit, 10) || 5, 50); // tamaño de página
-  const page  = Math.max(parseInt(req.query.page, 10) || 1, 1);    // página actual
+  const limit  = Math.min(parseInt(req.query.limit, 10) || 5, 50);
+  const page   = Math.max(parseInt(req.query.page,  10) || 1, 1);
   const offset = (page - 1) * limit;
 
   try {
-    // Total de mensajes
     const { rows: countRows } = await db.query('SELECT COUNT(*)::int AS total FROM mensajes');
     const total = countRows[0]?.total || 0;
 
-    // Mensajes de la página solicitada
     const { rows: items } = await db.query(`
       SELECT
-  m.id,
-  m.titulo,
-  m.cuerpo,
-  m.url,
-  COALESCE(NULLIF(m.urls::text, '')::jsonb, '[]'::jsonb) AS urls,
-  m.created_at,
-  m.creado_por,
-  COALESCE(NULLIF(TRIM(COALESCE(u.nombre,'') || ' ' || COALESCE(u.apellidos,'')), ''), u.email, 'Sistema') AS autor,
-  COALESCE(a.adjuntos, '[]'::json) AS adjuntos
+        m.id, m.titulo, m.cuerpo, m.url,
+        COALESCE(NULLIF(m.urls::text, '')::jsonb, '[]'::jsonb) AS urls,
+        m.created_at, m.creado_por,
+        COALESCE(NULLIF(TRIM(COALESCE(u.nombre,'') || ' ' || COALESCE(u.apellidos,'')), ''), u.email, 'Sistema') AS autor,
+        COALESCE(a.adjuntos, '[]'::json) AS adjuntos
       FROM mensajes m
       LEFT JOIN usuarios u ON u.id = m.creado_por
       LEFT JOIN LATERAL (
         SELECT json_agg(json_build_object(
-          'filename', ma.filename,
-          'original_name', ma.original_name,
-          'mime', ma.mime,
-          'size', ma.size_bytes
+          'filename', ma.filename, 'original_name', ma.original_name,
+          'mime', ma.mime, 'size', ma.size_bytes
         ) ORDER BY ma.id ASC) AS adjuntos
-        FROM mensaje_adjuntos ma
-        WHERE ma.mensaje_id = m.id
+        FROM mensaje_adjuntos ma WHERE ma.mensaje_id = m.id
       ) a ON true
       ORDER BY m.id DESC
       LIMIT $1 OFFSET $2
-    `, [limit, offset]); 
+    `, [limit, offset]);
 
     res.set('Cache-Control', 'no-store');
     res.json({
-      success: true,
-      items,
-      total,
-      page,
-      limit,
-      pages: Math.max(Math.ceil(total / limit), 1),
+      success: true, items, total, page, limit,
+      pages: Math.max(Math.ceil(total / limit), 1)
     });
   } catch (e) {
-    console.error('❌ Listando últimos mensajes', e);
+    console.error('[mensajes] Error listando últimos mensajes:', e);
     res.status(500).json({ success: false, error: 'No se pudo obtener la lista de mensajes' });
   }
 });
 
-/** DELETE /mensajes/:id */
+/* ====== eliminar mensaje ====== */
 router.delete('/:id', isAuthenticated, isDocente, async (req, res) => {
   const id = parseInt(req.params.id, 10);
   if (!id) return res.status(400).json({ error: 'ID inválido' });
@@ -426,33 +393,45 @@ router.delete('/:id', isAuthenticated, isDocente, async (req, res) => {
   const client = await db.connect();
   try {
     await client.query('BEGIN');
-
-    // 1) borrar ficheros físicos de los adjuntos
     await borrarAdjuntosFisicos(client, id);
-
-    // 2) limpiar tablas dependientes (si no tienes CASCADE en todas)
     await client.query('DELETE FROM mensaje_entrega WHERE mensaje_id = $1', [id]);
     await client.query('DELETE FROM mensaje_destino WHERE mensaje_id = $1', [id]);
-    // Si NO tienes ON DELETE CASCADE en mensaje_adjuntos, descomenta:
-    // await client.query('DELETE FROM mensaje_adjuntos WHERE mensaje_id = $1', [id]);
-
-    // 3) borrar el mensaje
     const del = await client.query('DELETE FROM mensajes WHERE id = $1', [id]);
-
     await client.query('COMMIT');
 
-    if (del.rowCount === 0) {
-      return res.status(404).json({ error: 'Mensaje no encontrado' });
-    }
+    if (del.rowCount === 0) return res.status(404).json({ error: 'Mensaje no encontrado' });
     res.json({ success: true });
   } catch (e) {
     try { await client.query('ROLLBACK'); } catch {}
-    console.error('❌ Eliminando mensaje', e);
+    console.error('[mensajes] Error eliminando mensaje:', e);
     res.status(500).json({ error: 'No se pudo eliminar el mensaje' });
   } finally {
     client.release();
   }
 });
-
+/* ====== formulario nuevo mensaje (web) ====== */
+router.get('/nuevo', isAuthenticated, isDocente, async (req, res) => {
+  try {
+    const { rows: grupos } = await db.query(
+      'SELECT id, nombre FROM grupos ORDER BY nombre'
+    );
+    const { rows: instrumentos } = await db.query(
+      'SELECT id, nombre FROM instrumentos ORDER BY nombre'
+    );
+    res.render('mensajes_nuevo', {
+      title: 'Mensajes',
+      grupos,
+      instrumentos
+    });
+  } catch (e) {
+    console.error('[mensajes] Error cargando formulario nuevo:', e);
+    res.render('mensajes_nuevo', {
+      title: 'Mensajes',
+      grupos: [],
+      instrumentos: []
+    });
+  }
+});
 
 module.exports = router;
+

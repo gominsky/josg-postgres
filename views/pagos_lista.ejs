@@ -2,32 +2,6 @@
 <% hero  = false %>
 
 <div id="pag-list-wrap" class="container my-4">
-  <style>
-  /* ensancha el contenedor en desktop */
-  @media (min-width: 992px){
-    #pag-list-wrap.container{ max-width: 1320px; }
-  }
-  @media (min-width: 1400px){
-    #pag-list-wrap.container{ max-width: 1440px; }
-  }
-
-  /* la tabla aprovecha el ancho extra */
-  #pag-list-wrap .table-lite{ table-layout: auto; width:100%; }
-
-  /* da más aire a columnas largas */
-  #pag-list-wrap .table-lite th:nth-child(2),
-  #pag-list-wrap .table-lite td:nth-child(2){ min-width: 260px; }  /* Proveedor */
-  #pag-list-wrap .table-lite th:nth-child(7),
-  #pag-list-wrap .table-lite td:nth-child(7){ min-width: 220px; }  /* Referencia */
-
-  /* números bien alineados a la derecha */
-  #pag-list-wrap .table-lite th:nth-child(3),
-  #pag-list-wrap .table-lite td:nth-child(3),
-  #pag-list-wrap .table-lite th:nth-child(4),
-  #pag-list-wrap .table-lite td:nth-child(4),
-  #pag-list-wrap .table-lite th:nth-child(5),
-  #pag-list-wrap .table-lite td:nth-child(5){ text-align:right; }
-</style>
 
   <div class="panel-card">
     <div class="list-header">

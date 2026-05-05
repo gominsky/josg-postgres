@@ -53,40 +53,6 @@
   </div>
 </div>
 
-<style>
-  .h1-titulo { font-size: clamp(1.2rem, 1.2rem + 1vw, 1.8rem); }
-  #tabla td input[type="number"] { text-align: center; }
-  #tabla td select, #tabla td input { min-width: 90px; }
-  .row-dirty { animation: flash .35s ease-in-out 1; }
-  @keyframes flash { from { background:#fff6d5; } to { background:transparent; } }
-
-  /* Matices por sección (Violín I/II) */
-  tr.sec-i  { background: rgba(255, 200, 0, .12); }
-  tr.sec-ii { background: rgba(120, 150, 255, .12); }
-  .badge-sec { font-size: .75rem; padding: .1rem .4rem; border-radius: .35rem; vertical-align: middle; }
-  .badge-i  { background:#ffe08a; }
-  .badge-ii { background:#b3c7ff; }
-
-  /* Cabecera de grupo (instrumento) */
-  #tabla .group-head td {
-    font-weight: 600;
-    letter-spacing: .2px;
-    border-top: 2px solid var(--gh-accent, #bbb);
-    background: var(--gh-bg, #f6f6f6);
-  }
-  #tabla .group-head .chip {
-    display:inline-flex; align-items:center; gap:.5rem;
-    padding:.35rem .6rem; border-radius:.5rem;
-    background: rgba(255,255,255,.5);
-  }
-  #tabla .group-head .dot {
-    width:.6rem; height:.6rem; border-radius:50%;
-    background: var(--gh-accent, #999);
-  }
-
-  /* Bordecito de color en las filas del grupo */
-  #tabla tbody tr.data-row { border-left: 6px solid transparent; }
-</style>
 <script>
   (function(){
     // ===== Elementos y estado =====

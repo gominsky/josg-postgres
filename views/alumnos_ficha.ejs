@@ -1,187 +1,27 @@
 <% title = 'Ficha del músico' %>
 <% hero = false %>
-<link rel="stylesheet" href="/styles.css">
-<style>
-  /* ====== Tokens de color y tipografía ====== */
-  .ficha-container{
-    --ink:#111;
-    --muted:#5c6670;
-    --accent:#ff6a00;
-    --chip-green:#28a745;
-    --chip-red:#dc3545;
-    --chip-warn:#f0ad4e;
-    --card:#fff;
-    --line:#eceff1;
-  }
 
-  /* ====== Reset local (sin pisar global) ====== */
-  .ficha-container,
-  .ficha-container p,
-  .ficha-container li,
-  .ficha-container td,
-  .ficha-container th,
-  .ficha-container a,
-  .ficha-container span { color: var(--ink); }
-
-  /* Títulos sobrios + acento muy sutil */
-  .h1-titulo{
-    margin:0 0 .25rem;
-    font-weight:700;
-    letter-spacing:.2px;
-  }
-  .ficha-grupo h2{
-    margin:0 0 .75rem;
-    font-size:1rem;
-    font-weight:700;
-    border-left:3px solid var(--accent);
-    padding-left:.5rem;
-    color:var(--ink);
-  }
-
-  /* Header compacto */
-  .ficha-header{ margin-bottom:.75rem; }
-  .tutor-line{ margin:.15rem 0 0; font-size:1.05rem; color:var(--muted); }
-  .tutor-line strong{ color:var(--ink); }
-
-  /* Tarjetización ligera para cada grupo */
-  .ficha-grupo{
-    background:var(--card);
-    border:1px solid var(--line);
-    border-radius:14px;
-    padding:14px;
-    margin:12px 0;
-  }
-
-  /* Perfil compacto: avatar + grid */
-  .info-flex{
-    display:grid;
-    grid-template-columns:96px 1fr;
-    gap:14px;
-    align-items:center;
-  }
-  .foto-perfil{
-    width:96px; height:96px;
-    border-radius:999px;
-    overflow:hidden;
-    border:1px solid var(--line);
-    background:#f6f7f8;
-    display:flex; align-items:center; justify-content:center;
-  }
-  .foto-perfil img{ width:100%; height:100%; object-fit:cover; display:block; }
-  .foto-perfil svg{ opacity:.6 }
-
-  /* Grid de info en 2–3 columnas fluido */
-  .info-grid{
-    display:grid;
-    grid-template-columns:repeat(auto-fit, minmax(220px,1fr));
-    gap:8px 16px;
-  }
-  .info-grid > div{
-    display:flex; gap:6px; align-items:baseline;
-    min-height:24px;
-    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
-  }
-  .info-grid > div strong{
-    font-weight:700; color:var(--ink);
-    font-size:.85rem; letter-spacing:.02em;
-  }
-
-  /* Chips (badges) modernos */
-  .badge{
-    display:inline-flex; align-items:center;
-    padding:.18rem .55rem; border-radius:999px;
-    font-weight:600; font-size:.8rem; line-height:1;
-    color:#fff !important;
-  }
-  .bg-success{ background:var(--chip-green); }
-  .bg-danger{  background:var(--chip-red); }
-  .bg-warning{ background:var(--chip-warn); }
-  /* por si alguna regla global pintaba spans en negro */
-  .info-grid .badge, .info-grid .badge *{ color:#fff !important; }
-
-  /* Tags más contenidos */
-  .tags-wrap{ display:flex; flex-wrap:wrap; gap:6px; }
-  .tag{
-    padding:.18rem .5rem; border:1px solid #ffd1a8;
-    background:#fff3e6; color:var(--ink);
-    border-radius:999px; font-size:.8rem;
-  }
-
-  /* Botones secundarios */
-  .btn-main-verde{
-    border-radius:10px; padding:.45rem .75rem; font-weight:600;
-  }
-
-  /* Tablas más aireadas (finanzas) */
-  .table th, .table td{ vertical-align:middle; }
-
-  /* Enlaces “volver/editar” sobrios con acento al pasar */
-  .enlace-final-naranja{ color:var(--ink) !important; border-bottom:2px solid var(--accent); }
-  .enlace-final-naranja:hover{ color:var(--accent) !important; }
-
-  /* Responsivo: en móviles, stack */
-  @media (max-width: 640px){
-    .info-flex{ grid-template-columns:72px 1fr; gap:10px; }
-    .foto-perfil{ width:72px; height:72px; }
-    .info-grid{ grid-template-columns:1fr; }
-    .ficha-grupo{ padding:12px; border-radius:12px; }
-  }
-  /* Instrumentos + Grupos en la misma fila en pantallas anchas */
-@media (min-width: 900px){
-  #instrumentos,
-  #grupos{
-    display:inline-block;
-    width:calc(50% - 10px);
-    vertical-align:top;
-    margin:0 10px 12px 0; /* pequeño gap entre columnas */
-  }
-  #grupos{ margin-right:0; } /* la última sin gap a la derecha */
-}
-
-/* Ajuste interno para que la tarjeta no quede “doble” de separada */
-#instrumentos.ficha-grupo,
-#grupos.ficha-grupo{
-  margin:0 0 12px 0;
-}
-
-  /* Valores de los campos en negro (sin tocar labels ni chips) */
-  .ficha-container .info-grid > div { color:#111 !important; }
-
-  /* A prueba de bombas: si hubiese spans/links coloreados en naranja */
-  .ficha-container .info-grid > div span:not(.badge),
-  .ficha-container .info-grid > div a { color:#111 !important; }
-
-  /* Mantener chips con texto blanco */
-  .ficha-container .info-grid .badge,
-  .ficha-container .info-grid .badge * { color:#fff !important; }
-</style>
-
-<script>
-  const alumnoId = <%= alumno.id %>;
-</script>
-
-<!-- NAV compacto para saltar por secciones -->
+<script>const alumnoId = <%= alumno.id %>;</script>
 
 <div class="ficha-container contenedor-borde">
   <header class="ficha-header" id="perfil">
     <h1 class="h1-titulo"><%= alumno.nombre %> <%= alumno.apellidos %></h1>
     <p class="tutor-line"><strong>Tutor:</strong> <%= alumno.tutor || '—' %></p>
-
   </header>
 
-  <!-- ========== PERFIL (como un bloque de "Foto" del form) ========== -->
+  <!-- PERFIL -->
   <section class="grupo-campos ficha-grupo" aria-labelledby="perfil-title">
     <div class="info-flex">
       <% if (alumno.foto) { %>
         <img src="/uploads/<%= alumno.foto %>" class="foto-perfil"
-        alt="Foto del alumno" loading="lazy" decoding="async" style="max-height:120px;">
+             alt="Foto del alumno" loading="lazy" decoding="async" style="max-height:120px;">
       <% } else { %>
         <div class="foto-perfil d-flex align-items-center justify-content-center bg-light text-muted" aria-label="Sin foto">
           <svg viewBox="0 0 96 96" width="56" height="56" aria-hidden="true" focusable="false" style="opacity:.6">
             <circle cx="48" cy="48" r="45" fill="none" stroke="currentColor" stroke-width="3"/>
             <path d="M48 50c9.39 0 17-7.61 17-17S57.39 16 48 16s-17 7.61-17 17 7.61 17 17 17Zm0 8c-14.36 0-30 7.5-30 20v6h60v-6c0-12.5-15.64-20-30-20Z" fill="currentColor"/>
           </svg>
-        </div>        
+        </div>
       <% } %>
 
       <div class="info-grid">
@@ -194,12 +34,12 @@
           <span class="badge <%= alumno.registrado ? 'bg-success' : 'bg-danger' %>">
             <%= alumno.registrado ? 'Sí' : 'No' %>
           </span>
-        </div>        
+        </div>
       </div>
     </div>
   </section>
 
-  <!-- ========== CONTACTO Y DIRECCIÓN ========== -->
+  <!-- CONTACTO Y DIRECCIÓN -->
   <section class="grupo-campos ficha-grupo" id="contacto" aria-labelledby="contacto-title">
     <h2 id="contacto-title">Contacto y dirección</h2>
     <div class="info-grid">
@@ -212,7 +52,7 @@
     </div>
   </section>
 
-  <!-- ========== IDENTIFICACIÓN Y FECHAS (similar a "Datos personales") ========== -->
+  <!-- IDENTIFICACIÓN Y FECHAS -->
   <section class="grupo-campos ficha-grupo" id="identificacion" aria-labelledby="ident-title">
     <h2 id="ident-title">Identificación y fechas</h2>
     <div class="info-grid">
@@ -223,7 +63,7 @@
     </div>
   </section>
 
-  <!-- ========== CENTRO EDUCATIVO ========== -->
+  <!-- CENTRO EDUCATIVO -->
   <section class="grupo-campos ficha-grupo" id="centro" aria-labelledby="centro-title">
     <h2 id="centro-title">Centro educativo</h2>
     <div class="info-grid">
@@ -232,7 +72,7 @@
     </div>
   </section>
 
-  <!-- ========== INSTRUMENTOS ========== -->
+  <!-- INSTRUMENTOS -->
   <% if (alumno.instrumentos && alumno.instrumentos.length > 0) { %>
     <section class="grupo-campos ficha-grupo" id="instrumentos" aria-labelledby="inst-title">
       <h2 id="inst-title">Instrumentos</h2>
@@ -244,7 +84,7 @@
     </section>
   <% } %>
 
-  <!-- ========== GRUPOS ========== -->
+  <!-- GRUPOS -->
   <% if (alumno.grupos && alumno.grupos.length > 0) { %>
     <section class="grupo-campos ficha-grupo" id="grupos" aria-labelledby="grupos-title">
       <h2 id="grupos-title">Grupos</h2>
@@ -256,146 +96,24 @@
     </section>
   <% } %>
 
-  <!-- ========== FINANZAS (plegable) ========== 
-  <section class="grupo-campos ficha-grupo" id="finanzas" aria-labelledby="finanzas-title">
-    <div class="flex-between">
-      <h2 id="finanzas-title">Finanzas</h2>
-      <button id="toggleResumenBtn" class="btn-main-verde">Mostrar resumen financiero</button>
-    </div>
-
-    <div id="resumenFinanciero" class="finanzas-section" style="display: none;">
-      <div class="subsection">
-        <h3>Resumen</h3>
-        <ul>
-          <li><strong>Total de cuotas generadas:</strong> <%= resumenDeuda.total_cuotas.toFixed(2) %> €</li>
-          <li><strong>Total pagado:</strong> <%= resumenDeuda.total_pagado.toFixed(2) %> €</li>
-          <li><strong>Total pendiente:</strong> <%= resumenDeuda.total_pendiente.toFixed(2) %> €</li>
-        </ul>
-      </div>
-
-      <% if (cuotasAlumno && cuotasAlumno.length > 0) { %>
-        <div class="subsection">
-          <h3>Cuotas</h3>
-          <table class="table table-sm">
-            <thead>
-              <tr>
-                <th>Nombre</th>
-                <th>Importe</th>
-                <th>Vencimiento</th>
-                <th>Estado</th>
-                <th>Fecha de pago</th>
-                <th>Acciones</th>
-              </tr>
-            </thead>
-            <tbody id="cuotas-tbody">
-              <% cuotasAlumno.slice(0, 5).forEach(c => { %>
-                <tr>
-                  <td><%= c.nombre_cuota %></td>
-                  <td><%= c.precio %> €</td>
-                  <td><%= formatDate(c.fecha_vencimiento) %></td>
-                  <td>
-                    <span class="badge bg-<%= c.pagado ? 'success' : 'warning' %>"><%= c.pagado ? 'Pagada' : 'Pendiente' %></span>
-                  </td>
-                  <td><%= c.fecha_pago ? formatDate(c.fecha_pago) : '—' %></td>
-                  <td style="text-align:center; width:60px;">
-                    <% if (!c.pagado) { %>
-                      <form action="/cuotas/alumno/eliminar/<%= c.id %>?alumno_id=<%= alumno.id %>&tab=finanzas" method="POST" style="margin:0; padding:0; display:inline; background:transparent;" onsubmit="return confirm('¿Eliminar esta cuota?');">
-                        <button title="Eliminar cuota" style="all:unset; cursor:pointer; font-size:1rem; color:#c00; line-height:1;">✕</button>
-                      </form>
-                    <% } else { %>—<% } %>
-                  </td>
-                </tr>
-              <% }) %>
-            </tbody>
-          </table>
-          <% if (cuotasAlumno.length > 5) { %>
-            <div class="text-center mt-2">
-              <button id="btn-ver-mas-cuotas" class="btn btn-sm btn-outline-secondary">Ver más cuotas</button>
-            </div>
-          <% } %>
-        </div>
-      <% } %>
-
-      <% if (pagos && pagos.length > 0) { %>
-        <div class="subsection">
-          <h3>Pagos</h3>
-          <table class="table table-hover clickable-rows">
-            <thead>
-              <tr>
-                <th>Fecha</th>
-                <th>Importe</th>
-                <th>Medio</th>
-                <th>Cuota</th>
-                <th>Referencia</th>
-                <th>PDF</th>
-              </tr>
-            </thead>
-            <tbody id="pagos-tbody">
-              <% pagos.slice(0, 5).forEach(p => { %>
-                <tr data-id="<%= p.pago_id %>" style="cursor:pointer;">
-                  <td><%= p.fecha_pago ? p.fecha_pago.split('-').reverse().join('/') : '' %></td>
-                  <td><%= Number(p.importe_pago).toFixed(2) %> €</td>
-                  <td><%= p.medio_pago %></td>
-                  <td><%= p.cuota_nombre %></td>
-                  <td><%= p.referencia || '—' %></td>
-                  <td>
-                    <a href="/pagos/<%= p.pago_id %>/recibo" target="_blank" class="btn btn-sm btn-outline-dark" onclick="event.stopPropagation()">PDF</a>
-                  </td>
-                </tr>
-              <% }) %>
-            </tbody>
-          </table>
-          <% if (pagos.length > 5) { %>
-            <div class="text-center mt-2">
-              <button id="btn-ver-mas" class="btn btn-sm btn-outline-secondary">Ver más pagos</button>
-            </div>
-          <% } %>
-        </div>
-      <% } %>
-
-      <div class="acciones-financieras">
-        <a href="/pagos/nuevo/<%= alumno.id %>" class="enlace-final-naranja">Registrar nuevo pago</a>
-        <form action="/pagos/generar-cuotas" method="POST" class="form-centrado-etiqueta">
-          <input type="hidden" name="alumno_id" value="<%= alumno.id %>">
-          <% if (cuotasDisponibles && cuotasDisponibles.length > 0) { %>
-            <div class="form-row">
-              <label style="color: white;">Tipo de cuota:
-                <select name="cuota_id" required>
-                  <% cuotasDisponibles.forEach(c => { %>
-                    <option value="<%= c.id %>"><%= c.nombre %> - <%= c.precio %> €</option>
-                  <% }) %>
-                </select>
-              </label>
-              <label style="color: white;">Desde:
-                <input type="date" name="fecha_inicio" required>
-              </label>
-              <label style="color: white;">Hasta:
-                <input type="date" name="fecha_fin" required>
-              </label>
-            </div>
-            <button type="submit" class="btn-main-blanco">Generar cuotas</button>
-          <% } else { %>
-            <p style="color: white">No hay tipos de cuota disponibles para asignar.</p>
-          <% } %>
-        </form>
-      </div>
-    </div>
-  </section>
-  -->
-  <!-- ========== ACCIONES FINALES ==========- -->
+  <!-- ACCIONES FINALES -->
   <div class="acciones-finales mt-4">
-    <div class="volver-izquierda"><a href="/alumnos" class="enlace-final-naranja">← Volver</a></div>
-    <div class="editar-centro"><a href="/alumnos/<%= alumno.id %>/editar" class="enlace-final-naranja ms-3">Editar</a></div>
+    <div class="volver-izquierda">
+      <a href="/alumnos" class="enlace-final-naranja">← Volver</a>
+    </div>
+    <div class="editar-centro">
+      <a href="/alumnos/<%= alumno.id %>/editar" class="enlace-final-naranja ms-3">Editar</a>
+    </div>
   </div>
 </div>
 
 <script>
   document.addEventListener('DOMContentLoaded', () => {
     const btnToggle = document.getElementById('toggleResumenBtn');
-    const resumen = document.getElementById('resumenFinanciero');
+    const resumen   = document.getElementById('resumenFinanciero');
+    if (!btnToggle || !resumen) return;
 
-    const urlParams = new URLSearchParams(window.location.search);
-    const tab = urlParams.get('tab');
+    const tab = new URLSearchParams(window.location.search).get('tab');
     if (tab === 'finanzas') {
       resumen.style.display = 'block';
       btnToggle.textContent = 'Ocultar resumen financiero';
@@ -407,73 +125,6 @@
       btnToggle.textContent = abierto ? 'Mostrar resumen financiero' : 'Ocultar resumen financiero';
     });
 
-    // Ver más pagos
-    let paginaPagos = 2;
-    const btnVerMas = document.getElementById('btn-ver-mas');
-    if (btnVerMas) {
-      btnVerMas.addEventListener('click', async () => {
-        try {
-          const res = await fetch(`/pagos/api/${alumnoId}?page=${paginaPagos}`);
-          const nuevosPagos = await res.json();
-          if (!nuevosPagos.length) { btnVerMas.disabled = true; btnVerMas.innerText = 'No hay más pagos'; return; }
-
-          const tbody = document.getElementById('pagos-tbody');
-          nuevosPagos.forEach(p => {
-            const tr = document.createElement('tr');
-            tr.setAttribute('data-id', p.pago_id);
-            tr.style.cursor = 'pointer';
-            tr.innerHTML = `
-              <td>${p.fecha_pago ? new Date(p.fecha_pago).toLocaleDateString('es-ES') : ''}</td>
-              <td>${parseFloat(p.importe_pago).toFixed(2)} €</td>
-              <td>${p.medio_pago}</td>
-              <td>${p.cuota_nombre}</td>
-              <td>${p.referencia || '—'}</td>
-              <td><a href="/pagos/${p.pago_id}/recibo" target="_blank" class="btn btn-sm btn-outline-dark" onclick="event.stopPropagation()">PDF</a></td>`;
-            tr.addEventListener('click', (e) => {
-              if (e.target.closest('a')) return;
-              window.location.href = `/pagos/${p.pago_id}/editar`;
-            });
-            tbody.appendChild(tr);
-          });
-          paginaPagos++;
-        } catch (error) {
-          console.error('❌ Error cargando más pagos:', error);
-        }
-      });
-    }
-
-    // Ver más cuotas
-    let paginaCuotas = 2;
-    const btnVerMasCuotas = document.getElementById('btn-ver-mas-cuotas');
-    if (btnVerMasCuotas) {
-      btnVerMasCuotas.addEventListener('click', async () => {
-        try {
-          const res = await fetch(`/cuotas/api/<%= alumno.id %>?page=${paginaCuotas}`);
-          const nuevasCuotas = await res.json();
-          if (!nuevasCuotas.length) { btnVerMasCuotas.disabled = true; btnVerMasCuotas.innerText = 'No hay más cuotas'; return; }
-
-          const tbody = document.getElementById('cuotas-tbody');
-          nuevasCuotas.forEach(c => {
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-              <td>${c.nombre_cuota}</td>
-              <td>${parseFloat(c.precio).toFixed(2)} €</td>
-              <td>${new Date(c.fecha_vencimiento).toLocaleDateString('es-ES')}</td>
-              <td><span class="badge bg-${c.pagado ? 'success' : 'warning'}">${c.pagado ? 'Pagada' : 'Pendiente'}</span></td>
-              <td>${c.fecha_pago ? new Date(c.fecha_pago).toLocaleDateString('es-ES') : '—'}</td>
-              <td style="text-align:center; width:60px;">${!c.pagado ? `
-                <form action="/cuotas/alumno/eliminar/${c.id}?alumno_id=<%= alumno.id %>&tab=finanzas" method="POST" style="margin:0; padding:0; display:inline; background:transparent;" onsubmit="return confirm('¿Eliminar esta cuota?');">
-                  <button title="Eliminar cuota" style="all:unset; cursor:pointer; font-size:1rem; color:#c00; line-height:1;">✕</button>
-                </form>` : '—'}</td>`;
-            tbody.appendChild(tr);
-          });
-          paginaCuotas++;
-        } catch (error) {
-          console.error('❌ Error cargando más cuotas:', error);
-        }
-      });
-    }
-
     // Click row pagos -> editar
     document.querySelectorAll('#pagos-tbody tr').forEach(tr => {
       tr.addEventListener('click', (e) => {
@@ -484,5 +135,3 @@
     });
   });
 </script>
-
-

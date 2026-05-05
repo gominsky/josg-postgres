@@ -3,7 +3,7 @@ const express = require('express');
 const router = express.Router();
 const db = require('../database/db');
 
-// GET: Mostrar formulario de nuevo baremo
+// GET: Formulario de nuevo baremo
 router.get('/nuevo', (req, res) => {
   res.render('baremos_ficha', { baremo: null });
 });
@@ -11,7 +11,6 @@ router.get('/nuevo', (req, res) => {
 // POST: Crear nuevo baremo
 router.post('/', async (req, res) => {
   const { tipo, porcentaje } = req.body;
-
   try {
     await db.query(
       'INSERT INTO baremos (tipo, porcentaje) VALUES ($1, $2)',
@@ -24,31 +23,23 @@ router.post('/', async (req, res) => {
   }
 });
 
-// GET: Listado de baremos con búsqueda + orden alfabético
+// GET: Listado con búsqueda + orden alfabético
 router.get('/', async (req, res) => {
   const busqueda = (req.query.busqueda || '').trim();
-
-  // Orden común (A→Z, case-insensitive)
   const ORDER = 'ORDER BY lower(tipo) ASC, id ASC';
 
-  // Si hay búsqueda, filtramos y mantenemos el orden alfabético
   const sql = busqueda
     ? `SELECT * FROM baremos
        WHERE tipo ILIKE $1
           OR CAST(porcentaje AS TEXT) ILIKE $2
        ${ORDER}`
-    : `SELECT * FROM baremos
-       ${ORDER}`;
+    : `SELECT * FROM baremos ${ORDER}`;
 
   const params = busqueda ? [`%${busqueda}%`, `%${busqueda}%`] : [];
 
   try {
     const result = await db.query(sql, params);
-    res.render('baremos_lista', {
-      baremos: result.rows,
-      busqueda,
-      hero: false
-    });
+    res.render('baremos_lista', { baremos: result.rows, busqueda, hero: false });
   } catch (err) {
     console.error('Error al obtener baremos:', err);
     res.status(500).send('Error al obtener los baremos');
@@ -58,11 +49,9 @@ router.get('/', async (req, res) => {
 // GET: Formulario de edición
 router.get('/editar/:id', async (req, res) => {
   const id = req.params.id;
-
   try {
     const result = await db.query('SELECT * FROM baremos WHERE id = $1', [id]);
     const baremo = result.rows[0];
-
     if (!baremo) return res.status(404).send('Baremo no encontrado');
     res.render('baremos_ficha', { baremo });
   } catch (err) {
@@ -75,7 +64,6 @@ router.get('/editar/:id', async (req, res) => {
 router.post('/editar/:id', async (req, res) => {
   const id = req.params.id;
   const { tipo, porcentaje } = req.body;
-
   try {
     await db.query(
       'UPDATE baremos SET tipo = $1, porcentaje = $2 WHERE id = $3',
@@ -88,10 +76,9 @@ router.post('/editar/:id', async (req, res) => {
   }
 });
 
-// POST: Eliminar baremo (desde el formulario)
+// POST: Eliminar baremo simple (desde formulario, sin dependencias)
 router.post('/eliminar/:id', async (req, res) => {
   const id = req.params.id;
-
   try {
     await db.query('DELETE FROM baremos WHERE id = $1', [id]);
     res.redirect('/baremos');
@@ -101,23 +88,26 @@ router.post('/eliminar/:id', async (req, res) => {
   }
 });
 
-// DELETE: Eliminar baremo limpiando referencias en eventos.baremo_id y avisando
+// DELETE: Eliminar baremo limpiando referencias en eventos
+// Usa cliente dedicado para garantizar que BEGIN/COMMIT van por la misma conexión
 router.delete('/:id', async (req, res) => {
   const { id } = req.params;
 
+  const client = await db.connect();
   try {
-    await db.query('BEGIN');
+    await client.query('BEGIN');
 
     // 1) Quitar referencia en eventos
-    const updEventos = await db.query(
-      'UPDATE eventos SET baremo_id = NULL WHERE baremo_id = $1',
-      [id]
+    const updEventos = await client.query(
+      'UPDATE eventos SET baremo_id = NULL WHERE baremo_id = $1', [id]
     );
 
     // 2) Borrar el baremo
-    const delB = await db.query('DELETE FROM baremos WHERE id = $1', [id]);
+    const delB = await client.query(
+      'DELETE FROM baremos WHERE id = $1', [id]
+    );
 
-    await db.query('COMMIT');
+    await client.query('COMMIT');
 
     const msg = delB.rowCount
       ? `Baremo borrado. Eventos actualizados: ${updEventos.rowCount}.`
@@ -125,10 +115,12 @@ router.delete('/:id', async (req, res) => {
 
     return res.redirect(`/baremos?notice=${encodeURIComponent(msg)}`);
   } catch (err) {
+    await client.query('ROLLBACK');
     console.error('Error al eliminar baremo:', err);
-    await db.query('ROLLBACK');
     const warn = 'No se pudo borrar el baremo. Revisa relaciones o permisos.';
     return res.redirect(`/baremos?warning=${encodeURIComponent(warn)}`);
+  } finally {
+    client.release();
   }
 });
 

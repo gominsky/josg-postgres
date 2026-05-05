@@ -1,33 +1,20 @@
-//node database/init.js --reset --yes ***resetea BD Completa
+// node database/init.js --reset --yes  ***resetea BD Completa
 
-const express = require('express');
-const session = require('express-session');
-const PgStore = require('connect-pg-simple')(session);
-const app = express();
-const path = require('path');
-const db = require('./database/db');
+const express      = require('express');
+const session      = require('express-session');
+const PgStore      = require('connect-pg-simple')(session);
+const helmet       = require('helmet');
+const rateLimit    = require('express-rate-limit');
+const app          = express();
+const path         = require('path');
+const db           = require('./database/db');
 const expressLayouts = require('express-ejs-layouts');
 const methodOverride = require('method-override');
-const fs   = require('fs'); 
+const fs           = require('fs');
 require('dotenv').config();
 const { isAuthenticated, isAdmin, isDocente } = require('./middleware/auth');
-app.set('trust proxy', 1);
-app.use('/eventos/styles', express.static(path.join(__dirname, 'public', 'styles')));
 
-// --- Logs de proceso  ---
-process.on('beforeExit', (code) => console.log('[proc] beforeExit code=', code));
-process.on('exit',       (code) => console.log('[proc] exit code=', code));
-process.on('uncaughtException', (err) => {
-  console.error('[proc] uncaughtException:', err);
-});
-process.on('unhandledRejection', (reason) => {
-  console.error('[proc] unhandledRejection:', reason);
-});
-
-// --- Parsers ---
-app.use(express.urlencoded({ extended: true }));
-app.use(express.json());
-app.use(methodOverride('_method'));
+// ─── Validación de variables críticas al arrancar ────────────────
 if (!process.env.SESSION_SECRET) {
   throw new Error('[BOOT] SESSION_SECRET no está definido. Revisa tu archivo .env');
 }
@@ -35,12 +22,44 @@ if (!process.env.JWT_SECRET) {
   throw new Error('[BOOT] JWT_SECRET no está definido. Revisa tu archivo .env');
 }
 
+// ─── Logs de proceso ─────────────────────────────────────────────
+process.on('beforeExit',        (code) => console.log('[proc] beforeExit code=', code));
+process.on('exit',              (code) => console.log('[proc] exit code=', code));
+process.on('uncaughtException', (err)  => console.error('[proc] uncaughtException:', err));
+process.on('unhandledRejection',(reason) => console.error('[proc] unhandledRejection:', reason));
+
+app.set('trust proxy', 1);
+
+// ─── Seguridad HTTP (helmet) ──────────────────────────────────────
+// Añade cabeceras: X-Frame-Options, X-Content-Type-Options, HSTS, etc.
+app.use(helmet({
+  contentSecurityPolicy: false, // desactivado para no romper EJS/inline scripts; actívalo cuando tengas el host definitivo
+  crossOriginEmbedderPolicy: false
+}));
+
+// ─── Rate limiting en login ───────────────────────────────────────
+// Máximo 10 intentos de login por IP cada 15 minutos
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: 'Demasiados intentos de acceso. Espera 15 minutos e inténtalo de nuevo.',
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: () => process.env.NODE_ENV !== 'production' // solo activo en producción
+});
+
+// ─── Parsers ──────────────────────────────────────────────────────
+app.use(express.urlencoded({ extended: true }));
+app.use(express.json());
+app.use(methodOverride('_method'));
+
+// ─── Sesión ───────────────────────────────────────────────────────
 app.use(session({
   secret: process.env.SESSION_SECRET,
   store: new PgStore({
     db,
-    tableName: 'session',           // por defecto es 'session'
-    createTableIfMissing: true      // <- crea la tabla si no existe
+    tableName: 'session',
+    createTableIfMissing: true
   }),
   resave: false,
   saveUninitialized: false,
@@ -51,12 +70,25 @@ app.use(session({
     maxAge: 1000 * 60 * 60 * 24 * 7
   }
 }));
-// --- COMPuERTA TEMPRANA PARA API (nunca redirige) ---
+
+// ─── Variables de sesión disponibles para TODAS las rutas ─────────
+app.use((req, res, next) => {
+  res.locals.usuario = req.session.usuario || null;
+  res.locals.error   = req.session.error   || null;
+  delete req.session.error;
+  next();
+});
+
+app.use((req, res, next) => {
+  res.locals.mensaje = req.session.mensaje || null;
+  delete req.session.mensaje;
+  next();
+});
+
+// ─── Compuerta temprana para API (nunca redirige) ─────────────────
 app.use((req, res, next) => {
   if (req.originalUrl.startsWith('/josgmaestro/api')) {
-    // Si trae Authorization (JWT), que lo valide el router:
     if (req.headers.authorization) return next();
-    // Si no hay token, exige sesión:
     if (!req.session?.usuario_id) {
       return res.status(401).json({ error: 'auth_required' });
     }
@@ -64,39 +96,33 @@ app.use((req, res, next) => {
   return next();
 });
 
-// --- Guard para páginas estáticas de /josgmaestro (excluye /api) ---
+// ─── Guard para páginas estáticas de /josgmaestro ─────────────────
 function requireAuthPage(req, res, next) {
-  // ¡Nunca interceptar APIs!
   if (req.path.startsWith('/api')) return next();
-
-  // Deja pasar login y assets
   const isAsset = /\.(css|js|png|jpg|jpeg|gif|svg|ico|webp|map)$/.test(req.path);
   const isLogin = req.path === '/' || req.path === '/index.html';
   if (isAsset || isLogin) return next();
-
-  // Si hay sesión, ok; si no, redirige a login
   if (req.session?.usuario_id) return next();
   return res.redirect('/josgmaestro/index.html');
 }
 
-// --- Rutas ---
-const josgmaestroRouter = require('./routes/josgmaestro');
-app.use('/josgmaestro', josgmaestroRouter); // APIs y páginas renderizadas
+// ─── Plantillas EJS ───────────────────────────────────────────────
+app.use(expressLayouts);
+app.set('layout', 'layout');
+app.set('view engine', 'ejs');
+app.set('views', path.join(__dirname, 'views'));
 
-// --- Estáticos de josgmaestro (protegidos por requireAuthPage) ---
-app.use('/josgmaestro', requireAuthPage, express.static(path.join(__dirname, 'public/josgmaestro')));
-    
-// Middleware para variables de sesión accesibles en views
-app.use((req, res, next) => {
-  res.locals.usuario = req.session.usuario || null;
-  res.locals.error = req.session.error || null;
-  delete req.session.error;
-  next();
-});
+// Función global para fechas
+app.locals.formatDate = (isoString) => {
+  if (!isoString) return '—';
+  const date = new Date(isoString);
+  if (isNaN(date)) return isoString;
+  return date.toLocaleDateString('es-ES');
+};
 
+// ─── Directorio de uploads ────────────────────────────────────────
 const UPLOADS_DIR = process.env.UPLOADS_DIR || path.join(process.cwd(), 'uploads');
 fs.mkdirSync(UPLOADS_DIR, { recursive: true });
-
 console.log('[BOOT] UPLOADS_DIR =', UPLOADS_DIR);
 try {
   fs.accessSync(UPLOADS_DIR, fs.constants.W_OK);
@@ -110,153 +136,143 @@ app.use('/uploads', express.static(UPLOADS_DIR, {
   fallthrough: false
 }));
 
-const authRoutes = require('./routes/auth');
-app.use(authRoutes);
-// ✅ Redirección simple (sin next) a login
-app.get(
-  ['/josgentumano/mensajes.html', '/firmas/mensajes.html', '/mensajes.html'],
-  (req, res) => {
-    res.redirect(302, '/josgentumano/login.html');
-  }
-);
+// ─── Estáticos públicos ───────────────────────────────────────────
+app.use('/eventos/styles', express.static(path.join(__dirname, 'public', 'styles')));
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Plantillas EJS
-app.use(expressLayouts);
-app.set('layout', 'layout');
-app.set('view engine', 'ejs');
-app.set('views', path.join(__dirname, 'views'));
+// ─── Rutas ───────────────────────────────────────────────────────
+const josgmaestroRouter = require('./routes/josgmaestro');
+app.use('/josgmaestro', josgmaestroRouter);
+app.use('/josgmaestro', requireAuthPage, express.static(path.join(__dirname, 'public/josgmaestro')));
 
-// función global para fechas.
-app.locals.formatDate = (isoString) => {
-  if (!isoString) return '—';
-  const date = new Date(isoString);
-  if (isNaN(date)) return isoString;
-  return date.toLocaleDateString('es-ES'); // formato DD/MM/YYYY
-};
+const authRoutes = require('./routes/auth');
+app.use(loginLimiter, authRoutes); // rate limiting aplicado al login
 
-// Rutas
-const usuariosRoutes = require('./routes/usuarios');
-const profesoresRoutes = require('./routes/profesores');
-const alumnosRoutes = require('./routes/alumnos');
-const gruposRoutes = require('./routes/grupos');
-const cuotasRoutes = require('./routes/cuotas');
-const eventosRoutes = require('./routes/eventos');
-//const firmasRoutes = require('./routes/firmas','routes/josgentumano');
-const firmasRoutes = require('./routes/firmas');
-const informesRoutes = require('./routes/informes');
-const guardiasRoutes = require('./routes/guardias');
-const instrumentosRoutes = require('./routes/instrumentos');
-const tipos_cuotasRoutes = require('./routes/tipos_cuotas');
-const pagosRoutes = require('./routes/pagos');
+app.get(
+  ['/josgentumano/mensajes.html', '/firmas/mensajes.html', '/mensajes.html'],
+  (req, res) => res.redirect(302, '/josgentumano/login.html')
+);
+
+const authUnificado       = require('./routes/auth_unificado');
+const baremosRouter       = require('./routes/baremos');
+const usuariosRoutes      = require('./routes/usuarios');
+const profesoresRoutes    = require('./routes/profesores');
+const alumnosRoutes       = require('./routes/alumnos');
+const gruposRoutes        = require('./routes/grupos');
+const cuotasRoutes        = require('./routes/cuotas');
+const eventosRoutes       = require('./routes/eventos');
+const firmasRoutes        = require('./routes/firmas');
+const informesRoutes      = require('./routes/informes');
+const guardiasRoutes      = require('./routes/guardias');
+const instrumentosRoutes  = require('./routes/instrumentos');
+const tipos_cuotasRoutes  = require('./routes/tipos_cuotas');
+const pagosRoutes         = require('./routes/pagos');
 const configuracionRoutes = require('./routes/configuracion');
-const planoRoutes = require('./routes/plano');
-const contabilidadRoutes = require('./routes/contabilidad');
-const proveedoresRoutes = require('./routes/proveedores');
-const categoriasRoutes = require('./routes/categorias');
-const cuentasRoutes = require('./routes/cuentas');
-const recuperarRoutes = require('./routes/recuperar');
-const pdfRoutes = require('./routes/pdf'); 
-const layoutsRoutes = require('./routes/layouts');
-const ausenciasRoutes = require('./routes/ausencias');
-const actividadesRoutes= require('./routes/actividades_complementarias');
-const espaciosRoutes = require('./routes/espacios');
-const partiturasRoutes = require('./routes/partituras');
-const plantillasRoutes = require('./routes/plantillas');
-const mensajesRoutes = require('./routes/mensajes');
-const atrilRoutes = require('./routes/atril');
-const authUnificado = require('./routes/auth_unificado');
-const baremosRouter = require('./routes/baremos');
-app.use('/baremos', baremosRouter);
-app.use('/auth', authUnificado);
-app.use('/configuracion', isAdmin, configuracionRoutes);
-app.use('/usuarios', isAuthenticated,usuariosRoutes);        
-app.use('/profesores', isAuthenticated, profesoresRoutes); 
-app.use('/alumnos', isAuthenticated, alumnosRoutes);        
-app.use('/grupos', isAdmin, gruposRoutes);  
-app.use('/cuotas', isAdmin, cuotasRoutes);            
-app.use('/eventos', isAuthenticated, eventosRoutes);  
-app.use('/informes', isAuthenticated, informesRoutes);
-app.use('/firmas', firmasRoutes); 
-app.use('/guardias', isAuthenticated, guardiasRoutes);
-app.use('/instrumentos', isAdmin, instrumentosRoutes);
-app.use('/tipos_cuotas', isAdmin, tipos_cuotasRoutes); 
-app.use('/pagos', isAdmin, pagosRoutes);                
-app.use('/plano', isAuthenticated, planoRoutes);
-app.use('/contabilidad', isAdmin, contabilidadRoutes);
-app.use('/proveedores', isAdmin, proveedoresRoutes);
-app.use('/categorias', isAdmin, categoriasRoutes);
-app.use('/cuentas', isAdmin, cuentasRoutes);
-app.use('/api', isAuthenticated, layoutsRoutes);
-app.use('/recuperar',recuperarRoutes);
-app.use(require('./routes/share_stateless'));
-app.use('/ausencias', isAuthenticated, ausenciasRoutes);
-app.use('/actividades', isAuthenticated, actividadesRoutes);
-app.use('/espacios', isAuthenticated, espaciosRoutes);
-app.use(pdfRoutes);
-app.use('/partituras', isAuthenticated, partiturasRoutes);
-app.use('/plantillas', isAuthenticated, plantillasRoutes);
-app.use('/atril', atrilRoutes);
-app.use('/mensajes', mensajesRoutes);
+const planoRoutes         = require('./routes/plano');
+const contabilidadRoutes  = require('./routes/contabilidad');
+const proveedoresRoutes   = require('./routes/proveedores');
+const categoriasRoutes    = require('./routes/categorias');
+const cuentasRoutes       = require('./routes/cuentas');
+const recuperarRoutes     = require('./routes/recuperar');
+const pdfRoutes           = require('./routes/pdf');
+const layoutsRoutes       = require('./routes/layouts');
+const ausenciasRoutes     = require('./routes/ausencias');
+const actividadesRoutes   = require('./routes/actividades_complementarias');
+const espaciosRoutes      = require('./routes/espacios');
+const partiturasRoutes    = require('./routes/partituras');
+const plantillasRoutes    = require('./routes/plantillas');
+const mensajesRoutes      = require('./routes/mensajes');
+const atrilRoutes         = require('./routes/atril');
 
-// Ruta de inicio
+app.use('/auth',          loginLimiter, authUnificado); // rate limiting en auth unificado
+app.use('/baremos',       baremosRouter);
+app.use('/configuracion', isAdmin, configuracionRoutes);
+app.use('/usuarios',      isAuthenticated, usuariosRoutes);
+app.use('/profesores',    isAuthenticated, profesoresRoutes);
+app.use('/alumnos',       isAuthenticated, alumnosRoutes);
+app.use('/grupos',        isAdmin, gruposRoutes);
+app.use('/cuotas',        isAdmin, cuotasRoutes);
+app.use('/eventos',       isAuthenticated, eventosRoutes);
+app.use('/informes',      isAuthenticated, informesRoutes);
+app.use('/firmas',        firmasRoutes);
+app.use('/guardias',      isAuthenticated, guardiasRoutes);
+app.use('/instrumentos',  isAdmin, instrumentosRoutes);
+app.use('/tipos_cuotas',  isAdmin, tipos_cuotasRoutes);
+app.use('/pagos',         isAdmin, pagosRoutes);
+app.use('/plano',         isAuthenticated, planoRoutes);
+app.use('/contabilidad',  isAdmin, contabilidadRoutes);
+app.use('/proveedores',   isAdmin, proveedoresRoutes);
+app.use('/categorias',    isAdmin, categoriasRoutes);
+app.use('/cuentas',       isAdmin, cuentasRoutes);
+app.use('/api',           isAuthenticated, layoutsRoutes);
+app.use('/recuperar',     recuperarRoutes);
+app.use(require('./routes/share_stateless'));
+app.use('/ausencias',     isAuthenticated, ausenciasRoutes);
+app.use('/actividades',   isAuthenticated, actividadesRoutes);
+app.use('/espacios',      isAuthenticated, espaciosRoutes);
+app.use(pdfRoutes);
+app.use('/partituras',    isAuthenticated, partiturasRoutes);
+app.use('/plantillas',    isAuthenticated, plantillasRoutes);
+app.use('/atril',         atrilRoutes);
+app.use('/mensajes',      mensajesRoutes);
+
+// ─── Rutas especiales ─────────────────────────────────────────────
 app.get('/', (req, res) => {
   res.render('index', { title: 'Inicio - JOSG' });
 });
 
-app.get('/mensajes/nuevo', isAuthenticated, isDocente, async (req, res) => {
-  try {
-    const { rows: grupos } = await db.query(
-      'SELECT id, nombre FROM grupos ORDER BY nombre'
-    );
-    const { rows: instrumentos } = await db.query(
-      'SELECT id, nombre FROM instrumentos ORDER BY nombre'
-    );
-
-    res.render('mensajes_nuevo', {
-      title: 'Mensajes',
-      grupos,
-      instrumentos
-    });
-  } catch (e) {
-    console.error('Error cargando datos mensajes:', e);
-    res.render('mensajes_nuevo', {
-      title: 'Mensajes',
-      grupos: [],
-      instrumentos: []   
-    });
-  }
-});
-
-// Página de mantenimiento (zona de obras)
 app.get('/obras', (req, res) => {
-  res.status(503);                 // 503 = Service Unavailable
-  res.set('Retry-After', '3600');  // sugerencia para clientes / SEO (1 hora)
+  res.status(503);
+  res.set('Retry-After', '3600');
   res.render('obras', { title: 'Zona de obras' });
 });
 
-app.use((req, res, next) => {
-  res.locals.mensaje = req.session.mensaje || null;
-  delete req.session.mensaje;
-  next();
+// VAPID public key para web push
+const { VAPID_PUBLIC } = require('./utils/push');
+app.get('/push/public-key', (_req, res) => {
+  res.json({ key: VAPID_PUBLIC || '' });
 });
 
-const initDatabase = require('./database/init'); // Ajustar el path si es necesario
+// ─── 404 ──────────────────────────────────────────────────────────
+app.use((req, res) => {
+  const esApi = req.originalUrl.startsWith('/api') ||
+                req.headers.accept?.includes('application/json');
+  if (esApi) return res.status(404).json({ error: 'Ruta no encontrada' });
+  res.status(404).send('<h1>404 — Página no encontrada</h1>');
+});
 
+// ─── Manejador global de errores 500 ─────────────────────────────
+// IMPORTANTE: debe tener exactamente 4 argumentos (err, req, res, next)
+app.use((err, req, res, next) => {
+  console.error('[error]', req.method, req.originalUrl, err);
+
+  if (res.headersSent) return next(err);
+
+  const esApi = req.originalUrl.startsWith('/api') ||
+                req.headers.accept?.includes('application/json');
+
+  if (esApi) {
+    return res.status(500).json({ error: 'Error interno del servidor' });
+  }
+
+  res.status(500).send(`
+    <h1>Error del servidor</h1>
+    <p>Ha ocurrido un error inesperado. Por favor, inténtalo de nuevo.</p>
+    ${process.env.NODE_ENV !== 'production' ? `<pre>${err.stack}</pre>` : ''}
+  `);
+});
+
+// ─── Arranque ─────────────────────────────────────────────────────
+const initDatabase = require('./database/init');
 (async () => {
   try {
-    await initDatabase();               
+    await initDatabase();
     const PORT = process.env.PORT || 3001;
     app.listen(PORT, () => {
       console.log(`Servidor corriendo en http://localhost:${PORT}`);
     });
   } catch (err) {
     console.error('Fallo al iniciar la app:', err);
+    process.exit(1);
   }
 })();
-
-// en app.js (o donde tengas las rutas)
-const { VAPID_PUBLIC } = require('./utils/push');
-app.get('/push/public-key', (_req, res) => {
-  res.json({ key: VAPID_PUBLIC || '' });
-});

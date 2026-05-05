@@ -13,7 +13,6 @@ function parsePadreId(v){
 }
 
 /* ========= LISTA ========= */
-// Lista con búsqueda opcional por nombre (q). Muestra nombre del padre si existe.
 router.get('/', async (req, res) => {
   const q = (req.query.q || '').trim();
   const params = [];
@@ -34,7 +33,6 @@ router.get('/', async (req, res) => {
       `,
       params
     );
-
     res.render('categorias_lista', {
       title: 'Categorías de gasto',
       hero: false,
@@ -43,7 +41,7 @@ router.get('/', async (req, res) => {
     });
   } catch (e) {
     console.error(e);
-    res.render('categorias_lista', { title: 'Categorías de gasto', hero:false, categorias: [], q });
+    res.render('categorias_lista', { title: 'Categorías de gasto', hero: false, categorias: [], q });
   }
 });
 
@@ -60,7 +58,7 @@ router.get('/nuevo', async (_req, res) => {
     });
   } catch (e) {
     console.error(e);
-    res.render('categorias_form', { title:'Nueva categoría', hero:false, cat:null, padres:[], EDIT:false });
+    res.render('categorias_form', { title: 'Nueva categoría', hero: false, cat: null, padres: [], EDIT: false });
   }
 });
 
@@ -77,7 +75,7 @@ router.post('/nuevo', async (req, res) => {
     res.redirect('/categorias?ok=1');
   } catch (e) {
     console.error(e);
-    res.redirect('/categorias/'); 
+    res.redirect('/categorias/');
   }
 });
 
@@ -92,11 +90,9 @@ router.get('/:id', async (req, res) => {
     );
     if (!catQ.rows.length) return res.status(404).send('Categoría no encontrada');
 
-    // Posibles padres (excluye a sí misma)
     const padres = await db.query(
       `SELECT id, nombre FROM categorias_gasto WHERE id <> $1 ORDER BY lower(nombre) ASC`, [id]
     );
-
     res.render('categorias_form', {
       title: 'Editar categoría',
       hero: false,
@@ -132,31 +128,37 @@ router.post('/:id', async (req, res) => {
 });
 
 /* ========= ELIMINAR ========= */
-// Elimina físicamente. Quita el vínculo de hijas y libera facturas.
+// Usa cliente dedicado para garantizar que BEGIN/COMMIT van por la misma conexión
 router.post('/:id/eliminar', async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id)) return res.status(404).send('Categoría no válida');
 
+  const client = await db.connect();
   try {
-    await db.query('BEGIN');
+    await client.query('BEGIN');
 
-    // 1) Desvincula hijas
-    await db.query(`UPDATE categorias_gasto SET padre_id = NULL WHERE padre_id = $1`, [id]);
+    // 1) Desvincula categorías hijas
+    await client.query(
+      `UPDATE categorias_gasto SET padre_id = NULL WHERE padre_id = $1`, [id]
+    );
 
-    // 2) Libera facturas que usen esta categoría (si la FK lo permite)
-    await db.query(`UPDATE facturas_prov SET categoria_id = NULL WHERE categoria_id = $1`, [id]);
+    // 2) Libera facturas que usen esta categoría
+    await client.query(
+      `UPDATE facturas_prov SET categoria_id = NULL WHERE categoria_id = $1`, [id]
+    );
 
     // 3) Borra la categoría
-    await db.query(`DELETE FROM categorias_gasto WHERE id = $1`, [id]);
+    await client.query(`DELETE FROM categorias_gasto WHERE id = $1`, [id]);
 
-    await db.query('COMMIT');
+    await client.query('COMMIT');
     res.redirect('/categorias?ok=1');
   } catch (e) {
-    await db.query('ROLLBACK');
+    await client.query('ROLLBACK');
     console.error(e);
     res.status(500).send('No se pudo eliminar la categoría (puede estar referenciada por otras tablas).');
+  } finally {
+    client.release();
   }
 });
 
 module.exports = router;
-

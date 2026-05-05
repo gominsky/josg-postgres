@@ -6,69 +6,6 @@
   const isHoras       = informe.informe.startsWith('Porcentaje de horas de asistencia');
   const camposMostrar = isHoras ? campos.slice(1) : campos;
 %>
-<style>
-  .formulario-centrado {
-    max-width: 55% !important;
-    margin: 0 auto;               /* 👈 centra de verdad el bloque */
-  }
-  .titulo-bloque {
-    color: #212529;               /* color base (como h1 en Bootstrap) */
-  }
-  .h1-titulo {
-    font-size: clamp(1.6rem, 2vw + 1rem, 2.6rem);
-    color: inherit;               /* 👈 hereda de .titulo-bloque */
-  }
-  .meta-informe {
-    color: inherit;               /* 👈 igual que el título */
-    padding-left: 0;              /* evita indentación del UL */
-  }
-  .estado-titulo { color: inherit; opacity:.7; }
-    /* ancho como el formulario, pero ligeramente desplazado a la izquierda */
-    .encabezado-izq{
-    max-width: 55%;
-    margin: 0 auto;                 /* base centrada */
-    margin-left: calc((100% - 55%) / 2 - 16px); /* empuja 16px hacia la izquierda */
-  }
-
-  /* colores/alineación unificados */
-  .titulo-bloque { color: #212529; }
-  .h1-titulo { font-size: clamp(1.6rem, 2vw + 1rem, 2.6rem); color: inherit; }
-  .meta-informe { color: inherit; padding-left: 0; }
-  .estado-titulo { color: inherit; opacity: .7; }
-
-  /* si en pantallas pequeñas prefieres volver a centro, anula el empuje */
-  @media (max-width: 768px){
-    .encabezado-izq{ margin-left: auto; }
-  }
-  .encabezado-izq { max-width: 55%; margin: 0 auto; }
-  .titulo-bloque .h1-titulo{
-  margin: .5rem 0 .75rem 0;  /* top | right | bottom | left */
-}
-
-  /* Lista de metadatos en columnas: etiqueta fija + valor flexible */
-  .meta-informe { 
-    margin: .15rem 0 0 0; 
-    padding-left: 0; 
-  }
-  .meta-informe li { 
-    list-style: none; 
-    margin: 2px 0; 
-    line-height: 1.25;
-  }
-  /* La “columna” de la etiqueta: mismo ancho para alinear los valores */
-  .meta-informe li > strong {
-    display: inline-block;
-    min-width: 92px;          /* ajusta si quieres más/menos sangría */
-    font-weight: 700;
-    color: #212529;
-  }
-
-  /* El estado del título en la misma columna visual */
-  #estado-titulo { 
-    display: block; 
-    margin: 2px 0 0 0; 
-  }
-</style>
 <div class="encabezado-izq">
   <div class="d-flex flex-column flex-md-row align-items-start justify-content-between gap-2">
     <div class="titulo-bloque flex-grow-1">

@@ -3,52 +3,6 @@
 
 <div id="g-wrap" class="container my-4">
   <!-- ====== ESTILOS ====== -->
-  <style>
-    :root{
-      --accent-50:#fff6e8; --accent-100:#ffeed7; --accent-200:#ffe0b3; --accent-300:#ffd08a;
-      --accent-400:#ffb554; --accent-500:#ff9500; --accent-600:#e07f00; --accent-700:#c26c00;
-      --text-main:#212529; --muted:#6c757d; --border:rgba(0,0,0,.08);
-      --shadow:0 1px 2px rgba(0,0,0,.04); --shadow-lg:0 6px 18px rgba(0,0,0,.08);
-    }
-    @media (min-width: 992px){ #g-wrap.container{ max-width:1320px; } }
-
-    .filtros-card{ background:#fff; color:var(--text-main); border:1px solid var(--border);
-      border-radius:18px; box-shadow:var(--shadow); padding:14px 16px 18px; }
-    .filtros-header{ display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:10px; }
-    .filtros-header .h1-titulo{ margin:0; font-size:clamp(1.4rem,1.1rem + 1.2vw,2rem); font-weight:700; color:var(--text-main); }
-
-    .filtros-card .form-label{ color:var(--text-main); font-weight:600; margin-bottom:.35rem; }
-    .date-input{ width:100%; min-width:140px; max-width:100%; }
-    @media (min-width: 992px){
-      .date-input{ width:10.5rem !important; min-width:10.5rem !important; padding-left:.35rem !important; padding-right:.35rem !important; font-size:.9rem; display:inline-block; }
-      .date-input::-webkit-datetime-edit{ padding:0; }
-      .date-input::-webkit-calendar-picker-indicator{ padding:0 .15rem; }
-    }
-
-    .chips{ display:flex; gap:.5rem; flex-wrap:wrap; }
-    .chip{ background:var(--accent-100); color:var(--accent-700); border:1px solid var(--accent-200);
-      border-radius:999px; padding:.35rem .7rem; font-size:.85rem; cursor:pointer; user-select:none;
-      transition:background .15s, border-color .15s, color .15s, transform .05s; }
-    .chip:hover{ background:var(--accent-200); }
-    .chip:active{ transform:scale(.98); }
-    .chip.active{ background:var(--accent-400); color:#5b2b00; border-color:var(--accent-500); }
-
-    .action-grid{ display:grid; gap:16px; margin-top:14px; grid-template-columns:repeat(auto-fit,minmax(340px,1fr)); }
-    @media (min-width: 1400px){ .action-grid{ grid-template-columns:repeat(auto-fit,minmax(380px,1fr)); } }
-
-    .action-card{ width:100%; display:flex; align-items:center; gap:14px; text-align:left;
-      background:linear-gradient(180deg,#ffffff,#fdfcfa); border:1px solid var(--border);
-      border-radius:16px; padding:14px 16px; box-shadow:var(--shadow);
-      transition:transform .15s, box-shadow .15s, border-color .15s; color:inherit; text-decoration:none; }
-    .action-card:hover,.action-card:focus{ transform:translateY(-2px); box-shadow:var(--shadow-lg); border-color:var(--accent-200); text-decoration:none; }
-
-    .icon-badge{ width:44px; height:44px; border-radius:999px; flex-shrink:0; display:flex; align-items:center; justify-content:center;
-      background:var(--accent-100); border:1px solid var(--accent-200); color:var(--accent-700); }
-    .action-title{ margin:0; font-weight:700; color:var(--text-main); }
-    .action-desc{ margin:.15rem 0 0; color:var(--muted); font-size:.92rem; }
-    .badge-soft{ display:inline-block; background:var(--accent-100); color:var(--accent-700); border:1px solid var(--accent-300);
-      padding:.18rem .5rem; border-radius:999px; font-size:.78rem; font-weight:600; }
-  </style>
 
   <!-- ====== FORMULARIO + TARJETAS ====== -->
   <form id="filtros-form" class="filtros-card" action="/guardias/mostrar" method="GET">
