@@ -77,60 +77,6 @@
   </div>
 </div>
 
-<style>
-  /* Estilo tipo firma_manual */
-  .tabla-estilizada td, .tabla-estilizada th { padding: 10px 12px; vertical-align: middle; }
-  .h1-titulo, .container-fluid strong { color:#000 !important; }
-
-  /* Modal: borde negro en el formulario */
-  #partituraModal .modal-content { background: transparent; box-shadow: none; }
-  #partituraForm {
-    background:#fff; border: 2px solid #000; border-radius: 12px; padding: 12px;
-  }
-  .sheet-head {
-    display:flex; align-items:center; gap:12px;
-    padding:12px 14px; background:#111; color:#fff;
-    border-top-left-radius: 12px; border-top-right-radius: 12px;
-  }
-
-  /* Selector múltiple alto para instrumentos */
-  #selInstrumentos { min-height: 220px; }
-
-  /* Sort headers */
-  th[data-sort] { user-select:none; position: relative; padding-right: 18px; }
-  th[data-sort]::after{
-    content: '↕'; font-size: 0.8rem; opacity: .4;
-    position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
-  }
-  th[aria-sort="ascending"]::after  { content: '↑'; opacity: .9; }
-  th[aria-sort="descending"]::after { content: '↓'; opacity: .9; }
-
-  /* ➕ Borde negro para el formulario de búsqueda (se aplica por JS con .borde-negro) */
-  .borde-negro {
-    border: 1px solid #000 !important;
-    border-radius: .5rem;
-    padding: .5rem;
-  }
-  /* Solo columnas 7 y 8 (Partitura y Audio/Vídeo) */
-#tablaPartituras tbody tr > td:nth-child(7) a,
-#tablaPartituras tbody tr > td:nth-child(8) a,
-#tablaPartituras tbody tr > td:nth-child(7) a:visited,
-#tablaPartituras tbody tr > td:nth-child(8) a:visited{
-  color:#ea6b38 !important;
-  font-weight:600;
-  text-decoration:none;
-  border-bottom:1px solid rgba(234,107,56,.35);
-}
-
-#tablaPartituras tbody tr > td:nth-child(7) a:hover,
-#tablaPartituras tbody tr > td:nth-child(8) a:hover,
-#tablaPartituras tbody tr > td:nth-child(7) a:focus,
-#tablaPartituras tbody tr > td:nth-child(8) a:focus{
-  color:#c85a2f !important;
-  text-decoration:underline;
-  border-bottom-color:transparent;
-}
-</style>
 
 <!-- ===== Modal (sin footer) ===== -->
 <div class="modal fade modal-sheet" id="partituraModal" tabindex="-1" aria-labelledby="partituraModalTitulo" aria-hidden="true">

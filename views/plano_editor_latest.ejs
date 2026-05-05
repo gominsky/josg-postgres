@@ -21,30 +21,6 @@
   <div id="wrap" class="border rounded"></div>
 </div>
 
-<style>
-  html, body { height: 100%; }
-  #wrap {
-    overflow: hidden;
-    background: #fafafa;
-    border-radius: .5rem;
-    position: relative;
-  }
-
-  :root {
-    --corp-orange: #F28C18;
-    --corp-orange-dark: #9C530A;
-  }
-  .alert-corp {
-    background: #FFF6E9;
-    border: 1px solid var(--corp-orange);
-    color: var(--corp-orange-dark);
-  }
-
-  /* Evita que los strokes engorden al escalar por ATRIBUTO transform */
-  #stage g.draggable * { vector-effect: non-scaling-stroke; }
-
-  /* ⚠️ IMPORTANTE: no aplicar transform por CSS a g.draggable (rompe posiciones) */
-</style>
 
 <script>
 (() => {

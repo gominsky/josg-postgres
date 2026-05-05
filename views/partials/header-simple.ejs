@@ -1,37 +1,34 @@
-<header class="header-simple d-flex align-items-center justify-content-between px-3 py-2 flex-wrap">
+<header class="header-simple d-flex align-items-center justify-content-between px-3 py-1 flex-wrap">
+
   <!-- Logo -->
-  <div class="header-logo me-4">
+  <a href="/" class="header-logo me-3" aria-label="Inicio">
     <img src="/imagenes/logoJOSG.png" alt="Logo JOSG" class="logo-header">
-  </div>
+  </a>
 
   <!-- Navegación -->
-  <div class="header-nav-wrapper flex-grow-1 me-3">
-    <div class="header-nav d-flex align-items-center gap-3 justify-content-end pt-2">
-      <a href="/alumnos"      class="card-cabecera">Músicos</a>
-      <a href="/eventos"      class="card-cabecera">Eventos</a>
-      <a href="/informes"     class="card-cabecera">Informes</a>
-      <a href="/mensajes/nuevo" class="card-cabecera">Mensajes</a>
-      <a href="/partituras" class="card-cabecera">Partituras</a>
-      <!--<a href="/contabilidad" class="card-cabecera">Finanzas</a>-->
-      <a href="/configuracion" class="card-cabecera">Configuración</a>
-      <a href="/configuracion/ayuda" class="card-cabecera">Ayuda</a>
-      <a href="/"             class="card-cabecera">Inicio</a>
-    </div>
-  </div>
+  <nav class="header-nav d-flex align-items-center gap-2 flex-wrap flex-grow-1 justify-content-end me-3" aria-label="Navegación principal">
+    <a href="/alumnos"            class="card-cabecera">Músicos</a>
+    <a href="/eventos"            class="card-cabecera">Eventos</a>
+    <a href="/informes"           class="card-cabecera">Informes</a>
+    <a href="/mensajes/nuevo"     class="card-cabecera">Mensajes</a>
+    <a href="/partituras"         class="card-cabecera">Partituras</a>
+    <a href="/configuracion"      class="card-cabecera">Configuración</a>
+    <a href="/configuracion/ayuda" class="card-cabecera">Ayuda</a>
+    <a href="/"                   class="card-cabecera">Inicio</a>
+  </nav>
 
   <% if (usuario) { %>
+  <!-- Usuario + Logout -->
   <div class="header-user d-flex align-items-center gap-2">
     <div class="sb-avatar-small" title="<%= usuario.nombre %>">
       <%= (usuario.nombre || '?').trim().slice(0,1).toUpperCase() %>
     </div>
-
-    <div class="sb-user-label text-end me-2">
+    <div class="sb-user-label text-end me-1">
       <div class="sb-user-name"><%= usuario.nombre %></div>
       <div class="sb-user-role"><%= usuario.rol %></div>
     </div>
-
     <a href="/logout" class="sb-exit-mini" title="Cerrar sesión" aria-label="Cerrar sesión">
-      <svg viewBox="0 0 24 24" aria-hidden="true">
+      <svg viewBox="0 0 24 24" aria-hidden="true" width="18" height="18">
         <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" fill="none" stroke="currentColor" stroke-width="2"/>
         <path d="M16 17l5-5-5-5" fill="none" stroke="currentColor" stroke-width="2"/>
         <path d="M21 12H9" fill="none" stroke="currentColor" stroke-width="2"/>
@@ -39,35 +36,6 @@
       <span class="d-none d-md-inline">Salir</span>
     </a>
   </div>
-<% } %>
+  <% } %>
 
 </header>
-<style>
-  /* ===== Usuario + Logout (Saul Bass, compacto para header) ===== */
-.sb-avatar-small{
-  width: 34px; height: 34px; border-radius: 999px;
-  display: inline-flex; align-items: center; justify-content: center;
-  font-weight: 900;
-  background: #111827; color:#fff; border: 2px solid #111827;
-  transform: rotate(1deg);
-}
-
-.sb-user-label{ line-height: 1.05; }
-.sb-user-name{ color:#000; font-weight: 800; }
-.sb-user-role{ color:#1f2937; font-size:.85rem; opacity:.9; }
-
-/* Botón “Salir” estilo index */
-.sb-exit-mini{
-  display: inline-flex; align-items: center; gap: 6px;
-  padding: .38rem .6rem;
-  border: 2px solid #111827; border-radius: 10px;
-  background: #fff; color:#111827; text-decoration: none;
-  transform: rotate(.6deg);
-  transition: transform .12s ease, filter .12s ease;
-}
-.sb-exit-mini:hover{ transform: translateY(-1px) rotate(.4deg); }
-
-/* Icono del botón (SVG) del mismo color del texto */
-.sb-exit-mini svg{ display:block; width: 18px; height: 18px; }
-</style>
-

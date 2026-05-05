@@ -1,0 +1,304 @@
+/*
+ * forms.css — Diseño unificado de formularios de edición de JOSG Manager.
+ * Cargado en layout.ejs después de components.css.
+ * Cubre: alumno_form, profesor_form, grupos_form, usuarios_ficha, etc.
+ */
+
+/* ── Contenedor principal del formulario ─────────────────────── */
+.formulario-alumno,
+.formulario-editor {
+  max-width: 860px;
+  margin: 0 auto 2rem;
+  padding: 0 4px;
+}
+
+/* ── Grupos de campos (secciones) ────────────────────────────── */
+.grupo-campos {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 18px 20px 14px;
+  margin: 0 0 16px;
+}
+
+.grupo-campos h2 {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--ink);
+  margin: 0 0 14px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid var(--naranja-claro);
+  border-left: 3px solid var(--naranja);
+  padding-left: 8px;
+}
+
+/* ── Grids de campos ─────────────────────────────────────────── */
+.form-grid-1 {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+}
+
+.form-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.form-grid-3 {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 14px;
+}
+
+.form-grid-4 {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+@media (max-width: 640px) {
+  .form-grid-2,
+  .form-grid-3,
+  .form-grid-4 { grid-template-columns: 1fr; }
+}
+
+@media (min-width: 641px) and (max-width: 900px) {
+  .form-grid-3,
+  .form-grid-4 { grid-template-columns: 1fr 1fr; }
+}
+
+/* ── Labels como contenedores de campo ───────────────────────── */
+.formulario-alumno label,
+.formulario-editor label,
+.grupo-campos label {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: .85rem;
+  font-weight: 700;
+  color: var(--ink);
+  letter-spacing: .02em;
+}
+
+/* ── Inputs, selects y textareas ─────────────────────────────── */
+.formulario-alumno input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+.formulario-alumno select,
+.formulario-alumno textarea,
+.formulario-editor input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+.formulario-editor select,
+.formulario-editor textarea,
+.grupo-campos input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+.grupo-campos select:not([multiple]),
+.grupo-campos textarea {
+  width: 100%;
+  min-height: 40px;
+  padding: .5rem .65rem;
+  font-size: .92rem;
+  color: var(--ink);
+  background: var(--bg);
+  border: 1.5px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  transition: border-color .15s, box-shadow .15s;
+  box-sizing: border-box;
+}
+
+.formulario-alumno input:focus,
+.formulario-alumno select:focus,
+.formulario-alumno textarea:focus,
+.formulario-editor input:focus,
+.formulario-editor select:focus,
+.formulario-editor textarea:focus,
+.grupo-campos input:focus,
+.grupo-campos select:focus,
+.grupo-campos textarea:focus {
+  outline: none;
+  border-color: var(--naranja);
+  box-shadow: 0 0 0 3px rgba(255,149,1,.15);
+}
+
+/* Select múltiple (grupos, instrumentos) */
+.grupo-campos select[multiple],
+.formulario-alumno select[multiple] {
+  width: 100%;
+  min-height: 160px;
+  padding: 6px;
+  border: 1.5px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  font-size: .9rem;
+  background: var(--bg);
+}
+.grupo-campos select[multiple]:focus,
+.formulario-alumno select[multiple]:focus {
+  outline: none;
+  border-color: var(--naranja);
+  box-shadow: 0 0 0 3px rgba(255,149,1,.15);
+}
+.grupo-campos select[multiple] option,
+.formulario-alumno select[multiple] option {
+  padding: 4px 6px;
+  border-radius: 4px;
+}
+.grupo-campos select[multiple] option:checked,
+.formulario-alumno select[multiple] option:checked {
+  background: var(--naranja-claro);
+  color: var(--ink);
+}
+
+/* Textarea */
+.formulario-alumno textarea,
+.formulario-editor textarea,
+.grupo-campos textarea {
+  min-height: 90px;
+  resize: vertical;
+}
+
+/* Input file */
+.formulario-alumno input[type="file"],
+.formulario-editor input[type="file"],
+.grupo-campos input[type="file"] {
+  padding: 4px;
+  font-size: .85rem;
+  cursor: pointer;
+}
+
+/* small / hint text */
+.formulario-alumno small,
+.formulario-editor small,
+.grupo-campos small {
+  font-size: .78rem;
+  font-weight: 400;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+/* ── Campo con label externo (campo-label) ───────────────────── */
+.campo-label {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.campo-label > label {
+  font-size: .85rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+/* ── Checkboxes y switches ────────────────────────────────────── */
+.campo-check {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--bg-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+.campo-check input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  min-height: unset;
+  accent-color: var(--naranja);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.campo-check span {
+  font-size: .9rem;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+/* ── Foto de perfil ──────────────────────────────────────────── */
+.bloque-foto {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.foto-preview-wrap {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.foto-preview-wrap img {
+  width: 80px;
+  height: 80px;
+  border-radius: var(--radius-pill);
+  object-fit: cover;
+  border: 2px solid var(--border);
+}
+.foto-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* ── Acciones finales ────────────────────────────────────────── */
+.acciones-finales {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+.acciones-finales .acciones-izq { display: flex; gap: 10px; align-items: center; }
+.acciones-finales .acciones-der { display: flex; gap: 10px; align-items: center; }
+
+/* ── Ancho extra para select auto ───────────────────────────── */
+select[style*="width:auto"],
+select[style*="width: auto"] {
+  width: auto !important;
+  min-width: 120px;
+}
+
+/* ── Responsivo móvil ────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .formulario-alumno,
+  .formulario-editor { padding: 0; }
+  .grupo-campos { padding: 14px 12px 12px; border-radius: var(--radius); }
+  .acciones-finales { flex-direction: column; align-items: stretch; }
+  .acciones-finales .acciones-izq,
+  .acciones-finales .acciones-der { width: 100%; }
+}
+
+/* ── Foto más grande en formularios de edición ───────────────── */
+.grupo-campos img.foto-perfil,
+.formulario-alumno img.foto-perfil,
+.formulario-editor img.foto-perfil {
+  width: 160px !important;
+  height: 160px !important;
+  max-height: 160px !important;
+  border-radius: var(--radius-lg) !important;
+  object-fit: cover;
+  border: 2px solid var(--border);
+  box-shadow: var(--shadow);
+  display: block;
+}
+
+.foto-preview-wrap img {
+  width: 160px;
+  height: 160px;
+  border-radius: var(--radius-lg);
+  object-fit: cover;
+  border: 2px solid var(--border);
+  box-shadow: var(--shadow);
+}
+
+/* ── Reducir espacio de cabecera en páginas de formulario ────── */
+/* Cuando hero=false el layout muestra el header-simple
+   pero los formularios no necesitan tanto espacio vertical */
+body:has(.formulario-alumno) main,
+body:has(.formulario-editor) main {
+  padding-top: 8px;
+}
+
+/* Título del formulario más compacto */
+body:has(.formulario-alumno) .h1-titulo,
+body:has(.formulario-editor) .h1-titulo {
+  font-size: 1.4rem;
+  margin-bottom: 12px;
+}
