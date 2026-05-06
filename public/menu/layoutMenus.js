@@ -332,53 +332,30 @@
     }
 
     async function resetAndSaveInitial(){
-      // 0) Si está en modo libre, salimos sin guardar ese estado
+      // 0) Si esta en modo libre, salimos sin guardar
       if (wrap.classList.contains('free')) exitFree(false);
-    
-      // 1) Volvemos a la vista “natural”: sin estilos inline, sin toolbars
+
+      // 1) Volver al grid CSS natural (sin estilos inline, sin toolbars)
       exitView();
-    
-      // 2) Reaplicar color de fábrica guardado en data-default-color
+
+      // 2) Reaplicar color de fabrica
       grid.querySelectorAll(tileSelector).forEach(a=>{
-        const def = a.dataset.defaultColor || null;
-        // Limpia paleta conocida (ajusta si tienes más)
+        const df = a.dataset.defaultColor || null;
         ['is-cream','is-yellow','is-blue','is-orange','is-rust','is-black','is-white']
           .forEach(c => a.classList.remove(c));
-        if (def) a.classList.add(def);
+        if (df) a.classList.add(df);
       });
-    
-      // 3) Tomar snapshot del DOM “de fábrica”
-      const items = snapshot(wrap, grid, tileSelector);
-    
-      // 4) Aplicar inmediatamente en “free-view” (pintado consistente)
-      wrap.classList.add('free-view');
-      grid.querySelectorAll(tileSelector).forEach(a=>{
-        a.style.position='absolute';
-        a.style.margin='0';
-        applyItemStyles(a, items[a.dataset.id]);
-      });
-    
-      // 5) Guardar (local + servidor)
-      const state = { mode:'free-view', items };
-      saveLocal(state);
+
+      // 3) Borrar layout en servidor (positions vacias = grid CSS al recargar)
       try {
-        const payload = buildPayload(grid, items, tileSelector);
-        await apiSave(slug, payload);
+        await apiSave(slug, { order_ids: [], sizes: {}, colors: {}, positions: {} });
       } catch(e) {
-        console.warn('[layoutMenus] PUT layout falló (se mantiene local):', e);
+        console.warn('[layoutMenus] reset apiSave fallo:', e);
       }
-    
-      // 6) 🔁 Forzar repintado suave (sin recargar toda la página)
-      try {
-        const payload = buildPayload(grid, items, tileSelector);
-        await apiSave(slug, payload);
-      } finally {
-        location.reload();
-      }
-      
-    
-      // Alternativa “dura” (por si quieres refresh completo tras guardar):
-      // location.reload();
+
+      // 4) Limpiar localStorage y recargar - el grid CSS centra las tiles
+      clearLocal();
+      location.reload();
     }
     
 

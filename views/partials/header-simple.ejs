@@ -1,41 +1,44 @@
-<header class="header-simple d-flex align-items-center justify-content-between px-3 py-1 flex-wrap">
+<header class="hs" role="banner">
+  <div class="hs-inner">
 
-  <!-- Logo -->
-  <a href="/" class="header-logo me-3" aria-label="Inicio">
-    <img src="/imagenes/logoJOSG.png" alt="Logo JOSG" class="logo-header">
-  </a>
-
-  <!-- Navegación -->
-  <nav class="header-nav d-flex align-items-center gap-2 flex-wrap flex-grow-1 justify-content-end me-3" aria-label="Navegación principal">
-    <a href="/alumnos"            class="card-cabecera">Músicos</a>
-    <a href="/eventos"            class="card-cabecera">Eventos</a>
-    <a href="/informes"           class="card-cabecera">Informes</a>
-    <a href="/mensajes/nuevo"     class="card-cabecera">Mensajes</a>
-    <a href="/partituras"         class="card-cabecera">Partituras</a>
-    <a href="/configuracion"      class="card-cabecera">Configuración</a>
-    <a href="/configuracion/ayuda" class="card-cabecera">Ayuda</a>
-    <a href="/"                   class="card-cabecera">Inicio</a>
-  </nav>
-
-  <% if (usuario) { %>
-  <!-- Usuario + Logout -->
-  <div class="header-user d-flex align-items-center gap-2">
-    <div class="sb-avatar-small" title="<%= usuario.nombre %>">
-      <%= (usuario.nombre || '?').trim().slice(0,1).toUpperCase() %>
-    </div>
-    <div class="sb-user-label text-end me-1">
-      <div class="sb-user-name"><%= usuario.nombre %></div>
-      <div class="sb-user-role"><%= usuario.rol %></div>
-    </div>
-    <a href="/logout" class="sb-exit-mini" title="Cerrar sesión" aria-label="Cerrar sesión">
-      <svg viewBox="0 0 24 24" aria-hidden="true" width="18" height="18">
-        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" fill="none" stroke="currentColor" stroke-width="2"/>
-        <path d="M16 17l5-5-5-5" fill="none" stroke="currentColor" stroke-width="2"/>
-        <path d="M21 12H9" fill="none" stroke="currentColor" stroke-width="2"/>
-      </svg>
-      <span class="d-none d-md-inline">Salir</span>
+    <!-- Logo -->
+    <a href="/" class="hs-logo" aria-label="Ir al inicio">
+      <img src="/imagenes/logoJOSG.png" alt="Logo JOSG" class="hs-logo__img">
     </a>
-  </div>
-  <% } %>
 
+    <!-- Navegación principal -->
+    <nav class="hs-nav" aria-label="Navegación principal">
+      <a href="/alumnos"             class="hs-card">Músicos</a>
+      <a href="/eventos"             class="hs-card">Eventos</a>
+      <a href="/informes"            class="hs-card">Informes</a>
+      <a href="/mensajes/nuevo"      class="hs-card">Mensajes</a>
+      <a href="/partituras"          class="hs-card">Partituras</a>
+      <a href="/configuracion"       class="hs-card">Configuración</a>
+      <a href="/configuracion/ayuda" class="hs-card">Ayuda</a>
+      <a href="/"                    class="hs-card">Inicio</a>
+    </nav>
+
+    <% if (usuario) { %>
+    <!-- Usuario + Logout -->
+    <div class="hs-user">
+      <div class="hs-user__avatar" title="<%= usuario.nombre %>">
+        <%= (usuario.nombre || '?').trim().slice(0,1).toUpperCase() %>
+      </div>
+      <div class="hs-user__info">
+        <span class="hs-user__name"><%= usuario.nombre %></span>
+        <span class="hs-user__role"><%= usuario.rol %></span>
+      </div>
+      <a href="/logout" class="hs-exit" title="Cerrar sesión" aria-label="Cerrar sesión">
+        <svg viewBox="0 0 24 24" aria-hidden="true" width="15" height="15" fill="none"
+             stroke="currentColor" stroke-width="2.5">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+          <path d="M16 17l5-5-5-5"/>
+          <path d="M21 12H9"/>
+        </svg>
+        <span>Salir</span>
+      </a>
+    </div>
+    <% } %>
+
+  </div>
 </header>

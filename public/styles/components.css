@@ -362,12 +362,12 @@ select { height: 2rem; line-height: 2.5rem; }
   line-height: 1.15;
   white-space: nowrap;
   overflow: hidden;
-  text-overflow: ellipsis;
+  text-overflow: clip;
 }
-.tabla-compacta thead th:nth-child(1) { width: 36%; }
-.tabla-compacta thead th:nth-child(2) { width: 28%; }
-.tabla-compacta thead th:nth-child(3) { width: 26%; }
-.tabla-compacta thead th:nth-child(4) { width: 10%; }
+.tabla-compacta thead th:nth-child(1) { width: 34%; }
+.tabla-compacta thead th:nth-child(2) { width: 26%; }
+.tabla-compacta thead th:nth-child(3) { width: 24%; }
+.tabla-compacta thead th:nth-child(4) { width: 16%; }
 .tabla-compacta .badge { font-size: .72rem; padding: .12rem .35rem; }
 
 /* Cabecera ordenable */
@@ -534,10 +534,157 @@ select { height: 2rem; line-height: 2.5rem; }
 
 /* Enlace acento */
 .enlace-final-naranja {
-  color: var(--ink) !important;
-  border-bottom: 2px solid var(--accent);
+  color: var(--naranja) !important;
+  font-weight: 700;
+  text-decoration: none;
+  transition: opacity .12s;
 }
-.enlace-final-naranja:hover { color: var(--accent) !important; }
+.enlace-final-naranja:hover { opacity: .75; color: var(--naranja) !important; text-decoration: none; }
+
+/* ── Cabecera perfil: foto + info + badges en una fila ── */
+.ficha-perfil-head {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+.foto-perfil {
+  width: 80px; height: 80px;           /* más pequeña — ahorra espacio vertical */
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  border: 2px solid var(--border);
+  background: var(--bg-subtle);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  object-fit: cover;
+}
+.foto-perfil--vacia { color: var(--muted); }
+.foto-perfil--vacia svg { opacity: .5; }
+
+/* Columna nombre + tutor + badges */
+.ficha-perfil-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.ficha-nombre {
+  font-size: clamp(1.3rem, 1.1rem + 1vw, 1.8rem);
+  font-weight: 800;
+  color: var(--naranja);
+  margin: 0;
+  line-height: 1.1;
+}
+.ficha-tutor {
+  margin: 0;
+  font-size: .88rem;
+  color: var(--muted);
+}
+.ficha-tutor strong { color: var(--ink); }
+
+.ficha-badges {
+  display: flex;
+  flex-direction: row;               /* en fila — ahorra espacio vertical */
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+.ficha-badge-fila {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.ficha-badge-label {
+  font-size: .8rem;
+  font-weight: 700;
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+/* Sección perfil sin tanto padding */
+.ficha-grupo--perfil {
+  margin-bottom: 8px !important;
+}
+
+/* ── Labels y valores en info-grid ── */
+.ficha-label {
+  display: block;
+  font-size: .72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: var(--muted);
+  margin-bottom: 1px;
+}
+.ficha-valor {
+  display: block;
+  font-size: .9rem;
+  color: var(--ink);
+}
+
+/* info-grid: 4 columnas en desktop para compactar contacto e identificación */
+.info-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px 16px;
+}
+.info-grid > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-height: 0;
+  overflow: visible;
+  white-space: normal;
+  text-overflow: unset;
+}
+
+/* Secciones más compactas */
+.ficha-grupo {
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  padding: 12px 16px;
+  margin: 0 0 8px;
+}
+.ficha-grupo h2 {
+  margin: 0 0 .5rem;
+  font-size: .9rem; font-weight: 700;
+  border-left: 3px solid var(--accent);
+  padding-left: .5rem;
+  color: var(--ink);
+  white-space: normal;
+  overflow: visible;
+}
+
+/* ── Instrumentos + Grupos en fila ── */
+.ficha-tags-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin: 0;
+}
+
+/* Ficha más ancha — ocupa todo el ancho disponible del main */
+.ficha-container.contenedor-borde {
+  max-width: 100%;
+  width: 100%;
+  padding: 20px 24px;
+  box-sizing: border-box;
+}
+
+@media (max-width: 768px) {
+  .info-grid { grid-template-columns: 1fr 1fr; }
+  .ficha-tags-row { grid-template-columns: 1fr; }
+}
+@media (max-width: 480px) {
+  .info-grid { grid-template-columns: 1fr; }
+  .ficha-perfil-head { gap: 12px; }
+  .foto-perfil { width: 64px; height: 64px; }
+  .ficha-container.contenedor-borde { padding: 14px 12px; }
+  .ficha-badges { flex-direction: column; gap: 6px; }
+}
+#instrumentos.ficha-grupo,
+#grupos.ficha-grupo { margin: 0; }
 
 /* ════════════════════════════════════════════════════════
    BADGES / CHIPS / TAGS / DOTS
@@ -1091,6 +1238,12 @@ tr.sec-ii { background: rgba(120,150,255,.12); }
    ════════════════════════════════════════════════════════ */
 .formulario-centrado { max-width: 55% !important; margin: 0 auto; }
 
+/* Excepción: el filtro de lista no debe quedar aplastado al 55% */
+.formulario-centrado.filtro-card--shape {
+  max-width: 100% !important;
+  width: 100% !important;
+}
+
 .titulo-bloque { color: var(--ink); }
 .h1-titulo     { font-size: clamp(1.6rem, 2vw + 1rem, 2.6rem); color: inherit; }
 .estado-titulo { color: inherit; opacity: .7; }
@@ -1567,4 +1720,669 @@ tr.sec-ii { background: rgba(120,150,255,.12); }
 }
 .logo-header {
   height: 36px !important;
+}
+/* ════════════════════════════════════════════════════════
+   HEADER .hs
+   ════════════════════════════════════════════════════════ */
+.hs {
+  background: var(--bg);
+  border-bottom: 2px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.hs-inner {
+  max-width: var(--container-w);
+  margin: 0 auto;
+  padding: 8px 16px;
+  min-height: 68px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.hs-logo {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  text-decoration: none;
+  margin-right: 6px;
+}
+.hs-logo__img {
+  height: 62px;
+  width: auto;
+  display: block;
+}
+.hs-nav {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding: 4px 0;
+}
+.hs-nav::-webkit-scrollbar { display: none; }
+.hs-card {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: .55rem 1rem;
+  min-height: 46px;
+  border-radius: var(--radius);
+  background: var(--naranja);
+  border: none;
+  color: #fff;
+  font-weight: 800;
+  font-size: .85rem;
+  letter-spacing: .1px;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: filter .12s;
+}
+.hs-card:hover         { filter: brightness(1.1); color: #fff; text-decoration: none; }
+.hs-card:focus-visible { outline: 3px solid var(--negro); outline-offset: 2px; }
+.hs-card.is-active     { background: var(--negro); color: #fff; }
+
+.hs-user {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: 6px;
+}
+.hs-user__avatar {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  background: var(--negro); color: #fff;
+  border: 2px solid var(--negro);
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 900; font-size: .95rem;
+  flex-shrink: 0;
+}
+.hs-user__info { display: flex; flex-direction: column; line-height: 1.15; }
+.hs-user__name { font-weight: 800; font-size: .84rem; color: var(--ink); white-space: nowrap; }
+.hs-user__role { font-size: .71rem; color: var(--muted); white-space: nowrap; }
+.hs-exit {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: .28rem .55rem;
+  border-radius: var(--radius-pill);
+  border: 1.5px solid var(--border-strong);
+  background: var(--bg-subtle); color: var(--ink);
+  font-weight: 700; font-size: .75rem;
+  text-decoration: none; white-space: nowrap;
+  transition: background .12s, border-color .12s;
+}
+.hs-exit:hover         { background: var(--naranja-claro); border-color: var(--naranja); color: var(--ink); text-decoration: none; }
+.hs-exit:focus-visible { outline: 2px solid var(--naranja); outline-offset: 2px; }
+
+@media (max-width: 1100px) {
+  .hs-user__info { display: none; }
+  .hs-card       { font-size: .8rem; padding: .5rem .85rem; }
+}
+@media (max-width: 860px) {
+  .hs-logo__img  { height: 40px; }
+  .hs-card       { font-size: .73rem; padding: .42rem .65rem; min-height: 36px; }
+  .hs-exit span  { display: none; }
+}
+@media (max-width: 600px) {
+  .hs-inner      { min-height: 56px; padding: 6px 10px; }
+  .hs-logo__img  { height: 34px; }
+  .hs-card       { font-size: .68rem; padding: .35rem .5rem; }
+}
+
+/* ════════════════════════════════════════════════════════
+   FONDO CREMA + LAYOUT MAIN
+   ════════════════════════════════════════════════════════ */
+body:has(.hs) {
+  background: var(--crema) !important;
+}
+/* page-main solo se genera cuando hero=false (ver layout.ejs) */
+.page-main {
+  max-width: var(--container-w);
+  width: 100%;
+  margin: 0 auto;
+  padding: 28px 24px 48px;
+  box-sizing: border-box;
+}
+
+/* ════════════════════════════════════════════════════════
+   TÍTULO + CABECERA DE SECCIÓN
+   ════════════════════════════════════════════════════════ */
+body:has(.hs) .h1-titulo {
+  font-size: clamp(1.6rem, 1.3rem + 1vw, 2.2rem);
+  font-weight: 800;
+  color: var(--naranja);
+  margin: 0;
+}
+.header-compact {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 18px;
+  flex-wrap: wrap;
+}
+
+/* ════════════════════════════════════════════════════════
+   BOTÓN AÑADIR
+   ════════════════════════════════════════════════════════ */
+a.btn-main-blanco[href$="nuevo"] {
+  background: var(--naranja) !important;
+  border: 1.5px solid var(--naranja-oscuro) !important;
+  color: #fff !important;
+  font-weight: 800 !important;
+  font-size: .9rem !important;
+  padding: .52rem 1.15rem !important;
+  border-radius: var(--radius) !important;
+}
+a.btn-main-blanco[href$="nuevo"]:hover { filter: brightness(1.08); color: #fff !important; }
+
+/* ════════════════════════════════════════════════════════
+   FILTRO — naranja con borde negro
+   ════════════════════════════════════════════════════════ */
+.filtro-card--shape {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1.4fr;
+  align-items: end;
+  gap: 10px;
+  background: var(--naranja);
+  border: 2px solid var(--negro);
+  border-radius: var(--radius-lg);
+  padding: 14px 14px;
+  box-shadow: none;
+  width: 100%;
+  max-width: 100%;
+  margin: 0 auto 24px;
+  box-sizing: border-box;
+}
+.filtro-card--shape input[type="hidden"] { display: none; }
+.campo-filtro {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.campo-filtro label {
+  font-size: .8rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  color: var(--negro);
+}
+.campo-filtro select,
+.campo-filtro input[type="text"] {
+  width: 100%;
+  min-height: 42px;
+  padding: .48rem .7rem;
+  border: 1.5px solid var(--negro);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  font-size: .92rem;
+  color: var(--ink);
+  transition: border-color .15s, box-shadow .15s;
+}
+.campo-filtro select:focus,
+.campo-filtro input[type="text"]:focus {
+  outline: none;
+  border-color: var(--negro);
+  box-shadow: 0 0 0 3px rgba(0,0,0,.1);
+}
+@media (max-width: 640px) {
+  .filtro-card--shape { grid-template-columns: 1fr; }
+}
+
+/* ════════════════════════════════════════════════════════
+   TARJETAS DE MÚSICO — amarillo oro #ffb020
+   ════════════════════════════════════════════════════════ */
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 16px;
+  max-width: 980px;
+  margin: 0 auto 1.5rem;
+}
+.dashboard-grid .card {
+  min-height: 110px;
+  padding: 18px 20px;
+  border-radius: var(--radius-xl);
+  border: none;
+  background: var(--amarillo);           /* #ffb020 */
+  color: var(--negro);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  text-decoration: none;
+  box-shadow: 0 3px 10px rgba(0,0,0,.12);
+  transition: transform .12s ease, box-shadow .12s ease;
+}
+.dashboard-grid .card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0,0,0,.16);
+  text-decoration: none;
+}
+.dashboard-grid .card.pasivo {
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-strong);
+  box-shadow: 0 2px 6px rgba(0,0,0,.06);
+  color: var(--muted);
+}
+.alumno-nombre {
+  font-weight: 800; font-size: 1rem; line-height: 1.2; color: var(--negro);
+}
+.dashboard-grid .card.pasivo .alumno-nombre { color: var(--muted); }
+.alumno-instrumento {
+  font-size: .85rem; margin-top: .3rem;
+  font-weight: 600; color: #7a5200;
+}
+.dashboard-grid .card.pasivo .alumno-instrumento { color: var(--muted); }
+.alumno-grupo {
+  font-size: .78rem;
+  margin-top: .3rem;
+  font-weight: 700;
+  color: var(--negro);
+  opacity: .6;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+.dashboard-grid .card.pasivo .alumno-grupo { color: var(--muted); }
+
+/* ════════════════════════════════════════════════════════
+   ENLACE VOLVER
+   ════════════════════════════════════════════════════════ */
+.volver-bloque-izquierda { margin-top: 28px; }
+.enlace-final,
+.enlace-final-naranja {
+  color: var(--naranja) !important;
+  font-weight: 700; font-size: .95rem;
+  text-decoration: none; transition: opacity .12s;
+}
+.enlace-final:hover,
+.enlace-final-naranja:hover { opacity: .75; text-decoration: none; color: var(--naranja) !important; }
+
+/* ════════════════════════════════════════════════════════
+   BADGES DE ESTADO
+   ════════════════════════════════════════════════════════ */
+.estado-badge {
+  display: inline-block;
+  padding: .2em .65em;
+  border-radius: var(--radius-pill);
+  font-size: .78rem; font-weight: 700; line-height: 1;
+  border: 1.5px solid transparent;
+}
+.estado-badge--ok { background: var(--bg-success); color: var(--success); border-color: var(--success); }
+.estado-badge--ko { background: var(--bg-danger);  color: var(--danger);  border-color: var(--danger); }
+
+/* ════════════════════════════════════════════════════════
+   TOGGLE VISTA
+   ════════════════════════════════════════════════════════ */
+.vista-switch { display: inline-flex; align-items: center; gap: .5rem; cursor: pointer; user-select: none; }
+.vista-switch__input { position: absolute; opacity: 0; width: 0; height: 0; }
+.vista-switch__track {
+  position: relative; display: inline-block;
+  width: 2.4rem; height: 1.3rem;
+  background: var(--border);
+  border-radius: var(--radius-pill);
+  border: 1.5px solid var(--border-strong);
+  transition: background .2s, border-color .2s;
+  flex-shrink: 0;
+}
+.vista-switch__track::after {
+  content: ''; position: absolute;
+  top: .12rem; left: .12rem;
+  width: .95rem; height: .95rem;
+  border-radius: 50%; background: #fff;
+  transition: transform .2s;
+}
+.vista-switch__input:checked + .vista-switch__track { background: var(--naranja); border-color: var(--naranja-oscuro); }
+.vista-switch__input:checked + .vista-switch__track::after { transform: translateX(1.05rem); }
+.vista-switch__input:focus-visible + .vista-switch__track { outline: 2px solid var(--negro); outline-offset: 2px; }
+.vista-switch__label { font-size: .88rem; font-weight: 600; color: var(--ink); min-width: 4rem; }
+
+/* ════════════════════════════════════════════════════════
+   LISTA VACÍA
+   ════════════════════════════════════════════════════════ */
+.lista-vacia { text-align: center; padding: 2.5rem 0; color: var(--muted); font-style: italic; }
+
+/* ════════════════════════════════════════════════════════
+   FORMULARIO DE ALUMNO — clases nuevas
+   ════════════════════════════════════════════════════════ */
+
+/* Mensajes de validación inline */
+.campo-msg {
+  display: block;
+  min-height: 1.2em;
+  font-size: .8rem;
+  font-weight: 600;
+  color: var(--muted);
+  margin-top: 3px;
+}
+.campo-msg--hint  { color: var(--muted); }
+.campo-msg--error { color: var(--danger); }
+
+/* Bloque foto actual */
+.bloque-foto-actual {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: .5rem;
+}
+.foto-form {
+  width: 120px;
+  height: 120px;
+  border-radius: var(--radius-lg);
+  object-fit: cover;
+  border: 2px solid var(--border);
+}
+.foto-acciones {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* Bloque subida */
+.bloque-subida { margin-top: .75rem; }
+.bloque-subida--oculto { display: none; }
+
+/* Preview foto seleccionada */
+.foto-preview { margin-top: .5rem; }
+.foto-preview__item {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+}
+.foto-preview__img {
+  max-height: 80px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+}
+
+/* Ocultar botón quitar */
+.btn--oculto { display: none !important; }
+
+/* Form eliminar — al pie del formulario */
+.form-eliminar {
+  margin-top: 1rem;
+  padding: 12px 24px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--bg);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  box-sizing: border-box;
+}
+.form-eliminar__aviso {
+  margin: 0;
+  font-weight: 600;
+  color: var(--muted);
+  font-size: .85rem;
+}
+.btn-main-blanco--peligro {
+  background: var(--bg) !important;
+  border: 1.5px solid var(--border-strong) !important;
+  color: var(--muted) !important;
+  font-size: .82rem !important;
+  padding: .3rem .75rem !important;
+}
+.btn-main-blanco--peligro:hover {
+  border-color: var(--danger) !important;
+  color: var(--danger) !important;
+  background: var(--bg-danger) !important;
+}
+
+/* Acciones fuera del formulario — mismo aspecto que en la ficha */
+.acciones-finales--form {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 16px;
+  padding: 0 4px;
+}
+
+/* Acciones dentro del formulario — sin border-top, mismo aspecto que en la ficha */
+.formulario-alumno .acciones-finales,
+.formulario-editor .acciones-finales {
+  border-top: none !important;
+  padding-top: 8px !important;
+  margin-top: 8px !important;
+}
+
+/* formulario-alumno con contenedor-borde — mismo padding que ficha */
+.formulario-alumno.contenedor-borde {
+  padding: 20px 24px !important;
+  box-sizing: border-box;
+}
+
+/* ════════════════════════════════════════════════════════
+   LOGIN — override de Bootstrap (restaura grid original)
+   ════════════════════════════════════════════════════════ */
+
+/* sb-auth más ancho */
+.sb-auth { max-width: 560px !important; }
+
+/* tile-sb dentro del login: columna vertical, alineado a la izquierda */
+.sb-auth .tile-sb {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: stretch !important;
+  justify-content: flex-start !important;
+  text-align: left !important;
+  height: auto !important;
+  min-height: unset !important;
+  width: 100% !important;
+}
+
+/* Cabecera: logo + título en fila */
+.sb-form-head--framed {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  gap: 12px !important;
+  background: rgba(0,0,0,.07) !important;
+  border-radius: 10px !important;
+  padding: 10px 14px !important;
+  margin-bottom: 16px !important;
+}
+.sb-login-logo { height: 38px !important; }
+.sb-form-head .h { font-size: 1.1rem !important; }
+
+/* Grid 2 columnas label|input */
+.sb-fields.align-vertical {
+  display: grid !important;
+  grid-template-columns: 110px 1fr !important;
+  column-gap: 10px !important;
+  row-gap: 14px !important;
+  align-items: center !important;
+  width: 100% !important;
+}
+.sb-fields.align-vertical .field-wrap  { display: contents !important; }
+.sb-fields.align-vertical .field-label {
+  display: inline-flex !important;
+  align-items: center !important;
+  grid-column: 1 !important;
+  margin-bottom: 0 !important;
+  font-size: .72rem !important;
+  font-weight: 900 !important;
+  padding: 3px 8px !important;
+  border: 2px solid var(--negro) !important;
+  border-radius: 8px !important;
+  background: #fff8e8 !important;
+}
+.sb-fields.align-vertical .field-input {
+  display: block !important;
+  grid-column: 2 !important;
+  min-width: 0 !important;
+  width: 100% !important;
+  margin-bottom: 0 !important;
+  font-size: .85rem !important;
+  padding: .4rem .6rem !important;
+  border: 2px solid var(--negro) !important;
+  border-radius: 8px !important;
+  background: #fff !important;
+}
+.sb-fields.align-vertical .show-pass {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: .5rem !important;
+  grid-column: 2 !important;
+  margin: 2px 0 0 !important;
+  font-size: .72rem !important;
+  font-weight: 700 !important;
+  text-transform: none !important;
+  cursor: pointer !important;
+}
+.sb-auth input[type="checkbox"] {
+  width: 14px !important; height: 14px !important;
+  flex-shrink: 0 !important; margin: 0 !important;
+}
+
+/* Acciones */
+.sb-auth-actions {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  width: 100% !important;
+}
+
+/* ════════════════════════════════════════════════════════
+   INDEX — banner usuario logado + grid de tiles
+   ════════════════════════════════════════════════════════ */
+
+/* Banner superior — mismo estilo que .hs pero adaptado al hero */
+.idx-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--bg);
+  border: 2px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 8px 16px;
+  margin-bottom: 20px;
+  box-shadow: var(--shadow);
+}
+.idx-banner__logo img {
+  height: 48px;
+  width: auto;
+  display: block;
+  flex-shrink: 0;
+}
+.idx-banner__user {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+}
+.idx-banner__avatar {
+  width: 34px; height: 34px;
+  border-radius: 50%;
+  background: var(--negro); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 900; font-size: .9rem;
+  flex-shrink: 0;
+}
+.idx-banner__info {
+  display: flex; flex-direction: column; line-height: 1.15;
+}
+.idx-banner__name { font-weight: 800; font-size: .88rem; color: var(--ink); }
+.idx-banner__role { font-size: .72rem; color: var(--muted); }
+
+/* Botones modo libre / restablecer */
+.idx-banner__controls {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.idx-btn {
+  padding: .3rem .75rem;
+  border-radius: var(--radius);
+  border: 1.5px solid var(--border-strong);
+  background: var(--bg-subtle);
+  color: var(--ink);
+  font-size: .8rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background .12s, border-color .12s;
+}
+.idx-btn:hover {
+  background: var(--naranja-claro);
+  border-color: var(--naranja);
+}
+
+/* Botón salir */
+.idx-banner__exit {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: .28rem .55rem;
+  border-radius: var(--radius-pill);
+  border: 1.5px solid var(--border-strong);
+  background: var(--bg-subtle);
+  color: var(--ink);
+  font-weight: 700; font-size: .75rem;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background .12s, border-color .12s;
+  flex-shrink: 0;
+}
+.idx-banner__exit:hover {
+  background: var(--naranja-claro);
+  border-color: var(--naranja);
+  color: var(--ink);
+  text-decoration: none;
+}
+
+/* Grid de tiles — centrado, 2 filas de 4 columnas */
+.idx-canvas .sb-grid {
+  gap: 16px !important;
+  grid-template-columns: repeat(4, minmax(160px, 240px)) !important;
+  grid-auto-rows: 70px !important;
+  margin-top: 0 !important;
+  justify-content: center !important;
+}
+
+/* Canvas transparente, sin marco, ancho completo */
+.idx-canvas {
+  width: 100%;
+  min-height: unset;
+  border: none;
+  border-radius: 0;
+  padding: 0;
+  box-sizing: border-box;
+  background: transparent;
+  position: relative;
+  overflow: visible;
+}
+.idx-canvas.free,
+.idx-canvas.free-view {
+  border: 2px dashed var(--border-strong) !important;
+  border-radius: var(--radius-lg) !important;
+  padding: 20px !important;
+  background: rgba(255,255,255,.3) !important;
+}
+
+/* Botones modo libre / restablecer — fuera del canvas */
+.idx-controls {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+/* Fondo crema cuando hay sesión */
+body:has(.idx-canvas) {
+  background: var(--crema) !important;
+  background-image: none !important;
+}
+
+/* Index con sesión — page-main sin padding lateral para tiles a todo el ancho */
+body:has(.idx-canvas) .page-main {
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  max-width: 100% !important;
+}
+body:has(.idx-canvas) .idx-controls {
+  padding: 0 24px;
 }

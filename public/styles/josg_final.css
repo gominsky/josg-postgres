@@ -1,0 +1,335 @@
+/* ════════════════════════════════════════════════════════
+   JOSG FINAL — pegar al final de components.css
+   Sustituye todos los bloques PARCHE desde línea 1571
+   ════════════════════════════════════════════════════════ */
+
+
+/* ════════════════════════════════════════════════════════
+   HEADER .hs
+   ════════════════════════════════════════════════════════ */
+.hs {
+  background: var(--bg);
+  border-bottom: 2px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.hs-inner {
+  max-width: var(--container-w);
+  margin: 0 auto;
+  padding: 8px 16px;
+  min-height: 68px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Logo */
+.hs-logo {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  text-decoration: none;
+  margin-right: 6px;
+}
+.hs-logo__img {
+  height: 62px;
+  width: auto;
+  display: block;
+}
+
+/* Cards de navegación */
+.hs-nav {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding: 4px 0;
+}
+.hs-nav::-webkit-scrollbar { display: none; }
+
+.hs-card {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: .55rem 1rem;
+  min-height: 46px;
+  border-radius: var(--radius);
+  background: var(--naranja);
+  border: none;
+  color: #fff;
+  font-weight: 800;
+  font-size: .85rem;
+  letter-spacing: .1px;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: filter .12s;
+}
+.hs-card:hover          { filter: brightness(1.1); color: #fff; text-decoration: none; }
+.hs-card:focus-visible  { outline: 3px solid var(--negro); outline-offset: 2px; }
+.hs-card.is-active      { background: var(--negro); color: #fff; }
+
+/* Bloque usuario */
+.hs-user {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: 6px;
+}
+.hs-user__avatar {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  background: var(--negro); color: #fff;
+  border: 2px solid var(--negro);
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 900; font-size: .95rem;
+  flex-shrink: 0;
+}
+.hs-user__info  { display: flex; flex-direction: column; line-height: 1.15; }
+.hs-user__name  { font-weight: 800; font-size: .84rem; color: var(--ink); white-space: nowrap; }
+.hs-user__role  { font-size: .71rem; color: var(--muted); white-space: nowrap; }
+
+.hs-exit {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: .28rem .55rem;
+  border-radius: var(--radius-pill);
+  border: 1.5px solid var(--border-strong);
+  background: var(--bg-subtle); color: var(--ink);
+  font-weight: 700; font-size: .75rem;
+  text-decoration: none; white-space: nowrap;
+  transition: background .12s, border-color .12s;
+}
+.hs-exit:hover         { background: var(--naranja-claro); border-color: var(--naranja); color: var(--ink); text-decoration: none; }
+.hs-exit:focus-visible { outline: 2px solid var(--naranja); outline-offset: 2px; }
+
+/* Responsive */
+@media (max-width: 1100px) {
+  .hs-user__info { display: none; }
+  .hs-card       { font-size: .8rem; padding: .5rem .85rem; }
+}
+@media (max-width: 860px) {
+  .hs-logo__img  { height: 40px; }
+  .hs-card       { font-size: .73rem; padding: .42rem .65rem; min-height: 36px; }
+  .hs-exit span  { display: none; }
+}
+@media (max-width: 600px) {
+  .hs-inner      { min-height: 56px; padding: 6px 10px; }
+  .hs-logo__img  { height: 34px; }
+  .hs-card       { font-size: .68rem; padding: .35rem .5rem; }
+}
+
+
+/* ════════════════════════════════════════════════════════
+   FONDO CREMA — todas las páginas con header-simple
+   ════════════════════════════════════════════════════════ */
+body:has(.hs) {
+  background: var(--crema) !important;   /* #fff3dc */
+}
+body:has(.hs) main {
+  max-width: var(--container-w);
+  margin: 0 auto;
+  padding: 28px 20px 48px;
+}
+
+
+/* ════════════════════════════════════════════════════════
+   TÍTULO DE PÁGINA
+   ════════════════════════════════════════════════════════ */
+body:has(.hs) .h1-titulo {
+  font-size: clamp(1.6rem, 1.3rem + 1vw, 2.2rem);
+  font-weight: 800;
+  color: var(--naranja);
+  margin: 0;
+}
+
+.header-compact {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 18px;
+  flex-wrap: wrap;
+}
+
+
+/* ════════════════════════════════════════════════════════
+   BOTÓN AÑADIR MÚSICO
+   ════════════════════════════════════════════════════════ */
+a.btn-main-blanco[href$="nuevo"] {
+  background: var(--naranja) !important;
+  border: 1.5px solid var(--naranja-oscuro) !important;
+  color: #fff !important;
+  font-weight: 800 !important;
+  font-size: .9rem !important;
+  padding: .52rem 1.15rem !important;
+  border-radius: var(--radius) !important;
+  letter-spacing: .02em;
+}
+a.btn-main-blanco[href$="nuevo"]:hover { filter: brightness(1.08); color: #fff !important; }
+
+
+/* ════════════════════════════════════════════════════════
+   FILTRO — naranja con borde negro, fiel a la captura
+   ════════════════════════════════════════════════════════ */
+.filtro-card--shape {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1.4fr;
+  align-items: end;
+  gap: 16px;
+  background: var(--naranja);
+  border: 2px solid var(--negro);
+  border-radius: var(--radius-lg);
+  padding: 16px 20px;
+  box-shadow: none;
+  max-width: 860px;
+  margin: 0 auto 24px;
+}
+.filtro-card--shape input[type="hidden"] { display: none; }
+
+.campo-filtro {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.campo-filtro label {
+  font-size: .8rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  color: var(--negro);
+}
+.campo-filtro select,
+.campo-filtro input[type="text"] {
+  width: 100%;
+  min-height: 42px;
+  padding: .48rem .7rem;
+  border: 1.5px solid var(--negro);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  font-size: .92rem;
+  color: var(--ink);
+  transition: border-color .15s, box-shadow .15s;
+}
+.campo-filtro select:focus,
+.campo-filtro input[type="text"]:focus {
+  outline: none;
+  border-color: var(--negro);
+  box-shadow: 0 0 0 3px rgba(0,0,0,.1);
+}
+@media (max-width: 640px) {
+  .filtro-card--shape { grid-template-columns: 1fr; }
+}
+
+
+/* ════════════════════════════════════════════════════════
+   TARJETAS DE MÚSICO — amarillo oro --amarillo #ffb020
+   ════════════════════════════════════════════════════════ */
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(185px, 1fr));
+  gap: 14px;
+  max-width: 980px;
+  margin: 0 auto 1.5rem;
+}
+.dashboard-grid .card {
+  min-height: 96px;
+  padding: 16px 18px;
+  border-radius: var(--radius-xl);
+  border: none;
+  background: var(--amarillo);           /* #ffb020 */
+  color: var(--negro);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  text-decoration: none;
+  box-shadow: 0 3px 10px rgba(0,0,0,.12);
+  transition: transform .12s ease, box-shadow .12s ease;
+}
+.dashboard-grid .card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0,0,0,.16);
+  text-decoration: none;
+}
+.dashboard-grid .card.pasivo {
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-strong);
+  box-shadow: 0 2px 6px rgba(0,0,0,.06);
+  color: var(--muted);
+}
+.alumno-nombre {
+  font-weight: 800; font-size: 1rem; line-height: 1.2; color: var(--negro);
+}
+.dashboard-grid .card.pasivo .alumno-nombre { color: var(--muted); }
+
+.alumno-instrumento {
+  font-size: .85rem; margin-top: .3rem;
+  font-weight: 600; color: #7a5200;
+}
+.dashboard-grid .card.pasivo .alumno-instrumento { color: var(--muted); }
+
+
+/* ════════════════════════════════════════════════════════
+   ENLACE VOLVER
+   ════════════════════════════════════════════════════════ */
+.volver-bloque-izquierda { margin-top: 28px; }
+.enlace-final,
+.enlace-final-naranja {
+  color: var(--naranja) !important;
+  font-weight: 700; font-size: .95rem;
+  text-decoration: none;
+  transition: opacity .12s;
+}
+.enlace-final:hover,
+.enlace-final-naranja:hover { opacity: .75; text-decoration: none; color: var(--naranja) !important; }
+
+
+/* ════════════════════════════════════════════════════════
+   BADGES DE ESTADO
+   ════════════════════════════════════════════════════════ */
+.estado-badge {
+  display: inline-block;
+  padding: .2em .65em;
+  border-radius: var(--radius-pill);
+  font-size: .78rem; font-weight: 700; line-height: 1;
+  border: 1.5px solid transparent;
+}
+.estado-badge--ok { background: var(--bg-success); color: var(--success); border-color: var(--success); }
+.estado-badge--ko { background: var(--bg-danger);  color: var(--danger);  border-color: var(--danger); }
+
+
+/* ════════════════════════════════════════════════════════
+   TOGGLE VISTA LISTA / TARJETAS
+   ════════════════════════════════════════════════════════ */
+.vista-switch { display: inline-flex; align-items: center; gap: .5rem; cursor: pointer; user-select: none; }
+.vista-switch__input { position: absolute; opacity: 0; width: 0; height: 0; }
+.vista-switch__track {
+  position: relative; display: inline-block;
+  width: 2.4rem; height: 1.3rem;
+  background: var(--border);
+  border-radius: var(--radius-pill);
+  border: 1.5px solid var(--border-strong);
+  transition: background .2s, border-color .2s;
+  flex-shrink: 0;
+}
+.vista-switch__track::after {
+  content: ''; position: absolute;
+  top: .12rem; left: .12rem;
+  width: .95rem; height: .95rem;
+  border-radius: 50%; background: #fff;
+  transition: transform .2s;
+}
+.vista-switch__input:checked + .vista-switch__track { background: var(--naranja); border-color: var(--naranja-oscuro); }
+.vista-switch__input:checked + .vista-switch__track::after { transform: translateX(1.05rem); }
+.vista-switch__input:focus-visible + .vista-switch__track { outline: 2px solid var(--negro); outline-offset: 2px; }
+.vista-switch__label { font-size: .88rem; font-weight: 600; color: var(--ink); min-width: 4rem; }
+
+
+/* ════════════════════════════════════════════════════════
+   LISTA VACÍA
+   ════════════════════════════════════════════════════════ */
+.lista-vacia { text-align: center; padding: 2.5rem 0; color: var(--muted); font-style: italic; }

@@ -1,0 +1,425 @@
+<%
+  const isEdicion = Boolean(alumno && alumno.id);
+  const modoEditar = locals.modoEditar === true || locals.modoEditar === 'true';
+  title  = modoEditar ? (isEdicion ? 'Editar músico' : 'Nuevo músico') : 'Ficha del músico';
+  hero   = false;
+  if (modoEditar && grupos)      grupos.sort((a, b) => a.nombre.localeCompare(b.nombre));
+  if (modoEditar && instrumentos) instrumentos.sort((a, b) => a.nombre.localeCompare(b.nombre));
+  const tieneFoto = Boolean(alumno && alumno.foto);
+%>
+
+<% if (modoEditar && alumno?.id) { %>
+  <script>const alumnoId = <%= alumno.id %>;</script>
+<% } %>
+
+<% if (modoEditar) { %>
+<h1 class="h1-titulo"><%= title %></h1>
+<!-- ═══════════════════════════════════════════════════════
+     MODO EDICIÓN / NUEVO
+     ═══════════════════════════════════════════════════════ -->
+<form action="<%= alumno?.id ? '/alumnos/' + alumno.id + '?_method=PUT' : '/alumnos' %>"
+      method="POST" enctype="multipart/form-data"
+      class="formulario-alumno contenedor-borde">
+
+  <!-- Foto — arriba del todo -->
+  <div class="grupo-campos">
+    <h2>Foto</h2>
+    <% if (tieneFoto) { %>
+      <input type="hidden" name="fotoActual" value="<%= alumno.foto %>">
+      <input type="hidden" name="eliminar_foto" id="eliminar_foto" value="0">
+      <div id="bloque-foto-actual" class="bloque-foto-actual">
+        <img src="/uploads/<%= alumno.foto %>" class="foto-perfil foto-form"
+             alt="Foto de <%= alumno.nombre %>" loading="lazy" decoding="async">
+        <div class="foto-acciones">
+          <a href="/uploads/<%= alumno.foto %>" target="_blank" class="btn-main-blanco">Ver tamaño completo</a>
+          <button type="button" id="btn-eliminar-foto-actual" class="btn-main-blanco">Eliminar foto actual</button>
+        </div>
+        <small class="campo-msg campo-msg--hint">Para subir una foto nueva, elimina primero la actual.</small>
+      </div>
+      <div id="bloque-subida" class="bloque-subida bloque-subida--oculto">
+        <label>Subir nueva:
+          <input type="file" name="foto" id="foto-input" accept="image/*">
+        </label>
+        <div id="foto-preview" class="foto-preview"></div>
+        <button type="button" id="btn-quitar-foto" class="btn-main-blanco btn--oculto">Quitar foto seleccionada</button>
+      </div>
+    <% } else { %>
+      <div id="bloque-subida" class="bloque-subida">
+        <label>Subir foto:
+          <input type="file" name="foto" id="foto-input" accept="image/*">
+        </label>
+        <div id="foto-preview" class="foto-preview"></div>
+        <button type="button" id="btn-quitar-foto" class="btn-main-blanco btn--oculto">Quitar foto seleccionada</button>
+      </div>
+    <% } %>
+  </div>
+
+  <!-- Datos personales -->
+  <div class="grupo-campos">
+    <h2>Datos personales</h2>
+    <div class="form-grid-2">
+      <label>Nombre:
+        <input type="text" name="nombre" required value="<%= alumno?.nombre || '' %>">
+      </label>
+      <label>Apellidos:
+        <input type="text" name="apellidos" required value="<%= alumno?.apellidos || '' %>">
+      </label>
+      <label>Fecha de nacimiento:
+        <input type="date" name="fecha_nacimiento" value="<%= alumno?.fecha_nacimiento || '' %>">
+      </label>
+      <label>DNI:
+        <input type="text" name="DNI" id="dni-input" value="<%= alumno?.DNI || alumno?.dni || '' %>">
+        <small id="dni-msg" class="campo-msg"></small>
+      </label>
+      <label>Dirección:
+        <input type="text" name="direccion" value="<%= alumno?.direccion || '' %>">
+      </label>
+      <label>Código postal:
+        <input type="number" name="codigo_postal" value="<%= alumno?.codigo_postal ?? '' %>">
+      </label>
+      <label>Municipio:
+        <input type="text" name="municipio" value="<%= alumno?.municipio || '' %>">
+      </label>
+      <label>Provincia:
+        <input type="text" name="provincia" value="<%= alumno?.provincia || '' %>">
+      </label>
+    </div>
+  </div>
+
+  <!-- Contacto -->
+  <div class="grupo-campos">
+    <h2>Contacto</h2>
+    <div class="form-grid-2">
+      <label>Teléfono:
+        <input type="text" name="telefono" value="<%= alumno?.telefono || '' %>">
+      </label>
+      <label>Email:
+        <input type="email" name="email" id="email-input" value="<%= alumno?.email || '' %>">
+        <small id="email-msg" class="campo-msg"></small>
+      </label>
+      <label>Tutor:
+        <input type="text" name="tutor" value="<%= alumno?.tutor || '' %>">
+      </label>
+    </div>
+  </div>
+
+  <!-- Centro educativo -->
+  <div class="grupo-campos">
+    <h2>Centro Educativo</h2>
+    <div class="form-grid-2">
+      <label>Centro:
+        <input type="text" name="centro" value="<%= alumno?.centro || '' %>">
+      </label>
+      <label>Profesor del centro:
+        <input type="text" name="profesor_centro" value="<%= alumno?.profesor_centro || '' %>">
+      </label>
+    </div>
+  </div>
+
+  <!-- Acceso app -->
+  <div class="grupo-campos">
+    <h2>Acceso ¡Josg en tu mano!</h2>
+    <div class="form-grid-2">
+      <label>Registrado en la app:
+        <select name="registrado">
+          <option value="0" <%= alumno && !alumno.registrado ? 'selected' : '' %>>No</option>
+          <option value="1" <%= alumno?.registrado ? 'selected' : '' %>>Sí</option>
+        </select>
+      </label>
+      <label>Nueva contraseña (opcional):
+        <input type="password" name="password"
+               placeholder="<%= isEdicion ? 'Dejar en blanco para no cambiar' : '' %>">
+        <small class="campo-msg campo-msg--hint">Sólo para la app móvil. Se guarda cifrada.</small>
+      </label>
+    </div>
+  </div>
+
+  <!-- Asignación -->
+  <div class="grupo-campos">
+    <h2>Asignación</h2>
+    <div class="form-grid-2">
+      <div class="campo-label">
+        <label for="grupos-select">Grupos:</label>
+        <select name="grupos" id="grupos-select" multiple>
+          <% (grupos || []).forEach(grupo => { %>
+            <option value="<%= grupo.id %>"
+              <%= (gruposAlumno || []).includes(grupo.id) ? 'selected' : '' %>>
+              <%= grupo.nombre %>
+            </option>
+          <% }) %>
+        </select>
+      </div>
+      <div class="campo-label">
+        <label for="instrumentos-select">Instrumentos:</label>
+        <select name="instrumentos" id="instrumentos-select" multiple>
+          <% (instrumentos || []).forEach(inst => { %>
+            <option value="<%= inst.id %>"
+              <%= (instrumentosAlumno || []).includes(inst.id) ? 'selected' : '' %>>
+              <%= inst.nombre %>
+            </option>
+          <% }) %>
+        </select>
+      </div>
+      <label>Estado:
+        <select name="activo" required>
+          <option value="1" <%= alumno?.activo ? 'selected' : '' %>>Activo</option>
+          <option value="0" <%= alumno && !alumno.activo ? 'selected' : '' %>>No activo</option>
+        </select>
+      </label>
+    </div>
+  </div>
+
+  <!-- Acciones — dentro del contenedor, igual que en la ficha -->
+  <div class="acciones-finales">
+    <div class="acciones-izq">
+      <% if (isEdicion) { %>
+        <a href="/alumnos/<%= alumno.id %>" class="enlace-final">← Ver ficha</a>
+      <% } else { %>
+        <a href="/alumnos" class="enlace-final">← Volver</a>
+      <% } %>
+    </div>
+    <div class="acciones-der">
+      <button type="submit" class="btn-main-blanco">
+        <%= isEdicion ? 'Actualizar' : 'Registrar' %>
+      </button>
+    </div>
+  </div>
+
+</form>
+
+<% if (isEdicion) { %>
+  <form method="POST" action="/alumnos/<%= alumno.id %>/eliminar"
+        onsubmit="return confirm('¿Eliminar este alumno definitivamente?');"
+        class="form-eliminar">
+    <p class="form-eliminar__aviso">Eliminar de manera definitiva</p>
+    <button type="submit" class="btn-main-blanco btn-main-blanco--peligro">Eliminar</button>
+  </form>
+<% } %>
+
+<% } else { %>
+<!-- ═══════════════════════════════════════════════════════
+     MODO FICHA (solo lectura)
+     ═══════════════════════════════════════════════════════ -->
+<div class="ficha-container contenedor-borde">
+
+  <!-- Cabecera + perfil fusionados en una sola fila -->
+  <section class="grupo-campos ficha-grupo ficha-grupo--perfil" aria-label="Perfil">
+    <div class="ficha-perfil-head">
+
+      <% if (tieneFoto) { %>
+        <img src="/uploads/<%= alumno.foto %>" class="foto-perfil"
+             alt="Foto de <%= alumno.nombre %>" loading="lazy" decoding="async">
+      <% } else { %>
+        <div class="foto-perfil foto-perfil--vacia" aria-label="Sin foto">
+          <svg viewBox="0 0 96 96" width="44" height="44" aria-hidden="true" focusable="false">
+            <circle cx="48" cy="48" r="45" fill="none" stroke="currentColor" stroke-width="3"/>
+            <path d="M48 50c9.39 0 17-7.61 17-17S57.39 16 48 16s-17 7.61-17 17 7.61 17 17 17Zm0 8c-14.36 0-30 7.5-30 20v6h60v-6c0-12.5-15.64-20-30-20Z" fill="currentColor"/>
+          </svg>
+        </div>
+      <% } %>
+
+      <div class="ficha-perfil-info">
+        <h1 class="ficha-nombre"><%= alumno.nombre %> <%= alumno.apellidos %></h1>
+        <% if (alumno.tutor) { %>
+          <p class="ficha-tutor"><strong>Tutor:</strong> <%= alumno.tutor %></p>
+        <% } %>
+        <div class="ficha-badges">
+          <div class="ficha-badge-fila">
+            <span class="ficha-badge-label">Estado:</span>
+            <span class="estado-badge estado-badge--<%= alumno.activo ? 'ok' : 'ko' %>"><%= alumno.activo ? 'Activo' : 'No activo' %></span>
+          </div>
+          <div class="ficha-badge-fila">
+            <span class="ficha-badge-label">App móvil:</span>
+            <span class="estado-badge estado-badge--<%= alumno.registrado ? 'ok' : 'ko' %>"><%= alumno.registrado ? 'Registrado' : 'No registrado' %></span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- Contacto y dirección -->
+  <section class="grupo-campos ficha-grupo" aria-labelledby="contacto-title">
+    <h2 id="contacto-title">Contacto y dirección</h2>
+    <div class="info-grid">
+      <div><span class="ficha-label">Dirección</span><span class="ficha-valor"><%= alumno.direccion || '—' %></span></div>
+      <div><span class="ficha-label">Código Postal</span><span class="ficha-valor"><%= alumno.codigo_postal ?? '—' %></span></div>
+      <div><span class="ficha-label">Municipio</span><span class="ficha-valor"><%= alumno.municipio || '—' %></span></div>
+      <div><span class="ficha-label">Provincia</span><span class="ficha-valor"><%= alumno.provincia || '—' %></span></div>
+      <div><span class="ficha-label">Email</span><span class="ficha-valor"><%= alumno.email || '—' %></span></div>
+      <div><span class="ficha-label">Teléfono</span><span class="ficha-valor"><%= alumno.telefono || '—' %></span></div>
+    </div>
+  </section>
+
+  <!-- Identificación y fechas -->
+  <section class="grupo-campos ficha-grupo" aria-labelledby="ident-title">
+    <h2 id="ident-title">Identificación y fechas</h2>
+    <div class="info-grid">
+      <div><span class="ficha-label">DNI</span><span class="ficha-valor"><%= alumno.DNI || alumno.dni || '—' %></span></div>
+      <div><span class="ficha-label">Fecha de nacimiento</span><span class="ficha-valor"><%= typeof formatDate === 'function' ? formatDate(alumno.fecha_nacimiento) : (alumno.fecha_nacimiento || '—') %></span></div>
+      <div><span class="ficha-label">Fecha de alta</span><span class="ficha-valor"><%= typeof formatDate === 'function' ? formatDate(alumno.fecha_matriculacion) : (alumno.fecha_matriculacion || '—') %></span></div>
+      <div><span class="ficha-label">Fecha de baja</span><span class="ficha-valor"><%= typeof formatDate === 'function' ? formatDate(alumno.fecha_baja) : (alumno.fecha_baja || '—') %></span></div>
+    </div>
+  </section>
+
+  <!-- Centro educativo -->
+  <section class="grupo-campos ficha-grupo" aria-labelledby="centro-title">
+    <h2 id="centro-title">Centro educativo</h2>
+    <div class="info-grid">
+      <div><span class="ficha-label">Centro</span><span class="ficha-valor"><%= alumno.centro || '—' %></span></div>
+      <div><span class="ficha-label">Profesor del centro</span><span class="ficha-valor"><%= alumno.profesor_centro || '—' %></span></div>
+    </div>
+  </section>
+
+  <!-- Instrumentos + Grupos -->
+  <div class="ficha-tags-row">
+    <% if (alumno.instrumentos && alumno.instrumentos.length > 0) { %>
+      <section class="grupo-campos ficha-grupo" aria-labelledby="inst-title">
+        <h2 id="inst-title">Instrumentos</h2>
+        <div class="tags-wrap">
+          <% alumno.instrumentos.split(',').forEach(inst => { %>
+            <span class="tag"><%= inst.trim() %></span>
+          <% }) %>
+        </div>
+      </section>
+    <% } %>
+    <% if (alumno.grupos && alumno.grupos.length > 0) { %>
+      <section class="grupo-campos ficha-grupo" aria-labelledby="grupos-title">
+        <h2 id="grupos-title">Grupos</h2>
+        <div class="tags-wrap">
+          <% alumno.grupos.split(',').forEach(gr => { %>
+            <span class="tag"><%= gr.replace(/\s*\(.*?\)\s*/g, '').trim() %></span>
+          <% }) %>
+        </div>
+      </section>
+    <% } %>
+  </div>
+
+  <!-- Acciones -->
+  <div class="acciones-finales">
+    <div class="acciones-izq">
+      <a href="/alumnos" class="enlace-final">← Volver</a>
+    </div>
+    <div class="acciones-der">
+      <a href="/alumnos/<%= alumno.id %>/editar" class="btn-main-blanco">Editar</a>
+    </div>
+  </div>
+
+</div>
+<% } %>
+
+<% if (modoEditar) { %>
+<script>
+(function () {
+  const form     = document.querySelector('form.formulario-alumno');
+  const alumnoId = <%= (alumno && alumno.id) ? alumno.id : 'null' %>;
+
+  /* ── Email ── */
+  const emailInput = document.getElementById('email-input');
+  const emailMsg   = document.getElementById('email-msg');
+  let emailTaken   = false, debounceTimer;
+
+  function setEmailMsg(text, isError) {
+    if (!emailMsg) return;
+    emailMsg.textContent = text || '';
+    emailMsg.classList.toggle('campo-msg--error', Boolean(isError));
+  }
+
+  async function checkEmail() {
+    const email = (emailInput?.value || '').trim();
+    if (!email) { emailTaken = false; setEmailMsg(''); return; }
+    try {
+      const q   = new URLSearchParams({ email, excludeId: alumnoId || '' });
+      const res = await fetch('/alumnos/api/check-email?' + q, { cache: 'no-store' });
+      const d   = await res.json();
+      emailTaken = !d.ok;
+      setEmailMsg(emailTaken ? 'Este email ya está registrado. Prueba con otro.' : '', emailTaken);
+    } catch { /* valida el servidor */ }
+  }
+
+  ['input', 'change', 'blur'].forEach(ev =>
+    emailInput?.addEventListener(ev, () => {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(checkEmail, ev === 'blur' ? 0 : 300);
+    })
+  );
+
+  form?.addEventListener('submit', e => {
+    if (emailTaken) { e.preventDefault(); emailInput?.focus(); setEmailMsg('Este email ya está registrado. Prueba con otro.', true); }
+  });
+
+  /* ── DNI ── */
+  const dniInput = document.getElementById('dni-input');
+  const dniMsg   = document.getElementById('dni-msg');
+
+  async function checkDni() {
+    const dni = (dniInput?.value || '').trim();
+    if (dniMsg) { dniMsg.textContent = ''; dniMsg.classList.remove('campo-msg--error'); }
+    dniInput?.classList.remove('is-invalid');
+    if (!dni) return true;
+    const url = new URL('/alumnos/api/check-dni', location.origin);
+    url.searchParams.set('dni', dni);
+    if (alumnoId) url.searchParams.set('excludeId', alumnoId);
+    try {
+      const d = await (await fetch(url)).json();
+      if (!d.ok) {
+        if (dniMsg) { dniMsg.textContent = 'Ese DNI ya está registrado'; dniMsg.classList.add('campo-msg--error'); }
+        dniInput?.classList.add('is-invalid');
+        return false;
+      }
+      return true;
+    } catch { if (dniMsg) dniMsg.textContent = 'No se pudo verificar el DNI ahora'; return true; }
+  }
+
+  dniInput?.addEventListener('blur', checkDni);
+  form?.addEventListener('submit', async e => {
+    if (!await checkDni()) { e.preventDefault(); dniInput?.focus(); }
+  });
+
+  /* ── Foto ── */
+  const fileInput         = document.getElementById('foto-input');
+  const preview           = document.getElementById('foto-preview');
+  const btnQuitar         = document.getElementById('btn-quitar-foto');
+  const btnEliminarActual = document.getElementById('btn-eliminar-foto-actual');
+  const inputEliminar     = document.getElementById('eliminar_foto');
+  const bloqueFotoActual  = document.getElementById('bloque-foto-actual');
+  const bloqueSubida      = document.getElementById('bloque-subida');
+
+  function clearSelectedFile() {
+    if (fileInput) fileInput.value = '';
+    if (preview)   preview.innerHTML = '';
+    btnQuitar?.classList.add('btn--oculto');
+  }
+
+  fileInput?.addEventListener('change', () => {
+    const hayFotoVisible  = bloqueFotoActual && getComputedStyle(bloqueFotoActual).display !== 'none';
+    const eliminarMarcado = inputEliminar?.value === '1';
+    if (hayFotoVisible && !eliminarMarcado) { clearSelectedFile(); return; }
+    const f = fileInput.files?.[0];
+    if (!f) { clearSelectedFile(); return; }
+    const p = document.createElement('div');
+    p.className = 'foto-preview__item';
+    if (f.type?.startsWith('image/')) {
+      const img = document.createElement('img');
+      img.src = URL.createObjectURL(f); img.alt = f.name; img.className = 'foto-preview__img';
+      img.onload = () => URL.revokeObjectURL(img.src);
+      p.appendChild(img);
+    }
+    const span = document.createElement('span'); span.textContent = f.name; p.appendChild(span);
+    preview.innerHTML = ''; preview.appendChild(p);
+    btnQuitar?.classList.remove('btn--oculto');
+  });
+
+  btnQuitar?.addEventListener('click', clearSelectedFile);
+
+  btnEliminarActual?.addEventListener('click', () => {
+    if (confirm('¿Eliminar la foto actual?')) {
+      if (inputEliminar)    inputEliminar.value = '1';
+      if (bloqueFotoActual) bloqueFotoActual.style.display = 'none';
+      bloqueSubida?.classList.remove('bloque-subida--oculto');
+      clearSelectedFile();
+    }
+  });
+})();
+</script>
+<% } %>

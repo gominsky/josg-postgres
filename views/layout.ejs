@@ -27,7 +27,7 @@
     <%- include('partials/header-simple') %>
   <% } %>
 
-  <main>
+  <main class="<%= (typeof hero === 'undefined' || !hero) ? 'page-main' : '' %>">
     <%- body %>
   </main>
 

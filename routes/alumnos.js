@@ -145,13 +145,14 @@ router.get('/nuevo', async (req, res) => {
     const instrumentos = (await db.query('SELECT * FROM instrumentos')).rows;
     const grupos = (await db.query('SELECT * FROM grupos')).rows;
 
-    res.render('alumno_form', {
+    res.render('alumno', {
       alumno: null,
       instrumentos,
       instrumentosAlumno: [],
       grupos,
       gruposAlumno: [],
-      hero: false
+      hero: false,
+      modoEditar: true
     });
   } catch (err) {
     res.status(500).send('Error al cargar instrumentos o grupos');
@@ -589,13 +590,14 @@ router.get('/:id/editar', async (req, res) => {
     const instrumentosAlumno = instAlumnoResult.rows.map(r => r.instrumento_id);
     const gruposAlumno = grpAlumnoResult.rows.map(r => r.grupo_id);
 
-    res.render('alumno_form', {
+    res.render('alumno', {
       alumno,
       instrumentos: instrumentosResult.rows,
       instrumentosAlumno,
       grupos: gruposResult.rows,
       gruposAlumno,
-      hero: false
+      hero: false,
+      modoEditar: true
     });
   } catch (err) {
     console.error('Error cargando datos del alumno:', err);
@@ -648,14 +650,15 @@ router.get('/nuevo/:alumnoId', async (req, res) => {
     const cuotasDisponibles = cuotasDisponiblesRes.rows;
 
     // 6. Renderizar
-    res.render('alumnos_ficha', {
+    res.render('alumno', {
       alumno: {
         ...alumno,
         instrumentos: instrumentos.join(', '),
         grupos: grupos.join(', ')
       },
       pagos,
-      cuotasDisponibles
+      cuotasDisponibles,
+      modoEditar: false
     });
 
   } catch (err) {
@@ -878,12 +881,13 @@ router.get('/:id', async (req, res) => {
     resumen.total_pagado = Number(resumen.total_pagado || 0);
     resumen.total_pendiente = resumen.total_cuotas - resumen.total_pagado;
 
-    res.render('alumnos_ficha', {
+    res.render('alumno', {
       alumno: { ...alumno, instrumentos, grupos },
       pagos: pagosResult.rows,
       cuotasDisponibles: cuotasDisponiblesResult.rows,
       cuotasAlumno: cuotasAlumnoResult.rows,
-      resumenDeuda: resumen
+      resumenDeuda: resumen,
+      modoEditar: false
     });
 
   } catch (err) {

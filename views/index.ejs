@@ -1,30 +1,30 @@
-<% title = 'Inicio - JOSG MANAGER' %>
-<% hero  = true %>
+<%
+  title = 'Inicio - JOSG MANAGER';
+  hero  = usuario ? false : true;
+%>
 
+<% if (!usuario) { %>
+<!-- ═══════════════════════════════════════════════════════
+     SIN SESIÓN — LOGIN
+     ═══════════════════════════════════════════════════════ -->
 <header class="hero-header">
   <a class="skip-link" href="#menu-principal">Saltar al contenido principal</a>
-
-  <% if (!usuario) { %>
-  <!-- =================== SIN SESIÓN: LOGIN =================== -->
   <div class="container page-wrap">
     <section class="sb-auth" aria-labelledby="auth-title">
       <% if (error) { %>
         <div class="tile-sb is-yellow h1 w2" role="alert" aria-live="polite"><span><%= error %></span></div>
       <% } %>
-
       <form method="POST" action="/login" class="sb-auth-form" autocomplete="on" novalidate>
         <div class="tile-sb is-yellow h1 w2 sb-auth-card">
           <div class="sb-form-head sb-form-head--framed">
             <img src="/imagenes/logoJOSG.png" alt="JOSG" class="sb-login-logo" loading="lazy">
             <div class="h">Acceso restringido</div>
           </div>
-
           <div class="sb-fields sb-fields--inline align-vertical">
             <div class="field-wrap">
               <label class="field-label" for="email">Usuario</label>
               <input id="email" type="email" name="email" class="field-input" required autocomplete="username">
             </div>
-
             <div class="field-wrap">
               <label class="field-label" for="password">Contraseña</label>
               <input id="password" type="password" name="password" class="field-input" required autocomplete="current-password">
@@ -34,7 +34,6 @@
             </div>
           </div>
         </div>
-
         <div class="tile-sb is-yellow h1 w2 sb-auth-actions">
           <button type="submit" class="btn-auth">Entrar</button>
           <a href="/recuperar" class="link-aux">¿Olvidaste la contraseña?</a>
@@ -42,98 +41,64 @@
       </form>
     </section>
   </div>
-
-  <% } else { %>
-  <!-- =================== CON SESIÓN: PANEL + MENÚ =================== -->
-  <div class="panel-usuario-overlay">
-    <div class="container page-wrap">
-      <!-- Banner superior -->
-      <div class="sb-banner">
-        <img src="/imagenes/logoJOSG.png" alt="JOSG" class="sb-logo" loading="lazy">
-        <div class="sb-greet">
-          <div class="sb-avatar"><%= (usuario.nombre || '?').trim().slice(0,1).toUpperCase() %></div>
-          <div class="sb-greet-text">
-            <p class="hello">Hola, <strong style="color:#000;"><%= usuario.nombre %></strong></p>
-          </div>
-        </div>
-        <a href="/logout" class="sb-exit" title="Cerrar sesión" aria-label="Cerrar sesión">
-          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
-            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" fill="none" stroke="currentColor" stroke-width="2"/>
-            <path d="M16 17l5-5-5-5" fill="none" stroke="currentColor" stroke-width="2"/>
-            <path d="M21 12H9" fill="none" stroke="currentColor" stroke-width="2"/>
-          </svg>
-          Salir
-        </a>
-      </div>
-
-      <!-- Barra de controles del lienzo -->
-      <div class="ctb-head d-flex align-items-center justify-content-between" style="max-width:1200px;margin:12px auto 6px;padding:0 12px;">
-        <div class="d-flex align-items-center gap-2">
-          <button id="btnLibre" class="btn btn-sm btn-outline-dark">Modo libre</button>
-          <button id="btnReset" class="btn btn-sm btn-outline-secondary">Restablecer</button>
-        </div>
-      </div>
-
-      <!-- Lienzo de fichas -->
-      <div id="canvas-wrap" class="canvas-wrap" data-menu="index">
-        <div id="menu-principal" class="sb-grid">
-          <% if (usuario.rol === 'admin' || usuario.rol === 'docente') { %>
-            <a data-id="alumnos"    href="/alumnos"             class="tile-sb is-yellow h1 w1"><span>Músicos</span></a>
-            <a data-id="eventos"    href="/eventos"             class="tile-sb is-rust   h1 w1"><span>Eventos</span></a>
-            <a data-id="informes"   href="/informes"            class="tile-sb is-black  h1 w1"><span>Informes</span></a>
-            <a data-id="mensajes"   href="/mensajes/nuevo"      class="tile-sb is-blue   h1 w1"><span>Mensajes</span></a>
-            <a data-id="partituras" href="/partituras"          class="tile-sb is-orange h1 w1"><span>Partituras</span></a>
-            <a data-id="config"     href="/configuracion"       class="tile-sb is-cream  h1 w1"><span>Configuración</span></a>
-            <a data-id="ayuda"      href="/configuracion/ayuda" class="tile-sb is-rust   h1 w1"><span>Ayuda</span></a>
-          <% } else { %>
-            <a data-id="alumnos"  href="/alumnos"             class="tile-sb is-yellow h2 w1"><span>Músicos</span></a>
-            <a data-id="eventos"  href="/eventos"             class="tile-sb is-rust   h1 w2"><span>Eventos</span></a>
-            <a data-id="informes" href="/informes"            class="tile-sb is-black  h2 w2"><span>Informes</span></a>
-            <a data-id="ayuda"    href="/configuracion/ayuda" class="tile-sb is-cream  h2 w1"><span>Ayuda</span></a>
-          <% } %>
-        </div>
-      </div>
-    </div>
-  </div>
-  <% } %>
 </header>
 
 <script>
-  (function(){
-    var t = document.getElementById('toggle-pass');
-    var p = document.getElementById('password');
-    if (t && p) {
-      t.addEventListener('change', function(){
-        p.type = t.checked ? 'text' : 'password';
-        t.setAttribute('aria-pressed', t.checked ? 'true' : 'false');
-      });
-    }
-  })();
-
-  document.addEventListener('DOMContentLoaded', function(){
-    document.body.classList.add('theme-curtains', 'shapes-rect', 'theme-image');
+(function(){
+  var t = document.getElementById('toggle-pass');
+  var p = document.getElementById('password');
+  if (t && p) t.addEventListener('change', function(){
+    p.type = t.checked ? 'text' : 'password';
+    t.setAttribute('aria-pressed', t.checked ? 'true' : 'false');
   });
+})();
+document.addEventListener('DOMContentLoaded', function(){
+  document.body.classList.add('theme-curtains', 'shapes-rect', 'theme-image');
+});
 </script>
 
-<% if (usuario) { %>
-  <script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
-  <script src="/menu/layoutMenus.js"></script>
-  <script>
-    LayoutMenus.init({
-      wrapSelector:    '#canvas-wrap',
-      gridSelector:    '#menu-principal',
-      tileSelector:    'a.tile-sb',
-      btnFreeSelector: '#btnLibre',
-      btnResetSelector:'#btnReset',
-      menuSlug:        'index'
-    });
-  </script>
-  <% if (error) { %>
-    <script>
-      document.addEventListener('DOMContentLoaded', function(){
-        var p = document.getElementById('password');
-        if (p) { p.value = ''; p.type = 'password'; p.focus(); }
-      });
-    </script>
-  <% } %>
+<% } else { %>
+<!-- ═══════════════════════════════════════════════════════
+     CON SESIÓN — usa header-simple y footer normales
+     ═══════════════════════════════════════════════════════ -->
+
+<!-- Botones fuera del canvas -->
+<div class="idx-controls">
+  <button id="btnLibre" class="idx-btn">☰ Modo libre</button>
+  <button id="btnReset" class="idx-btn">↺ Restablecer</button>
+</div>
+
+<!-- Canvas — ocupa todo el ancho de page-main -->
+<div id="canvas-wrap" class="canvas-wrap idx-canvas" data-menu="index">
+  <div id="menu-principal" class="sb-grid">
+    <% if (usuario.rol === 'admin' || usuario.rol === 'docente') { %>
+      <a data-id="alumnos"    href="/alumnos"             class="tile-sb is-yellow h1 w1"><span>Músicos</span></a>
+      <a data-id="eventos"    href="/eventos"             class="tile-sb is-rust   h1 w1"><span>Eventos</span></a>
+      <a data-id="informes"   href="/informes"            class="tile-sb is-black  h1 w1"><span>Informes</span></a>
+      <a data-id="mensajes"   href="/mensajes/nuevo"      class="tile-sb is-blue   h1 w1"><span>Mensajes</span></a>
+      <a data-id="partituras" href="/partituras"          class="tile-sb is-orange h1 w1"><span>Partituras</span></a>
+      <a data-id="config"     href="/configuracion"       class="tile-sb is-cream  h1 w1"><span>Configuración</span></a>
+      <a data-id="ayuda"      href="/configuracion/ayuda" class="tile-sb is-rust   h1 w1"><span>Ayuda</span></a>
+    <% } else { %>
+      <a data-id="alumnos"  href="/alumnos"             class="tile-sb is-yellow h2 w1"><span>Músicos</span></a>
+      <a data-id="eventos"  href="/eventos"             class="tile-sb is-rust   h1 w2"><span>Eventos</span></a>
+      <a data-id="informes" href="/informes"            class="tile-sb is-black  h2 w2"><span>Informes</span></a>
+      <a data-id="ayuda"    href="/configuracion/ayuda" class="tile-sb is-cream  h2 w1"><span>Ayuda</span></a>
+    <% } %>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
+<script src="/menu/layoutMenus.js"></script>
+<script>
+LayoutMenus.init({
+  wrapSelector:    '#canvas-wrap',
+  gridSelector:    '#menu-principal',
+  tileSelector:    'a.tile-sb',
+  btnFreeSelector: '#btnLibre',
+  btnResetSelector:'#btnReset',
+  menuSlug:        'index'
+});
+</script>
+
 <% } %>

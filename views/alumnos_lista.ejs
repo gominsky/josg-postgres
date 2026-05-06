@@ -10,20 +10,23 @@
   <div class="header-actions">
     <a href="/alumnos/nuevo" class="btn-main-blanco">+ Añadir músico</a>
 
-    <div class="form-check form-switch m-0" title="Cambiar vista">
-      <input class="form-check-input" type="checkbox" id="vistaSwitch" <%= VISTA==='lista' ? 'checked' : '' %>>
-      <label class="form-check-label" for="vistaSwitch">
-        <%= VISTA==='lista' ? 'Lista' : 'Tarjetas' %>
-      </label>
-    </div>
+    <label class="vista-switch" title="Cambiar vista">
+      <input type="checkbox" id="vistaSwitch" class="vista-switch__input"
+             <%= VISTA === 'lista' ? 'checked' : '' %>
+             role="switch"
+             aria-label="<%= VISTA === 'lista' ? 'Cambiar a vista tarjetas' : 'Cambiar a vista lista' %>">
+      <span class="vista-switch__track" aria-hidden="true"></span>
+      <span class="vista-switch__label" id="vistaSwitchLabel">
+        <%= VISTA === 'lista' ? 'Lista' : 'Tarjetas' %>
+      </span>
+    </label>
   </div>
 </div>
 
 <form method="GET" id="filtro-form" class="formulario-centrado filtro-card--shape">
   <div class="campo-filtro">
     <label for="estado">Estado</label>
-    <select id="estado" name="estado" class="form-centrado-select"
-            onchange="document.getElementById('filtro-form').submit()">
+    <select id="estado" name="estado" class="form-centrado-select">
       <% const _estado = (typeof estadoSeleccionado !== 'undefined' ? String(estadoSeleccionado) : 'todos'); %>
       <option value="todos" <%= _estado === 'todos' ? 'selected' : '' %>>Todos</option>
       <option value="1"     <%= _estado === '1'     ? 'selected' : '' %>>Activos</option>
@@ -33,8 +36,7 @@
 
   <div class="campo-filtro">
     <label for="grupo_id">Grupo</label>
-    <select id="grupo_id" name="grupo_id" class="form-centrado-select1"
-            onchange="document.getElementById('filtro-form').submit()">
+    <select id="grupo_id" name="grupo_id" class="form-centrado-select">
       <% const _grupo = (typeof grupoId !== 'undefined' ? String(grupoId) : 'todos'); %>
       <option value="todos" <%= _grupo === 'todos' ? 'selected' : '' %>>Todos</option>
       <% (grupos || []).forEach(g => { %>
@@ -55,17 +57,21 @@
 </form>
 
 <% if (alumnos.length > 0) { %>
+
   <% if (VISTA === 'tarjetas') { %>
     <div class="dashboard-grid" id="grid-alumnos">
       <% alumnos.forEach(alumno => { %>
         <a href="/alumnos/<%= alumno.id %>"
            class="card <%= alumno.activo === false ? 'pasivo' : 'activo' %>"
-           data-fulltext="<%= (alumno.nombre + ' ' + alumno.apellidos + ' ' + (alumno.instrumentos||'')).toLowerCase() %>">
+           data-fulltext="<%= (alumno.nombre + ' ' + alumno.apellidos + ' ' + (alumno.instrumentos || '') + ' ' + (alumno.grupos || '')).toLowerCase() %>">
           <div class="alumno-nombre" title="<%= alumno.nombre %> <%= alumno.apellidos %>">
             <%= alumno.nombre %> <%= alumno.apellidos %>
           </div>
           <% if (alumno.instrumentos) { %>
-            <div class="muted" style="font-size:.85rem;margin-top:.2rem;"><%= alumno.instrumentos %></div>
+            <div class="alumno-instrumento"><%= alumno.instrumentos %></div>
+          <% } %>
+          <% if (alumno.grupos) { %>
+            <div class="alumno-grupo"><%= alumno.grupos %></div>
           <% } %>
         </a>
       <% }) %>
@@ -92,21 +98,20 @@
             const grps      = (a.grupos || '—');
             const activoNum = a.activo ? 1 : 0;
           %>
-            <tr class="fila-enlace" onclick="location.href='/alumnos/<%= a.id %>'" style="cursor:pointer;">
+            <tr class="fila-enlace" data-href="/alumnos/<%= a.id %>">
               <td data-sort="<%= sortName %>"><strong><%= fullName %></strong></td>
               <td data-sort="<%= inst.toLowerCase() %>"><%= inst %></td>
               <td data-sort="<%= grps.toLowerCase() %>"><%= grps %></td>
-              <td data-sort="<%= activoNum %>">
-                <span class="badge bg-<%= a.activo ? 'success' : 'danger' %>">
-                  <%= a.activo ? 'Activo' : 'No activo' %>
-                </span>
-              </td>
+              <td data-sort="<%= activoNum %>"><span class="estado-badge estado-badge--<%= a.activo ? 'ok' : 'ko' %>"><%= a.activo ? 'Activo' : 'No activo' %></span></td>
             </tr>
           <% }) %>
         </tbody>
       </table>
     </div>
   <% } %>
+
+<% } else { %>
+  <p class="lista-vacia">No se encontraron músicos.</p>
 <% } %>
 
 <div class="volver-bloque-izquierda">
@@ -118,68 +123,95 @@
 </div>
 
 <script>
-  document.getElementById('busqueda-alumnos')?.addEventListener('input', function () {
-    const filtro = this.value.toLowerCase().trim();
-    document.querySelectorAll('#grid-alumnos .card')?.forEach(t => {
-      const base = t.getAttribute('data-fulltext') || t.textContent.toLowerCase();
-      t.style.display = base.includes(filtro) ? '' : 'none';
+(function () {
+  /* ── Filtros: enviar al cambiar select ── */
+  ['estado', 'grupo_id'].forEach(function (id) {
+    var el = document.getElementById(id);
+    if (el) el.addEventListener('change', function () {
+      document.getElementById('filtro-form').submit();
     });
   });
 
-  (function(){
-    const sw = document.getElementById('vistaSwitch');
-    if (!sw) return;
-    sw.addEventListener('change', () => {
-      const url = new URL(location.href);
-      url.searchParams.set('vista', sw.checked ? 'lista' : 'tarjetas');
+  /* ── Búsqueda en tiempo real (vista tarjetas) ── */
+  var busq = document.getElementById('busqueda-alumnos');
+  if (busq) {
+    busq.addEventListener('input', function () {
+      var filtro = this.value.toLowerCase().trim();
+      document.querySelectorAll('#grid-alumnos .card').forEach(function (t) {
+        var base = t.getAttribute('data-fulltext') || t.textContent.toLowerCase();
+        t.style.display = base.includes(filtro) ? '' : 'none';
+      });
+    });
+  }
+
+  /* ── Toggle vista lista / tarjetas ── */
+  var sw    = document.getElementById('vistaSwitch');
+  var label = document.getElementById('vistaSwitchLabel');
+  if (sw) {
+    sw.addEventListener('change', function () {
+      var nuevaVista = sw.checked ? 'lista' : 'tarjetas';
+      if (label) label.textContent = sw.checked ? 'Lista' : 'Tarjetas';
+      var url = new URL(location.href);
+      url.searchParams.set('vista', nuevaVista);
       location.href = url.toString();
     });
-  })();
+  }
 
-  (function(){
-    const tbody = document.getElementById('tabla-alumnos-body');
+  /* ── Filas de tabla clicables (sin onclick inline) ── */
+  document.querySelectorAll('.fila-enlace[data-href]').forEach(function (tr) {
+    tr.style.cursor = 'pointer';
+    tr.addEventListener('click', function (e) {
+      if (!e.target.closest('a')) location.href = tr.dataset.href;
+    });
+  });
+
+  /* ── Ordenación de tabla ── */
+  (function () {
+    var tbody = document.getElementById('tabla-alumnos-body');
     if (!tbody) return;
-    const ths = Array.from(document.querySelectorAll('.th-sortable'));
-    let sortState = { col: null, dir: 'none' };
+    var ths = Array.from(document.querySelectorAll('.th-sortable'));
+    var sortState = { col: null, dir: 'none' };
 
-    function cmp(a, b, numeric = false) {
-      if (numeric) { const na = Number(a)||0, nb = Number(b)||0; return na - nb; }
+    function cmp(a, b, numeric) {
+      if (numeric) { return (Number(a) || 0) - (Number(b) || 0); }
       return a.localeCompare(b, 'es', { sensitivity: 'base' });
     }
 
     function sortBy(colIdx) {
-      const rows    = Array.from(tbody.querySelectorAll('tr'));
-      const isEstado = colIdx === 3;
-      const nextDir =
+      var rows    = Array.from(tbody.querySelectorAll('tr'));
+      var isEstado = colIdx === 3;
+      var nextDir  =
         (sortState.col !== colIdx) ? 'asc' :
-        (sortState.dir === 'asc' ? 'desc' : (sortState.dir === 'desc' ? 'none' : 'asc'));
+        (sortState.dir === 'asc'  ? 'desc' :
+        (sortState.dir === 'desc' ? 'none' : 'asc'));
 
-      ths.forEach(th => th.setAttribute('aria-sort', 'none'));
+      ths.forEach(function (th) { th.setAttribute('aria-sort', 'none'); });
       if (nextDir === 'none') { location.replace(location.href); return; }
 
-      const th = ths.find(t => Number(t.dataset.col) === colIdx);
+      var th = ths.find(function (t) { return Number(t.dataset.col) === colIdx; });
       if (th) th.setAttribute('aria-sort', nextDir === 'asc' ? 'ascending' : 'descending');
 
-      rows.sort((r1, r2) => {
-        const t1 = r1.children[colIdx]?.getAttribute('data-sort') || r1.children[colIdx]?.textContent || '';
-        const t2 = r2.children[colIdx]?.getAttribute('data-sort') || r2.children[colIdx]?.textContent || '';
-        const res = cmp(String(t1), String(t2), isEstado);
+      rows.sort(function (r1, r2) {
+        var t1 = (r1.children[colIdx] && r1.children[colIdx].getAttribute('data-sort')) || (r1.children[colIdx] && r1.children[colIdx].textContent) || '';
+        var t2 = (r2.children[colIdx] && r2.children[colIdx].getAttribute('data-sort')) || (r2.children[colIdx] && r2.children[colIdx].textContent) || '';
+        var res = cmp(String(t1), String(t2), isEstado);
         return nextDir === 'asc' ? res : -res;
       });
 
-      const frag = document.createDocumentFragment();
-      rows.forEach(r => frag.appendChild(r));
+      var frag = document.createDocumentFragment();
+      rows.forEach(function (r) { frag.appendChild(r); });
       tbody.innerHTML = '';
       tbody.appendChild(frag);
       sortState = { col: colIdx, dir: nextDir };
     }
 
-    ths.forEach(th => {
-      const col = Number(th.dataset.col);
-      th.addEventListener('click', () => sortBy(col));
-      th.addEventListener('keydown', (e) => {
+    ths.forEach(function (th) {
+      var col = Number(th.dataset.col);
+      th.addEventListener('click', function () { sortBy(col); });
+      th.addEventListener('keydown', function (e) {
         if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); sortBy(col); }
       });
     });
   })();
+})();
 </script>
