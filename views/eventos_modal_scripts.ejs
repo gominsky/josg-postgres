@@ -37,26 +37,15 @@
           <select name="grupo_id" id="grupo_id" class="form-select" required>
             <% if (grupos && grupos.length > 0) { %>
               <option value="" disabled selected>Selecciona un grupo…</option>
-              <% grupos.forEach(a => { %>
+              <% grupos.forEach(a => {
+                const gNorm = (a.nombre || '').toLowerCase().replace(/\s/g,'');
+                if (gNorm === 'violíni' || gNorm === 'violini' || gNorm === 'violínii' || gNorm === 'violinii') return;
+              %>
                 <option value="<%= a.id %>"><%= a.nombre %></option>
               <% }) %>
             <% } else { %>
               <option disabled selected>No hay grupos disponibles</option>
             <% } %>
-          </select>
-        </div>
-        <div class="mb-3">
-          <label for="baremo_id" class="form-label">Peso del evento o factor de ponderación</label>
-          <select name="baremo_id" id="baremo_id" class="form-select">
-            <option value="">— Sin baremo —</option>
-            <% (baremos || []).forEach(function(b) { 
-                const tipoLower = (b.tipo || '').toString().toLowerCase();
-                const esMaximo  = (tipoLower === 'máximo' || tipoLower === 'maximo');
-            %>
-              <option value="<%= b.id %>" <%= esMaximo ? 'selected' : '' %>>
-                <%= b.tipo %>
-              </option>
-            <% }) %>
           </select>
         </div>
         <div class="row when-row">
@@ -73,6 +62,27 @@
         <div class="form-check form-switch mt-3 qr-block">
           <input type="checkbox" name="activo" id="activo" class="form-check-input">
           <label for="activo" class="form-check-label ms-2">Activar QR para este evento</label>
+        </div>
+
+        <!-- Aviso evento no configurado -->
+        <div id="aviso-sin-configurar" class="ev-aviso-sin-configurar" style="display:none;">
+          ⚠️ Evento no configurado
+        </div>
+
+        <!-- Peso del evento — al final, más discreto -->
+        <div class="mb-2 mt-3 ev-baremo-wrap">
+          <label for="baremo_id" class="form-label ev-baremo-label">Peso del evento</label>
+          <select name="baremo_id" id="baremo_id" class="form-select form-select-sm ev-baremo-select">
+            <option value="">— Sin baremo —</option>
+            <% (baremos || []).forEach(function(b) {
+                const tipoLower = (b.tipo || '').toString().toLowerCase();
+                const esMaximo  = (tipoLower === 'máximo' || tipoLower === 'maximo');
+            %>
+              <option value="<%= b.id %>" <%= esMaximo ? 'selected' : '' %>>
+                <%= b.tipo %>
+              </option>
+            <% }) %>
+          </select>
         </div>
       </div>
 
@@ -181,6 +191,10 @@ try {
         btnQR.onclick = () => window.open(`/eventos/${evento.id}/qr`, '_blank');
         btnFirmaManual.onclick = () => window.location.href = `/eventos/${evento.id}/firma_manual`;
 
+        // Aviso evento no configurado
+        const avisoEl = document.getElementById('aviso-sin-configurar');
+        if (avisoEl) avisoEl.style.display = evento.sin_configurar ? 'block' : 'none';
+
         modalTitulo.innerText = 'Editar evento';
         modal.show();
       } catch {
@@ -234,6 +248,8 @@ dateClick(info) {
   form.dataset.asignados  = '0';
   form.activo.checked     = false;
   ocultarBtns();
+  const avisoElNew = document.getElementById('aviso-sin-configurar');
+  if (avisoElNew) avisoElNew.style.display = 'none';
   modalTitulo.innerText = 'Nuevo evento';
   modal.show();
 },
@@ -315,6 +331,10 @@ try {
   mostrarBtns();
   btnQR.onclick = () => window.open(`/eventos/${evento.id}/qr`, '_blank');
   btnFirmaManual.onclick = () => window.location.href = `/eventos/${evento.id}/firma_manual`;
+
+  // Aviso evento no configurado
+  const avisoEl = document.getElementById('aviso-sin-configurar');
+  if (avisoEl) avisoEl.style.display = (evento.sin_configurar || x.sin_configurar) ? 'block' : 'none';
 
   modalTitulo.innerText = 'Editar evento';
   modal.show();

@@ -1,46 +1,28 @@
 <% title = 'Configuración de evento' %>
 <% hero = false %>
 <link rel="stylesheet" href="/eventos/styles/estilos.css">
-<!-- ================== TOOLBAR COMPACTA (2 FILAS) ================== -->
+
 <div class="evt-toolbar">
-  <!-- Fila 1: Plantillas -->
-  <div class="evt-row evt-row-top">
-    <div class="evt-left">
-      <div class="tpl-group">
-        <label for="tplSel" class="tpl-label">Plantilla</label>
-        <select id="tplSel" class="form-select form-select-sm tpl-sel">
-          <option value="">Selecciona una plantilla </option>
-        </select>
-      </div>
-      <div class="btn-group gap-2">
-        <button id="tplApply"  class="btn btn-ghost-sm">Vista previa</button>
-        <button id="tplClear"  class="btn btn-ghost-sm">Quitar filtro</button>
-        <button id="tplPersist" class="btn btn-solid-sm">Aplicar y guardar</button>
-        <button id="tplDelete"  class="btn btn-outline-sm" disabled>Eliminar</button>
-      </div>
-      <span id="tplInfo" class="tpl-info small"></span>
-    </div>
-    <div class="evt-right">
-  <div class="evt-meta">
-    <div class="evt-title">
-      <%= (evento?.nombre || evento?.titulo || 'Evento sin título') %>
-    </div>
-    <div
-      id="evtDate"
-      class="evt-date"
-      data-date="<%= (evento?.fecha || evento?.fecha_evento || evento?.fecha_inicio || '') %>"
-      data-hini="<%= (typeof hIni !== 'undefined' ? hIni : '') %>"
-      data-hfin="<%= (typeof hFin !== 'undefined' ? hFin : '') %>"
-    ></div>
-  </div>
-</div>
 
+  <!-- BLOQUE 1: Título y fecha -->
+  <div class="evt-bloque evt-bloque--titulo">
+    <div class="evt-meta">
+      <h1 class="evt-title-main">
+        <%= (evento?.nombre || evento?.titulo || 'Evento sin título') %>
+      </h1>
+      <div id="evtDate" class="evt-date"
+        data-date="<%= (evento?.fecha || evento?.fecha_evento || evento?.fecha_inicio || '') %>"
+        data-hini="<%= (typeof hIni !== 'undefined' ? hIni : '') %>"
+        data-hfin="<%= (typeof hFin !== 'undefined' ? hFin : '') %>">
+      </div>
+    </div>
+    <a href="/eventos" class="enlace-final">← Volver al calendario</a>
   </div>
 
-  <!-- Fila 2: Configuración (switches + utilidades + guardar plantilla) -->
-  <div class="evt-row evt-row-bottom">
-    <div class="cfg-left">
-      <span class="cfg-label">Configuración:</span>
+  <!-- BLOQUE 2: Configuración (switches) -->
+  <div class="evt-bloque evt-bloque--config">
+    <span class="evt-bloque__label">Configuración:</span>
+    <div class="evt-switches">
       <label class="pill-switch">
         <input class="form-check-input" type="checkbox" id="swFam">
         <span>Familias</span>
@@ -57,50 +39,58 @@
         <input class="form-check-input" type="checkbox" id="swExtras" checked>
         <span>Extras</span>
       </label>
-      <!-- Enlace Guardar plantilla (mismo sitio visual, pero en la fila de abajo) -->
-      <div class="tpl-popwrap">
-        <a id="linkSaveTpl" href="#" class="evt-link-add">＋ Guardar configuración actual como plantilla</a>
-        <!-- Popover guardar plantilla -->
-<form id="saveTplForm" class="evt-popover tpl-hidden form-compact" style="margin:0">
-  <div class="popover-head">
-    <strong>Guardar plantilla</strong>
-    <button type="button" class="btn-icon" id="tplCloseX" aria-label="Cerrar">✕</button>
-  </div>
-
-  <label class="fc-label" for="tplName">Nombre</label>
-  <input id="tplName" class="form-control fc-input" type="text"
-         maxlength="60" placeholder="p.ej. Concierto — Ensayo general" required>
-
-  <div class="inline-row">
-    <label class="fc-label" for="tplDesc">Descripción <span class="muted">(opcional)</span></label>
-    <span class="char-count" id="tplDescCount">0/120</span>
-  </div>
-  <textarea id="tplDesc" class="form-control fc-textarea" rows="2" maxlength="120"
-            placeholder="Notas para reconocerla rápidamente…"></textarea>
-
-  <div class="btns-row">
-    <button class="btn btn-outline-xs" type="button" id="cancelSaveTpl">Cancelar</button>
-    <button class="btn btn-solid-xs" type="submit" id="tplSubmit">Guardar</button>
-  </div>
-
-  <div class="msg-row">
-    <span id="saveTplMsg" class="small msg muted"></span>
-  </div>
-</form>
-
-      </div>
-    </div>
-
-    <div class="cfg-right">
-      <button id="btnRefreshAsign" class="btn btn-ghost-sm">Restaurar alumnos</button>       
-        <!-- NUEVO: editor dinámico del plano del evento -->
-        <a class="btn btn-ghost-sm" href="/plano/editor/evento?evento_id=<%= evento.id %>">
-          Plano dinámico (evento)
-        </a>
-      <a class="btn btn-outline-sm" href="/plano/evento/<%= evento.id %>.pdf" target="_blank" rel="noopener">Plano del evento (PDF)</a>
-      <button id="shareEventoBtn" class="btn btn-blanco btn-sm">Generar enlace público</button>
     </div>
   </div>
+
+  <!-- BLOQUE 3: Plantillas en una sola fila -->
+  <div class="evt-bloque evt-bloque--plantillas">
+    <span class="evt-bloque__label">Plantilla:</span>
+    <select id="tplSel" class="form-select form-select-sm tpl-sel">
+      <option value="">— Selecciona una plantilla —</option>
+    </select>
+    <button id="tplApply"   class="btn btn-ghost-sm">Vista previa</button>
+    <button id="tplClear"   class="btn btn-ghost-sm">Quitar filtro</button>
+    <button id="tplPersist" class="btn btn-solid-sm">Aplicar y guardar</button>
+    <button id="tplDelete"  class="btn btn-outline-sm" disabled>Eliminar</button>
+    <span id="tplInfo" class="tpl-info small"></span>
+    <div class="tpl-popwrap">
+      <a id="linkSaveTpl" href="#" class="evt-link-add">＋ Guardar como plantilla</a>
+      <form id="saveTplForm" class="evt-popover tpl-hidden form-compact" style="margin:0">
+        <div class="popover-head">
+          <strong>Guardar plantilla</strong>
+          <button type="button" class="btn-icon" id="tplCloseX" aria-label="Cerrar">✕</button>
+        </div>
+        <label class="fc-label" for="tplName">Nombre</label>
+        <input id="tplName" class="form-control fc-input" type="text"
+               maxlength="60" placeholder="p.ej. Concierto — Ensayo general" required>
+        <div class="inline-row">
+          <label class="fc-label" for="tplDesc">Descripción <span class="muted">(opcional)</span></label>
+          <span class="char-count" id="tplDescCount">0/120</span>
+        </div>
+        <textarea id="tplDesc" class="form-control fc-textarea" rows="2" maxlength="120"
+                  placeholder="Notas para reconocerla rápidamente…"></textarea>
+        <div class="btns-row">
+          <button class="btn btn-outline-xs" type="button" id="cancelSaveTpl">Cancelar</button>
+          <button class="btn btn-solid-xs" type="submit" id="tplSubmit">Guardar</button>
+        </div>
+        <div class="msg-row">
+          <span id="saveTplMsg" class="small msg muted"></span>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- BLOQUE 4: Botones de utilidad -->
+  <div class="evt-bloque evt-bloque--botones">
+    <button id="btnRefreshAsign" class="btn btn-ghost-sm">Restaurar alumnos</button>
+    <a class="btn btn-ghost-sm" href="/plano/editor/evento?evento_id=<%= evento.id %>">
+      Plano dinámico
+    </a>
+    <a class="btn btn-outline-sm" href="/plano/evento/<%= evento.id %>.pdf"
+       target="_blank" rel="noopener">Plano PDF</a>
+    <button id="shareEventoBtn" class="btn btn-blanco btn-sm">Generar enlace público</button>
+  </div>
+
 </div>
 <div class="modal fade" id="sharePlanoModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered modal-sm">
@@ -435,11 +425,7 @@ async function doSave(nombre, descripcion){
   </div>
 </div>
 
- <div class="volver-bloque-izquierda mt-4">
-      <a href="/eventos" class="enlace-final">← Volver al calendario</a>
-  </div>
-</div>
-  
+
 <!-- ============ Utils compartidas ============ -->
 <script>
 (() => {
@@ -1158,6 +1144,28 @@ function setMinutesCell(tr, val){
     ['tplApply','btnRefreshAsign'].forEach(id => {
       document.getElementById(id)?.addEventListener('click', () => setTimeout(initialSortApellidosAsc, 300));
     });
+
+    // --- LISTENERS DE CLICK EN CABECERAS ---
+    let _sortKey = 'apellidos', _sortDir = 'asc';
+    document.querySelectorAll('#alumWrap th.th-sort[data-key]').forEach(th => {
+      th.style.cursor = 'pointer';
+      th.title = 'Ordenar';
+      th.addEventListener('click', () => {
+        const key = th.dataset.key;
+        if (_sortKey === key) {
+          _sortDir = _sortDir === 'asc' ? 'desc' : 'asc';
+        } else {
+          _sortKey = key;
+          _sortDir = 'asc';
+        }
+        // Actualizar clases visuales
+        document.querySelectorAll('#alumWrap th.th-sort').forEach(t => {
+          t.classList.remove('asc','desc');
+        });
+        th.classList.add(_sortDir);
+        sortBy(_sortKey, _sortDir);
+      });
+    });
   })();
   </script>
   
@@ -1233,6 +1241,19 @@ function setMinutesCell(tr, val){
         const tr = document.createElement('tr');
         tr.dataset.key  = keyOf(r);
         tr.dataset.name = (nameOf(r) || '').trim();
+        // Inferir familia desde alumnos del DOM (instrumento → familia)
+        if (!tr.dataset.familia) {
+          const _norm = s => String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLowerCase();
+          const iKeyNorm = _norm(tr.dataset.key);
+          const alumRows = document.querySelectorAll('#asigBody tr[data-alumno]');
+          for (const ar of alumRows) {
+            const arInst = _norm(ar.dataset.instrumento || ar.querySelector?.('.td-instrumento')?.textContent || '');
+            if (arInst === iKeyNorm) {
+              tr.dataset.familia = ar.dataset.familia || '';
+              break;
+            }
+          }
+        }
         tr.innerHTML = `
           <td><strong>${tr.dataset.name}</strong></td>
           <td class="text-center"><input type="time" class="form-control form-control-sm inp-ini" value="${iniOf(r)}"></td>
@@ -1755,10 +1776,26 @@ function setMinutesCell(tr, val){
         body: JSON.stringify({ familia_key: famKey })
       });
       tr.remove();
+      // Eliminar alumnos de esa familia
       if (res && Array.isArray(res.alumnos)) {
         res.alumnos.forEach(id=>{
           const row = $alumBody?.querySelector(`tr[data-alumno="${id}"]`);
           if (row) row.remove();
+        });
+      }
+      // Eliminar instrumentos de esa familia de la tabla de instrumentos
+      const _norm = s => String(s||'')
+        .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+        .trim().toLowerCase();
+      const famNorm = _norm(famKey);
+      const instKeys = (typeof FAM2INST !== 'undefined' && FAM2INST.get(famNorm)) || null;
+      const $ib = document.getElementById('instBody');
+      if ($ib) {
+        $ib.querySelectorAll('tr[data-key]').forEach(itr => {
+          const iKey = _norm(itr.dataset.key || '');
+          const iFam = _norm(itr.dataset.familia || '');
+          const hit  = instKeys ? instKeys.has(iKey) : iFam === famNorm;
+          if (hit) itr.remove();
         });
       }
     }catch(e){

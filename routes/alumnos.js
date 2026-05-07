@@ -785,7 +785,9 @@ router.get('/', async (req, res) => {
   try {
     const [alumnosRS, gruposRS] = await Promise.all([
       db.query(sql, params),
-      db.query('SELECT id, nombre FROM grupos ORDER BY nombre;')
+      db.query(`SELECT id, nombre FROM grupos
+                WHERE LOWER(nombre) NOT IN ('violín i','violin i','violín ii','violin ii')
+                ORDER BY nombre;`)
     ]);
 
     res.render('alumnos_lista', {

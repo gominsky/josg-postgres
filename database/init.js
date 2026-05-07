@@ -1325,6 +1325,15 @@ await run(`
   CREATE INDEX IF NOT EXISTS idx_profesores_activo      ON profesores (activo);
 `, 'patch:indexes');
 
+// 4) Unique constraint en cuotas_alumno (idempotente)
+await run(`
+  ALTER TABLE cuotas_alumno
+    DROP CONSTRAINT IF EXISTS cuotas_alumno_unique;
+  ALTER TABLE cuotas_alumno
+    ADD CONSTRAINT cuotas_alumno_unique
+    UNIQUE (alumno_id, cuota_id, fecha_vencimiento);
+`, 'patch:cuotas_alumno-unique');
+
     await run('COMMIT', 'tx-commit');
     console.log('✅ init (producción) completado.');
 

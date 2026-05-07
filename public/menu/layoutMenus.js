@@ -360,7 +360,7 @@
     
 
 
-    // Estado inicial — si no hay layout en servidor, arrancar en "vista" con el grid actual y guardarlo
+    // Estado inicial — solo entrar en free-view si hay posiciones guardadas en servidor
     (async()=>{
       try{
         const s = await apiLoad(slug);
@@ -370,9 +370,7 @@
           return;
         }
       } catch {}
-
-      // Primera vez: bootstrap como Restablecer (posiciones + colores del DOM)
-      await enterView(); // hará snapshot previo y guardará si server está vacío
+      // Sin layout guardado: dejar el grid CSS intacto, no llamar a enterView
       btnFree.textContent = 'Modo libre';
     })();
 

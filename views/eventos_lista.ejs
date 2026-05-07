@@ -31,23 +31,26 @@ const composeDT = (fecha, hora, fallbackHora='00:00') => {
 %>
 
 <!-- Barra superior -->
-<div class="d-flex align-items-center mb-3">
-  <div class="ms-auto me-5 d-flex toolbar-right">
-    <div class="d-flex flex-column align-items-end gap-2">
-      <!-- Switch Calendario ⇄ Lista -->
-      <div class="switch-wrap" title="Alternar vista">
-        <div class="form-check form-switch m-0 d-flex align-items-center gap-2">
-          <input class="form-check-input big-switch" type="checkbox" id="vistaSwitch" <%= enLista ? 'checked' : '' %>>
-          <label class="form-check-label fw-semibold" for="vistaSwitch"><%= enLista ? 'Lista' : 'Calendario' %></label>
-        </div>
-      </div>
+<div class="header-compact">
+  <h1 class="h1-titulo">Eventos</h1>
+  <div class="header-actions">
 
-      <!-- Botón Eventos masivos -->
-      <button type="button" class="btn-main-blanco fw-bold px-3 py-2"
-              data-bs-toggle="modal" data-bs-target="#eventoMasivoModal">
-        Eventos masivos
-      </button>
-    </div>
+    <!-- Botón eventos masivos — igual que + Añadir músico -->
+    <button type="button" class="btn-main-blanco btn-main-blanco--naranja"
+            data-bs-toggle="modal" data-bs-target="#eventoMasivoModal">
+      + Eventos masivos
+    </button>
+
+    <!-- Switch Calendario ⇄ Lista — igual que en alumnos -->
+    <label class="vista-switch" title="Alternar vista">
+      <input type="checkbox" id="vistaSwitch" class="vista-switch__input"
+             <%= enLista ? 'checked' : '' %>
+             role="switch"
+             aria-label="<%= enLista ? 'Cambiar a vista calendario' : 'Cambiar a vista lista' %>">
+      <span class="vista-switch__track" aria-hidden="true"></span>
+      <span class="vista-switch__label"><%= enLista ? 'Lista' : 'Calendario' %></span>
+    </label>
+
   </div>
 </div>
 

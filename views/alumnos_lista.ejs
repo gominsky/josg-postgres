@@ -60,9 +60,18 @@
 
   <% if (VISTA === 'tarjetas') { %>
     <div class="dashboard-grid" id="grid-alumnos">
-      <% alumnos.forEach(alumno => { %>
+      <% alumnos.forEach(alumno => {
+        const grupoNorm = (alumno.grupos || '').toLowerCase().trim().split(',')[0].trim();
+        const grupoClase =
+          grupoNorm.includes('josg')      ? 'card--josg'      :
+          grupoNorm.includes('oeg')       ? 'card--oeg'       :
+          grupoNorm.includes('invitados') ? 'card--invitados' :
+          grupoNorm.includes('reservas')  ? 'card--reservas'  :
+          grupoNorm.includes('violín i')  ? 'card--violin1'   :
+          grupoNorm.includes('violín ii') ? 'card--violin2'   : '';
+      %>
         <a href="/alumnos/<%= alumno.id %>"
-           class="card <%= alumno.activo === false ? 'pasivo' : 'activo' %>"
+           class="card <%= alumno.activo === false ? 'pasivo' : 'activo' %> <%= grupoClase %>"
            data-fulltext="<%= (alumno.nombre + ' ' + alumno.apellidos + ' ' + (alumno.instrumentos || '') + ' ' + (alumno.grupos || '')).toLowerCase() %>">
           <div class="alumno-nombre" title="<%= alumno.nombre %> <%= alumno.apellidos %>">
             <%= alumno.nombre %> <%= alumno.apellidos %>

@@ -1171,13 +1171,26 @@ tr.sec-ii { background: rgba(120,150,255,.12); }
 @media (min-width: 1400px) { #extrasWrap.extras-narrow { max-width: 560px; } }
 
 #asigBody td:first-child .evt-badge {
-  display: inline-block !important; padding: 2px 8px;
-  font-size: 12px; font-weight: 700; line-height: 1.2;
-  border-radius: var(--radius-pill); margin-left: .45rem;
-  vertical-align: middle; white-space: nowrap;
+  display: inline-block !important;
+  padding: 2px 8px !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  line-height: 1.2 !important;
+  border-radius: var(--radius-pill) !important;
+  margin-left: .45rem !important;
+  vertical-align: middle !important;
+  white-space: nowrap !important;
 }
-#asigBody td:first-child .evt-badge.inv { background: #2563eb; color: #fff; }
-#asigBody td:first-child .evt-badge.res { background: #6b7280; color: #fff; }
+#asigBody td:first-child .evt-badge.inv {
+  background: #2563eb !important;
+  color: #fff !important;
+  border: none !important;
+}
+#asigBody td:first-child .evt-badge.res {
+  background: #6b7280 !important;
+  color: #fff !important;
+  border: none !important;
+}
 
 /* Cuentas lista — panel estrecho */
 #cts-list-wrap .panel-narrow { max-width: 1100px; margin: 0 auto; }
@@ -1868,7 +1881,8 @@ body:has(.hs) .h1-titulo {
 /* ════════════════════════════════════════════════════════
    BOTÓN AÑADIR
    ════════════════════════════════════════════════════════ */
-a.btn-main-blanco[href$="nuevo"] {
+a.btn-main-blanco[href$="nuevo"],
+button.btn-main-blanco#btnMasivo {
   background: var(--naranja) !important;
   border: 1.5px solid var(--naranja-oscuro) !important;
   color: #fff !important;
@@ -1877,7 +1891,8 @@ a.btn-main-blanco[href$="nuevo"] {
   padding: .52rem 1.15rem !important;
   border-radius: var(--radius) !important;
 }
-a.btn-main-blanco[href$="nuevo"]:hover { filter: brightness(1.08); color: #fff !important; }
+a.btn-main-blanco[href$="nuevo"]:hover,
+button.btn-main-blanco#btnMasivo:hover { filter: brightness(1.08); color: #fff !important; }
 
 /* ════════════════════════════════════════════════════════
    FILTRO — naranja con borde negro
@@ -2337,20 +2352,34 @@ a.btn-main-blanco[href$="nuevo"]:hover { filter: brightness(1.08); color: #fff !
 
 /* Grid de tiles — centrado, 2 filas de 4 columnas */
 .idx-canvas .sb-grid {
-  gap: 16px !important;
-  grid-template-columns: repeat(4, minmax(160px, 240px)) !important;
-  grid-auto-rows: 70px !important;
+  grid-template-columns: repeat(4, minmax(170px, 260px)) !important;
+  grid-auto-rows: 90px !important;
+  gap: 28px 20px !important;        /* row-gap col-gap — shorthand gana a gap:12px */
   margin-top: 0 !important;
   justify-content: center !important;
 }
 
-/* Canvas transparente, sin marco, ancho completo */
+/* Canvas — altura exacta para 2 filas + gaps + padding, sin scroll */
 .idx-canvas {
   width: 100%;
-  min-height: unset;
+  height: calc(70px * 2 + 20px + 40px);   /* 2 filas + 1 gap + padding top+bottom */
+  min-height: unset !important;
   border: none;
   border-radius: 0;
-  padding: 0;
+  padding: 20px 0;
+  box-sizing: border-box;
+  background: transparent;
+  position: relative;
+  overflow: visible;
+}
+/* Canvas — altura exacta para 2 filas + gaps + padding, sin scroll */
+.idx-canvas {
+  width: 100%;
+  height: calc(90px * 2 + 28px + 40px);
+  min-height: unset !important;
+  border: none;
+  border-radius: 0;
+  padding: 20px 0;
   box-sizing: border-box;
   background: transparent;
   position: relative;
@@ -2386,3 +2415,576 @@ body:has(.idx-canvas) .page-main {
 body:has(.idx-canvas) .idx-controls {
   padding: 0 24px;
 }
+
+/* ════════════════════════════════════════════════════════
+   EVENTOS — estilos propios
+   ════════════════════════════════════════════════════════ */
+
+/* Calendario FullCalendar */
+.ev-calendar-wrap {
+  background: var(--bg);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  border: 1px solid var(--border);
+  margin-top: 8px;
+}
+
+/* Filtro de lista — 4 columnas */
+.filtro-card--shape .campo-filtro--grupo { grid-column: span 2; }
+.campo-filtro__row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.campo-filtro__row .form-centrado-select { flex: 1; }
+
+/* Chips de rango rápido */
+.chips {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.chip {
+  display: inline-flex;
+  align-items: center;
+  padding: .25rem .65rem;
+  border-radius: var(--radius-pill);
+  border: 1.5px solid var(--border-strong);
+  background: var(--bg);
+  font-size: .8rem;
+  font-weight: 600;
+  cursor: pointer;
+  color: var(--ink);
+  transition: background .12s, border-color .12s;
+  user-select: none;
+}
+.chip:hover   { background: var(--naranja-claro); border-color: var(--naranja); }
+.chip.active  { background: var(--naranja); border-color: var(--naranja-oscuro); color: var(--negro); }
+
+/* Botón filtrar */
+.btn-accent {
+  display: inline-flex;
+  align-items: center;
+  padding: .4rem .9rem;
+  border-radius: var(--radius);
+  background: var(--naranja);
+  border: none;
+  color: var(--negro);
+  font-weight: 800;
+  font-size: .85rem;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: filter .12s;
+}
+.btn-accent:hover { filter: brightness(1.08); }
+
+/* Modal de evento — contenido */
+.ev-modal-content {
+  background: var(--bg) !important;
+  box-shadow: var(--shadow-lg) !important;
+  border-radius: var(--radius-lg) !important;
+  border: 1px solid var(--border) !important;
+}
+.ev-modal-body {
+  padding: 16px 20px !important;
+  overflow-y: auto;
+  max-height: 70vh;
+}
+
+/* Grid de campos del modal — 2 columnas */
+.ev-modal-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  border: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+.ev-modal-span2 { grid-column: span 2; }
+
+/* Inputs del modal */
+.ev-input {
+  display: block;
+  width: 100%;
+  min-height: 38px;
+  padding: .4rem .6rem;
+  border: 1.5px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  font-size: .88rem;
+  color: var(--ink);
+  margin-top: 4px;
+  box-sizing: border-box;
+  transition: border-color .15s, box-shadow .15s;
+}
+.ev-input:focus {
+  outline: none;
+  border-color: var(--naranja);
+  box-shadow: 0 0 0 3px rgba(255,149,1,.15);
+}
+textarea.ev-input { resize: vertical; min-height: 60px; }
+
+/* Labels del modal */
+.ev-modal-grid > label {
+  display: flex;
+  flex-direction: column;
+  font-size: .8rem;
+  font-weight: 700;
+  color: var(--ink);
+  gap: 2px;
+}
+
+/* Pie del modal */
+.ev-modal-footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  border-top: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+
+/* Botones ocultos en modal */
+.ev-btn-hidden { display: none !important; }
+
+/* Sección días en modal masivo */
+.ev-modal-dias {
+  margin-top: 14px;
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+}
+.ev-modal-label-dias {
+  display: block;
+  font-size: .8rem;
+  font-weight: 700;
+  color: var(--ink);
+  margin-bottom: 6px;
+}
+.ev-flatpickr-host {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-top: 8px;
+  padding: 8px;
+  overflow: auto;
+}
+
+@media (max-width: 640px) {
+  .ev-modal-grid { grid-template-columns: 1fr; }
+  .ev-modal-span2 { grid-column: span 1; }
+}
+
+/* Botón naranja genérico (eventos masivos, etc.) */
+.btn-main-blanco--naranja {
+  background: var(--naranja) !important;
+  border: 1.5px solid var(--naranja-oscuro) !important;
+  color: #fff !important;
+  font-weight: 800 !important;
+  font-size: .9rem !important;
+  padding: .52rem 1.15rem !important;
+  border-radius: var(--radius) !important;
+  letter-spacing: .02em;
+}
+.btn-main-blanco--naranja:hover { filter: brightness(1.08); color: #fff !important; }
+
+/* ════════════════════════════════════════════════════════
+   CARDS DE MÚSICO — variantes de color por grupo
+   Base: --amarillo #ffb020
+   ════════════════════════════════════════════════════════ */
+.dashboard-grid .card--josg      { background: #ffb020; }  /* amarillo base — JOSG */
+.dashboard-grid .card--oeg       { background: #ff8c42; }  /* naranja cálido — OEG */
+.dashboard-grid .card--invitados { background: #a8d8a8; }  /* verde suave */
+.dashboard-grid .card--reservas  { background: #b8d4f0; }  /* azul suave */
+.dashboard-grid .card--violin1   { background: #f7d486; }  /* amarillo claro */
+.dashboard-grid .card--violin2   { background: #f0c060; }  /* amarillo medio */
+
+/* Instrumento — color legible sobre cada fondo */
+.dashboard-grid .card--josg      .alumno-instrumento { color: #7a5200; }
+.dashboard-grid .card--oeg       .alumno-instrumento { color: #6b2d00; }
+.dashboard-grid .card--invitados .alumno-instrumento { color: #2d5a2d; }
+.dashboard-grid .card--reservas  .alumno-instrumento { color: #1a3d5c; }
+.dashboard-grid .card--violin1   .alumno-instrumento { color: #7a5200; }
+.dashboard-grid .card--violin2   .alumno-instrumento { color: #7a5200; }
+
+/* Nombre — negro en todos */
+.dashboard-grid .card--josg .alumno-nombre,
+.dashboard-grid .card--oeg  .alumno-nombre,
+.dashboard-grid .card--invitados .alumno-nombre,
+.dashboard-grid .card--reservas  .alumno-nombre,
+.dashboard-grid .card--violin1   .alumno-nombre,
+.dashboard-grid .card--violin2   .alumno-nombre { color: var(--negro); }
+
+/* ── Aviso evento no configurado en modal ── */
+.ev-aviso-sin-configurar {
+  display: none;
+  margin-top: 10px;
+  padding: .4rem .8rem;
+  border-radius: var(--radius-sm);
+  background: var(--bg-warning);
+  border: 1px solid var(--warning);
+  color: var(--warning);
+  font-size: .82rem;
+  font-weight: 700;
+}
+
+/* ── Baremo — discreto al final ── */
+.ev-baremo-wrap {
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+}
+.ev-baremo-label {
+  font-size: .75rem !important;
+  color: var(--muted) !important;
+  margin-bottom: 3px !important;
+}
+.ev-baremo-select {
+  font-size: .8rem !important;
+  color: var(--muted) !important;
+  max-width: 200px;
+}
+
+/* ════════════════════════════════════════════════════════
+   MODAL DE EVENTO — repaso estético
+   ════════════════════════════════════════════════════════ */
+
+/* Más ancho */
+#eventoModal .modal-dialog {
+  max-width: 520px !important;
+}
+
+/* Cabecera — título más grande */
+#eventoModal .sheet-head {
+  padding: 14px 18px;
+  border-bottom: 3px solid var(--naranja);
+}
+#eventoModal .modal-title {
+  font-size: 1.15rem !important;
+  font-weight: 800 !important;
+  letter-spacing: .01em;
+}
+
+/* Cuerpo — menos espacio entre campos */
+#eventoModal .modal-body {
+  padding: 14px 18px !important;
+}
+#eventoModal .mb-3 {
+  margin-bottom: .75rem !important;
+}
+#eventoModal .form-label {
+  font-size: .78rem !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: .04em !important;
+  color: var(--muted) !important;
+  margin-bottom: 3px !important;
+}
+#eventoModal .form-control,
+#eventoModal .form-select {
+  font-size: .9rem !important;
+  padding: .4rem .65rem !important;
+  border-radius: var(--radius-sm) !important;
+  border: 1.5px solid var(--border-strong) !important;
+}
+#eventoModal .form-control:focus,
+#eventoModal .form-select:focus {
+  border-color: var(--naranja) !important;
+  box-shadow: 0 0 0 3px rgba(255,149,1,.15) !important;
+}
+
+/* Fechas — más compactas */
+#eventoModal .when-row {
+  gap: 10px;
+}
+#eventoModal .when-row .col-sm-6 {
+  flex: 1;
+}
+
+/* QR switch */
+#eventoModal .qr-block {
+  margin-top: .6rem !important;
+  padding: .5rem .65rem;
+  background: var(--bg-subtle);
+  border-radius: var(--radius-sm);
+}
+
+/* Pie — botones coherentes con la app */
+#eventoModal .modal-footer {
+  padding: 10px 18px !important;
+  gap: 8px !important;
+  border-top: 1px solid var(--border) !important;
+  background: var(--bg-alt) !important;
+}
+#eventoModal .btn-primary-negro {
+  background: var(--bg) !important;
+  border: 1.5px solid var(--border-strong) !important;
+  color: var(--ink) !important;
+  font-size: .82rem !important;
+  font-weight: 700 !important;
+  padding: .35rem .8rem !important;
+  border-radius: var(--radius) !important;
+  transition: background .12s, border-color .12s;
+}
+#eventoModal .btn-primary-negro:hover {
+  background: var(--naranja-claro) !important;
+  border-color: var(--naranja) !important;
+}
+/* Guardar — más destacado */
+#eventoModal .modal-footer button[type="submit"].btn-primary-negro {
+  background: var(--naranja) !important;
+  border-color: var(--naranja-oscuro) !important;
+  color: var(--negro) !important;
+}
+#eventoModal .modal-footer button[type="submit"].btn-primary-negro:hover {
+  filter: brightness(1.08);
+}
+/* Eliminar — discreto pero se vuelve rojo en hover */
+#eventoModal #btnEliminar {
+  border-color: var(--border-strong) !important;
+  color: var(--muted) !important;
+}
+#eventoModal #btnEliminar:hover {
+  background: var(--bg-danger) !important;
+  border-color: var(--danger) !important;
+  color: var(--danger) !important;
+}
+
+/* Fix: switch QR no se salga del modal */
+#eventoModal .qr-block .form-check-input {
+  margin-left: 0 !important;
+  flex-shrink: 0;
+}
+#eventoModal .qr-block {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  padding-left: .65rem !important;
+  overflow: hidden;
+}
+
+/* ════════════════════════════════════════════════════════
+   FIRMA MANUAL / CONFIGURACIÓN DE EVENTO
+   El CSS propio de esta página no debe afectar al header
+   ════════════════════════════════════════════════════════ */
+
+/* Header siempre a ancho completo, immune a CSS de subpáginas */
+.hs {
+  width: 100% !important;
+  max-width: 100% !important;
+  left: 0 !important;
+  right: 0 !important;
+}
+.hs-inner {
+  max-width: 1400px !important;   /* más ancho para que quepan todas las cards */
+}
+
+/* page-main en firma_manual — más ancho para la tabla de asignaciones */
+body:has(.evt-toolbar) .page-main {
+  max-width: 100% !important;
+  padding-left: 16px !important;
+  padding-right: 16px !important;
+}
+
+/* Tabla de asignaciones — ancho completo */
+body:has(.evt-toolbar) .tabla-estilizada,
+body:has(.evt-toolbar) table {
+  width: 100% !important;
+}
+
+/* ════════════════════════════════════════════════════════
+   AISLAMIENTO — estilos.css de eventos no deben pisar
+   el header ni el resto de la app
+   ════════════════════════════════════════════════════════ */
+
+/* El CSS de eventos pone color:#FF9501 en body y h1-h5
+   Lo reseteamos en el header que debe ser inmune */
+.hs,
+.hs *,
+.hs-inner,
+.hs-card,
+.hs-user,
+.hs-exit {
+  color: revert !important;
+  font-family: var(--font) !important;
+}
+.hs-card         { color: #fff !important; }
+.hs-user__name   { color: var(--ink) !important; }
+.hs-user__role   { color: var(--muted) !important; }
+.hs-exit         { color: var(--ink) !important; }
+.hs-logo__img    { height: 62px !important; }
+.hs-user__avatar { color: #fff !important; background: var(--negro) !important; }
+
+/* El select global height:2rem del estilos.css no debe
+   afectar a los selects del header */
+.hs select,
+.hs-nav select { height: auto !important; }
+
+/* .h1-titulo no debe quedar con max-width:900px en firma_manual */
+body:has(.evt-toolbar) .h1-titulo {
+  max-width: 100% !important;
+  margin: 0 0 12px !important;
+}
+
+/* page-main más ancho en firma_manual */
+body:has(.evt-toolbar) .page-main {
+  max-width: 100% !important;
+  padding-left: 20px !important;
+  padding-right: 20px !important;
+}
+
+/* ════════════════════════════════════════════════════════
+   FIRMA MANUAL — badges invitado/reserva en tabla
+   ════════════════════════════════════════════════════════ */
+.evt-badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: .1em .45em;
+  border-radius: var(--radius-pill);
+  font-size: .68rem;
+  font-weight: 700;
+  letter-spacing: .03em;
+  vertical-align: middle;
+  line-height: 1.4;
+}
+.evt-badge.inv {
+  background: #dbeafe;
+  color: #1e40af;
+  border: 1px solid #93c5fd;
+}
+.evt-badge.res {
+  background: #f1f5f9;
+  color: #475569;
+  border: 1px solid #94a3b8;
+}
+
+/* ════════════════════════════════════════════════════════
+/* ════════════════════════════════════════════════════════
+   FIRMA MANUAL — toolbar reorganizada en 4 bloques
+   ════════════════════════════════════════════════════════ */
+.evt-toolbar {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 0;
+  margin-bottom: 20px;
+  overflow: visible;
+}
+.evt-bloque {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  flex-wrap: wrap;
+  border-bottom: 1px solid var(--border);
+}
+.evt-bloque:last-child { border-bottom: none; }
+.evt-bloque__label {
+  font-size: .72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  color: var(--muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+  min-width: 72px;
+}
+
+/* BLOQUE 1 — Título */
+.evt-bloque--titulo {
+  background: var(--negro);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  justify-content: space-between;
+  padding: 11px 18px;
+}
+.evt-title-main {
+  font-size: 1.05rem !important;
+  font-weight: 800 !important;
+  color: #fff !important;
+  margin: 0 !important;
+  line-height: 1.2;
+}
+.evt-bloque--titulo .evt-date {
+  font-size: .82rem;
+  color: var(--naranja) !important;
+  margin-top: 1px;
+}
+.evt-bloque--titulo .enlace-final {
+  color: var(--naranja) !important;
+  font-size: .8rem;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* BLOQUE 2 — Configuración */
+.evt-bloque--config { background: var(--bg-subtle); }
+.evt-switches { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+
+/* BLOQUE 3 — Plantillas en UNA SOLA FILA */
+.evt-bloque--plantillas { flex-wrap: nowrap; overflow-x: auto; }
+.evt-bloque--plantillas .tpl-sel {
+  min-width: 180px;
+  max-width: 240px;
+  font-size: .82rem !important;
+  height: 30px !important;
+  padding: 2px 6px !important;
+  flex-shrink: 0;
+}
+.evt-bloque--plantillas .tpl-popwrap { margin-left: 4px; }
+
+/* BLOQUE 4 — Botones */
+.evt-bloque--botones {
+  background: var(--bg-subtle);
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+}
+
+/* ── Badges invitado/reserva — !important para ganar a estilos.css ── */
+.evt-badge {
+  display: inline-block !important;
+  margin-left: 5px !important;
+  padding: .1em .45em !important;
+  border-radius: 999px !important;
+  font-size: .68rem !important;
+  font-weight: 700 !important;
+  letter-spacing: .02em !important;
+  vertical-align: middle !important;
+  line-height: 1.4 !important;
+  font-family: var(--font) !important;
+  color: inherit;
+}
+.evt-badge.inv {
+  background: #dbeafe !important;
+  color: #1e40af !important;
+  border: 1px solid #93c5fd !important;
+}
+.evt-badge.res {
+  background: #f1f5f9 !important;
+  color: #475569 !important;
+  border: 1px solid #94a3b8 !important;
+}
+
+/* ── Filas invitado/reserva — franja lateral de color ── */
+#asigBody tr[data-status="inv"],
+#asigBody tr.is-invitado {
+  border-left: 4px solid #2563eb !important;
+  background: #eff6ff !important;
+}
+#asigBody tr[data-status="res"],
+#asigBody tr.is-reserva {
+  border-left: 4px solid #6b7280 !important;
+  background: #f8fafc !important;
+}
+
+/* ── Cabeceras ordenables — cursor + indicador visual ── */
+#alumWrap th.th-sort[data-key] {
+  cursor: pointer !important;
+  user-select: none;
+  white-space: nowrap;
+}
+#alumWrap th.th-sort[data-key]:hover {
+  background: rgba(255,255,255,.12) !important;
+}
+#alumWrap th.th-sort[data-key]::after {
+  content: ' ↕';
+  opacity: .4;
+  font-size: .75em;
+}
+#alumWrap th.th-sort.asc::after  { content: ' ↑'; opacity: 1; }
+#alumWrap th.th-sort.desc::after { content: ' ↓'; opacity: 1; }
