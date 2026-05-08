@@ -1,10 +1,9 @@
 <% title = 'Configuración de evento' %>
 <% hero = false %>
-<link rel="stylesheet" href="/eventos/styles/estilos.css">
 
 <div class="evt-toolbar">
 
-  <!-- BLOQUE 1: Título y fecha -->
+  <!-- BLOQUE 1: Título y fecha + acciones -->
   <div class="evt-bloque evt-bloque--titulo">
     <div class="evt-meta">
       <h1 class="evt-title-main">
@@ -16,33 +15,16 @@
         data-hfin="<%= (typeof hFin !== 'undefined' ? hFin : '') %>">
       </div>
     </div>
-    <a href="/eventos" class="enlace-final">← Volver al calendario</a>
-  </div>
-
-  <!-- BLOQUE 2: Configuración (switches) -->
-  <div class="evt-bloque evt-bloque--config">
-    <span class="evt-bloque__label">Configuración:</span>
-    <div class="evt-switches">
-      <label class="pill-switch">
-        <input class="form-check-input" type="checkbox" id="swFam">
-        <span>Familias</span>
-      </label>
-      <label class="pill-switch">
-        <input class="form-check-input" type="checkbox" id="swInst">
-        <span>Instrumento</span>
-      </label>
-      <label class="pill-switch">
-        <input class="form-check-input" type="checkbox" id="swAlu" checked>
-        <span>Individual</span>
-      </label>
-      <label class="pill-switch">
-        <input class="form-check-input" type="checkbox" id="swExtras" checked>
-        <span>Extras</span>
-      </label>
+    <div class="evt-titulo-acciones">
+      <button id="btnRefreshAsign" class="btn btn-ghost-sm evt-btn-titulo">Restaurar alumnos</button>
+      <a class="btn btn-ghost-sm evt-btn-titulo" href="/plano/editor/evento?evento_id=<%= evento.id %>">Plano dinámico</a>
+      <a class="btn evt-btn-titulo" href="/plano/evento/<%= evento.id %>.pdf" target="_blank" rel="noopener">Plano PDF</a>
+      <button id="shareEventoBtn" class="btn evt-btn-titulo">Enlace público</button>
+      <a href="/eventos" class="evt-titulo-volver">← Volver al calendario</a>
     </div>
   </div>
 
-  <!-- BLOQUE 3: Plantillas en una sola fila -->
+  <!-- BLOQUE 2: Plantillas -->
   <div class="evt-bloque evt-bloque--plantillas">
     <span class="evt-bloque__label">Plantilla:</span>
     <select id="tplSel" class="form-select form-select-sm tpl-sel">
@@ -50,11 +32,11 @@
     </select>
     <button id="tplApply"   class="btn btn-ghost-sm">Vista previa</button>
     <button id="tplClear"   class="btn btn-ghost-sm">Quitar filtro</button>
-    <button id="tplPersist" class="btn btn-solid-sm">Aplicar y guardar</button>
+    <button id="tplPersist" class="btn btn-solid-sm">Cargar</button>
     <button id="tplDelete"  class="btn btn-outline-sm" disabled>Eliminar</button>
     <span id="tplInfo" class="tpl-info small"></span>
     <div class="tpl-popwrap">
-      <a id="linkSaveTpl" href="#" class="evt-link-add">＋ Guardar como plantilla</a>
+      <a id="linkSaveTpl" href="#" class="evt-link-add">Guardar configuración actual como plantilla</a>
       <form id="saveTplForm" class="evt-popover tpl-hidden form-compact" style="margin:0">
         <div class="popover-head">
           <strong>Guardar plantilla</strong>
@@ -80,15 +62,27 @@
     </div>
   </div>
 
-  <!-- BLOQUE 4: Botones de utilidad -->
-  <div class="evt-bloque evt-bloque--botones">
-    <button id="btnRefreshAsign" class="btn btn-ghost-sm">Restaurar alumnos</button>
-    <a class="btn btn-ghost-sm" href="/plano/editor/evento?evento_id=<%= evento.id %>">
-      Plano dinámico
-    </a>
-    <a class="btn btn-outline-sm" href="/plano/evento/<%= evento.id %>.pdf"
-       target="_blank" rel="noopener">Plano PDF</a>
-    <button id="shareEventoBtn" class="btn btn-blanco btn-sm">Generar enlace público</button>
+  <!-- BLOQUE 3: Configuración — lo más cerca de las tablas -->
+  <div class="evt-bloque evt-bloque--config">
+    <span class="evt-bloque__label">Configuración:</span>
+    <div class="evt-switches">
+      <label class="pill-switch">
+        <input class="form-check-input" type="checkbox" id="swFam">
+        <span>Familias</span>
+      </label>
+      <label class="pill-switch">
+        <input class="form-check-input" type="checkbox" id="swInst">
+        <span>Instrumento</span>
+      </label>
+      <label class="pill-switch">
+        <input class="form-check-input" type="checkbox" id="swAlu" checked>
+        <span>Individual</span>
+      </label>
+      <label class="pill-switch">
+        <input class="form-check-input" type="checkbox" id="swExtras" checked>
+        <span>Extras</span>
+      </label>
+    </div>
   </div>
 
 </div>
@@ -172,52 +166,112 @@
 
   // Contador descripción (si existe)
   $desc?.addEventListener('input', ()=> { if ($count) $count.textContent = `${$desc.value.length}/120`; });
-    // === HORAS en plantilla (opcional, no rompe nada) ===
-const TPL_HORAS_ENABLED = false; // ← déjalo false hasta que el backend lo acepte
 
+  // === Recoger estado actual del DOM para la plantilla ===
 function __collectTemplateTimes(){
   const fam = [];
-  document.querySelectorAll('#famBody tr').forEach(tr => {
+  document.querySelectorAll('#famBody tr[data-key]').forEach(tr => {
+    if (tr.classList.contains('tpl-hidden')) return;
     const key = tr.dataset.key || tr.cells?.[0]?.textContent?.trim();
     if (!key) return;
     const inicio = tr.querySelector('.inp-ini')?.value || '';
     const fin    = tr.querySelector('.inp-fin')?.value || '';
-    if (inicio || fin) fam.push({ key, inicio: inicio || null, fin: fin || null });
+    fam.push({ key, inicio: inicio || null, fin: fin || null });
   });
 
   const inst = [];
   document.querySelectorAll('#instBody tr[data-key]').forEach(tr => {
+    if (tr.classList.contains('tpl-hidden')) return;
     const key = tr.dataset.key || '';
     if (!key) return;
     const inicio = tr.querySelector('.inp-ini')?.value || '';
     const fin    = tr.querySelector('.inp-fin')?.value || '';
-    if (inicio || fin) inst.push({ key, inicio: inicio || null, fin: fin || null });
+    inst.push({ key, inicio: inicio || null, fin: fin || null });
   });
 
   return { familias: fam, instrumentos: inst };
 }
+
+function __collectVisibleAlumnos(){
+  const extrasInv = new Set(
+    Array.from(document.querySelectorAll('#extrasWrap table[data-tipo="invitados"] tbody tr[data-alumno]'))
+      .map(tr => String(tr.dataset.alumno))
+  );
+  const extrasRes = new Set(
+    Array.from(document.querySelectorAll('#extrasWrap table[data-tipo="reservas"] tbody tr[data-alumno]'))
+      .map(tr => String(tr.dataset.alumno))
+  );
+
+  const normales = [], extras = [];
+  document.querySelectorAll('#asigBody tr[data-alumno]').forEach(tr => {
+    if (tr.classList.contains('tpl-hidden')) return;
+    const id = Number(tr.dataset.alumno);
+    if (!id) return;
+    const sid = String(id);
+
+    // 1) En panel Extras (no añadido al evento aún)
+    if (extrasInv.has(sid)) { extras.push({ id, tipo: 'invitado' }); return; }
+    if (extrasRes.has(sid)) { extras.push({ id, tipo: 'reserva'  }); return; }
+
+    // 2) Ya en asigBody: detectar por data-familia
+    const fam = (tr.dataset.familia || '').toLowerCase();
+    if (fam.includes('invitado')) { extras.push({ id, tipo: 'invitado' }); return; }
+    if (fam.includes('reserva'))  { extras.push({ id, tipo: 'reserva'  }); return; }
+
+    // 3) Por data-status o clases CSS
+    const st = tr.dataset.status || '';
+    if (st === 'inv' || tr.classList.contains('is-invitado')) { extras.push({ id, tipo: 'invitado' }); return; }
+    if (st === 'res' || tr.classList.contains('is-reserva'))  { extras.push({ id, tipo: 'reserva'  }); return; }
+
+    normales.push(id);
+  });
+  return { normales, extras };
+}
+
 async function doSave(nombre, descripcion){
   if (window.__TPL_SAVE_IN_FLIGHT__) return;
-      // Prefijo de grupo (evita duplicarlo si ya existe)
-    const g = (window.__TPL_GROUP_LABEL__ || '').trim();
-    let nombreFinal = nombre;
-    if (g) {
-      const esc = g.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      const re = new RegExp(`^\\s*\\[${esc}\\]\\s`);
-      if (!re.test(nombreFinal)) nombreFinal = `[${g}] ${nombreFinal}`;
-    }
+  const g = (window.__TPL_GROUP_LABEL__ || '').trim();
+  let nombreFinal = nombre;
+  if (g) {
+    const esc = g.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const re = new RegExp(`^\\s*\\[${esc}\\]\\s`);
+    if (!re.test(nombreFinal)) nombreFinal = `[${g}] ${nombreFinal}`;
+  }
   window.__TPL_SAVE_IN_FLIGHT__ = true;
   $btnSubmit?.setAttribute('disabled','disabled');
 
   try{
+    // Esperar a que el panel Extras cargue si está vacío
+    const waitForExtras = () => new Promise(resolve => {
+      const check = () => {
+        const invRows = document.querySelectorAll('#extrasWrap table[data-tipo="invitados"] tbody tr[data-alumno]');
+        const resRows = document.querySelectorAll('#extrasWrap table[data-tipo="reservas"] tbody tr[data-alumno]');
+        if (invRows.length > 0 || resRows.length > 0) return resolve();
+        // Si el panel no está visible, no esperar
+        const wrap = document.getElementById('extrasWrap');
+        if (!wrap || wrap.style.display === 'none') return resolve();
+        setTimeout(check, 200);
+      };
+      setTimeout(check, 100);
+      setTimeout(resolve, 2000); // timeout máximo 2s
+    });
+    await waitForExtras();
+
+    const horas = __collectTemplateTimes();
+    const { normales, extras } = __collectVisibleAlumnos();
+
+    console.log('[plantilla] normales:', normales.length, 'extras:', extras.length, extras);
+
     const r = await fetch(`/plantillas/from-event/${eventoId}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(
-        TPL_HORAS_ENABLED
-          ? { nombre: nombreFinal, descripcion, horas: __collectTemplateTimes() }
-          : { nombre: nombreFinal, descripcion }
-      )
+      body: JSON.stringify({
+        nombre: nombreFinal,
+        descripcion,
+        horas,
+        alumnos_ids:    normales.length ? normales : undefined,
+        alumnos_extra:  extras.length   ? extras   : undefined,
+      })
     });
     const ct = r.headers.get('content-type')||'';
     const data = ct.includes('application/json') ? await r.json() : {};
@@ -326,6 +380,12 @@ async function doSave(nombre, descripcion){
               data-notas="<%= row.notas || '' %>"
               data-familia="<%= row.familia_mostrada || '' %>"
               data-minutos="<%= row.minutos_perdidos || '' %>"
+              data-status="<%= (() => {
+                const g = (row.grupos || row.grupo || '').toLowerCase();
+                if (g.includes('invitado')) return 'inv';
+                if (g.includes('reserva'))  return 'res';
+                return '';
+              })() %>"
             >
             <td>
               <strong><%= (row.apellidos||'') %>, <%= (row.nombre||'') %></strong>
@@ -538,6 +598,8 @@ if (!tr.dataset.alumno) console.warn('[extras] fila sin id reconocible:', r);
     tr.append(tdChk, tdNom);
     tbody.appendChild(tr);
   }
+  // Avisar a injectBadges que el panel ya está listo
+  document.dispatchEvent(new CustomEvent('extras:rendered', { detail: { tipo } }));
 }
 
   async function addAll(tipo){
@@ -2061,52 +2123,78 @@ function setMinutesCell(tr, val){
       const prev = await fetchJSON(`/plantillas/${pid}/preview?eventoId=${eventoId}`);
       const tpl  = await fetchJSON(`/plantillas/${pid}`);
   
-      // 2) Conjunto de familias/instrumentos a filtrar
-      const famSet  = new Set((tpl.familias_incluir     || []).map(s => norm(s)));
-      const instSet = new Set((tpl.instrumentos_incluir || []).map(s => norm(s)));
-  
-      // Si no viene nada en la plantilla, usa lo del preview
-      if (famSet.size === 0)  prev.alumnos.forEach(a => { if (a.familia)     famSet.add(norm(a.familia)); });
-      if (instSet.size === 0) prev.alumnos.forEach(a => { if (a.instrumento) instSet.add(norm(a.instrumento)); });
-  
-      // 3) Aplicar filtro visual
-      window.__TPL_FILTER__ = { famSet, instSet };
-      applyFilter({ famSet, instSet, total: prev.total_candidatos, match: prev.total_match });
-  
-      // 4) Aplicar horas guardadas (si las hay)
-      applySavedTimesToGroups(tpl);
-      applySavedTimesToStudents(tpl, { famSet, instSet });
-  
-      // 5) Reintentos por si las tablas/DOM entran más tarde
-      setTimeout(() => {
+      // 2) ¿La plantilla tiene IDs directos de músicos?
+      const alumnosIds   = tpl.horas?.alumnos_ids   || [];
+      const alumnosExtra = tpl.horas?.alumnos_extra  || [];
+      const usarIds = alumnosIds.length > 0;
+
+      if (usarIds) {
+        // Filtrar por IDs directos — modo exacto (normales + extras)
+        const idSet    = new Set(alumnosIds.map(Number));
+        const extraSet = new Set(alumnosExtra.map(e => Number(e.id || e)));
+        const todosIds = new Set([...idSet, ...extraSet]);
+        document.querySelectorAll('#asigBody tr[data-alumno]').forEach(tr => {
+          const id = Number(tr.dataset.alumno);
+          tr.classList.toggle('tpl-hidden', !todosIds.has(id));
+        });
+        if ($info) $info.textContent =
+          `${alumnosIds.length + alumnosExtra.length} músicos en plantilla`;
+      } else {
+        // Modo anterior: filtrar por familias/instrumentos
+        const famSet  = new Set((tpl.familias_incluir     || []).map(s => norm(s)));
+        const instSet = new Set((tpl.instrumentos_incluir || []).map(s => norm(s)));
+        if (famSet.size === 0)  prev.alumnos.forEach(a => { if (a.familia)     famSet.add(norm(a.familia)); });
+        if (instSet.size === 0) prev.alumnos.forEach(a => { if (a.instrumento) instSet.add(norm(a.instrumento)); });
+        window.__TPL_FILTER__ = { famSet, instSet };
         applyFilter({ famSet, instSet, total: prev.total_candidatos, match: prev.total_match });
+
+        // Mostrar alumnos_extra guardados
+        if (alumnosExtra.length) {
+          const extraIds = new Set(alumnosExtra.map(e => String(e.id || e)));
+          document.querySelectorAll('#asigBody tr[data-alumno]').forEach(tr => {
+            if (extraIds.has(String(tr.dataset.alumno))) tr.classList.remove('tpl-hidden');
+          });
+        }
+
         applySavedTimesToGroups(tpl);
-        applySavedTimesToStudents(tpl, { famSet, instSet });
-      }, 300);
-  
-      setTimeout(() => {
-        applyFilter({ famSet, instSet, total: prev.total_candidatos, match: prev.total_match });
-        applySavedTimesToGroups(tpl);
-        applySavedTimesToStudents(tpl, { famSet, instSet });
-      }, 800);
+        const famSetLocal  = window.__TPL_FILTER__?.famSet  || new Set();
+        const instSetLocal = window.__TPL_FILTER__?.instSet || new Set();
+        applySavedTimesToStudents(tpl, { famSet: famSetLocal, instSet: instSetLocal });
+
+        setTimeout(() => {
+          applyFilter({ famSet, instSet, total: prev.total_candidatos, match: prev.total_match });
+          applySavedTimesToGroups(tpl);
+          applySavedTimesToStudents(tpl, { famSet, instSet });
+        }, 300);
+        setTimeout(() => {
+          applyFilter({ famSet, instSet, total: prev.total_candidatos, match: prev.total_match });
+          applySavedTimesToGroups(tpl);
+          applySavedTimesToStudents(tpl, { famSet, instSet });
+        }, 800);
+      }
     }
   
     // Botones
+    // Vista previa → filtra visualmente según plantilla (sin tocar BD)
     $btnA?.addEventListener('click', () => applyTemplate().catch(err => {
       console.error(err);
-      alert('No se pudo aplicar la plantilla');
+      alert('No se pudo cargar la vista previa');
     }));
-    $btnC?.addEventListener('click', clearFilter);
+    // Quitar filtro → vuelve a mostrar todos sin cambios en BD
+    $btnC?.addEventListener('click', () => {
+      clearFilter();
+      if ($info) $info.textContent = '';
+    });
   })();
-  </script>  
+  </script>
 
-<!-- === Aplicar y guardar (persistir filas visibles) === -->
+<!-- === Cargar plantilla (sobreescribe BD con músicos visibles tras vista previa) === -->
 <script>
 (() => {
   const eventoId    = <%= evento.id %>;
-  const $sel        = document.getElementById('tplSel');       // select de plantillas
-  const $btnPersist = document.getElementById('tplPersist');   // botón "Aplicar y guardar"
-  const $asigBody   = document.getElementById('asigBody');     // tbody de alumnos
+  const $sel        = document.getElementById('tplSel');
+  const $btnPersist = document.getElementById('tplPersist');
+  const $asigBody   = document.getElementById('asigBody');
 
   async function fetchJSON(url, opts) {
     const r = await fetch(url, opts || {});
@@ -2118,41 +2206,40 @@ function setMinutesCell(tr, val){
 
   $btnPersist?.addEventListener('click', async () => {
     const pid = Number($sel?.value || '');
-    if (!pid) return alert('Selecciona una plantilla');
+    if (!pid) return alert('Selecciona una plantilla primero');
 
+    // Filas visibles (las que quedan tras la vista previa)
     const rows = Array.from($asigBody?.querySelectorAll('tr[data-alumno]') || [])
       .filter(tr => !tr.classList.contains('tpl-hidden'));
 
-    if (!rows.length) {
-      if (!confirm('No hay filas visibles. Se eliminarán asignaciones del evento. ¿Continuar?')) return;
+    const n = rows.length;
+    if (!n) {
+      if (!confirm('No hay músicos visibles. ¿Continuar de todos modos?')) return;
     } else {
-      if (!confirm(`Se guardarán ${rows.length} filas visibles y se eliminará el resto. ¿Continuar?`)) return;
+      if (!confirm(`Se guardarán ${n} músico${n !== 1 ? 's' : ''} como configuración del evento. ¿Continuar?`)) return;
     }
 
-    const items = rows.map(tr => {
-      const alumno_id   = Number(tr.dataset.alumno);
-      const hora_inicio = (tr.querySelector('.inp-ini')?.value || '').trim() || null;
-      const hora_fin    = (tr.querySelector('.inp-fin')?.value || '').trim() || null;
-
-      const selAct = tr.querySelector('.sel-act');
-      const actividad_complementaria_id =
-        selAct ? (selAct.value === '' ? null : Number(selAct.value)) : null;
-
-      const notas = (tr.querySelector('.inp-notas')?.value ?? '').trim() || null;
-
-      return { alumno_id, hora_inicio, hora_fin, actividad_complementaria_id, notas };
-    });
+    const items = rows.map(tr => ({
+      alumno_id:   Number(tr.dataset.alumno),
+      hora_inicio: (tr.querySelector('.inp-ini')?.value || '').trim() || null,
+      hora_fin:    (tr.querySelector('.inp-fin')?.value || '').trim() || null,
+      actividad_complementaria_id: (() => {
+        const v = tr.querySelector('.sel-act')?.value;
+        return (v && v !== '') ? Number(v) : null;
+      })(),
+      notas: (tr.querySelector('.inp-notas')?.value ?? '').trim() || null,
+    }));
 
     try {
       await fetchJSON(`/plantillas/${pid}/apply`, {
-        method:'POST',
-        headers:{ 'Content-Type':'application/json' },
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ eventoId, items })
       });
       location.reload();
     } catch (e) {
       console.error(e);
-      alert('No se pudo guardar el resultado de la plantilla');
+      alert('No se pudo cargar la plantilla');
     }
   });
 })();
@@ -2413,8 +2500,15 @@ function setMinutesCell(tr, val){
   
         // limpia badges previos para no duplicar
         td.querySelectorAll('.evt-badge').forEach(el => el.remove());
+        // resetear clases de estado previas
+        tr.classList.remove('is-invitado','is-reserva');
+        delete tr.dataset.status;
   
         if (st === 'inv' || st === 'res'){
+          // Marcar el tr para el CSS de franja lateral
+          tr.dataset.status = st;
+          tr.classList.add(st === 'inv' ? 'is-invitado' : 'is-reserva');
+
           const badge = document.createElement('span');
           badge.className = `evt-badge ${st}`;
           badge.textContent = (st === 'inv' ? 'Invitado' : 'Reserva');
@@ -2450,89 +2544,117 @@ function setMinutesCell(tr, val){
       schedule(); safeObserve();
     }
   
-    // Reinyecta después de estas operaciones típicas
+       // Reinyecta después de estas operaciones típicas
     document.getElementById('tplApply')?.addEventListener('click', () => setTimeout(injectBadges, 350));
     document.getElementById('btnRefreshAsign')?.addEventListener('click', () => setTimeout(injectBadges, 800));
-  
-    // Si tus scripts de “Extras” recargan sus tablas asincrónicamente, reintenta cuando acaben:
+
+    // ← CLAVE: panel Extras carga asíncronamente, reinyectar cuando termine
+    document.addEventListener('extras:rendered', () => {
+      injectBadges();
+      setTimeout(injectBadges, 300);
+    });
+
     document.getElementById('extrasWrap')?.addEventListener('click', (ev) => {
-      // tras “Añadir seleccionados” suele venir un reload, pero por si no:
       if (ev.target.closest('[data-action="add-sel"]')) setTimeout(injectBadges, 600);
     }, true);
   })();
   </script>
   <script>
-    (() => {
-      function collectExtrasSets(){
-        const inv = new Set(), res = new Set();
-        document.querySelectorAll('#extrasWrap table[data-tipo="invitados"] tbody tr[data-alumno]')
-          .forEach(tr => inv.add(String(tr.dataset.alumno)));
-        document.querySelectorAll('#extrasWrap table[data-tipo="reservas"] tbody tr[data-alumno]')
-          .forEach(tr => res.add(String(tr.dataset.alumno)));
-        return { inv, res };
+  (() => {
+    const eventoId = <%= evento.id %>;
+    let _invSet = new Set();
+    let _resSet = new Set();
+    let _loaded = false;
+
+    // Carga IDs de invitados y reservas desde la API
+    async function loadExtrasSets(){
+      try {
+        const [rInv, rRes] = await Promise.all([
+          fetch(`/eventos/${eventoId}/extras/invitados`),
+          fetch(`/eventos/${eventoId}/extras/reservas`)
+        ]);
+        const [inv, res] = await Promise.all([
+          rInv.ok ? rInv.json() : [],
+          rRes.ok ? rRes.json() : []
+        ]);
+        _invSet = new Set((inv||[]).map(r => String(r.alumno_id ?? r.id ?? '')).filter(Boolean));
+        _resSet = new Set((res||[]).map(r => String(r.alumno_id ?? r.id ?? '')).filter(Boolean));
+        _loaded = true;
+      } catch(e) {
+        console.warn('[badges] Error cargando extras:', e);
       }
-    
-      function inferStatus(tr, sets){
-        const ds = (tr.dataset.status || '').trim();            // "inv" | "res"
-        if (ds === 'inv' || ds === 'res') return ds;
-        if (tr.classList.contains('is-invitado')) return 'inv';
-        if (tr.classList.contains('is-reserva'))  return 'res';
-        const id = tr.dataset.alumno ? String(tr.dataset.alumno) : '';
-        if (id) {
-          if (sets.inv.has(id)) return 'inv';
-          if (sets.res.has(id)) return 'res';
+    }
+
+    function inferStatus(tr){
+      // 1) data-status puesto por el servidor (desde la query SQL)
+      const ds = (tr.dataset.status || '').trim();
+      if (ds === 'inv' || ds === 'res') return ds;
+      // 2) clases legacy
+      if (tr.classList.contains('is-invitado')) return 'inv';
+      if (tr.classList.contains('is-reserva'))  return 'res';
+      // 3) panel Extras HTML (si ya cargó)
+      const id = String(tr.dataset.alumno || '');
+      if (id && _loaded) {
+        if (_invSet.has(id)) return 'inv';
+        if (_resSet.has(id)) return 'res';
+      }
+      return '';
+    }
+
+    function injectBadges(){
+      const tbody = document.getElementById('asigBody');
+      if (!tbody) return;
+
+      tbody.querySelectorAll('tr[data-alumno]').forEach(tr => {
+        const st = inferStatus(tr);
+        const td = tr.querySelector('td:first-child');
+        if (!td) return;
+
+        // Limpiar badges anteriores
+        td.querySelectorAll('.evt-badge').forEach(el => el.remove());
+        tr.classList.remove('is-invitado', 'is-reserva');
+
+        if (st) {
+          // Marcar tr
+          tr.dataset.status = st;
+          tr.classList.add(st === 'inv' ? 'is-invitado' : 'is-reserva');
+
+          // Badge
+          const badge = document.createElement('span');
+          badge.className = `evt-badge ${st}`;
+          badge.textContent = st === 'inv' ? 'Invitado' : 'Reserva';
+          const anchor = td.querySelector('strong');
+          if (anchor) anchor.insertAdjacentElement('afterend', badge);
+          else td.prepend(badge);
         }
-        return '';
-      }
-    
-      function injectBadges(){
-        const tbody = document.getElementById('asigBody');
-        if (!tbody) return false;
-        const sets = collectExtrasSets();
-    
-        let touched = 0;
-        tbody.querySelectorAll('tr[data-alumno]').forEach(tr => {
-          const td = tr.querySelector('td:first-child'); if (!td) return;
-          // limpia anteriores
-          td.querySelectorAll('.evt-badge').forEach(el => el.remove());
-    
-          const st = inferStatus(tr, sets);
-          if (st){
-            const badge = document.createElement('span');
-            badge.className = `evt-badge ${st}`;
-            badge.textContent = (st === 'inv' ? 'Invitado' : 'Reserva');
-            const anchor = td.querySelector('strong');
-            (anchor || td).insertAdjacentElement('afterend', badge);
-            touched++;
-          }
-        });
-        return touched > 0;
-      }
-    
-      // Ejecuta ya y reintenta un poco por si la tabla/extras llegan asíncronos
-      function runWithRetries(){
-        let tries = 0;
-        const timer = setInterval(() => {
-          tries++;
-          const ok = injectBadges();
-          if (ok || tries >= 12) clearInterval(timer); // hasta ~6s (12 x 500ms)
-        }, 500);
-        // primer disparo inmediato
-        injectBadges();
-      }
-    
-      if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', runWithRetries);
-      } else {
-        runWithRetries();
-      }
-    
-      // Reinyecta tras acciones típicas de tu UI
-      document.getElementById('tplApply')?.addEventListener('click', () => setTimeout(injectBadges, 350));
-      document.getElementById('tplPersist')?.addEventListener('click', () => setTimeout(injectBadges, 800));
-      document.getElementById('btnRefreshAsign')?.addEventListener('click', () => setTimeout(injectBadges, 800));
-      document.getElementById('tplClear')?.addEventListener('click', () => setTimeout(injectBadges, 200));
-    })();
-    </script>
+      });
+    }
+
+    // Arrancar: primero inyectar con data-status del servidor (instantáneo),
+    // luego cargar de la API y reinyectar
+    async function init(){
+      injectBadges(); // primer pase con data-status del servidor
+      await loadExtrasSets();
+      injectBadges(); // segundo pase con datos de la API
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', init);
+    } else {
+      init();
+    }
+
+    // Reinyectar tras acciones que cambian la tabla
+    document.addEventListener('extras:rendered', () => { injectBadges(); });
+    document.getElementById('tplApply')?.addEventListener('click',       () => setTimeout(injectBadges, 400));
+    document.getElementById('tplPersist')?.addEventListener('click',     () => setTimeout(injectBadges, 800));
+    document.getElementById('btnRefreshAsign')?.addEventListener('click',() => setTimeout(injectBadges, 800));
+    document.getElementById('tplClear')?.addEventListener('click',       () => setTimeout(injectBadges, 200));
+    document.getElementById('extrasWrap')?.addEventListener('click', ev => {
+      if (ev.target.closest('[data-action="add-sel"]')) setTimeout(injectBadges, 800);
+    }, true);
+  })();
+  </script>
+  
   
     

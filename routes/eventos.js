@@ -744,7 +744,11 @@ SELECT
   firmado,
   hora_inicio, hora_fin, instrumento, notas,
   ausencia_tipo_id, ausencia_tipo,
-  actividad_complementaria_id, actividad_complementaria
+  actividad_complementaria_id, actividad_complementaria,
+  (SELECT string_agg(LOWER(g3.nombre), ',' ORDER BY g3.nombre)
+   FROM alumno_grupo ag3
+   JOIN grupos g3 ON g3.id = ag3.grupo_id
+   WHERE ag3.alumno_id = etiquetado.id) AS grupos
 FROM etiquetado
 ORDER BY apellidos NULLS LAST, nombre NULLS LAST, id;
 `;

@@ -310,7 +310,7 @@ select { height: 2rem; line-height: 2.5rem; }
   padding: 12px 14px;
   box-shadow: var(--shadow-sm);
 }
-.formulario-centrado { max-width: 920px; margin: 0 auto 16px; }
+.formulario-centrado { width: 100%; margin: 0 0 16px; }
 .campo-filtro { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 
 /* Formularios inline */
@@ -1249,7 +1249,7 @@ tr.sec-ii { background: rgba(120,150,255,.12); }
 /* ════════════════════════════════════════════════════════
    INFORMES — detalle
    ════════════════════════════════════════════════════════ */
-.formulario-centrado { max-width: 55% !important; margin: 0 auto; }
+.informe-detalle .formulario-centrado { max-width: 55%; margin: 0 auto; }
 
 /* Excepción: el filtro de lista no debe quedar aplastado al 55% */
 .formulario-centrado.filtro-card--shape {
@@ -1951,15 +1951,17 @@ button.btn-main-blanco#btnMasivo:hover { filter: brightness(1.08); color: #fff !
    TARJETAS DE MÚSICO — amarillo oro #ffb020
    ════════════════════════════════════════════════════════ */
 .dashboard-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
-  gap: 16px;
-  max-width: 980px;
-  margin: 0 auto 1.5rem;
+  display: grid !important;
+  grid-template-columns: repeat(4, 1fr) !important;
+  gap: 16px !important;
+  max-width: 100% !important;
+  width: 100% !important;
+  margin: 0 0 1.5rem !important;
+  padding: 0 !important;
 }
 .dashboard-grid .card {
-  min-height: 110px;
-  padding: 18px 20px;
+  min-height: 130px;
+  padding: 22px 24px;
   border-radius: var(--radius-xl);
   border: none;
   background: var(--amarillo);           /* #ffb020 */
@@ -2971,6 +2973,13 @@ body:has(.evt-toolbar) .page-main {
   border-left: 4px solid #6b7280 !important;
   background: #f8fafc !important;
 }
+/* Celdas dentro de filas invitado/reserva — texto visible */
+#asigBody tr[data-status="inv"] td,
+#asigBody tr.is-invitado td,
+#asigBody tr[data-status="res"] td,
+#asigBody tr.is-reserva td {
+  color: #111 !important;
+}
 
 /* ── Cabeceras ordenables — cursor + indicador visual ── */
 #alumWrap th.th-sort[data-key] {
@@ -2979,7 +2988,7 @@ body:has(.evt-toolbar) .page-main {
   white-space: nowrap;
 }
 #alumWrap th.th-sort[data-key]:hover {
-  background: rgba(255,255,255,.12) !important;
+  opacity: .85;
 }
 #alumWrap th.th-sort[data-key]::after {
   content: ' ↕';
@@ -2988,3 +2997,623 @@ body:has(.evt-toolbar) .page-main {
 }
 #alumWrap th.th-sort.asc::after  { content: ' ↑'; opacity: 1; }
 #alumWrap th.th-sort.desc::after { content: ' ↓'; opacity: 1; }
+
+/* ── Flash de entrada para filas invitado/reserva recién añadidas ── */
+@keyframes evt-row-flash {
+  0%   { box-shadow: inset 0 0 0 3px #2563eb; }
+  50%  { box-shadow: inset 0 0 0 3px transparent; }
+  100% { box-shadow: inset 0 0 0 3px #2563eb; }
+}
+@keyframes evt-row-flash-res {
+  0%   { box-shadow: inset 0 0 0 3px #6b7280; }
+  50%  { box-shadow: inset 0 0 0 3px transparent; }
+  100% { box-shadow: inset 0 0 0 3px #6b7280; }
+}
+#asigBody tr.is-invitado {
+  animation: evt-row-flash 1s ease 2;
+}
+#asigBody tr.is-reserva {
+  animation: evt-row-flash-res 1s ease 2;
+}
+
+/* ════════════════════════════════════════════════════════
+   FIRMA MANUAL — rediseño completo
+   ════════════════════════════════════════════════════════ */
+
+/* ── Toolbar: botones coherentes con la app ── */
+.evt-toolbar .btn {
+  font-size: .8rem !important;
+  font-weight: 700 !important;
+  padding: .3rem .75rem !important;
+  border-radius: var(--radius) !important;
+  border: 1.5px solid var(--border-strong) !important;
+  background: var(--bg) !important;
+  color: var(--ink) !important;
+  cursor: pointer;
+  transition: background .12s, border-color .12s;
+  white-space: nowrap;
+}
+.evt-toolbar .btn:hover {
+  background: var(--naranja-claro) !important;
+  border-color: var(--naranja) !important;
+}
+.evt-toolbar .btn-solid-sm {
+  background: var(--negro) !important;
+  color: #fff !important;
+  border-color: var(--negro) !important;
+}
+.evt-toolbar .btn-solid-sm:hover {
+  background: #2d2d2d !important;
+  border-color: #2d2d2d !important;
+}
+.evt-toolbar .btn-outline-sm {
+  color: var(--muted) !important;
+}
+.evt-toolbar .btn-outline-sm:not(:disabled):hover {
+  color: var(--danger) !important;
+  border-color: var(--danger) !important;
+  background: var(--bg-danger) !important;
+}
+.evt-toolbar .btn:disabled {
+  opacity: .4 !important;
+  cursor: not-allowed !important;
+}
+.evt-link-add {
+  font-size: .8rem;
+  font-weight: 700;
+  color: var(--naranja) !important;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.evt-link-add:hover { text-decoration: underline; }
+
+/* ── Tabla de asignaciones — más compacta ── */
+#alumWrap .tabla-estilizada thead tr {
+  background: var(--naranja) !important;
+}
+#alumWrap .tabla-estilizada thead th {
+  color: var(--negro) !important;
+  font-size: .75rem !important;
+  font-weight: 800 !important;
+  padding: 7px 10px !important;
+  letter-spacing: .03em;
+  text-transform: uppercase;
+  border: none !important;
+}
+#alumWrap .tabla-estilizada tbody tr {
+  border-bottom: 1px solid var(--border) !important;
+}
+#alumWrap .tabla-estilizada tbody tr:last-child {
+  border-bottom: none !important;
+}
+#alumWrap .tabla-estilizada tbody td {
+  padding: 5px 10px !important;
+  font-size: .83rem !important;
+  vertical-align: middle !important;
+  border: none !important;
+}
+#alumWrap .tabla-estilizada tbody strong {
+  font-size: .85rem;
+  font-weight: 700;
+}
+#alumWrap .tabla-estilizada .text-muted.small {
+  font-size: .72rem !important;
+  color: var(--muted) !important;
+  margin-top: 1px;
+}
+/* Inputs dentro de la tabla más compactos */
+#alumWrap .inp-ini,
+#alumWrap .inp-fin {
+  padding: .2rem .4rem !important;
+  font-size: .8rem !important;
+  min-width: 80px;
+  max-width: 110px;
+}
+#alumWrap .sel-aus,
+#alumWrap .sel-act {
+  padding: .2rem .4rem !important;
+  font-size: .8rem !important;
+  min-width: 90px;
+}
+#alumWrap .inp-notas {
+  padding: .2rem .4rem !important;
+  font-size: .8rem !important;
+}
+/* Botón Eliminar discreto */
+#alumWrap .btn-del {
+  font-size: .72rem !important;
+  padding: .15rem .5rem !important;
+  border-radius: var(--radius-sm) !important;
+  border: 1.5px solid var(--border) !important;
+  background: var(--bg) !important;
+  color: var(--muted) !important;
+  white-space: nowrap;
+}
+#alumWrap .btn-del:hover {
+  border-color: var(--danger) !important;
+  color: var(--danger) !important;
+  background: var(--bg-danger) !important;
+}
+
+/* ── Sección h5 títulos ── */
+#alumWrap h5,
+#famWrap h5,
+#instWrap h5 {
+  font-size: .88rem !important;
+  font-weight: 800 !important;
+  color: var(--naranja) !important;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  margin-bottom: 8px !important;
+  padding-left: 4px;
+  border-left: 3px solid var(--naranja);
+}
+
+/* ── Panel Extras rediseñado ── */
+#extrasWrap {
+  background: var(--bg) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius-lg) !important;
+  padding: 0 !important;
+  margin-top: 20px !important;
+  box-shadow: none !important;
+}
+#extrasWrap .card-header {
+  background: var(--bg-subtle) !important;
+  border-bottom: 1px solid var(--border) !important;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0 !important;
+  padding: 10px 16px !important;
+  font-size: .82rem !important;
+  font-weight: 800 !important;
+  color: var(--ink) !important;
+}
+#extrasWrap .card-body {
+  padding: 12px 16px !important;
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 16px !important;
+}
+/* Panel invitados/reservas */
+.extras-panel {
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius) !important;
+  padding: 10px 12px !important;
+  background: var(--bg-subtle) !important;
+}
+.extras-panel h6 {
+  font-size: .78rem !important;
+  font-weight: 800 !important;
+  text-transform: uppercase !important;
+  letter-spacing: .05em !important;
+  color: var(--muted) !important;
+  margin: 0 !important;
+}
+/* Quitar botón Ocultar */
+.extras-panel .panel-toggle { display: none !important; }
+
+/* Botón Añadir seleccionados */
+.extras-panel [data-action="add-sel"] {
+  font-size: .78rem !important;
+  font-weight: 700 !important;
+  padding: .25rem .65rem !important;
+  border-radius: var(--radius) !important;
+  border: 1.5px solid var(--naranja) !important;
+  background: var(--naranja) !important;
+  color: var(--negro) !important;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.extras-panel [data-action="add-sel"]:hover {
+  filter: brightness(1.08);
+}
+/* Tabla extras compacta */
+.extras-table {
+  font-size: .82rem !important;
+  margin-bottom: 0 !important;
+}
+.extras-table tbody tr {
+  border-bottom: 1px solid var(--border) !important;
+}
+.extras-table tbody tr:last-child { border-bottom: none !important; }
+.extras-table tbody td { padding: 5px 6px !important; vertical-align: middle !important; }
+.extras-table .text-muted.small { font-size: .72rem !important; color: var(--muted) !important; }
+
+/* Leyenda Invitado/Reserva */
+#legendExtras {
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+  font-size: .75rem !important;
+}
+
+/* ════════════════════════════════════════════════════════
+   FIRMA MANUAL v2 — rediseño final
+   ════════════════════════════════════════════════════════ */
+
+/* ── Banner evento ── */
+.evt-bloque--titulo {
+  background: var(--negro) !important;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0 !important;
+  padding: 12px 20px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  border-bottom: none !important;
+}
+.evt-meta { display: flex; flex-direction: column; gap: 2px; }
+.evt-title-main {
+  font-size: 1rem !important;
+  font-weight: 800 !important;
+  color: #fff !important;
+  margin: 0 !important;
+}
+.evt-bloque--titulo .evt-date {
+  font-size: .78rem !important;
+  color: var(--naranja) !important;
+}
+.evt-bloque--titulo .enlace-final {
+  font-size: .75rem !important;
+  color: var(--naranja) !important;
+  text-decoration: none;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* ── Barra plantillas ── */
+.evt-bloque--plantillas {
+  background: var(--bg) !important;
+  border-bottom: 1px solid var(--border) !important;
+  padding: 9px 16px !important;
+  gap: 6px !important;
+  flex-wrap: wrap !important;
+}
+
+/* ── Barra acciones ── */
+.evt-bloque--botones {
+  background: var(--bg-subtle) !important;
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg) !important;
+  padding: 8px 16px !important;
+  gap: 6px !important;
+}
+
+/* ── Pills configuración ── */
+.evt-bloque--config {
+  background: var(--bg) !important;
+  border-radius: var(--radius-lg) !important;
+  border: 1px solid var(--border) !important;
+  margin-top: 12px !important;
+  padding: 9px 16px !important;
+}
+.pill-switch {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  padding: .28rem .75rem !important;
+  border-radius: 999px !important;
+  font-size: .78rem !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  border: 1.5px solid var(--border-strong) !important;
+  background: var(--bg-subtle) !important;
+  color: var(--muted) !important;
+  transition: all .12s !important;
+  user-select: none;
+}
+.pill-switch:has(input:checked) {
+  background: #fff3dc !important;
+  border-color: var(--naranja) !important;
+  color: var(--negro) !important;
+}
+
+/* ── Tabla asignaciones — negro + filas ultra-finas ── */
+#alumWrap .tabla-estilizada {
+  border-collapse: collapse !important;
+  width: 100% !important;
+}
+#alumWrap .tabla-estilizada thead tr {
+  background: var(--negro) !important;
+}
+#alumWrap .tabla-estilizada thead th {
+  color: #fff !important;
+  font-size: .68rem !important;
+  font-weight: 800 !important;
+  padding: 6px 8px !important;
+  letter-spacing: .04em !important;
+  text-transform: uppercase !important;
+  border: none !important;
+  white-space: nowrap;
+}
+#alumWrap .tabla-estilizada tbody tr {
+  border-bottom: 1px solid var(--border) !important;
+  background: var(--bg) !important;
+  transition: background .1s !important;
+}
+#alumWrap .tabla-estilizada tbody tr:hover {
+  background: var(--bg-subtle) !important;
+}
+#alumWrap .tabla-estilizada tbody tr:last-child {
+  border-bottom: none !important;
+}
+#alumWrap .tabla-estilizada tbody td {
+  padding: 4px 8px !important;
+  font-size: .8rem !important;
+  vertical-align: middle !important;
+  border: none !important;
+  line-height: 1.3 !important;
+}
+#alumWrap .tabla-estilizada tbody strong {
+  font-size: .82rem !important;
+  font-weight: 700 !important;
+  display: block !important;
+}
+#alumWrap .tabla-estilizada .text-muted.small {
+  font-size: .68rem !important;
+  color: var(--muted) !important;
+  display: block !important;
+}
+/* Inputs ultra-compactos */
+#alumWrap .inp-ini,
+#alumWrap .inp-fin {
+  padding: 2px 4px !important;
+  font-size: .75rem !important;
+  height: 26px !important;
+  width: 88px !important;
+}
+#alumWrap .sel-aus,
+#alumWrap .sel-act {
+  padding: 2px 4px !important;
+  font-size: .75rem !important;
+  height: 26px !important;
+}
+#alumWrap .inp-notas {
+  padding: 2px 6px !important;
+  font-size: .75rem !important;
+  height: 26px !important;
+}
+#alumWrap .chk-firmado {
+  width: 14px !important;
+  height: 14px !important;
+}
+/* Botón eliminar discreto */
+#alumWrap .btn-del {
+  font-size: .68rem !important;
+  padding: 2px 7px !important;
+  height: 22px !important;
+  border-radius: 5px !important;
+  border: 1px solid var(--border) !important;
+  background: transparent !important;
+  color: var(--muted) !important;
+  white-space: nowrap !important;
+  cursor: pointer !important;
+}
+#alumWrap .btn-del:hover {
+  border-color: #dc2626 !important;
+  color: #dc2626 !important;
+  background: #fef2f2 !important;
+}
+
+/* ── Footer — neutralizar estilos.css de eventos ── */
+body:has(.evt-toolbar) .custom-footer {
+  background: var(--bg-alt) !important;
+  color: var(--muted) !important;
+  border-top: 1px solid var(--border) !important;
+}
+body:has(.evt-toolbar) .footer-content {
+  color: var(--muted) !important;
+}
+body:has(.evt-toolbar) .footer-content p {
+  color: var(--muted) !important;
+  margin: 0 !important;
+}
+body:has(.evt-toolbar) .footer-content a {
+  color: var(--muted) !important;
+}
+
+/* ── Clases de estilos.css que firma_manual necesita (al quitar ese link) ── */
+.btn-blanco {
+  background: var(--bg);
+  border: 1.5px solid var(--border-strong);
+  color: var(--ink);
+  font-weight: 700;
+  font-size: .82rem;
+  padding: .35rem .8rem;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: background .12s;
+}
+.btn-blanco:hover { background: var(--naranja-claro); border-color: var(--naranja); }
+.btn-blanco.btn-sm { font-size: .75rem; padding: .25rem .6rem; }
+
+/* fc-* — popover guardar plantilla */
+.fc-label { font-size: .78rem; font-weight: 700; color: var(--muted); display: block; margin-bottom: 3px; }
+.fc-input  { width: 100%; font-size: .85rem; padding: .35rem .6rem; border: 1.5px solid var(--border-strong); border-radius: var(--radius-sm); background: var(--bg); }
+.fc-textarea { width: 100%; font-size: .85rem; padding: .35rem .6rem; border: 1.5px solid var(--border-strong); border-radius: var(--radius-sm); background: var(--bg); resize: vertical; }
+.inline-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 3px; }
+.char-count { font-size: .72rem; color: var(--muted); }
+.btns-row { display: flex; gap: 8px; justify-content: flex-end; margin-top: 8px; }
+.msg-row { margin-top: 6px; min-height: 18px; }
+.msg-row .msg { font-size: .78rem; }
+
+/* Tablas de familias e instrumentos */
+#famWrap .tabla-estilizada thead tr,
+#instWrap .tabla-estilizada thead tr { background: var(--negro) !important; }
+#famWrap .tabla-estilizada thead th,
+#instWrap .tabla-estilizada thead th {
+  color: #fff !important; font-size: .68rem !important; font-weight: 800 !important;
+  padding: 6px 8px !important; text-transform: uppercase !important; border: none !important;
+}
+#famWrap .tabla-estilizada tbody td,
+#instWrap .tabla-estilizada tbody td {
+  padding: 4px 8px !important; font-size: .8rem !important; vertical-align: middle !important;
+}
+#famWrap .inp-ini, #famWrap .inp-fin,
+#instWrap .inp-ini, #instWrap .inp-fin {
+  padding: 2px 4px !important; font-size: .75rem !important; height: 26px !important; width: 88px !important;
+}
+#famWrap .btn-del, #instWrap .btn-del {
+  font-size: .68rem !important; padding: 2px 7px !important; height: 22px !important;
+  border: 1px solid var(--border) !important; background: transparent !important;
+  color: var(--muted) !important; border-radius: 5px !important; cursor: pointer !important;
+}
+#famWrap .btn-del:hover, #instWrap .btn-del:hover {
+  border-color: #dc2626 !important; color: #dc2626 !important; background: #fef2f2 !important;
+}
+
+/* ── Toolbar reordenada: config al final pegada a tablas ── */
+.evt-bloque--config {
+  border-radius: 0 !important;       /* sin radio — es el último bloque antes de las tablas */
+  border-bottom-left-radius: var(--radius-lg) !important;
+  border-bottom-right-radius: var(--radius-lg) !important;
+  background: var(--bg-subtle) !important;
+  border-top: 1px solid var(--border) !important;
+  margin-bottom: 16px !important;    /* separación antes de las tablas */
+}
+
+/* ── Botón Añadir seleccionados — discreto ── */
+.extras-panel [data-action="add-sel"] {
+  font-size: .72rem !important;
+  font-weight: 700 !important;
+  padding: .2rem .55rem !important;
+  height: 26px !important;
+  border-radius: var(--radius-sm) !important;
+  border: 1.5px solid var(--border-strong) !important;
+  background: var(--bg) !important;
+  color: var(--ink) !important;
+  cursor: pointer !important;
+  white-space: nowrap !important;
+}
+.extras-panel [data-action="add-sel"]:hover {
+  background: var(--naranja-claro) !important;
+  border-color: var(--naranja) !important;
+}
+
+/* ── Título separado visualmente del resto de la toolbar ── */
+.evt-toolbar {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 0 !important;
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+/* Banner negro — independiente */
+.evt-bloque--titulo {
+  border-radius: var(--radius-lg) !important;
+  margin-bottom: 8px !important;
+}
+
+/* Plantillas + acciones — tarjeta propia */
+.evt-bloque--plantillas {
+  background: var(--bg) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0 !important;
+  border-bottom: none !important;
+  margin-bottom: 0 !important;
+}
+
+.evt-bloque--botones {
+  background: var(--bg-subtle) !important;
+  border: 1px solid var(--border) !important;
+  border-top: none !important;
+  border-radius: 0 !important;
+  margin-bottom: 0 !important;
+}
+
+/* Configuración — pegada a las tablas, sin conexión visual con lo de arriba */
+.evt-bloque--config {
+  background: var(--bg) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg) !important;
+  border-top: 1px solid var(--border) !important;
+  margin-bottom: 16px !important;
+}
+
+/* ── Acciones dentro del banner negro ── */
+.evt-titulo-acciones {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  flex-shrink: 0;
+}
+.evt-btn-titulo {
+  font-size: .72rem !important;
+  font-weight: 600 !important;
+  padding: .22rem .6rem !important;
+  height: 26px !important;
+  border-radius: var(--radius-sm) !important;
+  border: 1px solid rgba(255,255,255,.25) !important;
+  background: rgba(255,255,255,.08) !important;
+  color: rgba(255,255,255,.85) !important;
+  white-space: nowrap !important;
+  cursor: pointer !important;
+  text-decoration: none !important;
+  display: inline-flex !important;
+  align-items: center !important;
+}
+.evt-btn-titulo:hover {
+  background: rgba(255,255,255,.18) !important;
+  color: #fff !important;
+  border-color: rgba(255,255,255,.4) !important;
+}
+.evt-titulo-volver {
+  font-size: .72rem !important;
+  color: var(--naranja) !important;
+  text-decoration: none !important;
+  white-space: nowrap !important;
+  padding-left: 8px !important;
+  border-left: 1px solid rgba(255,255,255,.15) !important;
+  margin-left: 4px !important;
+}
+.evt-titulo-volver:hover { text-decoration: underline !important; }
+
+/* ── Configuración sin fondo ── */
+.evt-bloque--config {
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  padding: 8px 0 !important;
+  margin-bottom: 12px !important;
+}
+.evt-bloque--config .evt-bloque__label {
+  color: var(--muted) !important;
+}
+
+/* ── Quitar bloque botones que ya no existe ── */
+.evt-bloque--botones { display: none !important; }
+
+/* ── Plantillas: sin fondo, Guardar a la derecha ── */
+.evt-bloque--plantillas {
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  border-bottom: none !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+.evt-bloque--plantillas .tpl-popwrap {
+  margin-left: auto !important;
+}
+
+/* Botón guardar plantilla — fondo visible */
+.evt-link-add {
+  display: inline-flex !important;
+  align-items: center !important;
+  padding: .28rem .75rem !important;
+  border-radius: var(--radius) !important;
+  border: 1.5px solid var(--naranja) !important;
+  background: var(--naranja-claro) !important;
+  color: var(--naranja-oscuro) !important;
+  font-size: .78rem !important;
+  font-weight: 700 !important;
+  text-decoration: none !important;
+  white-space: nowrap !important;
+  cursor: pointer !important;
+}
+.evt-link-add:hover {
+  background: var(--naranja) !important;
+  color: var(--negro) !important;
+}

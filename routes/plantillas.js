@@ -74,13 +74,47 @@ const instrumentosSQL = `
 `;
 
 /* ---------- Crear plantilla desde evento ---------- */
-async function crearPlantillaDesdeEvento(eventoId, { nombre, descripcion }) {
-  // 1) Claves (como ya hacías)
-  const famRows = (await db.query(familiasSQL, [eventoId])).rows;
-  const familias_incluir = famRows.map(r => r.familia_key);
+async function crearPlantillaDesdeEvento(eventoId, { nombre, descripcion, familias_incluir: famBody, instrumentos_incluir: instBody, horas: horasBody, alumnos_ids, alumnos_extra }) {
+  // Si el cliente envía alumnos_ids, derivar familias e instrumentos de esos alumnos en BD
+  let familias_incluir, instrumentos_incluir;
 
-  const instRows = (await db.query(instrumentosSQL, [eventoId])).rows;
-  const instrumentos_incluir = instRows.map(r => r.instrumento_key);
+  if (Array.isArray(alumnos_ids) && alumnos_ids.length) {
+    // Familias de los alumnos visibles (solo normales, no extras)
+    const famRes = await db.query(`
+      SELECT DISTINCT COALESCE(ins.familia, '') AS familia_key
+      FROM evento_asignaciones ea
+      LEFT JOIN instrumentos ins ON ins.nombre = NULLIF(ea.instrumento,'')
+      LEFT JOIN LATERAL (
+        SELECT i.familia FROM alumno_instrumento ai
+        JOIN instrumentos i ON i.id = ai.instrumento_id
+        WHERE ai.alumno_id = ea.alumno_id ORDER BY i.nombre LIMIT 1
+      ) i1 ON ins.familia IS NULL
+      WHERE ea.evento_id = $1 AND ea.alumno_id = ANY($2::int[])
+      AND NULLIF(BTRIM(COALESCE(ins.familia, '')), '') IS NOT NULL
+    `, [eventoId, alumnos_ids]);
+    familias_incluir = famRes.rows.map(r => r.familia_key);
+
+    const instRes = await db.query(`
+      SELECT DISTINCT COALESCE(NULLIF(ea.instrumento,''),
+        (SELECT ins2.nombre FROM alumno_instrumento ai2
+         JOIN instrumentos ins2 ON ins2.id = ai2.instrumento_id
+         WHERE ai2.alumno_id = ea.alumno_id ORDER BY ins2.nombre LIMIT 1)
+      ) AS instrumento_key
+      FROM evento_asignaciones ea
+      WHERE ea.evento_id = $1 AND ea.alumno_id = ANY($2::int[])
+      AND COALESCE(NULLIF(ea.instrumento,''), '') <> ''
+    `, [eventoId, alumnos_ids]);
+    instrumentos_incluir = instRes.rows.map(r => r.instrumento_key).filter(Boolean);
+
+  } else if (Array.isArray(famBody) && famBody.length) {
+    familias_incluir = famBody;
+    instrumentos_incluir = Array.isArray(instBody) ? instBody : [];
+  } else {
+    const famRows = (await db.query(familiasSQL, [eventoId])).rows;
+    familias_incluir = famRows.map(r => r.familia_key);
+    const instRows = (await db.query(instrumentosSQL, [eventoId])).rows;
+    instrumentos_incluir = instRows.map(r => r.instrumento_key);
+  }
 
   // 2) Horas por FAMILIA (modo de (hora_inicio,hora_fin))
   const horasFamiliasSQL = `
@@ -191,10 +225,23 @@ async function crearPlantillaDesdeEvento(eventoId, { nombre, descripcion }) {
     ORDER BY key;
   `;
 
-  const horasFamilias = (await db.query(horasFamiliasSQL, [eventoId])).rows;
-  const horasInstrumentos = (await db.query(horasInstrumentosSQL, [eventoId])).rows;
+  // Si el cliente envía horas del DOM, usarlas; si no, leer de BD
+  let horas;
+  if (horasBody && (Array.isArray(horasBody.familias) || Array.isArray(horasBody.instrumentos))) {
+    horas = horasBody;
+  } else {
+    const horasFamilias = (await db.query(horasFamiliasSQL, [eventoId])).rows;
+    const horasInstrumentos = (await db.query(horasInstrumentosSQL, [eventoId])).rows;
+    horas = { familias: horasFamilias, instrumentos: horasInstrumentos };
+  }
 
-  const horas = { familias: horasFamilias, instrumentos: horasInstrumentos };
+  // Añadir alumnos al JSON de horas para que el preview los use
+  if (Array.isArray(alumnos_ids) && alumnos_ids.length) {
+    horas.alumnos_ids = alumnos_ids;
+  }
+  if (Array.isArray(alumnos_extra) && alumnos_extra.length) {
+    horas.alumnos_extra = alumnos_extra;
+  }
 
   // 3) Inserción incluyendo horas
   const insSQL = `
@@ -263,13 +310,18 @@ function sanitizeHoras(horas) {
 /* ---------- POST /from-event/:eventoId ---------- */
 router.post('/from-event/:eventoId', async (req, res) => {
   const eventoId = Number(req.params.eventoId);
-  const { nombre, descripcion } = req.body || {};
+  const { nombre, descripcion, horas, alumnos_ids, alumnos_extra,
+          familias_incluir, instrumentos_incluir } = req.body || {};
   if (!Number.isInteger(eventoId) || !nombre || !nombre.trim()) {
     return res.status(400).json({ error: 'Parámetros inválidos' });
   }
   try {
-    const out = await crearPlantillaDesdeEvento(eventoId, { nombre, descripcion });
-    res.json({ ok: true, ...out }); // ahora incluye horas
+    const out = await crearPlantillaDesdeEvento(eventoId, {
+      nombre, descripcion, horas, alumnos_ids, alumnos_extra,
+      familias_incluir_body: familias_incluir,
+      instrumentos_incluir_body: instrumentos_incluir
+    });
+    res.json({ ok: true, ...out });
   } catch (err) {
     console.error('POST /from-event/:eventoId', err);
     res.status(500).json({ error: 'Error creando plantilla' });
@@ -387,26 +439,39 @@ router.get('/:pid/preview', async (req, res) => {
     const famSet  = new Set((tpl.familias_incluir || []).map(s => norm(s)));
     const instSet = new Set((tpl.instrumentos_incluir || []).map(s => norm(s)));
 
-    const match = rows.filter(r => {
-      const fOk = !!r.familia_key && famSet.has(norm(r.familia_key));
-      const iOk = !!r.instrumento_key && instSet.has(norm(r.instrumento_key));
-      if (instSet.size) return iOk;
-      if (famSet.size) return fOk;
-      return true;
-    });
+    // Si la plantilla tiene alumnos_ids guardados, usarlos directamente
+    const alumnosIds = tpl.horas?.alumnos_ids;
+    const alumnosExtra = tpl.horas?.alumnos_extra || [];
+
+    let match;
+    if (Array.isArray(alumnosIds) && alumnosIds.length) {
+      const idSet = new Set(alumnosIds.map(Number));
+      match = rows.filter(r => idSet.has(r.alumno_id));
+      // Añadir extras (invitados/reservas) que no están en rows (no son del grupo)
+      // se añaden como entradas especiales
+    } else {
+      match = rows.filter(r => {
+        const fOk = !!r.familia_key && famSet.has(norm(r.familia_key));
+        const iOk = !!r.instrumento_key && instSet.has(norm(r.instrumento_key));
+        if (instSet.size) return iOk;
+        if (famSet.size) return fOk;
+        return true;
+      });
+    }
 
     res.json({
       plantilla: { id: tpl.id, nombre: tpl.nombre, descripcion: tpl.descripcion },
       eventoId,
       total_candidatos: rows.length,
-      total_match: match.length,
+      total_match: match.length + alumnosExtra.length,
       alumnos: match.map(r => ({
         id: r.alumno_id,
         nombre: r.nombre,
         apellidos: r.apellidos,
         instrumento: r.instrumento_key,
         familia: r.familia_key
-      }))
+      })),
+      alumnos_extra: alumnosExtra
     });
   } catch (err) {
     console.error('GET /:pid/preview', err);
