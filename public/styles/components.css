@@ -3617,3 +3617,19 @@ body:has(.evt-toolbar) .footer-content a {
   background: var(--naranja) !important;
   color: var(--negro) !important;
 }
+
+/* Contador músicos seleccionados */
+.badge-contador {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--negro);
+  color: #fff;
+  font-size: .72rem;
+  font-weight: 700;
+  padding: .15em .55em;
+  border-radius: var(--radius-pill);
+  margin-left: 8px;
+  vertical-align: middle;
+  letter-spacing: .02em;
+}

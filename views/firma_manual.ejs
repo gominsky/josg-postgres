@@ -16,7 +16,7 @@
       </div>
     </div>
     <div class="evt-titulo-acciones">
-      <button id="btnRefreshAsign" class="btn btn-ghost-sm evt-btn-titulo">Restaurar alumnos</button>
+      <button id="btnRefreshAsign" class="btn btn-ghost-sm evt-btn-titulo">Restaurar</button>
       <a class="btn btn-ghost-sm evt-btn-titulo" href="/plano/editor/evento?evento_id=<%= evento.id %>">Plano dinámico</a>
       <a class="btn evt-btn-titulo" href="/plano/evento/<%= evento.id %>.pdf" target="_blank" rel="noopener">Plano PDF</a>
       <button id="shareEventoBtn" class="btn evt-btn-titulo">Enlace público</button>
@@ -36,31 +36,41 @@
     <button id="tplDelete"  class="btn btn-outline-sm" disabled>Eliminar</button>
     <span id="tplInfo" class="tpl-info small"></span>
     <div class="tpl-popwrap">
-      <a id="linkSaveTpl" href="#" class="evt-link-add">Guardar configuración actual como plantilla</a>
-      <form id="saveTplForm" class="evt-popover tpl-hidden form-compact" style="margin:0">
-        <div class="popover-head">
-          <strong>Guardar plantilla</strong>
-          <button type="button" class="btn-icon" id="tplCloseX" aria-label="Cerrar">✕</button>
-        </div>
-        <label class="fc-label" for="tplName">Nombre</label>
-        <input id="tplName" class="form-control fc-input" type="text"
-               maxlength="60" placeholder="p.ej. Concierto — Ensayo general" required>
-        <div class="inline-row">
-          <label class="fc-label" for="tplDesc">Descripción <span class="muted">(opcional)</span></label>
-          <span class="char-count" id="tplDescCount">0/120</span>
-        </div>
-        <textarea id="tplDesc" class="form-control fc-textarea" rows="2" maxlength="120"
-                  placeholder="Notas para reconocerla rápidamente…"></textarea>
-        <div class="btns-row">
-          <button class="btn btn-outline-xs" type="button" id="cancelSaveTpl">Cancelar</button>
-          <button class="btn btn-solid-xs" type="submit" id="tplSubmit">Guardar</button>
-        </div>
-        <div class="msg-row">
-          <span id="saveTplMsg" class="small msg muted"></span>
-        </div>
-      </form>
+      <a id="linkSaveTpl" href="#" class="evt-link-add" data-bs-toggle="modal" data-bs-target="#modalGuardarPlantilla">Guardar configuración actual como plantilla</a>
     </div>
   </div>
+
+<!-- Modal guardar plantilla -->
+<div class="modal fade" id="modalGuardarPlantilla" tabindex="-1" aria-labelledby="modalGuardarTitulo" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <form id="saveTplForm" class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="modalGuardarTitulo">Guardar configuración como plantilla</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label class="fc-label" for="tplName">Nombre</label>
+          <input id="tplName" class="form-control" type="text"
+                 maxlength="60" placeholder="p.ej. Concierto — Ensayo general" required>
+        </div>
+        <div class="mb-2">
+          <div class="d-flex justify-content-between">
+            <label class="fc-label" for="tplDesc">Descripción <span class="text-muted">(opcional)</span></label>
+            <span class="char-count" id="tplDescCount">0/120</span>
+          </div>
+          <textarea id="tplDesc" class="form-control" rows="2" maxlength="120"
+                    placeholder="Notas para reconocerla rápidamente…"></textarea>
+        </div>
+        <div id="saveTplMsg" class="small text-muted mt-1"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost-sm" data-bs-dismiss="modal">Cancelar</button>
+        <button type="submit" id="tplSubmit" class="btn btn-solid-sm">Guardar plantilla</button>
+      </div>
+    </form>
+  </div>
+</div>
 
   <!-- BLOQUE 3: Configuración — lo más cerca de las tablas -->
   <div class="evt-bloque evt-bloque--config">
@@ -118,54 +128,29 @@
   if (window.__TPL_SAVE_UI_BOUND__) return;
   window.__TPL_SAVE_UI_BOUND__ = true;
 
-  const $link = document.getElementById('linkSaveTpl');
-  const $form = document.getElementById('saveTplForm');
-  const $name = document.getElementById('tplName');
-  const $desc = document.getElementById('tplDesc');
-  const $count= document.getElementById('tplDescCount');   // opcional: si no existe, no pasa nada
-  const $msg  = document.getElementById('saveTplMsg');
-  const $btnX = document.getElementById('tplCloseX');      // opcional
-  const $btnCancel = document.getElementById('cancelSaveTpl');
-  const $btnSubmit = document.getElementById('tplSubmit'); // opcional
+  const $form  = document.getElementById('saveTplForm');
+  const $name  = document.getElementById('tplName');
+  const $desc  = document.getElementById('tplDesc');
+  const $count = document.getElementById('tplDescCount');
+  const $msg   = document.getElementById('saveTplMsg');
+  const $btnSubmit = document.getElementById('tplSubmit');
+  const modalEl = document.getElementById('modalGuardarPlantilla');
   const eventoId = <%= evento.id %>;
 
-  function openForm(){
-    $form.classList.remove('tpl-hidden');
-    requestAnimationFrame(()=> $name?.focus());
-  }
   function resetForm(){
-    $msg.textContent = '';
-    if ($name) $name.value = '';
-    if ($desc) $desc.value = '';
+    if ($name)  $name.value  = '';
+    if ($desc)  $desc.value  = '';
     if ($count) $count.textContent = '0/120';
-  }
-  function closeForm(){
-    $form.classList.add('tpl-hidden');
-    resetForm();
+    if ($msg)   $msg.textContent   = '';
   }
 
-  // Abrir / cerrar
-  $link?.addEventListener('click', (e) => {
-    e.preventDefault();
-    ($form.classList.contains('tpl-hidden') ? openForm() : closeForm());
-  });
-  $btnCancel?.addEventListener('click', (e)=>{ e.preventDefault(); closeForm(); });
-  $btnX?.addEventListener('click', (e)=>{ e.preventDefault(); closeForm(); });
+  // Limpiar al cerrar el modal
+  modalEl?.addEventListener('hidden.bs.modal', resetForm);
 
-  // Cerrar con ESC
-  document.addEventListener('keydown', (ev) => {
-    if (ev.key === 'Escape' && !$form.classList.contains('tpl-hidden')) closeForm();
+  // Contador descripción
+  $desc?.addEventListener('input', () => {
+    if ($count) $count.textContent = `${$desc.value.length}/120`;
   });
-
-  // Cerrar haciendo click fuera
-  document.addEventListener('click', (ev) => {
-    if ($form.classList.contains('tpl-hidden')) return;
-    const inside = ev.target.closest('#saveTplForm') || ev.target.closest('#linkSaveTpl');
-    if (!inside) closeForm();
-  });
-
-  // Contador descripción (si existe)
-  $desc?.addEventListener('input', ()=> { if ($count) $count.textContent = `${$desc.value.length}/120`; });
 
   // === Recoger estado actual del DOM para la plantilla ===
 function __collectTemplateTimes(){
@@ -193,39 +178,14 @@ function __collectTemplateTimes(){
 }
 
 function __collectVisibleAlumnos(){
-  const extrasInv = new Set(
-    Array.from(document.querySelectorAll('#extrasWrap table[data-tipo="invitados"] tbody tr[data-alumno]'))
-      .map(tr => String(tr.dataset.alumno))
-  );
-  const extrasRes = new Set(
-    Array.from(document.querySelectorAll('#extrasWrap table[data-tipo="reservas"] tbody tr[data-alumno]'))
-      .map(tr => String(tr.dataset.alumno))
-  );
-
-  const normales = [], extras = [];
+  // Todos los alumno_id visibles en asigBody sin distincion de tipo
+  const ids = [];
   document.querySelectorAll('#asigBody tr[data-alumno]').forEach(tr => {
     if (tr.classList.contains('tpl-hidden')) return;
     const id = Number(tr.dataset.alumno);
-    if (!id) return;
-    const sid = String(id);
-
-    // 1) En panel Extras (no añadido al evento aún)
-    if (extrasInv.has(sid)) { extras.push({ id, tipo: 'invitado' }); return; }
-    if (extrasRes.has(sid)) { extras.push({ id, tipo: 'reserva'  }); return; }
-
-    // 2) Ya en asigBody: detectar por data-familia
-    const fam = (tr.dataset.familia || '').toLowerCase();
-    if (fam.includes('invitado')) { extras.push({ id, tipo: 'invitado' }); return; }
-    if (fam.includes('reserva'))  { extras.push({ id, tipo: 'reserva'  }); return; }
-
-    // 3) Por data-status o clases CSS
-    const st = tr.dataset.status || '';
-    if (st === 'inv' || tr.classList.contains('is-invitado')) { extras.push({ id, tipo: 'invitado' }); return; }
-    if (st === 'res' || tr.classList.contains('is-reserva'))  { extras.push({ id, tipo: 'reserva'  }); return; }
-
-    normales.push(id);
+    if (id) ids.push(id);
   });
-  return { normales, extras };
+  return ids;
 }
 
 async function doSave(nombre, descripcion){
@@ -258,9 +218,9 @@ async function doSave(nombre, descripcion){
     await waitForExtras();
 
     const horas = __collectTemplateTimes();
-    const { normales, extras } = __collectVisibleAlumnos();
+    const alumnos_ids = __collectVisibleAlumnos();
 
-    console.log('[plantilla] normales:', normales.length, 'extras:', extras.length, extras);
+    console.log('[plantilla] guardando', alumnos_ids.length, 'musicos:', alumnos_ids);
 
     const r = await fetch(`/plantillas/from-event/${eventoId}`, {
       method: 'POST',
@@ -269,8 +229,7 @@ async function doSave(nombre, descripcion){
         nombre: nombreFinal,
         descripcion,
         horas,
-        alumnos_ids:    normales.length ? normales : undefined,
-        alumnos_extra:  extras.length   ? extras   : undefined,
+        alumnos_ids,
       })
     });
     const ct = r.headers.get('content-type')||'';
@@ -279,7 +238,9 @@ async function doSave(nombre, descripcion){
 
     $msg.textContent = '✓ Guardada';
     if (window.__reloadTplSel) { window.__reloadTplSel({ selectNewId: data?.id }).catch(console.error); }
-    setTimeout(closeForm, 400);
+    setTimeout(() => {
+      bootstrap.Modal.getInstance(document.getElementById('modalGuardarPlantilla'))?.hide();
+    }, 400);
   } catch (e) {
     console.error(e);
     $msg.textContent = 'Error guardando';
@@ -346,7 +307,7 @@ async function doSave(nombre, descripcion){
   </div>
   <!-- ========= BLOQUE INDIVIDUAL ========= -->
   <div id="alumWrap">
-    <h5 class="mb-2">Asignaciones individuales</h5>
+    <h5 class="mb-2">Asignaciones individuales <span id="contadorMusicos" class="badge-contador"></span></h5>
     <div class="table-responsive">
       <table class="table table-striped tabla-estilizada">
         <thead>
@@ -1207,7 +1168,28 @@ function setMinutesCell(tr, val){
       document.getElementById(id)?.addEventListener('click', () => setTimeout(initialSortApellidosAsc, 300));
     });
 
-    // --- LISTENERS DE CLICK EN CABECERAS ---
+  // --- CONTADOR DE MÚSICOS ---
+  function actualizarContador(){
+    const tbody = document.getElementById('asigBody');
+    if (!tbody) return;
+    const total    = tbody.querySelectorAll('tr[data-alumno]').length;
+    const visibles = Array.from(tbody.querySelectorAll('tr[data-alumno]'))
+      .filter(tr => !tr.classList.contains('tpl-hidden')).length;
+    const el = document.getElementById('contadorMusicos');
+    if (el) el.textContent = total === visibles ? `${total}` : `${visibles} / ${total}`;
+  }
+  actualizarContador();
+  // Observar cambios en asigBody
+  const _mo = new MutationObserver(actualizarContador);
+  const _tbody = document.getElementById('asigBody');
+  if (_tbody) _mo.observe(_tbody, { childList: true, subtree: false });
+  // También actualizar tras filtros de plantilla
+  document.getElementById('tplApply')?.addEventListener('click',  () => setTimeout(actualizarContador, 400));
+  document.getElementById('tplClear')?.addEventListener('click',  () => setTimeout(actualizarContador, 100));
+  document.getElementById('tplPersist')?.addEventListener('click',() => setTimeout(actualizarContador, 800));
+  window.__actualizarContador = actualizarContador;
+
+  // --- LISTENERS DE CLICK EN CABECERAS ---
     let _sortKey = 'apellidos', _sortDir = 'asc';
     document.querySelectorAll('#alumWrap th.th-sort[data-key]').forEach(th => {
       th.style.cursor = 'pointer';
@@ -1903,14 +1885,30 @@ function setMinutesCell(tr, val){
     // Cargar combo de plantillas
     async function loadTemplates(){
       $sel.innerHTML = '<option value="">— Selecciona una plantilla —</option>';
-      const rows = await fetchJSON('/plantillas');
-      (rows||[]).forEach(p => {
+      try {
+        const rows = await fetchJSON('/plantillas');
+        (rows||[]).forEach(p => {
+          const opt = document.createElement('option');
+          opt.value = p.id;
+          const horas = typeof p.horas === 'string' ? JSON.parse(p.horas) : (p.horas || {});
+          const nMusicos = Array.isArray(horas.alumnos_ids) ? horas.alumnos_ids.length : null;
+          const info = nMusicos
+            ? `${nMusicos} músicos`
+            : (p.familias > 0 || p.instrumentos > 0)
+              ? `${p.familias} fam · ${p.instrumentos} inst`
+              : 'plantilla antigua';
+          opt.textContent = `${p.nombre} · ${info}`;
+          $sel.appendChild(opt);
+        });
+        return rows;
+      } catch(e) {
+        console.error('[plantillas] Error cargando:', e);
         const opt = document.createElement('option');
-        opt.value = p.id;
-        opt.textContent = `${p.nombre} · ${p.familias} fam · ${p.instrumentos} inst`;
+        opt.disabled = true;
+        opt.textContent = 'Error cargando plantillas';
         $sel.appendChild(opt);
-      });
-      return rows;
+        return [];
+      }
     }
   
     // Recargador público (lo usa el form de guardado)
@@ -1924,6 +1922,31 @@ function setMinutesCell(tr, val){
   
     // Recarga automática
     window.__reloadTplSel().catch(console.error);
+
+    // Restaurar plantilla seleccionada tras reload (cuando se añadieron extras)
+    const _pidToRestore = sessionStorage.getItem('tpl_reload_pid');
+    if (_pidToRestore) {
+      sessionStorage.removeItem('tpl_reload_pid');
+      // Esperar a que el select cargue y luego seleccionar y aplicar
+      setTimeout(async () => {
+        $sel.value = _pidToRestore;
+        if ($sel.value === _pidToRestore) {
+          // Aplicar filtro directo por IDs sin reload adicional
+          try {
+            const tpl = await fetchJSON(`/plantillas/${_pidToRestore}`);
+            const alumnosIds = tpl.horas?.alumnos_ids || [];
+            if (alumnosIds.length) {
+              const idSet = new Set(alumnosIds.map(Number));
+              document.querySelectorAll('#asigBody tr[data-alumno]').forEach(tr => {
+                tr.classList.toggle('tpl-hidden', !idSet.has(Number(tr.dataset.alumno)));
+              });
+              if ($info) $info.textContent = `${alumnosIds.length} músicos en plantilla`;
+              window.__actualizarContador?.();
+            }
+          } catch(e) { console.warn('[tpl restore]', e); }
+        }
+      }, 500);
+    }
     let _tplReloadTimer = null;
     $sel.addEventListener('focus', () => {
       clearTimeout(_tplReloadTimer);
@@ -2129,16 +2152,64 @@ function setMinutesCell(tr, val){
       const usarIds = alumnosIds.length > 0;
 
       if (usarIds) {
-        // Filtrar por IDs directos — modo exacto (normales + extras)
         const idSet    = new Set(alumnosIds.map(Number));
-        const extraSet = new Set(alumnosExtra.map(e => Number(e.id || e)));
-        const todosIds = new Set([...idSet, ...extraSet]);
+        const todosIds = new Set([...idSet]);
+        
+        // Marcar visibles en asigBody
+        const enAsigBody = new Set();
         document.querySelectorAll('#asigBody tr[data-alumno]').forEach(tr => {
           const id = Number(tr.dataset.alumno);
+          enAsigBody.add(id);
           tr.classList.toggle('tpl-hidden', !todosIds.has(id));
         });
-        if ($info) $info.textContent =
-          `${alumnosIds.length + alumnosExtra.length} músicos en plantilla`;
+
+        // IDs que no están en asigBody → añadirlos automáticamente desde Extras
+        const faltantes = [...idSet].filter(id => !enAsigBody.has(id));
+        if (faltantes.length) {
+          const faltSet = new Set(faltantes.map(String));
+          const evt = document.getElementById('evtDate');
+          const toHHMMSS = v => {
+            const m = String(v||'').match(/^(\d{2}):(\d{2})(?::(\d{2}))?$/);
+            return m ? `${m[1]}:${m[2]}:${m[3] ?? '00'}` : null;
+          };
+          const H_INI = toHHMMSS(evt?.dataset?.hini);
+          const H_FIN = toHHMMSS(evt?.dataset?.hfin);
+
+          // Buscarlos en el panel Extras y añadirlos al evento
+          for (const tipo of ['invitados', 'reservas']) {
+            const filas = Array.from(
+              document.querySelectorAll(`#extrasWrap table[data-tipo="${tipo}"] tbody tr[data-alumno]`)
+            ).filter(tr => faltSet.has(String(tr.dataset.alumno)));
+
+            if (!filas.length) continue;
+
+            const alumnos = filas.map(tr => {
+              const alumno_id = Number(tr.dataset.alumno);
+              const instText = tr.querySelector('.text-muted, .text-muted.small')?.textContent?.trim() || '';
+              const instrumento = (instText.split(',')[0] || '').trim() || null;
+              return { alumno_id, hora_inicio: H_INI, hora_fin: H_FIN, instrumento };
+            });
+
+            try {
+              const url = `/eventos/${eventoId}/extras/${tipo}/add`;
+              const r = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ alumnos })
+              });
+              if (!r.ok) console.warn(`[preview] Error añadiendo ${tipo}:`, await r.text());
+            } catch(e) {
+              console.warn(`[preview] Error añadiendo ${tipo}:`, e);
+            }
+          }
+
+          // Guardar plantilla seleccionada para restaurarla tras el reload
+          sessionStorage.setItem('tpl_reload_pid', String(pid));
+          if ($info) $info.textContent = 'Añadiendo músicos de la plantilla…';
+          location.reload();
+        } else {
+          if ($info) $info.textContent = `${alumnosIds.length} músicos en plantilla`;
+        }
       } else {
         // Modo anterior: filtrar por familias/instrumentos
         const famSet  = new Set((tpl.familias_incluir     || []).map(s => norm(s)));

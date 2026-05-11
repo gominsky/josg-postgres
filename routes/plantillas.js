@@ -74,176 +74,22 @@ const instrumentosSQL = `
 `;
 
 /* ---------- Crear plantilla desde evento ---------- */
-async function crearPlantillaDesdeEvento(eventoId, { nombre, descripcion, familias_incluir: famBody, instrumentos_incluir: instBody, horas: horasBody, alumnos_ids, alumnos_extra }) {
-  // Si el cliente envía alumnos_ids, derivar familias e instrumentos de esos alumnos en BD
-  let familias_incluir, instrumentos_incluir;
+async function crearPlantillaDesdeEvento(eventoId, { nombre, descripcion, horas: horasBody, alumnos_ids }) {
 
-  if (Array.isArray(alumnos_ids) && alumnos_ids.length) {
-    // Familias de los alumnos visibles (solo normales, no extras)
-    const famRes = await db.query(`
-      SELECT DISTINCT COALESCE(ins.familia, '') AS familia_key
-      FROM evento_asignaciones ea
-      LEFT JOIN instrumentos ins ON ins.nombre = NULLIF(ea.instrumento,'')
-      LEFT JOIN LATERAL (
-        SELECT i.familia FROM alumno_instrumento ai
-        JOIN instrumentos i ON i.id = ai.instrumento_id
-        WHERE ai.alumno_id = ea.alumno_id ORDER BY i.nombre LIMIT 1
-      ) i1 ON ins.familia IS NULL
-      WHERE ea.evento_id = $1 AND ea.alumno_id = ANY($2::int[])
-      AND NULLIF(BTRIM(COALESCE(ins.familia, '')), '') IS NOT NULL
-    `, [eventoId, alumnos_ids]);
-    familias_incluir = famRes.rows.map(r => r.familia_key);
+  const famRows  = (await db.query(familiasSQL,     [eventoId])).rows;
+  const instRows = (await db.query(instrumentosSQL, [eventoId])).rows;
+  const familias_incluir     = famRows.map(r => r.familia_key);
+  const instrumentos_incluir = instRows.map(r => r.instrumento_key);
 
-    const instRes = await db.query(`
-      SELECT DISTINCT COALESCE(NULLIF(ea.instrumento,''),
-        (SELECT ins2.nombre FROM alumno_instrumento ai2
-         JOIN instrumentos ins2 ON ins2.id = ai2.instrumento_id
-         WHERE ai2.alumno_id = ea.alumno_id ORDER BY ins2.nombre LIMIT 1)
-      ) AS instrumento_key
-      FROM evento_asignaciones ea
-      WHERE ea.evento_id = $1 AND ea.alumno_id = ANY($2::int[])
-      AND COALESCE(NULLIF(ea.instrumento,''), '') <> ''
-    `, [eventoId, alumnos_ids]);
-    instrumentos_incluir = instRes.rows.map(r => r.instrumento_key).filter(Boolean);
+  // Usar horas del cliente si las envía, si no objeto vacío
+  const horas = (horasBody && typeof horasBody === 'object') ? horasBody : {};
 
-  } else if (Array.isArray(famBody) && famBody.length) {
-    familias_incluir = famBody;
-    instrumentos_incluir = Array.isArray(instBody) ? instBody : [];
-  } else {
-    const famRows = (await db.query(familiasSQL, [eventoId])).rows;
-    familias_incluir = famRows.map(r => r.familia_key);
-    const instRows = (await db.query(instrumentosSQL, [eventoId])).rows;
-    instrumentos_incluir = instRows.map(r => r.instrumento_key);
-  }
-
-  // 2) Horas por FAMILIA (modo de (hora_inicio,hora_fin))
-  const horasFamiliasSQL = `
-    WITH asig AS (
-      SELECT ea.alumno_id, ea.hora_inicio, ea.hora_fin, NULLIF(ea.instrumento,'') AS instrumento_key
-      FROM evento_asignaciones ea
-      WHERE ea.evento_id = $1
-    ),
-    fam_res AS (
-      SELECT
-        a.alumno_id,
-        COALESCE(ins.familia, i1.familia) AS familia_final
-      FROM asig a
-      LEFT JOIN instrumentos ins ON ins.nombre = a.instrumento_key
-      LEFT JOIN LATERAL (
-        SELECT i.familia
-        FROM alumno_instrumento ai
-        JOIN instrumentos i ON i.id = ai.instrumento_id
-        WHERE ai.alumno_id = a.alumno_id
-        ORDER BY i.nombre
-        LIMIT 1
-      ) AS i1 ON TRUE
-    ),
-    pair_counts AS (
-      SELECT
-        fr.familia_final,
-        a.hora_inicio,
-        a.hora_fin,
-        COUNT(*) AS c
-      FROM fam_res fr
-      JOIN asig a ON a.alumno_id = fr.alumno_id
-      WHERE NULLIF(BTRIM(fr.familia_final),'') IS NOT NULL
-      GROUP BY fr.familia_final, a.hora_inicio, a.hora_fin
-    ),
-    best AS (
-      SELECT DISTINCT ON (familia_final)
-        familia_final, hora_inicio, hora_fin, c
-      FROM pair_counts
-      ORDER BY familia_final, c DESC, hora_inicio NULLS LAST, hora_fin NULLS LAST
-    )
-    SELECT
-      familia_final AS key,
-      CASE WHEN hora_inicio IS NULL THEN NULL ELSE to_char(hora_inicio,'HH24:MI') END AS inicio,
-      CASE WHEN hora_fin    IS NULL THEN NULL ELSE to_char(hora_fin   ,'HH24:MI') END AS fin
-    FROM best
-    ORDER BY key;
-  `;
-
-  const horasInstrumentosSQL = `
-    WITH base AS (
-      SELECT
-        a.id AS alumno_id, ea.instrumento,
-        string_agg(DISTINCT ins.nombre, ', ' ORDER BY ins.nombre) AS instrumentos,
-        bool_or(ins.nombre ~* '^\\s*viol(í|i)n\\s*$') AS has_violin_puro
-      FROM evento_asignaciones ea
-      JOIN alumnos a ON a.id = ea.alumno_id
-      LEFT JOIN alumno_instrumento ai ON ai.alumno_id = a.id
-      LEFT JOIN instrumentos ins      ON ins.id = ai.instrumento_id
-      WHERE ea.evento_id = $1
-      GROUP BY a.id, ea.instrumento
-    ),
-    gi AS (
-      SELECT
-        b.alumno_id,
-        COUNT(DISTINCT ag2.grupo_id) AS grupos_count,
-        bool_or(LOWER(g2.nombre) ~ '(viol[ií]n\\s*i)(\\b|\\s|$)')      AS en_violin_i,
-        bool_or(LOWER(g2.nombre) ~ '(viol[ií]n\\s*(ii|2))(\\b|\\s|$)') AS en_violin_ii
-      FROM base b
-      LEFT JOIN alumno_grupo ag2 ON ag2.alumno_id = b.alumno_id
-      LEFT JOIN grupos g2        ON g2.id = ag2.grupo_id
-      GROUP BY b.alumno_id
-    ),
-    etiquetado AS (
-      SELECT
-        b.alumno_id,
-        CASE
-          WHEN b.instrumento IS NOT NULL AND b.instrumento <> '' THEN b.instrumento
-          WHEN b.has_violin_puro AND gi.grupos_count > 1 AND (gi.en_violin_i OR gi.en_violin_ii)
-               THEN CASE WHEN gi.en_violin_i THEN 'Violín I' ELSE 'Violín II' END
-          ELSE COALESCE(split_part(b.instrumentos, ', ', 1), '')
-        END AS instrumento_key
-      FROM base b
-      LEFT JOIN gi ON gi.alumno_id = b.alumno_id
-    ),
-    pair_counts AS (
-      SELECT
-        e.instrumento_key,
-        ea.hora_inicio,
-        ea.hora_fin,
-        COUNT(*) AS c
-      FROM etiquetado e
-      JOIN evento_asignaciones ea
-        ON ea.evento_id = $1 AND ea.alumno_id = e.alumno_id
-      WHERE NULLIF(BTRIM(e.instrumento_key),'') IS NOT NULL
-      GROUP BY e.instrumento_key, ea.hora_inicio, ea.hora_fin
-    ),
-    best AS (
-      SELECT DISTINCT ON (instrumento_key)
-        instrumento_key, hora_inicio, hora_fin, c
-      FROM pair_counts
-      ORDER BY instrumento_key, c DESC, hora_inicio NULLS LAST, hora_fin NULLS LAST
-    )
-    SELECT
-      instrumento_key AS key,
-      CASE WHEN hora_inicio IS NULL THEN NULL ELSE to_char(hora_inicio,'HH24:MI') END AS inicio,
-      CASE WHEN hora_fin    IS NULL THEN NULL ELSE to_char(hora_fin   ,'HH24:MI') END AS fin
-    FROM best
-    ORDER BY key;
-  `;
-
-  // Si el cliente envía horas del DOM, usarlas; si no, leer de BD
-  let horas;
-  if (horasBody && (Array.isArray(horasBody.familias) || Array.isArray(horasBody.instrumentos))) {
-    horas = horasBody;
-  } else {
-    const horasFamilias = (await db.query(horasFamiliasSQL, [eventoId])).rows;
-    const horasInstrumentos = (await db.query(horasInstrumentosSQL, [eventoId])).rows;
-    horas = { familias: horasFamilias, instrumentos: horasInstrumentos };
-  }
-
-  // Añadir alumnos al JSON de horas para que el preview los use
+  // Lista exacta de IDs — fuente de verdad al restaurar
   if (Array.isArray(alumnos_ids) && alumnos_ids.length) {
     horas.alumnos_ids = alumnos_ids;
   }
-  if (Array.isArray(alumnos_extra) && alumnos_extra.length) {
-    horas.alumnos_extra = alumnos_extra;
-  }
 
-  // 3) Inserción incluyendo horas
+// 3) Inserción incluyendo horas
   const insSQL = `
     INSERT INTO plantillas_evento (nombre, descripcion, familias_incluir, instrumentos_incluir, horas)
     VALUES ($1, $2, $3::text[], $4::text[], $5::jsonb)
@@ -310,17 +156,12 @@ function sanitizeHoras(horas) {
 /* ---------- POST /from-event/:eventoId ---------- */
 router.post('/from-event/:eventoId', async (req, res) => {
   const eventoId = Number(req.params.eventoId);
-  const { nombre, descripcion, horas, alumnos_ids, alumnos_extra,
-          familias_incluir, instrumentos_incluir } = req.body || {};
+  const { nombre, descripcion, horas, alumnos_ids } = req.body || {};
   if (!Number.isInteger(eventoId) || !nombre || !nombre.trim()) {
-    return res.status(400).json({ error: 'Parámetros inválidos' });
+    return res.status(400).json({ error: 'Parametros invalidos' });
   }
   try {
-    const out = await crearPlantillaDesdeEvento(eventoId, {
-      nombre, descripcion, horas, alumnos_ids, alumnos_extra,
-      familias_incluir_body: familias_incluir,
-      instrumentos_incluir_body: instrumentos_incluir
-    });
+    const out = await crearPlantillaDesdeEvento(eventoId, { nombre, descripcion, horas, alumnos_ids });
     res.json({ ok: true, ...out });
   } catch (err) {
     console.error('POST /from-event/:eventoId', err);
