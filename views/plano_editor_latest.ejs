@@ -9,13 +9,16 @@
         <span id="scPct" class="small">130%</span>
       </div>
       <button id="btnGuardarLayout" class="btn btn-dark btn-sm">Guardar diseño</button>
-      <a id="btnAbrirPDF" class="btn btn-outline-secondary btn-sm" target="_blank">Ver PDF</a>
+      <a id="btnAbrirPDF" class="btn btn-outline-secondary btn-sm" target="_blank"
+         title="El PDF refleja el último diseño guardado. Guarda el diseño primero si has hecho cambios.">
+        Ver PDF
+      </a>
       <a class="btn btn-outline-secondary btn-sm" href="javascript:history.back()">Volver</a>
     </div>
   </div>
 
   <div class="alert alert-corp py-2">
-    Arrastra las fichas. Se guarda por <b>grupo/evento</b>. El PDF/PNG usará esta distribución.
+    Arrastra las fichas para recolocarlas. Pulsa <strong>Guardar diseño</strong> para que los cambios se reflejen en el PDF. El botón <strong>Ver PDF</strong> muestra siempre el último diseño guardado.
   </div>
 
   <div id="wrap" class="border rounded"></div>
@@ -594,6 +597,15 @@
   })();
 
   loadSVG();
+
+  // Aviso al pulsar Ver PDF si hay cambios sin guardar
+  document.getElementById('btnAbrirPDF')?.addEventListener('click', (e) => {
+    const dirty = document.querySelectorAll('g.draggable.dirty').length;
+    if (dirty > 0) {
+      const ok = confirm(`Tienes ${dirty} ficha${dirty > 1 ? 's' : ''} movida${dirty > 1 ? 's' : ''} sin guardar.\n\nEl PDF mostrará el último diseño guardado, no los cambios actuales.\n\n¿Quieres continuar sin guardar?`);
+      if (!ok) e.preventDefault();
+    }
+  });
 })();
 </script>
 

@@ -1,23 +1,26 @@
-<% title = 'Ficha de docente' %>
+<% title = `${profesor.nombre} ${profesor.apellidos}` %>
 <% hero = false %>
-<link rel="stylesheet" href="/styles.css">
 
-<div class="ficha-container contenedor-borde">
-  <div class="ficha-header">
-    <h1 class="h1-titulo"><%= profesor.nombre %> <%= profesor.apellidos %></h1>
+<div class="header-compact">
+  <h1 class="h1-titulo"><%= profesor.nombre %> <%= profesor.apellidos %></h1>
+  <div class="header-actions">
+    <a href="/profesores/<%= profesor.id %>/editar" class="btn-main-blanco">Editar</a>
+    <a href="/profesores" class="enlace-final">← Volver</a>
   </div>
+</div>
 
-  <div class="ficha-section ficha-info">
-    <h2>Información del docente</h2>
+<div class="formulario-alumno contenedor-borde">
+
+  <div class="grupo-campos">
+    <h2>Información personal</h2>
     <div class="info-flex">
       <% if (profesor.foto) { %>
-        <img src="/uploads/<%= profesor.foto %>" alt="Foto del profesor" class="foto-perfil" loading="lazy" decoding="async" width="96" height="96">
+        <img src="/uploads/<%= profesor.foto %>" alt="Foto" class="foto-perfil" loading="lazy" width="96" height="96">
       <% } else { %>
-        <div class="foto-perfil d-flex align-items-center justify-content-center bg-light text-muted">
+        <div class="foto-perfil d-flex align-items-center justify-content-center bg-light text-muted" style="width:96px;height:96px;border-radius:50%;font-size:.8rem">
           Sin foto
         </div>
       <% } %>
-
       <div class="info-detalles info-grid">
         <div><strong>Email:</strong> <%= profesor.email || '—' %></div>
         <div><strong>Teléfono:</strong> <%= profesor.telefono || '—' %></div>
@@ -33,29 +36,25 @@
   </div>
 
   <% if (instrumentos.length > 0) { %>
-    <div class="ficha-section">
+    <div class="grupo-campos">
       <h2>Instrumentos</h2>
-      <% instrumentos.forEach(nombre => { %>
-        <span class="tag"><%= nombre %></span>
-      <% }) %>
+      <div class="tags-wrap">
+        <% instrumentos.forEach(nombre => { %>
+          <span class="tag"><%= nombre %></span>
+        <% }) %>
+      </div>
     </div>
   <% } %>
 
   <% if (grupos.length > 0) { %>
-    <div class="ficha-section">
+    <div class="grupo-campos">
       <h2>Grupos</h2>
-      <% grupos.forEach(nombre => { %>
-        <span class="tag"><%= nombre %></span>
-      <% }) %>
+      <div class="tags-wrap">
+        <% grupos.forEach(nombre => { %>
+          <span class="tag"><%= nombre %></span>
+        <% }) %>
+      </div>
     </div>
   <% } %>
-    
-  <div class="acciones-finales">
-    <div class="volver-izquierda">
-      <a href="/profesores" class="enlace-final-naranja">← Volver</a>
-    </div>
-    <div class="editar-centro">
-      <a href="/profesores/<%= profesor.id %>/editar" class="enlace-final-naranja ms-3">Editar</a>
-    </div>
-  </div>
+
 </div>

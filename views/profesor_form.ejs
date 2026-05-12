@@ -1,38 +1,40 @@
 <% const isEdicion = Boolean(profesor && profesor.id); %>
 <% title = isEdicion ? 'Editar docente' : 'Registrar docente'; %>
 <% hero = false; %>
-<% // Ordenar alfabeticamente grupos e instrumentos %>
 <% grupos.sort((a, b) => a.nombre.localeCompare(b.nombre)); %>
 <% instrumentos.sort((a, b) => a.nombre.localeCompare(b.nombre)); %>
 
-<h1 class="h1-titulo"><%= title %></h1>
+<div class="header-compact">
+  <h1 class="h1-titulo"><%= title %></h1>
+  <a href="/profesores" class="enlace-final">← Volver</a>
+</div>
+
 <% if (typeof error !== 'undefined') { %>
   <div class="mensaje-error"><%= error %></div>
 <% } %>
-<form action="<%= isEdicion ? '/profesores/' + profesor.id + '?_method=PUT' : '/profesores' %>" method="POST" enctype="multipart/form-data" class="formulario-alumno contenedor-borde">
+
+<form action="<%= isEdicion ? '/profesores/' + profesor.id + '?_method=PUT' : '/profesores' %>"
+      method="POST" enctype="multipart/form-data"
+      class="formulario-alumno contenedor-borde">
+
   <div class="grupo-campos">
     <h2>Datos personales</h2>
     <div class="form-grid-2">
       <label>Nombre:
         <input type="text" name="nombre" required value="<%= profesor?.nombre || '' %>">
       </label>
-
       <label>Apellidos:
         <input type="text" name="apellidos" required value="<%= profesor?.apellidos || '' %>">
       </label>
-
       <label>Fecha de nacimiento:
         <input type="date" name="fecha_nacimiento" value="<%= profesor?.fecha_nacimiento || '' %>">
       </label>
-
       <label>Dirección:
         <input type="text" name="direccion" value="<%= profesor?.direccion || '' %>">
       </label>
-
       <label>Teléfono:
         <input type="text" name="telefono" value="<%= profesor?.telefono || '' %>">
       </label>
-
       <label>Email:
         <input type="email" name="email" value="<%= profesor?.email || '' %>">
       </label>
@@ -44,7 +46,8 @@
     <div class="form-grid-2">
       <div class="campo-label">
         <label for="grupos">Grupos:</label>
-        <select name="grupos" id="grupos" multiple size="8" class="form-control form-control-sm" style="width: 100%; height: 12rem; overflow-y:auto;">
+        <select name="grupos" id="grupos" multiple size="8"
+                class="form-control form-control-sm" style="height:12rem">
           <% grupos.forEach(grupo => { %>
             <option value="<%= grupo.id %>" <%= gruposProfesor.includes(grupo.id) ? 'selected' : '' %>>
               <%= grupo.nombre %>
@@ -52,10 +55,10 @@
           <% }) %>
         </select>
       </div>
-
       <div class="campo-label">
         <label for="instrumentos">Instrumentos:</label>
-        <select name="instrumentos" id="instrumentos" multiple size="8" class="form-control form-control-sm" style="width: 100%; height: 12rem; overflow-y:auto;">
+        <select name="instrumentos" id="instrumentos" multiple size="8"
+                class="form-control form-control-sm" style="height:12rem">
           <% instrumentos.forEach(inst => { %>
             <option value="<%= inst.id %>" <%= instrumentosProfesor.includes(inst.id) ? 'selected' : '' %>>
               <%= inst.nombre %>
@@ -63,11 +66,10 @@
           <% }) %>
         </select>
       </div>
-
       <label>Estado:
-        <select name="activo" required class="form-control form-control-sm" style="width: auto;">
-          <option value="1" <%= profesor?.activo ? 'selected' : '' %>>Activo</option>
-          <option value="0" <%= profesor && !profesor.activo ? 'selected' : '' %>>No activo</option>
+        <select name="activo" required class="form-control form-control-sm" style="width:auto">
+          <option value="1" <%= profesor?.activo !== false ? 'selected' : '' %>>Activo</option>
+          <option value="0" <%= profesor && profesor.activo === false ? 'selected' : '' %>>No activo</option>
         </select>
       </label>
     </div>
@@ -81,12 +83,12 @@
     <label>Subir nueva:
       <input type="file" name="foto" accept="image/*">
     </label>
-
     <% if (profesor?.foto) { %>
-      <div class="foto-actual">
+      <div class="foto-actual mt-2">
         <strong>Foto actual:</strong><br>
-        <img src="/uploads/<%= profesor.foto %>" alt="Foto del profesor" class="foto-perfil" loading="lazy" decoding="async" width="96" height="96">
-        <div style="margin-top:.5rem">
+        <img src="/uploads/<%= profesor.foto %>" alt="Foto" class="foto-perfil mt-1"
+             loading="lazy" width="96" height="96">
+        <div class="mt-2">
           <label style="display:inline-flex;gap:.5rem;align-items:center;">
             <input type="checkbox" name="eliminar_foto" value="1">
             Eliminar foto actual
@@ -95,19 +97,19 @@
       </div>
     <% } %>
   </div>
-    <div class="acciones-finales d-flex justify-content-between align-items-center mt-4">
+
+  <div class="acciones-finales d-flex justify-content-between align-items-center mt-4">
     <a href="/profesores" class="enlace-final-naranja">← Volver</a>
-    <div class="d-flex gap-3">
-      <button type="submit" class="btn-main-blanco">
-        <%= isEdicion ? 'Actualizar' : 'Registrar' %>
-      </button>
-    </div>
+    <button type="submit" class="btn-main-blanco">
+      <%= isEdicion ? 'Actualizar' : 'Registrar' %>
+    </button>
   </div>
 </form>
+
 <% if (isEdicion) { %>
-  <form method="POST" action="/profesores/<%= profesor.id %>/eliminar" onsubmit="return confirm('¿Estás seguro de que quieres eliminar este profesor?');" class="text-center mt-3">
-    <p style="color: white; margin-bottom: 0.5rem;">Eliminar docente de manera definitiva</p>
-    <button type="submit" class="btn-main-blanco btn-rojo btn-sm">Eliminar</button>
+  <form method="POST" action="/profesores/<%= profesor.id %>/eliminar"
+        onsubmit="return confirm('¿Eliminar este docente definitivamente?');"
+        class="text-center mt-3">
+    <button type="submit" class="btn-main-blanco btn-rojo btn-sm">Eliminar docente</button>
   </form>
 <% } %>
-

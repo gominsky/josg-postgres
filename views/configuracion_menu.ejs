@@ -1,44 +1,36 @@
 <% title = 'Configuración'; hero = false; %>
 
-<div class="ctb-head d-flex align-items-center justify-content-between" style="max-width:1200px;margin:20px auto 12px;padding:0 12px;">
-  <h1 style="margin:0;font-weight:700;font-size:clamp(1.4rem,1.1rem + 1.2vw,2rem);color:#000;">Configuración</h1>
-  <div class="d-flex align-items-center gap-2">
-    <button id="btnLibre" class="btn btn-sm btn-outline-dark">Modo libre</button>
-    <button id="btnReset" class="btn btn-sm btn-outline-secondary">Restablecer</button>
-    <a href="/" class="ctb-back" aria-label="Volver al inicio" style="color:#000;text-decoration:none;">← Volver</a>
+<!-- Botones fuera del canvas — igual que index.ejs -->
+<div class="idx-controls">
+  <button id="btnLibre" class="idx-btn">☰ Modo libre</button>
+  <button id="btnReset" class="idx-btn">↺ Restablecer</button>
+</div>
+
+<!-- Canvas — igual que index.ejs -->
+<div id="canvas-wrap" class="canvas-wrap idx-canvas" data-menu="configuracion">
+  <div id="menu-config" class="sb-grid">
+    <a data-id="usuarios"     href="/usuarios"            class="tile-sb is-black  h1 w1"><span>Usuarios</span></a>
+    <a data-id="grupos"       href="/grupos"              class="tile-sb is-cream  h1 w1"><span>Grupos</span></a>
+    <a data-id="guardias"     href="/guardias"            class="tile-sb is-orange h1 w1"><span>Guardias</span></a>
+    <a data-id="partituras"   href="/profesores"          class="tile-sb is-rust   h1 w1"><span>Docentes</span></a>
+    <a data-id="espacios"     href="/espacios"            class="tile-sb is-yellow h1 w1"><span>Espacios</span></a>
+    <a data-id="instrumentos" href="/instrumentos"        class="tile-sb is-blue   h1 w1"><span>Instrumentos</span></a>
+    <a data-id="ausencias"    href="/ausencias"           class="tile-sb is-black  h1 w1"><span>Ausencias</span></a>
+    <a data-id="actividades"  href="/actividades"         class="tile-sb is-cream  h1 w1"><span>Actividades comp.</span></a>
+    <a data-id="ayuda"        href="/configuracion/ayuda" class="tile-sb is-rust   h1 w1"><span>Ayuda</span></a>
+    <a data-id="baremos"      href="/baremos"             class="tile-sb is-yellow h1 w1"><span>Baremos</span></a>
   </div>
 </div>
 
-<div class="container page-wrap">
-  <div id="canvas-wrap" class="canvas-wrap" data-menu="configuracion">
-    <div id="menu-config" class="sb-grid">
-      <a data-id="usuarios"       href="/usuarios"            class="tile-sb is-black  h1 w1"><span>Usuarios</span></a>
-      <a data-id="grupos"         href="/grupos"              class="tile-sb is-cream  h1 w1"><span>Grupos</span></a>
-      <a data-id="guardias"       href="/guardias"            class="tile-sb is-orange h1 w1"><span>Guardias</span></a>
-      <a data-id="partituras"     href="/profesores"          class="tile-sb is-rust   h1 w1"><span>Docentes</span></a>
-      <a data-id="espacios"       href="/espacios"            class="tile-sb is-yellow h1 w1"><span>Espacios</span></a>
-      <a data-id="instrumentos"   href="/instrumentos"        class="tile-sb is-blue   h1 w1"><span>Instrumentos</span></a>
-      <a data-id="ausencias"      href="/ausencias"           class="tile-sb is-black  h1 w1"><span>Ausencias</span></a>
-      <a data-id="actividades"    href="/actividades"         class="tile-sb is-cream  h1 w1"><span>Actividades comp.</span></a>
-      <a data-id="ayuda"          href="/configuracion/ayuda" class="tile-sb is-rust   h1 w1"><span>Ayuda</span></a>
-      <a data-id="baremos"        href="/baremos"               class="tile-sb is-yellow h1 w1"><span>Baremos</span></a>
-    </div>
-  </div>
-</div>
-
-
-<!-- Lógica común: InteractJS + util unificado -->
 <script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
 <script src="/menu/layoutMenus.js"></script>
 <script>
   LayoutMenus.init({
-    wrapSelector: '#canvas-wrap',
-    gridSelector: '#menu-config',
-    tileSelector: 'a.tile-sb',
+    wrapSelector:    '#canvas-wrap',
+    gridSelector:    '#menu-config',
+    tileSelector:    'a.tile-sb',
     btnFreeSelector: '#btnLibre',
     btnResetSelector:'#btnReset',
-    menuSlug: 'configuracion'
+    menuSlug:        'configuracion'
   });
 </script>
-
-

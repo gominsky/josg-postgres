@@ -2247,6 +2247,7 @@ function setMinutesCell(tr, val){
   
     // Botones
     // Vista previa → filtra visualmente según plantilla (sin tocar BD)
+    window.__applyTemplate = applyTemplate; // exponer para el botón Cargar
     $btnA?.addEventListener('click', () => applyTemplate().catch(err => {
       console.error(err);
       alert('No se pudo cargar la vista previa');
@@ -2279,17 +2280,30 @@ function setMinutesCell(tr, val){
     const pid = Number($sel?.value || '');
     if (!pid) return alert('Selecciona una plantilla primero');
 
-    // Filas visibles (las que quedan tras la vista previa)
+    // Guardar pid para recuperar tras posible reload por extras
+    sessionStorage.setItem('tpl_autocargar_pid', String(pid));
+    try {
+      await window.__applyTemplate?.();
+    } catch(e) {
+      console.error(e);
+      alert('No se pudo aplicar la plantilla');
+      sessionStorage.removeItem('tpl_autocargar_pid');
+      return;
+    }
+    // Si no hubo reload (sin extras faltantes), persistir directamente
+    await _persistirVisibles(pid);
+    sessionStorage.removeItem('tpl_autocargar_pid');
+  });
+
+  async function _persistirVisibles(pid) {
     const rows = Array.from($asigBody?.querySelectorAll('tr[data-alumno]') || [])
       .filter(tr => !tr.classList.contains('tpl-hidden'));
-
     const n = rows.length;
     if (!n) {
-      if (!confirm('No hay músicos visibles. ¿Continuar de todos modos?')) return;
+      if (!confirm('No hay m\xFAsicos visibles. \xBFContinuar de todos modos?')) return;
     } else {
-      if (!confirm(`Se guardarán ${n} músico${n !== 1 ? 's' : ''} como configuración del evento. ¿Continuar?`)) return;
+      if (!confirm(`Se cargar\xE1n ${n} m\xFAsico${n !== 1 ? 's' : ''} de la plantilla. \xBFConfirmar?`)) return;
     }
-
     const items = rows.map(tr => ({
       alumno_id:   Number(tr.dataset.alumno),
       hora_inicio: (tr.querySelector('.inp-ini')?.value || '').trim() || null,
@@ -2300,7 +2314,6 @@ function setMinutesCell(tr, val){
       })(),
       notas: (tr.querySelector('.inp-notas')?.value ?? '').trim() || null,
     }));
-
     try {
       await fetchJSON(`/plantillas/${pid}/apply`, {
         method: 'POST',
@@ -2312,7 +2325,14 @@ function setMinutesCell(tr, val){
       console.error(e);
       alert('No se pudo cargar la plantilla');
     }
-  });
+  }
+
+  // Si venimos de reload por extras, continuar con guardado automatico
+  const _autoPid = sessionStorage.getItem('tpl_autocargar_pid');
+  if (_autoPid) {
+    sessionStorage.removeItem('tpl_autocargar_pid');
+    setTimeout(() => _persistirVisibles(Number(_autoPid)), 800);
+  }
 })();
 </script>
 <script>

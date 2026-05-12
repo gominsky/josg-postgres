@@ -162,13 +162,17 @@
   padding: 8px;
 }
 .canvas-wrap.free #menu-principal,
-.canvas-wrap.free-view #menu-principal {
+.canvas-wrap.free-view #menu-principal,
+.canvas-wrap.free #menu-config,
+.canvas-wrap.free-view #menu-config {
   display: block !important;
   position: relative;
   height: 100%;
 }
 .canvas-wrap.free #menu-principal .tile-sb,
-.canvas-wrap.free-view #menu-principal .tile-sb {
+.canvas-wrap.free-view #menu-principal .tile-sb,
+.canvas-wrap.free #menu-config .tile-sb,
+.canvas-wrap.free-view #menu-config .tile-sb {
   position: absolute !important;
   margin: 0 !important;
   min-width: 180px; min-height: 120px;

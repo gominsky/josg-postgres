@@ -175,10 +175,10 @@ function packHalfUniformConcat({ orderCenterOut, counts, y, xLeftBound, xRightBo
 }
 // Calcula un desplazamiento vertical para centrar los nodos en una banda visible
 function calcShiftY(posiciones, H, {
-  bandTop = 100,     // deja sitio al título/leyenda
-  bandBottom = H - 80, // aire abajo
-  rNode = 32,        // círculo + borde
-  nameBelow = 46     // texto bajo el círculo
+  bandTop = 100,
+  bandBottom = H - 80,
+  rNode = 32,
+  nameBelow = 62     // nombre + instrumento debajo
 } = {}) {
   if (!posiciones || !posiciones.length) return 0;
   const ys = posiciones.map(p => p.y * H);
@@ -343,6 +343,75 @@ function autoLayoutFromCounts(counts) {
     a.atril - b.atril || a.puesto - b.puesto
   );
 
+  // ── Centrado adaptativo: simétrico respecto al director (X=0.5) y vertical ──
+  if (posiciones.length > 0) {
+    const totalMusicos = posiciones.length;
+
+    // ¿Hay instrumentos en ambos lados o solo en uno?
+    const xMedio = posiciones.reduce((s,p) => s + p.x, 0) / posiciones.length;
+    const todosUnLado = posiciones.every(p => p.x > 0.55) || posiciones.every(p => p.x < 0.45);
+
+    if (todosUnLado || totalMusicos <= 16) {
+      // Redistribuir en arco simétrico centrado en X=0.5
+      // Ordenar por instrumento para mantener grupos juntos, luego por X original
+      const grupos = new Map();
+      for (const p of posiciones) {
+        if (!grupos.has(p.instrumento)) grupos.set(p.instrumento, []);
+        grupos.get(p.instrumento).push(p);
+      }
+
+      // Calcular ancho total necesario
+      const dx = Math.min(0.08, 0.85 / Math.max(1, totalMusicos - 1));
+      const totalAncho = (totalMusicos - 1) * dx;
+      const xStart = 0.5 - totalAncho / 2;
+
+      // Redistribuir manteniendo grupos juntos
+      let idx = 0;
+      for (const [inst, grupo] of grupos) {
+        // Ordenar cada grupo por atril
+        grupo.sort((a,b) => a.atril - b.atril || a.puesto - b.puesto);
+        for (const p of grupo) {
+          p.x = xStart + idx * dx;
+          idx++;
+        }
+      }
+
+      // Centrar verticalmente: bajar hacia el director (Y objetivo ~0.55-0.65)
+      const ys = posiciones.map(p => p.y);
+      const yMin = Math.min(...ys);
+      const yMax = Math.max(...ys);
+      const yRange = yMax - yMin;
+      const targetYCenter = 0.42; // más cerca del director
+      const targetYRange  = Math.min(yRange, 0.22); // comprimir si hay mucho espacio
+      const yCenter = (yMin + yMax) / 2;
+      const scale = yRange > 0.01 ? targetYRange / yRange : 1;
+
+      for (const p of posiciones) {
+        p.y = targetYCenter + (p.y - yCenter) * scale;
+      }
+
+    } else {
+      // Orquesta más completa: solo ajustar si está muy descentrada
+      const xs = posiciones.map(p => p.x);
+      const xCenter = (Math.min(...xs) + Math.max(...xs)) / 2;
+      const xShift = 0.5 - xCenter;
+      if (Math.abs(xShift) > 0.03) {
+        for (const p of posiciones) p.x += xShift;
+      }
+
+      const ys = posiciones.map(p => p.y);
+      const yMin = Math.min(...ys);
+      const yMax = Math.max(...ys);
+      const yCenter = (yMin + yMax) / 2;
+      const targetYCenter = 0.48;
+      const shift = targetYCenter - yCenter;
+      const shiftClamped = Math.max(-0.12, Math.min(0.12, shift));
+      if (Math.abs(shiftClamped) > 0.02) {
+        for (const p of posiciones) p.y += shiftClamped;
+      }
+    }
+  }
+
   return posiciones;
 }
 
@@ -360,6 +429,7 @@ function buildLegendFromPositions({
   x = 16, y = 16,
   pad = 12, rowH = 20, boxW = 140,
   showCounts = false,
+  W = 1400, H = 900,   // dimensiones del SVG para calcular posición
 }) {
   const presentes = new Set(posiciones.map(p => p.instrumento));
   const presentesOrdenados = ORDEN_LEYENDA.filter(n => presentes.has(n));
@@ -371,6 +441,42 @@ function buildLegendFromPositions({
   }, {});
 
   const boxH = pad * 2 + presentesOrdenados.length * rowH;
+  const margin = 16; // margen desde el borde
+  const nodeR  = 50; // radio de influencia de cada ficha en píxeles
+
+  // Las 4 esquinas candidatas (x, y en píxeles)
+  const candidatas = [
+    { cx: margin,         cy: margin },          // sup-izq
+    { cx: W - boxW - margin, cy: margin },        // sup-der
+    { cx: margin,         cy: H - boxH - margin },// inf-izq
+    { cx: W - boxW - margin, cy: H - boxH - margin }, // inf-der
+  ];
+
+  // Para cada candidata calcular cuántas fichas se solapan
+  function fichasEnCaja(cx, cy) {
+    let count = 0;
+    for (const p of posiciones) {
+      const px = p.x * W;
+      const py = p.y * H;
+      // Comprobar si la ficha está dentro o cerca de la caja de la leyenda
+      const overlapX = px + nodeR > cx && px - nodeR < cx + boxW;
+      const overlapY = py + nodeR > cy && py - nodeR < cy + boxH;
+      if (overlapX && overlapY) count++;
+    }
+    return count;
+  }
+
+  // Elegir la esquina con menos solapamiento
+  let mejorX = candidatas[0].cx, mejorY = candidatas[0].cy;
+  let mejorScore = Infinity;
+  for (const c of candidatas) {
+    const score = fichasEnCaja(c.cx, c.cy);
+    if (score < mejorScore) {
+      mejorScore = score;
+      mejorX = c.cx;
+      mejorY = c.cy;
+    }
+  }
 
   let items = '';
   let yLegend = pad + 10;
@@ -386,8 +492,8 @@ function buildLegendFromPositions({
   }
 
   return `
-    <g transform="translate(${x},${y})" aria-label="Leyenda">
-      <rect x="0" y="0" width="${boxW}" height="${boxH}" rx="8" fill="white" stroke="#ccc"></rect>
+    <g transform="translate(${mejorX},${mejorY})" aria-label="Leyenda">
+      <rect x="0" y="0" width="${boxW}" height="${boxH}" rx="8" fill="white" fill-opacity="0.92" stroke="#ccc"></rect>
       ${items}
     </g>`;
 }

@@ -77,22 +77,50 @@ router.get('/:id/editar', async (req, res) => {
 });
 // GET: Listado de profesores
 router.get('/', async (req, res) => {
-  const estado = req.query.estado;
-  let query = 'SELECT * FROM profesores';
+  const estado   = req.query.estado;
+  const busqueda = (req.query.busqueda || '').trim();
+  const vista    = req.query.vista === 'lista' ? 'lista' : 'tarjetas';
+  console.log('[profesores] query.vista=', req.query.vista, '→ vista=', vista);
+
   const params = [];
+  const conds  = [];
 
   if (estado === '0' || estado === '1') {
-    query += ' WHERE activo = $1';
     params.push(estado === '1');
+    conds.push(`p.activo = $${params.length}`);
+  }
+  if (busqueda) {
+    params.push(`%${busqueda.toLowerCase()}%`);
+    conds.push(`(LOWER(p.nombre) LIKE $${params.length} OR LOWER(p.apellidos) LIKE $${params.length})`);
   }
 
-  query += ' ORDER BY apellidos, nombre';
+  const where = conds.length ? `WHERE ${conds.join(' AND ')}` : '';
 
   try {
-    const result = await db.query(query, params);
+    const result = await db.query(`
+      SELECT
+        p.*,
+        COALESCE(
+          STRING_AGG(DISTINCT i.nombre, ', ' ORDER BY i.nombre), ''
+        ) AS instrumentos,
+        COALESCE(
+          STRING_AGG(DISTINCT g.nombre, ', ' ORDER BY g.nombre), ''
+        ) AS grupos
+      FROM profesores p
+      LEFT JOIN profesor_instrumento pi ON pi.profesor_id = p.id
+      LEFT JOIN instrumentos i ON i.id = pi.instrumento_id
+      LEFT JOIN profesor_grupo pg ON pg.profesor_id = p.id
+      LEFT JOIN grupos g ON g.id = pg.grupo_id
+      ${where}
+      GROUP BY p.id
+      ORDER BY p.apellidos, p.nombre
+    `, params);
+
     res.render('profesores_lista', {
       profesores: result.rows,
-      estado 
+      estado,
+      busqueda,
+      vista
     });
   } catch (err) {
     console.error('Error al listar profesores:', err);

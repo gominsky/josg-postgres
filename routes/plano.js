@@ -200,7 +200,13 @@ router.get('/evento/:eventoId.:ext', async (req, res) => {
             LIMIT 1
           ),
           'Varios'
-        ) AS instrumento
+        ) AS instrumento,
+        (
+          SELECT LOWER(string_agg(g.nombre, ','))
+          FROM alumno_grupo ag
+          JOIN grupos g ON g.id = ag.grupo_id
+          WHERE ag.alumno_id = ea.alumno_id
+        ) AS grupos_alumno
       FROM evento_asignaciones ea
       JOIN alumnos a ON a.id = ea.alumno_id
       WHERE ea.evento_id = $1
@@ -313,7 +319,8 @@ router.get('/evento/:eventoId.:ext', async (req, res) => {
         alumno_id: alumnoId,
         nombre,
         hasRanking,
-        puesto // solo si hasRanking
+        puesto, // solo si hasRanking
+        grupos_alumno: a.grupos_alumno || ''
       });
     }
 
@@ -344,14 +351,24 @@ router.get('/evento/:eventoId.:ext', async (req, res) => {
     for (const inst of new Set(posiciones.map(p => p.instrumento))) {
       const base = (porInstrumento.get(inst) || []);
 
+      // Clasificar por tipo: 0=invitado, 1=oficial, 2=reserva
+      const tipoOrden = x => {
+        const g = (x.grupos_alumno || '').toLowerCase();
+        if (g.includes('invitad')) return 0;
+        if (g.includes('reserva')) return 2;
+        return 1;
+      };
+
       const ranked = base
         .filter(x => x.hasRanking)
-        .sort((a,b) => (a.puesto || 1) - (b.puesto || 1) ||
+        .sort((a,b) => tipoOrden(a) - tipoOrden(b) ||
+                       (a.puesto || 1) - (b.puesto || 1) ||
                        String(a.alumno_id).localeCompare(String(b.alumno_id), 'es', { numeric:true }));
 
       const rest = base
         .filter(x => !x.hasRanking)
         .sort((a,b) =>
+          tipoOrden(a) - tipoOrden(b) ||
           (a.nombre||'').localeCompare(b.nombre||'', 'es', { sensitivity:'base' }) ||
           String(a.alumno_id).localeCompare(String(b.alumno_id), 'es', { numeric:true })
         );
@@ -398,9 +415,23 @@ router.get('/evento/:eventoId.:ext', async (req, res) => {
 
       const color = colorPorInstrumento(p.instrumento);
 
-      // Nombre corto: nombre + primer apellido si hay dos
-      const parts = (asig.nombre || '').trim().split(/\s+/);
-      const displayName = parts.length >= 3 ? `${parts[0]} ${parts[1]}` : (asig.nombre || asig.alumno_id);
+      // Detectar invitado/reserva
+      const grupos = (asig.grupos_alumno || '').toLowerCase();
+      const esInvitado = grupos.includes('invitad');
+      const esReserva  = grupos.includes('reserva');
+      const badgeTipo  = esInvitado ? 'I' : esReserva ? 'R' : null;
+
+      // Nombre abreviado con abbreviateName
+      const displayName = abbreviateName(asig.nombre || String(asig.alumno_id), { max: 14 });
+
+      // Instrumento abreviado (quitar "Violín I/II" → "Vln I/II" etc.)
+      const instrCorto = (p.instrumento || '')
+        .replace('Violonchelo', 'Vclo.')
+        .replace('Contrabajo',  'Cb.')
+        .replace('Clarinete',   'Clar.')
+        .replace('Trompeta',    'Tpta.')
+        .replace('Trombón',     'Tbn.')
+        .replace('Percusión',   'Perc.');
 
       // Nº de atril / Lado SIEMPRE desde el candidato (no usar "seat" ni ranking)
       let numAtril = Number(asig.atril) || p.atril || 1;
@@ -425,9 +456,16 @@ router.get('/evento/:eventoId.:ext', async (req, res) => {
             ${ladoTxt}
           </text>
 
-          <text y="46" text-anchor="middle" font-size="9" fill="#333" font-family="${FONT}">
-            ${esc(displayName)}
+          <text y="46" text-anchor="middle" font-size="11" fill="#333" font-family="${FONT}">
+            ${esc(displayName)}${badgeTipo ? ` <tspan fill="${esInvitado ? '#2563eb' : '#6b7280'}" font-weight="800">[${badgeTipo}]</tspan>` : ''}
           </text>
+          <text y="58" text-anchor="middle" font-size="9" fill="#888" font-family="${FONT}">
+            ${esc(instrCorto)}
+          </text>
+          ${badgeTipo ? `
+          <circle cx="22" cy="-22" r="8" fill="${esInvitado ? '#2563eb' : '#6b7280'}"></circle>
+          <text x="22" y="-18" text-anchor="middle" font-size="9" font-weight="800" fill="#fff" font-family="${FONT}">${badgeTipo}</text>
+          ` : ''}
         </g>`;
     }
 
@@ -447,7 +485,7 @@ router.get('/evento/:eventoId.:ext', async (req, res) => {
         <text x="${W/2}" y="36" text-anchor="middle" font-size="24" font-weight="800" letter-spacing=".3px" font-family="${FONT}">
           Plano de ${esc(evento.titulo || 'Evento')}${evento.grupo_nombre ? ' — ' + esc(evento.grupo_nombre) : ''}
         </text>
-        ${buildLegendFromPositions({ posiciones, x: 16, y: 16, fontFamily: FONT })}
+        ${buildLegendFromPositions({ posiciones, x: 16, y: 16, fontFamily: FONT, W, H })}
         ${nodos}
         ${director}
       </svg>`;
@@ -685,7 +723,7 @@ router.get('/clasif/:grupo.:ext', async (req, res) => {
         <text x="${W/2}" y="36" text-anchor="middle" font-size="24" font-weight="800" letter-spacing=".3px" font-family="${FONT}">
           Plano · ${esc(grupoNombre)}
         </text>
-        ${buildLegendFromPositions({ posiciones, x: 16, y: 16, fontFamily: FONT })}
+        ${buildLegendFromPositions({ posiciones, x: 16, y: 16, fontFamily: FONT, W, H })}
         ${nodos}
         ${director}
       </svg>`;
@@ -884,7 +922,7 @@ for (const p of posiciones) {
         <text x="${W/2}" y="36" text-anchor="middle" font-size="24" font-weight="800" letter-spacing=".3px" font-family="${FONT}">
           Prueba de atril  ${esc(grupoNombre)}
         </text>
-        ${buildLegendFromPositions({ posiciones, x: 16, y: 16, fontFamily: FONT })}
+        ${buildLegendFromPositions({ posiciones, x: 16, y: 16, fontFamily: FONT, W, H })}
         ${nodos}
         ${director}
       </svg>`;
@@ -1080,7 +1118,7 @@ for (const p of posiciones) {
         <text x="${cxDir}" y="${cyDir + 34}" text-anchor="middle" font-size="12" fill="#000" font-family="${FONT_STACK}">Director</text>
       </g>`;
 
-    const leyendaSVG = buildLegendFromPositions({ posiciones, x: 16, y: 16, fontFamily: FONT_STACK });
+    const leyendaSVG = buildLegendFromPositions({ posiciones, x: 16, y: 16, fontFamily: FONT_STACK, W, H });
 
     const svg = `
       <svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">

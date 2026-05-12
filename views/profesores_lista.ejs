@@ -1,9 +1,24 @@
-<% title = 'Listado de Profesores' %>
-<% hero = false %>
+<%
+  title = 'Listado de docentes';
+  hero  = false;
+  const VISTA = (typeof vista !== 'undefined' && vista === 'lista') ? 'lista' : 'tarjetas';
+%>
 
 <div class="header-compact">
   <h1 class="h1-titulo">Docentes</h1>
-  <a href="/profesores/nuevo" class="btn-main-blanco btn-add">+ Añadir docente</a>
+  <div class="header-actions">
+    <a href="/profesores/nuevo" class="btn-main-blanco">+ Añadir docente</a>
+    <label class="vista-switch" title="Cambiar vista">
+      <input type="checkbox" id="vistaSwitch" class="vista-switch__input"
+             <%= VISTA === 'lista' ? 'checked' : '' %>
+             role="switch"
+             aria-label="<%= VISTA === 'lista' ? 'Cambiar a vista tarjetas' : 'Cambiar a vista lista' %>">
+      <span class="vista-switch__track" aria-hidden="true"></span>
+      <span class="vista-switch__label" id="vistaSwitchLabel">
+        <%= VISTA === 'lista' ? 'Lista' : 'Tarjetas' %>
+      </span>
+    </label>
+  </div>
 </div>
 
 <form method="GET" id="filtro-form" class="formulario-centrado filtro-card--shape">
@@ -14,33 +29,80 @@
       <% const _estado = (typeof estado !== 'undefined' ? String(estado) : ''); %>
       <option value=""  <%= _estado === ''  ? 'selected' : '' %>>Todos</option>
       <option value="1" <%= _estado === '1' ? 'selected' : '' %>>Activos</option>
-      <option value="0" <%= _estado === '0' ? 'selected' : '' %>>Pasivos</option>
+      <option value="0" <%= _estado === '0' ? 'selected' : '' %>>No activos</option>
     </select>
   </div>
 
   <div class="campo-filtro">
     <label for="busqueda-profesores">Buscar</label>
-    <input id="busqueda-profesores"
-           name="busqueda"
-           type="text"
+    <input id="busqueda-profesores" name="busqueda" type="text"
            class="form-centrado-select"
            placeholder="Nombre, apellidos..."
            value="<%= typeof busqueda !== 'undefined' ? busqueda : '' %>">
   </div>
+
+  <input type="hidden" name="vista" value="<%= VISTA %>">
 </form>
 
 <% if (profesores.length > 0) { %>
-  <div class="dashboard-grid" id="grid-profesores">
-    <% profesores.forEach(p => { 
-         const full = `${p.nombre || ''} ${p.apellidos || ''}`.trim();
-    %>
-      <a href="/profesores/<%= p.id %>"
-         class="card <%= p.activo === false ? 'pasivo' : 'activo' %>"
-         data-fulltext="<%= full.toLowerCase() %>">
-        <div class="docente-nombre" title="<%= full %>"><%= full %></div>
-      </a>
-    <% }) %>
-  </div>
+
+  <% if (VISTA === 'tarjetas') { %>
+    <div class="dashboard-grid" id="grid-profesores">
+      <% profesores.forEach(p => {
+           const full = `${p.nombre || ''} ${p.apellidos || ''}`.trim();
+           const grupoNorm = (p.grupos || '').toLowerCase().trim().split(',')[0].trim();
+           const grupoClase =
+             grupoNorm.includes('josg')   ? 'card--josg'   :
+             grupoNorm.includes('oeg')    ? 'card--oeg'    : '';
+      %>
+        <a href="/profesores/<%= p.id %>"
+           class="card <%= p.activo === false ? 'pasivo' : 'activo' %> <%= grupoClase %>"
+           data-fulltext="<%= (full + ' ' + (p.instrumentos || '') + ' ' + (p.grupos || '')).toLowerCase() %>">
+          <div class="alumno-nombre" title="<%= full %>"><%= full %></div>
+          <% if (p.instrumentos) { %>
+            <div class="alumno-instrumento"><%= p.instrumentos %></div>
+          <% } %>
+          <% if (p.grupos) { %>
+            <div class="alumno-grupo"><%= p.grupos %></div>
+          <% } %>
+        </a>
+      <% }) %>
+    </div>
+
+  <% } else { %>
+    <div class="table-responsive tabla-compacta-wrap">
+      <table class="table tabla-compacta">
+        <thead>
+          <tr>
+            <th>Nombre</th>
+            <th>Instrumentos</th>
+            <th>Grupos</th>
+            <th>Estado</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% profesores.forEach(p => {
+               const full = `${p.nombre || ''} ${p.apellidos || ''}`.trim();
+          %>
+            <tr class="<%= p.activo === false ? 'pasivo' : '' %>"
+                data-fulltext="<%= (full + ' ' + (p.instrumentos || '')).toLowerCase() %>">
+              <td><a href="/profesores/<%= p.id %>"><%= full %></a></td>
+              <td><%= p.instrumentos || '—' %></td>
+              <td><%= p.grupos || '—' %></td>
+              <td>
+                <span class="badge bg-<%= p.activo ? 'success' : 'secondary' %>">
+                  <%= p.activo ? 'Activo' : 'No activo' %>
+                </span>
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  <% } %>
+
+<% } else { %>
+  <p class="text-muted mt-3">No se encontraron docentes.</p>
 <% } %>
 
 <div class="volver-bloque-izquierda">
@@ -48,53 +110,30 @@
 </div>
 
 <script>
-  // Filtro: usa el texto completo del data-fulltext (aunque se vea abreviado)
-  (function(){
-    var input = document.getElementById('busqueda-profesores');
-    if(!input) return;
-    input.addEventListener('input', function () {
-      var filtro = this.value.toLowerCase().trim();
-      document.querySelectorAll('#grid-profesores .card').forEach(function(t){
-        var base = t.getAttribute('data-fulltext') || t.textContent.toLowerCase();
-        t.style.display = base.includes(filtro) ? '' : 'none';
+(() => {
+  // Filtro en tiempo real
+  const input = document.getElementById('busqueda-profesores');
+  if (input) {
+    input.addEventListener('input', function() {
+      const filtro = this.value.toLowerCase().trim();
+      document.querySelectorAll('#grid-profesores .card, .tabla-compacta tbody tr').forEach(el => {
+        const base = el.getAttribute('data-fulltext') || el.textContent.toLowerCase();
+        el.style.display = base.includes(filtro) ? '' : 'none';
       });
     });
-  })();
+  }
 
-  // (Opcional) Abreviar inteligentemente nombres muy largos (tipo "Juan C. Pérez M.")
-  (function(){
-    var MAX = 26; // cambia el límite si quieres
-    function abrevia(full){
-      full = (full || '').trim();
-      if (full.length <= MAX) return full;
-      var tokens = full.split(/\s+/);
-      if (tokens.length === 1) return full;
-
-      var conectores = new Set(['de','del','la','las','los','y']);
-      var nombre = tokens[0];
-      var resto  = tokens.slice(1);
-
-      // Abrevia palabras no conectoras a inicial con punto
-      var cuerpo = resto.map(function(w){
-        return conectores.has(w.toLowerCase()) ? w : (w[0].toUpperCase() + '.');
-      });
-
-      var out = [nombre].concat(cuerpo).join(' ');
-      if (out.length > MAX) {
-        // Mantén primer apellido completo si aún es largo
-        var apes = resto.filter(function(w){ return !conectores.has(w.toLowerCase()); });
-        if (apes.length) {
-          var primero = apes[0];
-          var abreApes = [primero].concat(apes.slice(1).map(function(a){ return a[0].toUpperCase()+'.'; }));
-          out = [nombre].concat(abreApes).join(' ');
-        }
-      }
-      return out;
-    }
-
-    document.querySelectorAll('#grid-profesores .card .docente-nombre').forEach(function(el){
-      var full = el.getAttribute('title') || el.textContent.trim();
-      el.textContent = abrevia(full);
+  // Switch de vista — igual que alumnos
+  var sw  = document.getElementById('vistaSwitch');
+  var lbl = document.getElementById('vistaSwitchLabel');
+  if (sw) {
+    sw.addEventListener('change', function() {
+      var nuevaVista = sw.checked ? 'lista' : 'tarjetas';
+      if (lbl) lbl.textContent = sw.checked ? 'Lista' : 'Tarjetas';
+      var url = new URL(location.href);
+      url.searchParams.set('vista', nuevaVista);
+      location.href = url.toString();
     });
-  })();
+  }
+})();
 </script>
