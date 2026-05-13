@@ -1,10 +1,9 @@
 <% title = 'Ayuda · Eventos' %>
 <% hero  = false %>
-<link rel="stylesheet" href="/styles/estilos_help.css">
 
 <div class="help-wrap" data-help-theme="blue">
   <div class="panel">
-    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+    <div class="help-article-head">
       <h1 class="h1">Ayuda · Eventos</h1>
       <div class="cta">
         <a href="/eventos">Calendario →</a>
@@ -56,37 +55,41 @@
 
     <!-- Configurar -->
     <section id="configurar" class="section">
-      <h2>Configurar</h2>
+      <h2>Configurar un evento</h2>
       <div class="grid-2">
         <div class="card">
-          <h3 style="margin:.1rem 0 .35rem;">Seleccionar y filtrar</h3>
+          <h3 style="margin:.1rem 0 .35rem;">Barra de herramientas</h3>
           <ul class="list">
-            <li>Elige quién asistirá al evento.</li>
-            <li>Usa <strong>filtros</strong> por familia e instrumento para centrarte.</li>
-            <li>Ajusta <strong>horas</strong> por músico si lo necesitas.</li>
+            <li>Título con fecha, acciones rápidas (Restaurar, Plano, PDF, Enlace) y volver.</li>
+            <li>Zona de <strong>Plantillas</strong>: seleccionar, vista previa, cargar, eliminar y guardar.</li>
+            <li><strong>Switches de configuración</strong> (Familias, Instrumento, Individual, Extras) justo encima de las tablas.</li>
           </ul>
         </div>
         <div class="card">
-          <h3 style="margin:.1rem 0 .35rem;">Acciones en bloque</h3>
+          <h3 style="margin:.1rem 0 .35rem;">Tabla de músicos</h3>
           <ul class="list">
-            <li><strong>Cambio horario</strong> (inicio/fin) para los seleccionados.</li>
-            <li><strong>Ausencias</strong>: justificada, injustificada, parcial o retraso.</li>
-            <li><strong>Actividad complementaria</strong>: montaje / desmontaje.</li>
-            <li><strong>Eliminar</strong> músicos que no asistirán.</li>
+            <li>Cabeceras <strong>ordenables</strong> — pulsa para ordenar asc/desc.</li>
+            <li><strong>Contador</strong> en tiempo real junto al título.</li>
+            <li>Elimina por <strong>familia</strong>, <strong>instrumento</strong> o <strong>individualmente</strong>.</li>
+            <li>Al eliminar una familia, sus instrumentos también desaparecen.</li>
+            <li>Ajusta horas, ausencias y actividades por músico.</li>
           </ul>
         </div>
       </div>
-      <p class="notice info">Cuando esté configurado y <strong>activo</strong>, aparecerá en la app del alumno.</p>
+      <p class="notice info">El botón <strong>Restaurar</strong> devuelve el evento al estado original del grupo.</p>
     </section>
 
     <!-- Plantillas -->
     <section id="plantillas" class="section">
       <h2>Plantillas</h2>
       <ul class="list">
-        <li><strong>Guardar plantilla</strong> desde un evento bien configurado.</li>
-        <li><strong>Vista previa</strong> antes de aplicar (revisa los cambios).</li>
-        <li>Para <strong>periódicos</strong>, crea todas las fechas y aplica la plantilla.</li>
+        <li>Una plantilla guarda exactamente los <strong>músicos convocados</strong> (incluidos invitados y reservas) en el momento de guardarla — no solo familias o instrumentos.</li>
+        <li><strong>Guardar configuración actual como plantilla</strong>: pulsa el botón en la barra de plantillas para guardar los músicos visibles en ese momento.</li>
+        <li><strong>Vista previa</strong>: filtra visualmente la tabla según la plantilla. Si hay invitados o reservas en la plantilla que aún no están en el evento, se añaden automáticamente.</li>
+        <li><strong>Cargar</strong>: aplica la plantilla y persiste la configuración en la base de datos.</li>
+        <li><strong>Quitar filtro</strong>: elimina el filtro visual sin guardar cambios.</li>
       </ul>
+      <p class="notice info">El botón <strong>Cargar</strong> hace vista previa y guardado en un solo paso.</p>
     </section>
 
     <!-- QR y firmado -->
@@ -126,12 +129,16 @@
       </ul>
     </section>
 
-    <!-- Planos -->
     <section id="planos" class="section">
       <h2>Planos</h2>
       <ul class="list">
-        <li>Diseño visual del evento con elementos <strong>arrastrables</strong>.</li>
-        <li>Útiles para ubicar montaje, flujos y disposición general.</li>
+        <li><strong>Plano dinámico</strong>: editor visual con fichas arrastrables. Guarda el diseño con <em>Guardar diseño</em>.</li>
+        <li><strong>Plano PDF</strong>: genera el PDF con la última disposición guardada. Si has movido fichas sin guardar, el PDF mostrará el estado anterior — el sistema te avisará.</li>
+        <li>El PDF muestra el <strong>nombre abreviado</strong> e <strong>instrumento</strong> de cada músico, y marca con <strong>[I]</strong> o <strong>[R]</strong> a invitados y reservas.</li>
+        <li>Los <strong>invitados se colocan primero</strong> dentro de su instrumento, los <strong>reservas al final</strong>.</li>
+        <li>Con pocos músicos el plano se <strong>redistribuye automáticamente</strong> de forma simétrica respecto al director.</li>
+        <li>La <strong>leyenda de colores</strong> se coloca automáticamente en la esquina con menos fichas.</li>
+        <li><strong>Enlace público del plano</strong>: disponible desde Informes con caducidad configurable.</li>
       </ul>
     </section>
 
@@ -175,12 +182,14 @@
       </ul>
     </section>
 
-    <!-- Invitados y reservas -->
     <section id="invitados" class="section">
       <h2>Invitados y reservas</h2>
       <ul class="list">
-        <li>Añade <strong>invitados</strong> o <strong>reservas</strong> desde Configuración.</li>
-        <li>Quedan etiquetados y no participan en acciones en bloque hasta incorporarlos.</li>
+        <li>Los <strong>invitados</strong> y <strong>reservas</strong> aparecen en el panel <em>Extras</em> en la parte inferior de la configuración del evento.</li>
+        <li>Márcalos y pulsa <strong>Añadir seleccionados</strong> para incorporarlos a la tabla principal.</li>
+        <li>Una vez añadidos quedan integrados en la tabla con una marca visual en el plano PDF (<strong>[I]</strong> azul para invitados, <strong>[R]</strong> gris para reservas).</li>
+        <li>Las <strong>plantillas guardan invitados y reservas</strong> junto al resto — al cargar una plantilla se añaden automáticamente si no están en el evento.</li>
+        <li>El botón <strong>Restaurar</strong> en la barra superior devuelve el evento al estado original del grupo, eliminando los cambios manuales.</li>
       </ul>
     </section>
 

@@ -164,8 +164,13 @@ router.post('/', isAuthenticated, isDocente, upload.array('adjuntos', 5), async 
   try {
     await client.query('BEGIN');
 
-    // 1) Crear mensaje
-    const userId = req.session.usuario.id;
+    // 1) Crear mensaje — usuario puede venir de sesión (web) o JWT (app móvil)
+    const userId =
+      req.session?.usuario?.id ||
+      req.session?.usuario_id  ||
+      req.jwtPayload?.usuario_id ||
+      req.jwtPayload?.sub ||
+      null;
     const { rows } = await client.query(
       `INSERT INTO mensajes (titulo, cuerpo, url, urls, creado_por)
        VALUES ($1,$2,$3,$4,$5)
@@ -289,6 +294,22 @@ router.post('/push/subscribe', requireAlumno, async (req, res) => {
   }
 });
 
+/* ====== conteo no leídos (badge index.html) ====== */
+router.get('/app/mensajes/unread_count', requireAlumno, async (req, res) => {
+  try {
+    const { rows } = await db.query(
+      `SELECT COUNT(*)::int AS count
+         FROM mensaje_entrega me
+         JOIN mensajes m ON m.id = me.mensaje_id
+        WHERE me.alumno_id = $1 AND me.leido_at IS NULL`,
+      [req.alumno_id]
+    );
+    res.json({ count: rows[0]?.count || 0 });
+  } catch (e) {
+    res.status(500).json({ error: 'No se pudo obtener conteo' });
+  }
+});
+
 /* ====== bandeja (app alumno) ====== */
 router.get('/app/mensajes', requireAlumno, async (req, res) => {
   const alumnoId = req.alumno_id;
@@ -409,6 +430,65 @@ router.delete('/:id', isAuthenticated, isDocente, async (req, res) => {
     client.release();
   }
 });
+/* ====== API: lista de grupos (app móvil docente) ====== */
+router.get('/api/grupos', isAuthenticated, isDocente, async (req, res) => {
+  try {
+    const { rows } = await db.query('SELECT id, nombre FROM grupos ORDER BY nombre');
+    res.json(rows);
+  } catch (e) {
+    res.status(500).json({ error: 'No se pudo obtener grupos' });
+  }
+});
+
+/* ====== API: lista de instrumentos (app móvil docente) ====== */
+router.get('/api/instrumentos', isAuthenticated, isDocente, async (req, res) => {
+  try {
+    const { rows } = await db.query('SELECT id, nombre FROM instrumentos ORDER BY nombre');
+    res.json(rows);
+  } catch (e) {
+    res.status(500).json({ error: 'No se pudo obtener instrumentos' });
+  }
+});
+
+/* ====== mensajes enviados (app móvil docente) ====== */
+router.get('/app/enviados', isAuthenticated, isDocente, async (req, res) => {
+  const userId =
+    req.session?.usuario?.id ||
+    req.session?.usuario_id  ||
+    req.jwtPayload?.usuario_id ||
+    req.jwtPayload?.sub ||
+    null;
+
+  const limit  = Math.min(parseInt(req.query.limit, 10) || 50, 100);
+  const offset = Math.max(parseInt(req.query.offset, 10) || 0, 0);
+
+  try {
+    const { rows } = await db.query(`
+      SELECT
+        m.id, m.titulo, m.cuerpo, m.url, m.created_at,
+        COALESCE(NULLIF(m.urls::text,'')::jsonb,'[]'::jsonb) AS urls,
+        COALESCE(a.adjuntos,'[]'::json) AS adjuntos,
+        (SELECT COUNT(*)::int FROM mensaje_entrega me WHERE me.mensaje_id = m.id) AS enviados,
+        (SELECT COUNT(*)::int FROM mensaje_entrega me WHERE me.mensaje_id = m.id AND me.leido_at IS NOT NULL) AS leidos
+      FROM mensajes m
+      LEFT JOIN LATERAL (
+        SELECT json_agg(json_build_object(
+          'filename', ma.filename, 'original_name', ma.original_name,
+          'mime', ma.mime
+        ) ORDER BY ma.id) AS adjuntos
+        FROM mensaje_adjuntos ma WHERE ma.mensaje_id = m.id
+      ) a ON true
+      WHERE m.creado_por = $1
+      ORDER BY m.id DESC
+      LIMIT $2 OFFSET $3
+    `, [userId, limit, offset]);
+    res.json(rows);
+  } catch (e) {
+    console.error('[mensajes] Error enviados:', e);
+    res.status(500).json({ error: 'No se pudo obtener enviados' });
+  }
+});
+
 /* ====== formulario nuevo mensaje (web) ====== */
 router.get('/nuevo', isAuthenticated, isDocente, async (req, res) => {
   try {

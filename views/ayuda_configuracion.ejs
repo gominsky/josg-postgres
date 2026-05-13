@@ -1,114 +1,70 @@
 <% title = 'Ayuda · Configuración' %>
 <% hero  = false %>
 
-<div id="help-wrap" class="container my-4">
+<div class="help-wrap">
+  <div class="panel">
 
-  <div class="head">
-    <h1>Ayuda · Configuración</h1>
-    <div class="search">
-      <input id="help-q" type="search" placeholder="Buscar… (usuarios, grupos, instrumentos, espacios…)" autocomplete="off">
-    </div>
-  </div>
-
-  <!-- Tarjetas de apartados -->
-  <div class="grid" id="help-grid">
-    <!-- Usuarios -->
-    <a href="#sec-usuarios" class="card" data-text="usuarios roles permisos correo email contraseña admin editar nuevo">
-      <div class="ic"><svg><use href="#i-user"/></svg></div>
-      <div class="body">
-        <p class="ttl">Usuarios</p>
-        <p class="mut">Alta/edición, rol y contraseña. Gestión de acceso a la plataforma.</p>
-        <div class="tags"><span class="tag">Rol</span><span class="tag">Contraseña</span><span class="tag">Listado</span></div>
-      </div>
-    </a>
-
-    <!-- Docentes -->
-    <a href="#sec-docentes" class="card" data-text="docentes profesores listado ficha instrumentos grupos estado foto contacto">
-      <div class="ic"><svg><use href="#i-teacher"/></svg></div>
-      <div class="body">
-        <p class="ttl">Docentes</p>
-        <p class="mut">Listado y ficha con contacto, estado, instrumentos y grupos.</p>
-        <div class="tags"><span class="tag">Ficha</span><span class="tag">Instrumentos</span><span class="tag">Grupos</span></div>
-      </div>
-    </a>
-
-    <!-- Grupos -->
-    <a href="#sec-grupos" class="card" data-text="grupos crear editar descripcion descripcion integrantes asignacion">
-      <div class="ic"><svg><use href="#i-groups"/></svg></div>
-      <div class="body">
-        <p class="ttl">Grupos</p>
-        <p class="mut">Alta y edición de grupos de trabajo con su descripción.</p>
-        <div class="tags"><span class="tag">Listado</span><span class="tag">Ficha</span></div>
-      </div>
-    </a>
-
-    <!-- Instrumentos -->
-    <a href="#sec-instrumentos" class="card" data-text="instrumentos familia cuerdas viento percusion percusión editar registrar">
-      <div class="ic"><svg><use href="#i-instrument"/></svg></div>
-      <div class="body">
-        <p class="ttl">Instrumentos</p>
-        <p class="mut">Catálogo por familias. Crear, editar y eliminar.</p>
-        <div class="tags"><span class="tag">Familia</span><span class="tag">Catálogo</span></div>
-      </div>
-    </a>
-
-    <!-- Espacios -->
-    <a href="#sec-espacios" class="card" data-text="espacios salas auditorios direccion dirección maps ubicacion ubicación contacto aforo recursos">
-      <div class="ic"><svg><use href="#i-map"/></svg></div>
-      <div class="body">
-        <p class="ttl">Espacios</p>
-        <p class="mut">Salas y auditorios con dirección, contacto y Maps.</p>
-        <div class="tags"><span class="tag">Dirección</span><span class="tag">Maps</span><span class="tag">Aforo</span></div>
-      </div>
-    </a>
-
-    <!-- Ausencias -->
-    <a href="#sec-ausencias" class="card" data-text="ausencias tipos justificada injustificada parcial retraso eventos informes">
-      <div class="ic"><svg><use href="#i-absent"/></svg></div>
-      <div class="body">
-        <p class="ttl">Ausencias</p>
-        <p class="mut">Definición de tipos para usarlos en eventos e informes.</p>
-        <div class="tags"><span class="tag">Tipos</span><span class="tag">Eventos</span></div>
-      </div>
-    </a>
-
-    <!-- Actividades comp. -->
-    <a href="#sec-actividades" class="card" data-text="actividades complementarias montaje desmontaje etiquetas eventos informes">
-      <div class="ic"><svg><use href="#i-wrench"/></svg></div>
-      <div class="body">
-        <p class="ttl">Actividades complementarias</p>
-        <p class="mut">Montaje, desmontaje y tareas vinculadas a eventos.</p>
-        <div class="tags"><span class="tag">Montaje</span><span class="tag">Desmontaje</span></div>
-      </div>
-    </a>
-
-    <!-- Guardias -->
-    <a href="#sec-guardias" class="card" data-text="guardias cuadrantes Asignar pdf enlace publico pública planilla filtros">
-      <div class="ic"><svg><use href="#i-shield"/></svg></div>
-      <div class="body">
-        <p class="ttl">Guardias</p>
-        <p class="mut">Planilla, asignaciones, PDF y enlace público con caducidad.</p>
-        <div class="tags"><span class="tag">Planilla</span><span class="tag">PDF</span><span class="tag">Link público</span></div>
-      </div>
-    </a>
-
-    <!-- Copia de seguridad -->
-    <a href="#sec-backup" class="card" data-text="backup copia seguridad restaurar exportar salvar datos">
-      <div class="ic"><svg><use href="#i-backup"/></svg></div>
-      <div class="body">
-        <p class="ttl">Copia de seguridad</p>
-        <p class="mut">Recomendaciones para copias y restauraciones.</p>
-        <div class="tags"><span class="tag">Backup</span><span class="tag">Restaurar</span></div>
-      </div>
-    </a>
-  </div>
-
-  <div class="panel-header volver" style="margin-top:10px;">
+  <div class="help-article-head">
+    <h1 class="h1">Ayuda · Configuración</h1>
     <a href="/configuracion" class="enlace-final">← Volver a Configuración</a>
   </div>
 
-  <!-- Secciones detalladas (anclas) -->
-  <div class="sections">
+  <div class="callout">
+    El menú de configuración funciona igual que el de inicio: puedes activar el <strong>Modo libre</strong> para mover los accesos donde quieras, y <strong>Restablecer</strong> para volver al orden original. Las posiciones se guardan por usuario.
+  </div>
+
+  <!-- Tarjetas de apartados -->
+  <div class="action-grid" id="help-grid" style="margin-bottom:24px;">
+
+    <a href="#sec-usuarios" class="action-card" data-text="usuarios roles permisos correo email contraseña admin editar nuevo">
+      <div><p class="action-title">Usuarios</p>
+      <p class="action-desc">Alta y edición, roles y contraseñas. Gestión de acceso a la plataforma.</p>
+      <p class="req-line"><span class="badge-soft">Rol</span><span class="badge-soft">Contraseña</span></p></div>
+    </a>
+
+    <a href="#sec-docentes" class="action-card" data-text="docentes profesores listado ficha instrumentos grupos estado foto contacto">
+      <div><p class="action-title">Docentes</p>
+      <p class="action-desc">Listado y ficha con contacto, estado, instrumentos y grupos.</p>
+      <p class="req-line"><span class="badge-soft">Ficha</span><span class="badge-soft">Instrumentos</span></p></div>
+    </a>
+
+    <a href="#sec-grupos" class="action-card" data-text="grupos crear editar descripcion integrantes asignacion color">
+      <div><p class="action-title">Grupos</p>
+      <p class="action-desc">Alta y edición de grupos de trabajo. Cada grupo muestra un color distintivo.</p>
+      <p class="req-line"><span class="badge-soft">Listado</span><span class="badge-soft">Ficha</span></p></div>
+    </a>
+
+    <a href="#sec-instrumentos" class="action-card" data-text="instrumentos familia cuerdas viento percusion editar registrar color">
+      <div><p class="action-title">Instrumentos</p>
+      <p class="action-desc">Catálogo por familias con colores: Cuerda, Viento madera, Viento metal, Percusión.</p>
+      <p class="req-line"><span class="badge-soft">Familia</span><span class="badge-soft">Catálogo</span></p></div>
+    </a>
+
+    <a href="#sec-espacios" class="action-card" data-text="espacios salas auditorios direccion maps ubicacion contacto aforo recursos">
+      <div><p class="action-title">Espacios</p>
+      <p class="action-desc">Salas y auditorios con dirección, contacto, aforo y enlace a Google Maps.</p>
+      <p class="req-line"><span class="badge-soft">Dirección</span><span class="badge-soft">Aforo</span></p></div>
+    </a>
+
+    <a href="#sec-ausencias" class="action-card" data-text="ausencias tipos justificada injustificada parcial retraso eventos informes">
+      <div><p class="action-title">Ausencias</p>
+      <p class="action-desc">Definición de tipos de ausencia para eventos e informes.</p>
+      <p class="req-line"><span class="badge-soft">Tipos</span><span class="badge-soft">Eventos</span></p></div>
+    </a>
+
+    <a href="#sec-actividades" class="action-card" data-text="actividades complementarias montaje desmontaje etiquetas eventos informes">
+      <div><p class="action-title">Actividades complementarias</p>
+      <p class="action-desc">Montaje, desmontaje y tareas vinculadas a eventos.</p>
+      <p class="req-line"><span class="badge-soft">Montaje</span><span class="badge-soft">Desmontaje</span></p></div>
+    </a>
+
+    <a href="#sec-guardias" class="action-card" data-text="guardias cuadrantes asignar pdf enlace publico planilla filtros">
+      <div><p class="action-title">Guardias</p>
+      <p class="action-desc">Planilla de guardias, asignaciones, PDF y enlace público con caducidad.</p>
+      <p class="req-line"><span class="badge-soft">Planilla</span><span class="badge-soft">PDF</span></p></div>
+    </a>
+
+  </div>
     <section id="sec-usuarios" class="section">
       <h2>Usuarios</h2>
       <div class="cols">

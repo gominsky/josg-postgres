@@ -6,265 +6,236 @@
   <title>¡JOSG en tu mano! · Mensajes</title>
   <link rel="stylesheet" href="../styles/estilos_app.css" />
   <style>
-  /* === Layout general === */
-.list{ display:grid; gap:12px; }
+/* ============================================================
+   mensajes.html - estilos inline limpios
+   Tokens base en estilos_app.css (--naranja, --muted, etc.)
+   ============================================================ */
 
-/* Panel centrado (como mensajes_movil) */
-.hero .panel{
-  box-sizing:border-box;
-  background:#fff;
-  border:1px solid rgba(0,0,0,.08);
-  border-radius:16px;
-  padding:16px 18px;
-  margin-left:auto; margin-right:auto;
-  width:100%;
-}
-@media (max-width: 480px){
-  .hero .panel{ max-width: min(96%, 540px); }
-}
-@media (min-width: 481px){
-  .hero .panel{ max-width: min(96%, 560px); }
+/* Variables locales */
+:root {
+  --msg-naranja:   #FF9501;
+  --msg-crema:     #fff8f0;
+  --msg-crema-dk:  #ffe9d4;
+  --msg-border:    rgba(255,149,1,.22);
+  --msg-read-bg:   #fafaf8;
+  --msg-read-bdr:  rgba(0,0,0,.07);
+  --msg-shadow:    0 2px 10px rgba(0,0,0,.07);
+  --msg-shadow-hv: 0 4px 18px rgba(0,0,0,.11);
+  --mark-bg:       #fff3e0;
+  --mark-bdr:      #f5c27a;
+  --mark-text:     #7a3f00;
 }
 
-/* === Card: fondo naranja suave, sin banda lateral intensa === */
-.card{
-  border:1px solid rgba(0,0,0,.08);
-  border-left:0;
-  border-radius:16px;
-  padding:14px 16px;
-  background: linear-gradient(180deg, #fffdf8, #fff6ec); /* naranja muy suave */
-  box-shadow:0 6px 16px rgba(0,0,0,.06);
+/* Lista */
+.list { display:grid; gap:10px; }
+
+/* Panel contenedor: transparente, sin caja */
+.hero .panel {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  padding: 16px 0;
+  width: 100%;
 }
-.card h3{ margin:.15rem 0 .35rem; font-size:1.06rem; }
-.meta{ font-size:.85rem; color:#6b7280; }
+
+/* Card base */
+.card {
+  border-radius: 18px;
+  padding: 14px 16px 12px;
+  background: var(--msg-crema);
+  border: 1.5px solid var(--msg-border);
+  box-shadow: var(--msg-shadow);
+  transition: box-shadow .15s ease, border-color .15s ease;
+  text-align: left;
+}
+.card:hover { box-shadow: var(--msg-shadow-hv); }
+
+/* Card leida: desvanecida */
+.card.read {
+  background: var(--msg-read-bg);
+  border-color: var(--msg-read-bdr);
+  box-shadow: none;
+}
+
+/* Cabecera */
+.card h3 {
+  margin: 0 0 2px;
+  font-size: 1rem;
+  font-weight: 800;
+  color: #111827;
+  line-height: 1.25;
+}
+.card.read h3 { color: #6b7280; font-weight: 600; }
+
+/* Punto naranja en no leido */
+.card.unread h3::before {
+  content: "";
+  display: inline-block;
+  width: 7px; height: 7px;
+  background: var(--msg-naranja);
+  border-radius: 50%;
+  margin-right: 7px;
+  vertical-align: middle;
+  margin-bottom: 2px;
+}
+
+/* Meta (autor, fecha) */
+.meta { font-size:.8rem; color:var(--muted,#9ca3af); margin-bottom:6px; }
 
 /* Cuerpo del mensaje */
-.msg-body{
-  background:#fff;
-  border:1px solid #f0f0f0;
-  border-radius:12px;
-  padding:.7rem .8rem;
-  white-space:pre-wrap;
-  word-break:break-word;
-  margin:.35rem 0 .2rem;
+.msg-body {
+  font-size:.95rem; line-height:1.55; color:#374151;
+  white-space:pre-wrap; word-break:break-word; margin:0 0 8px;
 }
+.card.read .msg-body { color:#9ca3af; }
+
+/* Barra de acciones */
+.action-bar {
+  display:flex; align-items:center;
+  justify-content:space-between; gap:.5rem; margin-bottom:6px;
+}
+.action-left  { display:flex; align-items:center; }
+.action-right { display:flex; align-items:center; }
+
+/* Ver mas */
+[data-toggle] {
+  all:unset; font-size:.85rem; font-weight:700;
+  color:#374151; cursor:pointer;
+  text-decoration:underline; text-underline-offset:2px;
+  text-decoration-color:rgba(0,0,0,.2);
+}
+[data-toggle]:hover { color:var(--msg-naranja); text-decoration-color:var(--msg-naranja); }
+
+/* Boton Leido */
+[data-mark] {
+  all:unset; display:inline-flex; align-items:center; gap:.3rem;
+  font-size:.78rem; font-weight:700;
+  padding:.25rem .65rem; border-radius:999px;
+  background:var(--mark-bg); border:1px solid var(--mark-bdr);
+  color:var(--mark-text); cursor:pointer;
+  transition:background .12s ease;
+}
+[data-mark]:hover { background:#ffe0b2; }
+[data-mark]:disabled { opacity:.55; cursor:default; }
 
 /* Chips de enlaces */
-.chips{ display:flex; justify-content:center; gap:.5rem; flex-wrap:wrap; margin-top:.4rem; }
-.chip{
-  display:inline-block; padding:.38rem .7rem;
-  border:1px solid #eee; border-radius:999px; background:#ffffff;
-  font-weight:700; font-size:.9rem; color:#ea6b38; text-decoration:none; white-space:nowrap;
+.chips { display:flex; gap:.4rem; flex-wrap:wrap; margin-bottom:6px; }
+.chip {
+  display:inline-flex; align-items:center; gap:.3rem;
+  padding:.3rem .75rem; border-radius:999px;
+  background:#fff; border:1.5px solid var(--msg-naranja);
+  color:var(--msg-naranja); font-size:.85rem; font-weight:700;
+  text-decoration:none; transition:background .1s ease;
 }
+.chip:hover { background:#fff3e0; }
 
-/* Barra de acciones (zona de botones) */
-.mark-wrap{ margin-top:.35rem; display:flex; gap:.4rem; flex-wrap:wrap; }
-.btn-ghost{
-  padding:.4rem .6rem; font-size:.85rem; background:#fff;
-  border:1px solid #e5e7eb; border-radius:999px; color:#ea6b38; cursor:pointer; user-select:none;
+/* Adjuntos */
+.clip-btn {
+  all:unset; display:inline-flex; align-items:center; gap:.35rem;
+  font-size:.85rem; font-weight:700; color:#374151; cursor:pointer; margin-bottom:4px;
 }
-.btn-ghost:hover{ background:#fffaf3; }
+.clip-btn:hover { color:var(--msg-naranja); }
+.att-count {
+  background:var(--msg-crema-dk); border-radius:999px;
+  padding:0 .4rem; font-size:.78rem; color:var(--mark-text);
+}
+.att-list { list-style:none; margin:4px 0 0; padding:0; display:none; }
+.att-list li { padding:.3rem 0; border-top:1px solid rgba(0,0,0,.05); }
+.att-list a { color:var(--msg-naranja); text-decoration:none; font-size:.88rem; font-weight:600; }
+.att-list a:hover { text-decoration:underline; }
 
 /* Paginador */
-.pager{ display:flex; align-items:center; justify-content:center; gap:6px; flex-wrap:wrap; margin:14px 0 4px; }
-.pager-btn{
-  all: unset; display:inline-flex; align-items:center; justify-content:center;
-  padding:.35rem .6rem; min-width:2.2rem; text-align:center;
-  border:1px solid #e5e7eb; border-radius:8px; background:#fff; font-size:.9rem; line-height:1; cursor:pointer; user-select:none;
+.pager { display:flex; align-items:center; justify-content:center; gap:5px; flex-wrap:wrap; margin:14px 0 2px; }
+.pager-btn {
+  all:unset; display:inline-flex; align-items:center; justify-content:center;
+  min-width:2rem; height:2rem; padding:0 .5rem;
+  border-radius:9px; border:1.5px solid #e5e7eb; background:#fff;
+  font-size:.9rem; cursor:pointer; transition:border-color .1s ease, color .1s ease;
 }
-.pager-btn.active{ font-weight:700; border-color:#ea6b38; box-shadow:0 0 0 4px rgba(234,107,56,.20); color:#ea6b38; }
+.pager-btn:hover:not(:disabled) { border-color:var(--msg-naranja); color:var(--msg-naranja); }
+.pager-btn.active { font-weight:800; border-color:var(--msg-naranja); color:var(--msg-naranja); box-shadow:0 0 0 3px rgba(255,149,1,.15); }
+.pager-btn:disabled { opacity:.35; cursor:default; }
 
-/* === Adjuntos (clip) — UNA sola definición, sin duplicados === */
-.clip-btn{
-  padding:.35rem .6rem; font-size:.85rem; background:#fff;
-  border:1px solid #e5e7eb; border-radius:999px; color:#374151;
-  cursor:pointer; user-select:none; display:inline-flex; align-items:center; gap:.4rem;
+/* Flash (llegada desde push) */
+@keyframes flash-push {
+  0%   { box-shadow:0 0 0 0   rgba(255,149,1,0);    }
+  25%  { box-shadow:0 0 0 7px rgba(255,149,1,.55);   }
+  70%  { box-shadow:0 0 0 4px rgba(255,149,1,.25);   }
+  100% { box-shadow:var(--msg-shadow);               }
 }
-.clip-btn:hover{ background:#fffaf3; }
-.att-list{ list-style:none; margin:.35rem 0 0; padding:0; display:none; }
-.att-list li{
-  display:flex; align-items:center; justify-content:space-between; gap:.5rem;
-  border:1px solid #eee; border-radius:10px; padding:.45rem .6rem; background:#fff; margin-top:.4rem;
-}
-.att-list a{ text-decoration:none; color:#ea6b38; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.att-count{ font-weight:700; color:#ea6b38; }
+.card.flash { animation:flash-push 2.2s ease-out forwards; }
 
-/* Por si algún tema añade pseudo-elementos naranjas */
-.orange-cards .card::before,
-.orange-cards .card::after{ content:none !important; }
-.orange-cards .card{ border-left:0 !important; }
-/* === Estilos robustos para acciones por data-* === */
-:root{
-  --action-text: #111827;      /* “Ver más…” */
-  --mark-bg:    #fff7e6;       /* chip dorado/marrón */
-  --mark-bdr:   #e0bf86;
-  --mark-text:  #7a4a00;
-}
+/* Vacio */
+#empty { padding:2rem 0; font-size:.95rem; }
 
-.mark-wrap [data-toggle],
-.mark-wrap [data-mark]{
-  font: inherit !important;
-  line-height: 1.2 !important;
-}
+/* Boton Inicio */
+.hero .panel .actions { margin-top:1rem; }
+.hero .panel .actions .btn { max-width:240px; margin:0 auto; }
 
-/* “Ver más…” como enlace en negrita */
-.mark-wrap [data-toggle]{
-  all: unset !important;
-  display: inline !important;
-  font-weight: 700 !important;
-  color: var(--action-text) !important;
-  cursor: pointer !important;
+/* ── Compositor docente ───────────────────────────────── */
+.doc-field { display:flex; flex-direction:column; gap:3px; margin-bottom:8px; }
+.doc-input {
+  width:100%; box-sizing:border-box;
+  padding:.65rem .9rem; border:1.5px solid #e5e7eb; border-radius:12px;
+  font:inherit; font-size:.95rem; color:#111827; background:#fff;
+  transition:border-color .15s ease, box-shadow .15s ease; margin:0;
 }
-.mark-wrap [data-toggle]:hover{ text-decoration: underline !important; }
-
-/* “Marcar como leído” como chip dorado/marrón */
-.mark-wrap [data-mark]{
-  all: unset !important;
-  display: inline-flex !important;
-  align-items: center !important;
-  gap: .35rem !important;
-  padding: .35rem .7rem !important;
-  border: 1px dashed var(--mark-bdr) !important;
-  border-radius: 999px !important;
-  background: var(--mark-bg) !important;
-  color: var(--mark-text) !important;
-  cursor: pointer !important;
+.doc-input:focus { outline:none; border-color:var(--msg-naranja); box-shadow:0 0 0 3px rgba(255,149,1,.12); }
+.doc-textarea { min-height:110px; resize:vertical; line-height:1.55; }
+.doc-counter { font-size:.72rem; color:#9ca3af; text-align:right; }
+.doc-file-label {
+  display:inline-flex; align-items:center; gap:.4rem;
+  font-size:.88rem; font-weight:700; color:#374151; cursor:pointer;
+  padding:.4rem .8rem; border:1.5px dashed #e5e7eb; border-radius:10px;
+  transition:border-color .12s ease;
 }
-.mark-wrap [data-mark]:hover{ background: #ffedd5 !important; }
-/* Alineación específica de la barra de acciones de cada card */
-.mark-actions{ justify-content: flex-end; }
-@media (max-width:560px){
-  .mark-actions{ justify-content: center; }
+.doc-file-label:hover { border-color:var(--msg-naranja); color:var(--msg-naranja); }
+.doc-chips { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:8px; }
+.doc-chip {
+  all:unset; padding:.3rem .75rem; border-radius:999px;
+  border:1.5px solid #e5e7eb; background:#fff;
+  font-size:.82rem; font-weight:600; color:#374151; cursor:pointer;
+  transition:border-color .12s, background .12s, color .12s;
 }
-/* Barra de acciones con “ver más” a la izda y “marcar como leído” a la dcha */
-.action-bar{
-  display:flex;
-  align-items:center;
-  gap:.5rem;
-  justify-content: flex-start; /* el contenedor arranca a la izquierda */
-  margin-top:.25rem;
+.doc-chip.active { border-color:var(--msg-naranja); background:#fff8ee; color:#7a3f00; font-weight:800; }
+.doc-selector { margin-bottom:8px; }
+.doc-checklist { max-height:160px; overflow-y:auto; display:grid; gap:2px; padding:4px 0; }
+.doc-check-item {
+  display:flex; align-items:center; gap:8px; padding:5px 8px;
+  border-radius:8px; font-size:.88rem; cursor:pointer; transition:background .1s;
 }
-.action-left{ display:flex; gap:.5rem; }
-.action-right{ display:flex; gap:.5rem; margin-left:auto; } /* empuja a la derecha */
-
-@media (max-width:560px){
-  /* En móvil se mantiene izda/dcha, sin saltos raros */
-  .action-bar{ flex-wrap:wrap; }
-  .action-right{ margin-left:auto; }
+.doc-check-item:hover { background:#fff8ee; }
+.doc-check-item input[type="checkbox"] {
+  width:15px; height:15px; accent-color:var(--msg-naranja);
+  cursor:pointer; flex:0 0 auto; margin:0;
 }
-/* Barra de acciones centrada */
-.action-bar{
-  display:flex;
-  align-items:center;
-  justify-content:center;  /* centrado */
-  gap:.5rem;
-  margin-top:.25rem;
+.doc-sublabel { font-size:.78rem; font-weight:700; color:#9ca3af; margin:4px 0; }
+.doc-aviso { padding:.5rem .8rem; border-radius:10px; font-size:.85rem; font-weight:700; margin-top:6px; }
+.doc-aviso.ok  { background:#e9f7ef; color:#186a3b; border:1px solid #c8e6d1; }
+.doc-aviso.err { background:#fdecea; color:#b71c1c; border:1px solid #f5c6cb; }
+.btn-main {
+  background:var(--msg-naranja,#FF9501); color:#fff; border:none;
+  border-radius:10px; padding:.6rem 1.4rem;
+  font-weight:800; font-size:.95rem; cursor:pointer;
+  transition:filter .12s ease, transform .1s ease;
 }
-.action-left{ display:inline-flex; }
-.action-right{ display:inline-flex; margin-left:0; } /* sin empuje a la derecha */
-
-/* Botón “Leído” compacto (muy pequeño) */
-.mark-wrap [data-mark]{
-  all: unset !important;
-  display:inline-flex !important;
-  align-items:center !important;
-  justify-content:center !important;
-  font-size:.75rem !important;
-  line-height:1 !important;
-  padding:.22rem .55rem !important;
-  border:1px solid var(--mark-bdr) !important;
-  border-radius:999px !important;
-  background:var(--mark-bg) !important;
-  color:var(--mark-text) !important;
-  cursor:pointer !important;
+.btn-main:hover  { filter:brightness(1.07); }
+.btn-main:active { transform:translateY(1px); }
+.files-preview { list-style:none; padding:0; margin:6px 0 0; display:flex; flex-wrap:wrap; gap:6px; }
+.file-chip {
+  display:inline-flex; align-items:center; gap:.35rem;
+  background:#fff8ee; border:1px solid #f5c27a; border-radius:999px;
+  padding:.28rem .7rem; font-size:.82rem; color:#7a3f00;
 }
-.mark-wrap [data-mark]:hover{ background:#ffedd5 !important; }
-/* Quitar caja/borde del cuerpo del mensaje */
-.card .msg-body{
-  background: transparent !important;
-  border: 0 !important;
-  box-shadow: none !important;
-  padding: 0 !important;   /* el padding ya lo aporta .card */
+.file-chip .rm { all:unset; cursor:pointer; color:#9ca3af; font-size:1rem; line-height:1; }
+.file-chip .rm:hover { color:#e11d48; }
+.sent-badge {
+  display:inline-flex; align-items:center; gap:.3rem;
+  font-size:.72rem; font-weight:700; padding:.2rem .5rem;
+  border-radius:999px; background:#e9f7ef; border:1px solid #c8e6d1; color:#186a3b;
 }
-
-/* Mantén el aire entre texto y acciones/chips */
-.card .msg-body{ margin: .35rem 0 .2rem; }
-
-/* (Opcional) mejora lectura en fondos claros */
-.card .msg-body { color: #111827; } /* o el color que uses de texto */
-/* Panel sin caja blanca */
-.hero .panel{
-  background: transparent !important;
-  border: 0 !important;
-  box-shadow: none !important;
-  padding-left: 0 !important;
-  padding-right: 0 !important;
-}
-
-/* Un poco de aire vertical, ya sin caja */
-.hero .panel { padding-top: 16px !important; padding-bottom: 16px !important; }
-
-/* Opcional: separa la lista y las acciones del resto del héroe */
-.hero .panel #list{ margin-top: .25rem; }
-.hero .panel .actions{ margin-top: .9rem; }
-/* Opcional: tarjetas con fondo más limpio */
-/* --- Clip/adjuntos totalmente transparentes --- */
-.clip-btn{
-  all: unset !important;                /* quita estilos de botón */
-  display: inline-flex !important;
-  align-items: center !important;
-  gap: .35rem !important;
-  cursor: pointer !important;
-  font-weight: 700 !important;
-  line-height: 1.2 !important;
-  color: #ea6b38 !important;            /* color de acento; cambia si quieres */
-}
-.clip-btn:hover{ text-decoration: underline !important; }
-.clip-btn:focus-visible{
-  outline: 2px solid currentColor !important;
-  outline-offset: 2px !important;
-}
-
-/* La lista y sus ítems sin caja ni borde */
-.att-list{ margin:.35rem 0 0 !important; padding:0 !important; list-style:none !important; }
-.att-list li{
-  border: 0 !important;
-  background: transparent !important;
-  padding: .25rem 0 !important;         /* mantiene aire entre adjuntos */
-  margin: 0 !important;
-}
-.att-list a{
-  text-decoration: none !important;
-  color: #ea6b38 !important;
-}
-.att-list a:hover{ text-decoration: underline !important; }
-.att-list a:focus-visible{
-  outline: 2px solid currentColor !important;
-  outline-offset: 2px !important;
-}
-@keyframes flashBg { 0%{background:#fff8e7;} 50%{background:#fff;} 100%{background:#fff8e7;} }
-.card.flash{ animation: flashBg 1.2s ease-in-out 2; }
-/* Estados visuales leído / no leído */
-.card{ 
-  transition: background-color .25s ease, border-color .25s ease, box-shadow .25s ease;
-}
-
-.card.unread{
-  background: #ffe9d9 !important;               /* más oscuro: sin leer */
-  border-color: rgba(234,107,56,.35) !important;
-  box-shadow: 0 6px 16px rgba(234,107,56,.12) !important;
-  border-left: 0 !important;                     /* asegura sin banda */
-}
-
-.card.read{
-  background: #fff7ef !important;                /* más claro: leído */
-  border-color: rgba(0,0,0,.08) !important;
-  box-shadow: 0 6px 16px rgba(0,0,0,.06) !important;
-  border-left: 0 !important;
-}
-
-
 </style>
+
 </head>
 <body data-page="mensajes" class="orange-cards">
   <div class="container">
@@ -281,12 +252,99 @@
       <div class="motifs-layer" aria-hidden="true"></div>
       <img class="hero-logo" src="../imagenes/logoJOSG.png" alt="JOSG">
       <h1>¡En tu mano!</h1>
-      <p>Avisos y notificaciones.</p>
+      <p id="hero-sub">Avisos y notificaciones.</p>
 
-      <div class="panel">
+      <!-- ── VISTA ALUMNO ─────────────────────────────────── -->
+      <div id="vista-alumno" class="panel" style="display:none;">
         <div id="empty" class="muted" style="display:none;">No tienes mensajes aún.</div>
         <div id="list" class="list"></div>
         <div id="pager" class="pager"></div>
+        <div class="actions" style="margin-top:.9rem;">
+          <button class="btn btn-primary" onclick="location.href='index.html'">&larr; Inicio</button>
+        </div>
+      </div>
+
+      <!-- ── VISTA DOCENTE / ADMIN ────────────────────────── -->
+      <div id="vista-docente" style="display:none;">
+
+        <!-- Compositor -->
+        <div class="panel" style="margin-bottom:12px;">
+          <p class="section-title" style="margin:0 0 10px;">Nuevo mensaje</p>
+
+          <!-- Título -->
+          <div class="doc-field">
+            <input id="d-titulo" type="text" maxlength="120" placeholder="Título del mensaje" class="doc-input" />
+            <span class="doc-counter" id="d-c-titulo">0/120</span>
+          </div>
+
+          <!-- Cuerpo -->
+          <div class="doc-field">
+            <textarea id="d-cuerpo" maxlength="2000" rows="4" placeholder="Escribe el mensaje…" class="doc-input doc-textarea"></textarea>
+            <span class="doc-counter" id="d-c-cuerpo">0/2000</span>
+          </div>
+
+          <!-- URL opcional -->
+          <div class="doc-field">
+            <input id="d-url" type="url" placeholder="Enlace opcional (https://…)" class="doc-input" />
+          </div>
+
+          <!-- Adjuntos -->
+          <div class="doc-field">
+            <label class="doc-file-label" for="d-files">📎 Adjuntar archivos</label>
+            <input id="d-files" type="file" multiple style="display:none;" />
+            <ul id="d-files-preview" class="files-preview"></ul>
+          </div>
+
+          <!-- Destinatarios -->
+          <p class="section-title" style="margin:10px 0 6px;">Destinatarios</p>
+          <div class="doc-chips" id="d-modo-chips">
+            <button class="doc-chip active" data-modo="todos">Todos</button>
+            <button class="doc-chip" data-modo="grupos">Grupos</button>
+            <button class="doc-chip" data-modo="instrumentos">Instrumentos</button>
+            <button class="doc-chip" data-modo="grupo_instrumento">Grupo+Instrumento</button>
+          </div>
+
+          <!-- Selector de grupos -->
+          <div id="d-sel-grupos" class="doc-selector" style="display:none;">
+            <input id="d-busca-grupo" type="search" placeholder="Buscar grupo…" class="doc-input" style="margin-bottom:6px;" />
+            <div id="d-lista-grupos" class="doc-checklist"></div>
+          </div>
+
+          <!-- Selector de instrumentos -->
+          <div id="d-sel-instrumentos" class="doc-selector" style="display:none;">
+            <input id="d-busca-inst" type="search" placeholder="Buscar instrumento…" class="doc-input" style="margin-bottom:6px;" />
+            <div id="d-lista-inst" class="doc-checklist"></div>
+          </div>
+
+          <!-- Selector combinado grupo+instrumento -->
+          <div id="d-sel-combo" class="doc-selector" style="display:none;">
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+              <div style="flex:1;min-width:120px;">
+                <p class="doc-sublabel">Grupo</p>
+                <div id="d-combo-grupos" class="doc-checklist"></div>
+              </div>
+              <div style="flex:1;min-width:120px;">
+                <p class="doc-sublabel">Instrumento</p>
+                <div id="d-combo-inst" class="doc-checklist"></div>
+              </div>
+            </div>
+          </div>
+
+          <div id="d-aviso" class="doc-aviso" style="display:none;"></div>
+
+          <div class="actions" style="margin-top:10px;">
+            <button id="d-btn-enviar" class="btn-main">Enviar</button>
+            <button id="d-btn-limpiar" class="btn-main-blanco" style="opacity:.7;">Limpiar</button>
+          </div>
+        </div>
+
+        <!-- Historial enviados -->
+        <div class="panel">
+          <p class="section-title" style="margin:0 0 10px;">Mensajes enviados</p>
+          <div id="d-empty" class="muted" style="display:none;">No hay mensajes enviados aún.</div>
+          <div id="d-list" class="list"></div>
+          <div id="d-pager" class="pager"></div>
+        </div>
 
         <div class="actions" style="margin-top:.9rem;">
           <button class="btn btn-primary" onclick="location.href='index.html'">&larr; Inicio</button>
@@ -337,7 +395,18 @@
   <script>
   (function(){
     const alumno_id = localStorage.getItem('alumno_id');
+    const rol = (localStorage.getItem('rol') || '').toLowerCase();
+    const esDoc = rol === 'docente' || rol === 'admin';
+
+    // Docentes/admin: este script no aplica — el suyo se encarga
+    if (esDoc) return;
+
+    // Alumno sin sesión → login
     if (!alumno_id) { location.href = 'index.html'; return; }
+
+    // Mostrar la vista de alumno (empieza con display:none)
+    const vistaAlumno = document.getElementById('vista-alumno');
+    if (vistaAlumno) vistaAlumno.style.display = 'block';
 
     const $list  = document.getElementById('list');
     const $empty = document.getElementById('empty');
@@ -370,29 +439,14 @@
     };
     function normalizePublicURL(u){
       const s = safeHref(u || '');
-      if (/^https?:\/\//i.test(s) || s.startsWith('//')) return s; // absoluta
-      const base =
-        location.pathname.startsWith('/josgmaestro/') ? '/josgmaestro' :
-        location.pathname.startsWith('/firmas/')      ? '/firmas'      : '';
-      if (s.startsWith('/mensajes/')) return base + s;
-      return s;
-    }
-    function normalizePublicURL(u){
-      const s = safeHref(u || '');
-      if (/^https?:\/\//i.test(s) || s.startsWith('//')) return s; // absoluta
-      const base =
-        location.pathname.startsWith('/josgmaestro/') ? '/josgmaestro' :
-        location.pathname.startsWith('/firmas/')      ? '/firmas'      : '';
-      if (s.startsWith('/mensajes/')) return base + s;
+      // Los adjuntos en /mensajes/ se sirven directamente desde express.static
+      // sin ningún prefijo de montaje — devolver tal cual
       return s;
     }
     function isAttachmentUrl(raw){
       const s = String(raw||'');
-      if (/^https?:\/\//i.test(s)) return false; // externas -> enlaces, no adjuntos
-      const base =
-        location.pathname.startsWith('/josgmaestro/') ? '/josgmaestro' :
-        location.pathname.startsWith('/firmas/')      ? '/firmas'      : '';
-      return s.startsWith('/mensajes/') || s.startsWith(base + '/mensajes/');
+      if (/^https?:\/\//i.test(s)) return false;
+      return s.startsWith('/mensajes/');
     }
     function domainLabel(href){
       try{ const u = new URL(href, location.origin);
@@ -513,14 +567,12 @@ function cardHTML(m, readSet){
   const attachments = []; // {href,label}
   const links = [];       // {href,label,title}
   let primaryHref = '';   // para chip "Abrir"
-  const baseMount =
-  location.pathname.startsWith('/josgmaestro/')   ? '/josgmaestro'   :
-  location.pathname.startsWith('/josgentumano/')  ? '/josgentumano'  :
-  '';
-    
+
+  // Los adjuntos se guardan en public/mensajes/ y express.static los sirve
+  // directamente como /mensajes/archivo — sin prefijo /josgentumano ni similar.
   const isAttachmentPath = p => {
     const s = String(p||'');
-    return s.startsWith('/mensajes/') || s.startsWith(baseMount + '/mensajes/');
+    return s.startsWith('/mensajes/');
   };
 
   // Enlace principal por campo directo
@@ -534,9 +586,7 @@ if (rawPrimary && !isAttachmentPath(rawPrimary)) {
     const raw = typeof u === 'string' ? u : (u?.url ?? u?.href ?? u?.link ?? '');
     if (!raw) continue;
     if (isAttachmentPath(raw)){
-      // ✅ Tratar URLs /mensajes/... como adjuntos
-      const path  = raw.startsWith('/mensajes/') ? baseMount + raw : raw;
-      const href  = safeHref(path);
+      const href  = safeHref(raw);
       const label = decodeURIComponent(String(raw).split('/').pop() || 'archivo').replace(/\?.*$/,'');
       attachments.push({ href, label });
       continue;
@@ -554,8 +604,7 @@ if (rawPrimary && !isAttachmentPath(rawPrimary)) {
   for (const a of adjuntosRaw){
     const raw = a?.filename || a?.url || a?.href || '';
     if (!raw) continue;
-    const path = raw.startsWith('/mensajes/') ? baseMount + raw : raw;
-    const href  = safeHref(path);
+    const href  = safeHref(raw);
     const label = a?.original_name ||
                   decodeURIComponent(String(raw).split('/').pop() || 'archivo').replace(/\?.*$/,'');
     attachments.push({ href, label });
@@ -659,24 +708,44 @@ if (rawPrimary && !isAttachmentPath(rawPrimary)) {
       renderPager();
     }
 
-    async function cargar(){
-      try{
-        const url = `/firmas/api/alumno/${encodeURIComponent(alumno_id)}/mensajes?_ts=${Date.now()}`;
-        const token = localStorage.getItem('token');
-        const r = await fetch(url, { headers: token ? { 'Authorization': 'Bearer ' + token } : {} });
-        if (!r.ok) throw new Error('No se pudieron cargar los mensajes');
-        const j = await r.json();
-        if (!Array.isArray(j)) throw new Error('Formato inesperado');
+    let _cargando = false;
+    let _lastOk   = 0;
 
-        DATA = j.slice().sort((a,b)=> Number(b.id||0) - Number(a.id||0));  // recientes primero
+    async function cargar(forzar = false){
+      if (!forzar && _cargando) return;
+      if (!forzar && Date.now() - _lastOk < 8000) return;
+      if (_cargando) return;
+      _cargando = true;
+
+      const token = localStorage.getItem('token');
+      const url = `/mensajes/app/mensajes?_ts=${Date.now()}`;
+
+      try{
+        const r = await fetch(url, {
+          headers: token ? { 'Authorization': 'Bearer ' + token } : {}
+        });
+
+        let body = ''; try { body = await r.text(); } catch(_){}
+        let j;    try { j = JSON.parse(body); }       catch(_){ j = null; }
+
+        if (!r.ok) throw new Error(`HTTP ${r.status} — ${body.slice(0,120)}`);
+        if (!Array.isArray(j)) throw new Error('Respuesta no es array: ' + typeof j);
+
+        DATA = j.slice().sort((a,b)=> Number(b.id||0) - Number(a.id||0));
         totalPages = Math.max(1, Math.ceil(DATA.length / PAGE_SIZE));
-        renderPage(1);
-          }catch(e){
-        console.error(e);
-        $list.innerHTML = '';
-        $pager.innerHTML = '';
-        $empty.textContent = 'No se pudieron cargar los mensajes.';
-        $empty.style.display = 'block';
+        _lastOk = Date.now();
+        renderPage(currentPage > totalPages ? 1 : currentPage);
+
+      } catch(e){
+        console.warn('[mensajes] Error cargando:', e.message);
+        if (DATA.length === 0){
+          $list.innerHTML = '';
+          $pager.innerHTML = '';
+          $empty.textContent = 'No se pudieron cargar los mensajes.';
+          $empty.style.display = 'block';
+        }
+      } finally {
+        _cargando = false;
       }
     }
 // Delegación: Clip / Ver más / Marcar leído
@@ -755,7 +824,7 @@ if (markBtn){
 
   try{
     const token = localStorage.getItem('token');
-    await fetch(`/firmas/api/alumno/${encodeURIComponent(alumno_id)}/mensajes/${id}/leer`, {
+    await fetch(`/mensajes/app/mensajes/${id}/leer`, {
       method: 'POST',
       headers: Object.assign(
         { 'Content-Type': 'application/json' },
@@ -766,20 +835,273 @@ if (markBtn){
     console.warn('Servidor no confirmó lectura:', e);
   }
 
-  // Refresca la página para que se re-rendericen colores/estado
-  location.reload();
+  // Actualizar la card: transición a estado "read" sin recargar
+  const card = markBtn.closest('.card');
+  if (card) {
+    card.classList.remove('unread');
+    card.classList.add('read');
+    const btn = card.querySelector('[data-mark]');
+    if (btn) { btn.textContent = '✓ Leído'; btn.disabled = true; }
+  }
   return;
 }
 });
-// Lanza la carga inicial y refrescos
-document.addEventListener('DOMContentLoaded', cargar);
-window.addEventListener('pageshow', cargar);
+// Carga inicial
+document.addEventListener('DOMContentLoaded', () => cargar(true));
+// pageshow: volver con bfcache (back/forward) → forzar solo si persisted
+window.addEventListener('pageshow', (e) => { if (e.persisted) cargar(true); });
+// visibilitychange: solo si llevamos más de 30s sin cargar (pestaña en segundo plano)
 document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible') cargar();
+  if (document.visibilityState === 'visible') cargar(false);
 });
 
 // Cierra la IIFE
 })();
+  </script>
+
+  <!-- ── Lógica modo docente/admin ──────────────────────── -->
+  <script>
+  (function(){
+    const rol    = (localStorage.getItem('rol') || '').toLowerCase();
+    const token  = localStorage.getItem('token');
+    const esDoc  = rol === 'docente' || rol === 'admin';
+
+    if (!esDoc) return;
+
+    // Mostrar la vista docente
+    document.getElementById('vista-docente').style.display = 'block';
+    const sub = document.getElementById('hero-sub');
+    if (sub) sub.textContent = 'Panel de mensajería.';
+
+    // ── Helpers ─────────────────────────────────────────
+    const $  = id => document.getElementById(id);
+    const headers = (extra={}) => Object.assign({'Authorization':'Bearer '+token}, extra);
+
+    function aviso(txt, ok){
+      const el = $('d-aviso');
+      el.textContent = txt; el.className = 'doc-aviso ' + (ok ? 'ok' : 'err');
+      el.style.display = txt ? 'block' : 'none';
+    }
+
+    // ── Cargar grupos e instrumentos ─────────────────────
+    let GRUPOS = [], INSTS = [];
+
+    async function cargarMetadata(){
+      try {
+        const [rg, ri] = await Promise.all([
+          fetch('/mensajes/api/grupos',       { headers: headers() }),
+          fetch('/mensajes/api/instrumentos', { headers: headers() })
+        ]);
+        GRUPOS = rg.ok ? await rg.json() : [];
+        INSTS  = ri.ok ? await ri.json() : [];
+      } catch(e){ console.warn('metadata:', e); }
+      renderChecklists();
+    }
+
+    function checkItem(val, label, name){
+      return `<label class="doc-check-item">
+        <input type="checkbox" name="${name}" value="${val}"> ${label}
+      </label>`;
+    }
+
+    function renderChecklists(){
+      $('d-lista-grupos').innerHTML = GRUPOS.map(g => checkItem(g.id, g.nombre, 'grupo')).join('');
+      $('d-lista-inst').innerHTML   = INSTS.map(i  => checkItem(i.id, i.nombre, 'inst')).join('');
+      $('d-combo-grupos').innerHTML = GRUPOS.map(g => checkItem(g.id, g.nombre, 'combo-grupo')).join('');
+      $('d-combo-inst').innerHTML   = INSTS.map(i  => checkItem(i.id, i.nombre, 'combo-inst')).join('');
+    }
+
+    // Buscador en checklist
+    function filtrarChecklist(inputEl, listEl, attr){
+      inputEl.addEventListener('input', ()=>{
+        const q = inputEl.value.toLowerCase();
+        listEl.querySelectorAll('.doc-check-item').forEach(el => {
+          el.style.display = el.textContent.toLowerCase().includes(q) ? '' : 'none';
+        });
+      });
+    }
+    document.addEventListener('DOMContentLoaded', ()=>{
+      filtrarChecklist($('d-busca-grupo'), $('d-lista-grupos'));
+      filtrarChecklist($('d-busca-inst'),  $('d-lista-inst'));
+    });
+
+    // ── Chips de modo destinatarios ──────────────────────
+    let modoActual = 'todos';
+    document.addEventListener('DOMContentLoaded', ()=>{
+      $('d-modo-chips').addEventListener('click', e => {
+        const btn = e.target.closest('.doc-chip'); if (!btn) return;
+        $('d-modo-chips').querySelectorAll('.doc-chip').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        modoActual = btn.dataset.modo;
+        $('d-sel-grupos').style.display      = modoActual === 'grupos'            ? 'block' : 'none';
+        $('d-sel-instrumentos').style.display= modoActual === 'instrumentos'      ? 'block' : 'none';
+        $('d-sel-combo').style.display       = modoActual === 'grupo_instrumento' ? 'block' : 'none';
+      });
+    });
+
+    // ── Adjuntos ─────────────────────────────────────────
+    let archivosSeleccionados = [];
+    document.addEventListener('DOMContentLoaded', ()=>{
+      const input = $('d-files');
+      const label = document.querySelector('.doc-file-label');
+      if (label) label.addEventListener('click', () => input.click());
+      input.addEventListener('change', () => {
+        Array.from(input.files).forEach(f => {
+          if (!archivosSeleccionados.find(x => x.name===f.name && x.size===f.size))
+            archivosSeleccionados.push(f);
+        });
+        input.value = '';
+        renderFilesPreview();
+      });
+    });
+
+    function renderFilesPreview(){
+      const ul = $('d-files-preview');
+      ul.innerHTML = archivosSeleccionados.map((f,i) => `
+        <li class="file-chip">
+          📄 ${f.name}
+          <button class="rm" data-idx="${i}" title="Quitar" aria-label="Quitar ${f.name}">×</button>
+        </li>`).join('');
+      ul.addEventListener('click', e => {
+        const btn = e.target.closest('.rm'); if (!btn) return;
+        archivosSeleccionados.splice(Number(btn.dataset.idx), 1);
+        renderFilesPreview();
+      }, { once: true });
+    }
+
+    // ── Contadores ────────────────────────────────────────
+    document.addEventListener('DOMContentLoaded', ()=>{
+      const titulo = $('d-titulo'), cuerpo = $('d-cuerpo');
+      const cTit = $('d-c-titulo'), cCuerpo = $('d-c-cuerpo');
+      titulo.addEventListener('input', () => {
+        cTit.textContent = `${titulo.value.length}/${titulo.maxLength}`;
+        $('d-titulo').classList.toggle('at-limit', titulo.value.length >= titulo.maxLength - 5);
+      });
+      cuerpo.addEventListener('input', () => {
+        cCuerpo.textContent = `${cuerpo.value.length}/${cuerpo.maxLength}`;
+        cuerpo.classList.toggle('at-limit', cuerpo.value.length >= cuerpo.maxLength - 20);
+      });
+    });
+
+    // ── Enviar ────────────────────────────────────────────
+    document.addEventListener('DOMContentLoaded', ()=>{
+      $('d-btn-enviar').addEventListener('click', enviar);
+      $('d-btn-limpiar').addEventListener('click', limpiar);
+    });
+
+    async function enviar(){
+      const titulo = $('d-titulo').value.trim();
+      const cuerpo = $('d-cuerpo').value.trim();
+      if (!titulo || !cuerpo){ aviso('El título y el cuerpo son obligatorios.', false); return; }
+
+      const btn = $('d-btn-enviar');
+      btn.disabled = true; aviso('Enviando…', true);
+
+      try {
+        const fd = new FormData();
+        fd.append('titulo', titulo);
+        fd.append('cuerpo', cuerpo);
+        const url = $('d-url').value.trim();
+        if (url) fd.append('url', url);
+        archivosSeleccionados.forEach(f => fd.append('adjuntos', f));
+
+        // Formato que espera el servidor: broadcast / grupos[] / instrumentos[]
+        if (modoActual === 'todos') {
+          fd.append('broadcast', 'true');
+        } else if (modoActual === 'grupos') {
+          document.querySelectorAll('[name="grupo"]:checked')
+            .forEach(cb => fd.append('grupos', cb.value));
+        } else if (modoActual === 'instrumentos') {
+          document.querySelectorAll('[name="inst"]:checked')
+            .forEach(cb => fd.append('instrumentos', cb.value));
+        } else if (modoActual === 'grupo_instrumento') {
+          document.querySelectorAll('[name="combo-grupo"]:checked')
+            .forEach(cb => fd.append('grupos', cb.value));
+          document.querySelectorAll('[name="combo-inst"]:checked')
+            .forEach(cb => fd.append('instrumentos', cb.value));
+        }
+
+        const r = await fetch('/mensajes', {
+          method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + token },
+          body: fd
+        });
+        const j = await r.json().catch(()=>({}));
+        if (!r.ok) throw new Error(j.error || `HTTP ${r.status}`);
+
+        aviso('✅ Mensaje enviado correctamente.', true);
+        limpiar();
+        cargarEnviados(true);
+      } catch(e){
+        aviso('❌ ' + e.message, false);
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    function limpiar(){
+      $('d-titulo').value = '';
+      $('d-cuerpo').value = '';
+      $('d-url').value    = '';
+      archivosSeleccionados = [];
+      renderFilesPreview();
+      document.querySelectorAll('.doc-checklist input[type="checkbox"]')
+        .forEach(cb => cb.checked = false);
+      $('d-c-titulo').textContent = '0/120';
+      $('d-c-cuerpo').textContent = '0/2000';
+      // reset modo → todos
+      $('d-modo-chips').querySelectorAll('.doc-chip').forEach(b => b.classList.remove('active'));
+      $('d-modo-chips').querySelector('[data-modo="todos"]').classList.add('active');
+      modoActual = 'todos';
+      ['d-sel-grupos','d-sel-instrumentos','d-sel-combo'].forEach(id => $(id).style.display='none');
+    }
+
+    // ── Historial enviados ────────────────────────────────
+    const D_PAGE = 10;
+    let dData = [], dPage = 1, dTotal = 1;
+
+    async function cargarEnviados(forzar = false){
+      try {
+        const r = await fetch('/mensajes/app/enviados', { headers: headers() });        if (!r.ok) throw new Error('HTTP '+r.status);
+        const j = await r.json();
+        dData   = Array.isArray(j) ? j.sort((a,b)=>Number(b.id)-Number(a.id)) : [];
+        dTotal  = Math.max(1, Math.ceil(dData.length / D_PAGE));
+        renderEnviados(forzar ? 1 : dPage);
+      } catch(e){ console.warn('enviados:', e); }
+    }
+
+    function renderEnviados(pg){
+      dPage = pg;
+      const $el = $('d-list'), $pg = $('d-pager'), $em = $('d-empty');
+      if (!dData.length){ $em.style.display='block'; $el.innerHTML=''; $pg.innerHTML=''; return; }
+      $em.style.display = 'none';
+      const chunk = dData.slice((pg-1)*D_PAGE, pg*D_PAGE);
+      $el.innerHTML = chunk.map(m => {
+        const fecha = m.created_at ? new Date(m.created_at).toLocaleDateString('es-ES') : '';
+        return `<div class="card read" style="margin-bottom:0;">
+          <div class="meta">${fecha} <span class="sent-badge">✓ Enviado</span></div>
+          <h3 style="font-size:.95rem;">${esc(m.titulo||'Sin título')}</h3>
+          <div class="msg-body" style="font-size:.88rem;">${esc((m.cuerpo||'').slice(0,120))}${(m.cuerpo||'').length>120?'…':''}</div>
+        </div>`;
+      }).join('');
+      // pager
+      $pg.innerHTML = '';
+      if (dTotal > 1){
+        for(let i=1;i<=dTotal;i++){
+          const b = document.createElement('button');
+          b.className = 'pager-btn' + (i===pg?' active':'');
+          b.textContent = i; b.dataset.p = i;
+          b.addEventListener('click', ()=>renderEnviados(Number(b.dataset.p)));
+          $pg.appendChild(b);
+        }
+      }
+    }
+
+    function esc(s){ return String(s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+
+    // Arranque
+    document.addEventListener('DOMContentLoaded', ()=>{ cargarMetadata(); cargarEnviados(); });
+  })();
   </script>
 
   <!-- Motivos musicales (símbolos compatibles + tamaño reducido) -->

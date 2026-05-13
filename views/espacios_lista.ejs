@@ -1,40 +1,30 @@
 <% title = 'Espacios'; hero = false %>
 
-<div class="header-compact d-flex align-items-center justify-content-between" style="gap:12px;">
-  <h1 class="h1-titulo mb-0">Espacios</h1>
-  <div class="d-flex align-items-center gap-2">
-    <a href="/espacios/nuevo" class="btn-main-blanco">+ Nuevo espacio</a>
-  </div>
+<div class="header-compact">
+  <h1 class="h1-titulo">Espacios</h1>
+  <a href="/espacios/nuevo" class="btn-main-blanco">+ Nuevo espacio</a>
 </div>
 
 <% if (!espacios || espacios.length === 0) { %>
-  <p class="enlace-final" style="text-align:center;margin-top:2rem;">No hay espacios registrados.</p>
+  <p class="text-muted mt-3 text-center">No hay espacios registrados.</p>
 <% } else { %>
-  <div class="dashboard-grid" style="margin-top:14px;">
+  <div class="dashboard-grid">
     <% espacios.forEach(e => { %>
-      <div class="card-oro d-flex justify-content-between align-items-center" style="padding:12px;gap:10px;">
-        <!-- Nombre (enlace para editar) -->
-        <a href="/espacios/editar/<%= e.id %>" style="font-weight:700;flex:1;text-decoration:none;color:inherit;">
-          <%= e.nombre %>
-        </a>
-        <!-- Icono de ubicación -->
-        <% if (e.ubicacion) { %>
-          <a href="<%= e.ubicacion %>" target="_blank" rel="noopener noreferrer" 
-             title="Ver en Google Maps" style="display:flex;align-items:center;">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16">
-              <path d="M8 0a5.53 5.53 0 0 0-5.5 5.5c0 3.038 5.5 10.5 5.5 10.5s5.5-7.462 5.5-10.5A5.53 5.53 0 0 0 8 0zm0 8a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5z"/>
-            </svg>
-          </a>
+      <a href="/espacios/editar/<%= e.id %>"
+         class="card activo card--josg"
+         style="text-decoration:none;">
+        <div class="alumno-nombre"><%= e.nombre %></div>
+        <% if (e.propietario) { %>
+          <div class="alumno-instrumento"><%= e.propietario %></div>
         <% } %>
-      </div>
+        <% if (e.aforo) { %>
+          <div class="alumno-grupo">Aforo: <%= e.aforo %></div>
+        <% } %>
+      </a>
     <% }) %>
   </div>
 <% } %>
 
-<div class="volver-bloque-izquierda mt-4">
+<div class="volver-bloque-izquierda">
   <a href="/configuracion" class="enlace-final">← Volver a configuración</a>
 </div>
-
-
-
-

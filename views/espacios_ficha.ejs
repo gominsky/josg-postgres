@@ -1,103 +1,91 @@
 <% const isEdit = Boolean(espacio && espacio.id); %>
-<% title = isEdit ? 'Editar Espacio' : 'Nuevo Espacio'; %>
+<% title = isEdit ? 'Editar espacio' : 'Nuevo espacio'; %>
 <% hero = false; %>
 
-<h1 class="h1-titulo"><%= title %></h1>
+<div class="header-compact">
+  <h1 class="h1-titulo"><%= title %></h1>
+  <a href="/espacios" class="enlace-final">← Volver</a>
+</div>
 
-<form id="form-espacio"
-      method="POST"
+<form id="form-espacio" method="POST"
       action="<%= isEdit ? '/espacios/editar/' + espacio.id : '/espacios' %>"
-      class="formulario-alumno"
-      style="border:2px solid #FF9501;border-radius:.75rem;padding:1rem;">
+      class="formulario-alumno contenedor-borde">
 
-  <!-- Datos principales -->
   <div class="grupo-campos">
     <h2>Datos del espacio</h2>
     <div class="form-grid-2">
-      <label>Nombre
+      <label>Nombre:
         <input type="text" name="nombre" required value="<%= espacio?.nombre || '' %>">
       </label>
-      <label>Propietario
-        <input type="text" name="propietario" required value="<%= espacio?.propietario || '' %>">
+      <label>Propietario:
+        <input type="text" name="propietario" value="<%= espacio?.propietario || '' %>">
       </label>
-    </div>
-    <div class="form-grid-2">
-      <label>Dirección
-        <input type="text" name="direccion" required value="<%= espacio?.direccion || '' %>">
+      <label>Dirección:
+        <input type="text" name="direccion" value="<%= espacio?.direccion || '' %>">
       </label>
-      <label>Ubicación (enlace de Google Maps)
+      <label>Ubicación (Google Maps):
         <input type="url" name="ubicacion" placeholder="https://maps.google.com/…" value="<%= espacio?.ubicacion || '' %>">
         <% if (isEdit && espacio?.ubicacion) { %>
-          <a href="<%= espacio.ubicacion %>" target="_blank" rel="noopener noreferrer">Ver en Google Maps</a>
+          <a href="<%= espacio.ubicacion %>" target="_blank" rel="noopener" class="enlace-final-naranja" style="font-size:.8rem">Ver en mapa →</a>
         <% } %>
       </label>
     </div>
   </div>
 
-  <!-- Contacto -->
   <div class="grupo-campos">
     <h2>Contacto</h2>
-    <div class="form-grid-3">
-      <label>Teléfono
+    <div class="form-grid-2">
+      <label>Teléfono:
         <input type="text" name="telefono" value="<%= espacio?.telefono || '' %>">
       </label>
-      <label>Email
-        <input type="email" class="input-alto" name="email" value="<%= espacio?.email || '' %>">
+      <label>Email:
+        <input type="email" name="email" value="<%= espacio?.email || '' %>">
       </label>
-      <label>Sitio web
+      <label>Sitio web:
         <input type="text" name="sitio_web" value="<%= espacio?.sitio_web || '' %>">
       </label>
     </div>
   </div>
 
-  <!-- Clasificación -->
   <div class="grupo-campos">
     <h2>Clasificación</h2>
     <div class="form-grid-2">
-      <label>Tipo de espacio
-        <select name="tipo_espacio" class="input-alto">
-          <option value="">Seleccione</option>
-          <option value="Auditorio"  <%= espacio?.tipo_espacio==='Auditorio' ? 'selected' : '' %>>Auditorio</option>
-          <option value="Teatro"     <%= espacio?.tipo_espacio==='Teatro' ? 'selected' : '' %>>Teatro</option>
-          <option value="Aire libre" <%= espacio?.tipo_espacio==='Aire libre' ? 'selected' : '' %>>Aire libre</option>
-          <option value="Otro" <%= espacio?.tipo_espacio==='Otro' ? 'selected' : '' %>>Otro</option>
+      <label>Tipo:
+        <select name="tipo_espacio">
+          <option value="">— Selecciona —</option>
+          <% ['Auditorio','Teatro','Sala de ensayo','Aire libre','Otro'].forEach(t => { %>
+            <option value="<%= t %>" <%= espacio?.tipo_espacio === t ? 'selected' : '' %>><%= t %></option>
+          <% }) %>
         </select>
       </label>
-      <label>Aforo
+      <label>Aforo:
         <input type="number" name="aforo" min="0" value="<%= espacio?.aforo ?? '' %>">
       </label>
     </div>
   </div>
 
-  <!-- Recursos y observaciones -->
   <div class="grupo-campos">
-    <h2>Recursos y observaciones</h2>
+    <h2>Notas</h2>
     <div class="form-grid-1">
-      <label>Recursos disponibles
+      <label>Recursos disponibles:
         <textarea name="recursos_disponibles" rows="3"><%= espacio?.recursos_disponibles || '' %></textarea>
       </label>
-      <label>Observaciones
+      <label>Observaciones:
         <textarea name="observaciones" rows="3"><%= espacio?.observaciones || '' %></textarea>
       </label>
     </div>
   </div>
 
   <div class="acciones-finales d-flex justify-content-between align-items-center mt-4">
-    <a href="/espacios" class="enlace-final">← Volver</a>
-    <div class="d-flex align-items-center gap-2">
-      <button type="submit" class="btn-main-blanco"><%= isEdit ? 'Actualizar' : 'Registrar' %></button>
-      <% if (isEdit) { %>
-        <button
-          type="submit"
-          class="btn-main-blanco"
-          form="form-espacio"
-          formaction="/espacios/eliminar/<%= espacio.id %>"
-          formmethod="POST"
-          onclick="return confirm('¿Eliminar este espacio?');"
-        >Eliminar</button>
-      <% } %>
-    </div>
+    <a href="/espacios" class="enlace-final-naranja">← Volver</a>
+    <button type="submit" class="btn-main-blanco"><%= isEdit ? 'Actualizar' : 'Crear espacio' %></button>
   </div>
 </form>
 
-
+<% if (isEdit) { %>
+  <form method="POST" action="/espacios/eliminar/<%= espacio.id %>"
+        onsubmit="return confirm('¿Eliminar este espacio?');"
+        class="text-center mt-3">
+    <button type="submit" class="btn-main-blanco btn-rojo btn-sm">Eliminar espacio</button>
+  </form>
+<% } %>

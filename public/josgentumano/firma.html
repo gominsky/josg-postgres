@@ -110,15 +110,32 @@
           },
           body: JSON.stringify(payload)
         });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
         const data = await res.json();
+
+        if (!res.ok) {
+          // Errores controlados del servidor (no convocado, QR expirado, etc.)
+          pintarMensaje(`❌ ${data.mensaje || 'No se pudo registrar la asistencia'}`, false);
+          sending = false;
+          return;
+        }
+
         if (data.success) {
-          const msg = data.mensaje || (data.yaFirmado ? "✅ Ya estaba registrada la asistencia" : "✅ Asistencia registrada");
-          pintarMensaje(msg, true);
+          const minutos = data.minutos_perdidos;
+          let msg = data.mensaje || '✅ Asistencia registrada';
+
+          // Estilo visual según si hay retraso
+          if (minutos && minutos > 0) {
+            $mensaje.style.color = '#b45309'; // ámbar — tarde pero registrado
+          } else {
+            $mensaje.style.color = '#166534'; // verde — puntual
+          }
+          $mensaje.textContent = msg;
+
           try { await qrScanner.stop(); } catch(e){}
           try { qrScanner?.clear?.(); } catch(e){}
         } else {
-          pintarMensaje(`❌ ${data.error || "No se pudo registrar la asistencia"}`, false);
+          pintarMensaje(`❌ ${data.mensaje || 'No se pudo registrar la asistencia'}`, false);
           sending = false;
         }
       } catch (err) {

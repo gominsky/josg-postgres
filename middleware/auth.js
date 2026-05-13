@@ -1,4 +1,14 @@
 // middleware/auth.js
+const jwt = require('jsonwebtoken');
+const JWT_SECRET = process.env.JWT_SECRET || 'josg_secret';
+
+// Helper: extrae y verifica el JWT del header Authorization
+function verifyBearer(req) {
+  const auth = req.headers['authorization'] || '';
+  const token = auth.startsWith('Bearer ') ? auth.slice(7).trim() : '';
+  if (!token) return null;
+  try { return jwt.verify(token, JWT_SECRET); } catch { return null; }
+}
 
 // --- Helper: cómo fallar según el área --------------------------------------
 function handleAuthFail(req, res) {
@@ -58,12 +68,23 @@ function isDocente(req, res, next) {
 // --- Middlewares para API (JSON) --------------------------------------------
 function isAuthenticatedApi(req, res, next) {
   if (hasWebSession(req)) return next();
+  const payload = verifyBearer(req);
+  if (payload) { req.jwtPayload = payload; return next(); }
   return res.status(401).json({ error: 'auth_required' });
 }
 
 function isDocenteApi(req, res, next) {
-  if (!hasWebSession(req)) return res.status(401).json({ error: 'auth_required' });
-  const rol = getRole(req);
+  // 1) Sesión web
+  if (hasWebSession(req)) {
+    const rol = getRole(req);
+    if (rol === 'docente' || rol === 'admin') return next();
+    return res.status(403).json({ error: 'forbidden' });
+  }
+  // 2) JWT Bearer
+  const payload = verifyBearer(req);
+  if (!payload) return res.status(401).json({ error: 'auth_required' });
+  req.jwtPayload = payload;
+  const rol = (payload.role || payload.rol || '').toLowerCase();
   if (rol === 'docente' || rol === 'admin') return next();
   return res.status(403).json({ error: 'forbidden' });
 }

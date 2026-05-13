@@ -1,155 +1,131 @@
-<% title = 'Centro de ayuda' %>
-<% hero  = false %>
+<% title = 'Centro de ayuda'; hero = false %>
 
-<div id="help-wrap" class="container my-4">
-
-  <div class="head">
-    <h1>Centro de ayuda</h1>
-    <div class="search">
-      <input id="help-q" type="search" placeholder="Buscar… (músicos, eventos, guardias…)" autocomplete="off">
-    </div>
-  </div>
-
-  <div class="grid" id="help-grid">
-    <!-- Josg en tu mano -->
-    <a href="/firmas/ayuda" class="card tone-amber"
-      data-text="firmas asistencia qr escaneo camara cámara geolocalizacion ubicacion ubicación eventos">
-      <div class="ic"><svg><use href="#i-qr"/></svg></div>
-      <div class="body">
-        <p class="ttl">¡JOSG en tu mano!</p>
-        <p class="mut">Escaneo QR para registro de asistencia y ubicación opcional.</p>
-        <div class="tags">
-          <span class="tag">QR</span><span class="tag">Asistencia</span><span class="tag">App</span>
-        </div>
-      </div>
-    </a>
-
-    <!-- Músicos -->
-    <a href="/alumnos/ayuda" class="card tone-amber"
-       data-text="musicos alumnos grupos instrumentos cuotas pagos foto baja eliminar">
-      <div class="ic"><svg><use href="#i-user"/></svg></div>
-      <div class="body">
-        <p class="ttl">Músicos</p>
-        <p class="mut">Alta/edición, grupos e instrumentos, foto, cuotas y pagos, bajas.</p>
-        <div class="tags">
-          <span class="tag">Listado y filtros</span><span class="tag">Ficha</span><span class="tag">Finanzas</span>
-        </div>
-      </div>
-    </a>
-
-    <!-- Eventos -->
-    <a href="/eventos/ayuda" class="card tone-amber"
-       data-text="eventos calendario listado qr firmas asistencia guardias">
-      <div class="ic"><svg><use href="#i-calendar"/></svg></div>
-      <div class="body">
-        <p class="ttl">Eventos</p>
-        <p class="mut">Calendario, listado por rango, QR, firmas y control de asistencia.</p>
-        <div class="tags">
-          <span class="tag">Calendario</span><span class="tag">Firmas</span><span class="tag">QR</span>
-        </div>
-      </div>
-    </a>
-  <!-- Informes -->
-<a href="/informes/ayuda" class="card tone-amber"
-data-text="informes listados atril horas certificados pdf exportar constructor">
-<div class="ic" aria-hidden="true">
- <!-- SVG inline -->
- <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22"
-      viewBox="0 0 24 24" fill="none" stroke="currentColor"
-      stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-   <rect x="4" y="3" width="16" height="18" rx="2"></rect>
-   <line x1="8" y1="8"  x2="16" y2="8"></line>
-   <line x1="8" y1="12" x2="16" y2="12"></line>
-   <line x1="8" y1="16" x2="13" y2="16"></line>
- </svg>
-</div>
-<div class="body">
- <p class="ttl">Informes</p>
- <p class="mut">Listados, pruebas de atril, horas y exportación.</p>
- <div class="tags">
-   <span class="tag">Listados</span><span class="tag">Atril</span><span class="tag">PDF</span>
- </div>
-</div>
-</a>
-<!-- Partituras -->
-<a href="/partituras/ayuda" class="card tone-amber"
-   data-text="partituras obras autor titulo título grupos instrumentos pdf zip audio video vídeo enlaces app alumnos josg en tu mano">
-  <div class="ic"><svg><use href="#i-score"/></svg></div>
-  <div class="body">
-    <p class="ttl">Partituras</p>
-    <p class="mut">Repositorio web y uso en la app de alumnos.</p>
-    <div class="tags">
-      <span class="tag">Repositorio</span><span class="tag">PDF/ZIP</span><span class="tag">App</span>
-    </div>
-  </div>
-</a>
-<!-- Mensajes -->
-<a href="/mensajes/ayuda" class="card tone-amber"
-   data-text="mensajes avisos adjuntos enlaces push leido leído notificaciones">
-  <div class="ic"><svg><use href="#i-mail"/></svg></div>
-  <div class="body">
-    <p class="ttl">Mensajes</p>
-    <p class="mut">Bandeja, composición, adjuntos y push.</p>
-    <div class="tags">
-      <span class="tag">Bandeja</span><span class="tag">Adjuntos</span><span class="tag">Push</span>
-    </div>
-  </div>
-</a>
-<!-- Configuración -->
-<a href="/configuracion/ayuda/configuracion" class="card tone-amber"
-   data-text="configuracion ajustes usuarios docentes grupos instrumentos espacios ausencias actividades guardias backup copia seguridad">
-  <div class="ic"><svg><use href="#i-gear"/></svg></div>
-  <div class="body">
-    <p class="ttl">Configuración</p>
-    <p class="mut">Usuarios, Docentes, Grupos, Instrumentos, Espacios, Ausencias, Actividades, Guardias y Backup.</p>
-    <div class="tags">
-      <span class="tag">Usuarios</span><span class="tag">Grupos</span><span class="tag">Instrumentos</span>
-    </div>
-  </div>
-</a>
-
+<div class="header-compact">
+  <h1 class="h1-titulo">Centro de ayuda</h1>
+  <input id="help-q" type="search" placeholder="Buscar tema…"
+         autocomplete="off" class="help-search">
 </div>
 
-<div class="panel-header" style="margin-top:10px;">
-    <a href="/configuracion" class="enlace-final">← Volver a Configuración</a>
-  </div>
+<div class="action-grid" id="help-grid">
+
+  <a href="/firmas/ayuda" class="action-card"
+     data-text="firmas asistencia qr escaneo camara geolocalizacion ubicacion app">
+    <div>
+      <p class="action-title">JOSG en tu mano</p>
+      <p class="action-desc">Registro de asistencia mediante QR desde el móvil, con geolocalización opcional.</p>
+      <p class="req-line">
+        <span class="badge-soft">QR</span>
+        <span class="badge-soft">Asistencia</span>
+        <span class="badge-soft">App</span>
+      </p>
+    </div>
+  </a>
+
+  <a href="/alumnos/ayuda" class="action-card"
+     data-text="musicos alumnos grupos instrumentos cuotas pagos foto baja eliminar">
+    <div>
+      <p class="action-title">Músicos</p>
+      <p class="action-desc">Alta y edición de músicos, asignación a grupos e instrumentos, cuotas y bajas.</p>
+      <p class="req-line">
+        <span class="badge-soft">Listado</span>
+        <span class="badge-soft">Ficha</span>
+        <span class="badge-soft">Finanzas</span>
+      </p>
+    </div>
+  </a>
+
+  <a href="/eventos/ayuda" class="action-card"
+     data-text="eventos calendario listado qr firmas asistencia plantillas planos invitados reservas">
+    <div>
+      <p class="action-title">Eventos</p>
+      <p class="action-desc">Calendario, firma manual, plantillas de convocatoria, planos e invitados.</p>
+      <p class="req-line">
+        <span class="badge-soft">Calendario</span>
+        <span class="badge-soft">Plantillas</span>
+        <span class="badge-soft">Planos</span>
+      </p>
+    </div>
+  </a>
+
+  <a href="/informes/ayuda" class="action-card"
+     data-text="informes listados atril horas certificados pdf exportar constructor">
+    <div>
+      <p class="action-title">Informes</p>
+      <p class="action-desc">Listados dinámicos, pruebas de atril, porcentaje de asistencia y exportación PDF.</p>
+      <p class="req-line">
+        <span class="badge-soft">Listados</span>
+        <span class="badge-soft">Atril</span>
+        <span class="badge-soft">PDF</span>
+      </p>
+    </div>
+  </a>
+
+  <a href="/partituras/ayuda" class="action-card"
+     data-text="partituras obras autor titulo grupos instrumentos pdf zip audio video app">
+    <div>
+      <p class="action-title">Partituras</p>
+      <p class="action-desc">Repositorio de partituras y acceso desde la app de músicos.</p>
+      <p class="req-line">
+        <span class="badge-soft">Repositorio</span>
+        <span class="badge-soft">PDF / ZIP</span>
+        <span class="badge-soft">App</span>
+      </p>
+    </div>
+  </a>
+
+  <a href="/mensajes/ayuda" class="action-card"
+     data-text="mensajes avisos adjuntos push notificaciones bandeja leido">
+    <div>
+      <p class="action-title">Mensajes</p>
+      <p class="action-desc">Bandeja de entrada, composición de mensajes, adjuntos y notificaciones push.</p>
+      <p class="req-line">
+        <span class="badge-soft">Bandeja</span>
+        <span class="badge-soft">Adjuntos</span>
+        <span class="badge-soft">Push</span>
+      </p>
+    </div>
+  </a>
+
+  <a href="/guardias/ayuda" class="action-card"
+     data-text="guardias control acceso seguridad vigilancia entrada salida">
+    <div>
+      <p class="action-title">Guardias</p>
+      <p class="action-desc">Control de acceso y registro de entradas y salidas en eventos.</p>
+      <p class="req-line">
+        <span class="badge-soft">Acceso</span>
+        <span class="badge-soft">Registro</span>
+      </p>
+    </div>
+  </a>
+
+  <a href="/configuracion/ayuda/configuracion" class="action-card"
+     data-text="configuracion usuarios docentes grupos instrumentos espacios ausencias actividades backup ajustes">
+    <div>
+      <p class="action-title">Configuración</p>
+      <p class="action-desc">Usuarios, grupos, instrumentos, espacios, ausencias, actividades y ajustes generales.</p>
+      <p class="req-line">
+        <span class="badge-soft">Usuarios</span>
+        <span class="badge-soft">Grupos</span>
+        <span class="badge-soft">Ajustes</span>
+      </p>
+    </div>
+  </a>
+
 </div>
 
-<!-- Iconos -->
-<svg width="0" height="0" style="position:absolute;visibility:hidden">
-  <symbol id="i-user" viewBox="0 0 24 24"><path d="M12 12a5 5 0 1 0-5-5 5 5 0 0 0 5 5Z"/><path d="M3 22a9 9 0 0 1 18 0"/></symbol>
-  <symbol id="i-calendar" viewBox="0 0 24 24"><path d="M3 5h18v16H3z"/><path d="M8 3v4M16 3v4M3 9h18"/></symbol>
-  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 2 4 5v6c0 5 3.5 9 8 11 4.5-2 8-6 8-11V5Z"/></symbol>
-  <symbol id="i-coins" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="7" ry="3"/><path d="M5 5v6c0 1.7 3.1 3 7 3s7-1.3 7-3V5M5 11v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6"/></symbol>
-  <symbol id="i-receipt" viewBox="0 0 24 24"><path d="M6 2h12v20l-3-2-3 2-3-2-3 2z"/><path d="M8 7h8M8 11h8M8 15h8"/></symbol>
-  <symbol id="i-qr" viewBox="0 0 24 24"><path d="M3 3h8v8H3zM13 3h8v8h-8zM3 13h8v8H3zM16 13h5v5h-5zM13 16h2v5h-2z"/></symbol>
-  <symbol id="i-gear" viewBox="0 0 24 24">
-    <path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/>
-    <path d="M19.4 15a7.8 7.8 0 0 0 .1-2l2-1.2-1.6-2.8-2.2.5a7.6 7.6 0 0 0-1.7-1L13.5 4h-3L9 6.5a7.6 7.6 0 0 0-1.7 1l-2.2-.5L3.5 9l2 1.2a7.8 7.8 0 0 0 .1 2L3.5 13.4 5 16.2l2.2-.5c.5.4 1.1.7 1.7 1L10.5 20h3l1.3-2.3c.6-.3 1.2-.6 1.7-1l2.2.5 1.5-2.8Z"/>
-  </symbol>
-  <symbol id="i-score" viewBox="0 0 24 24">
-    <path d="M9 4v12.5a3.5 3.5 0 1 1-2-3.1V4h2Z"/>
-    <path d="M17 6v9.5a3.5 3.5 0 1 1-2-3.1V6h2Z"/>
-  </symbol>
-  <symbol id="i-mail" viewBox="0 0 24 24">
-  <rect x="3" y="5" width="18" height="14" rx="2"></rect>
-  <path d="M3 7l9 6 9-6"></path>
-  </symbol>
-
-
-</svg>
+<div class="volver-bloque-izquierda mt-3">
+  <a href="/" class="enlace-final">← Volver al inicio</a>
+</div>
 
 <script>
 (() => {
   const q = document.getElementById('help-q');
-  const cards = Array.from(document.querySelectorAll('#help-grid .card'));
-  function filtrar(){
-    const s = (q.value || '').toLowerCase().trim();
-    cards.forEach(c => {
-      const t = c.innerText.toLowerCase() + ' ' + (c.getAttribute('data-text')||'');
+  q?.addEventListener('input', () => {
+    const s = q.value.toLowerCase().trim();
+    document.querySelectorAll('#help-grid .action-card').forEach(c => {
+      const t = c.textContent.toLowerCase() + ' ' + (c.dataset.text || '');
       c.style.display = !s || t.includes(s) ? '' : 'none';
     });
-  }
-  q && q.addEventListener('input', filtrar);
+  });
 })();
 </script>

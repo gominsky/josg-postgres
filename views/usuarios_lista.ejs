@@ -1,26 +1,24 @@
-<% title = 'Usuarios' %>
-<% hero = false %>
-<% title = 'Usuarios' %>
-<% hero = false %>
+<% title = 'Usuarios'; hero = false %>
+
 <div class="header-compact">
-  <h1 class="h1-titulo mb-0"><%= title %></h1>
-  <a href="/usuarios/nuevo" class="btn-main-blanco">+ Añadir Usuario</a>
-</div>
-<% if (usuarios && usuarios.length > 0) { %>
-    <div class="dashboard-grid" id="grid-usuarios">
-      <% usuarios.forEach(u => { %>
-        <a href="/usuarios/<%= u.id %>/editar" class="card activo">
-          <div class="fw-bold"><%= u.nombre %> <%= u.apellidos %></div>
-          <div class="text-sm text-muted" style="font-size:0.85rem; margin-top:0.25rem;"><%= u.email %></div>
-          <div class="text-sm" style="font-size:0.85rem; color:#666; margin-top:0.2rem;"><%= u.rol.charAt(0).toUpperCase() + u.rol.slice(1) %></div>
-        </a>
-      <% }) %>
-    </div>
-  <% } else { %>
-    <p class="text-center mt-4">No hay usuarios registrados.</p>
-  <% } %>  
-  <div class="volver-bloque-izquierda">
-    <a href="/configuracion" class="enlace-final">← Volver a configuración</a>
-  </div>
+  <h1 class="h1-titulo">Usuarios</h1>
+  <a href="/usuarios/nuevo" class="btn-main-blanco">+ Añadir usuario</a>
 </div>
 
+<% if (!usuarios || usuarios.length === 0) { %>
+  <p class="text-muted mt-3 text-center">No hay usuarios registrados.</p>
+<% } else { %>
+  <div class="dashboard-grid">
+    <% usuarios.forEach(u => { %>
+      <a href="/usuarios/<%= u.id %>/editar" class="card activo card--josg" style="text-decoration:none;">
+        <div class="alumno-nombre"><%= u.nombre %> <%= u.apellidos %></div>
+        <div class="alumno-instrumento"><%= u.email %></div>
+        <div class="alumno-grupo"><%= u.rol.charAt(0).toUpperCase() + u.rol.slice(1).replace('_', ' ') %></div>
+      </a>
+    <% }) %>
+  </div>
+<% } %>
+
+<div class="volver-bloque-izquierda">
+  <a href="/configuracion" class="enlace-final">← Volver a configuración</a>
+</div>

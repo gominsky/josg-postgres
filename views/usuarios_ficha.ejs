@@ -1,19 +1,24 @@
 <% const isEdicion = Boolean(usuario && usuario.id); %>
-<% title = isEdicion ? 'Editar Usuario' : 'Nuevo Usuario'; %>
+<% title = isEdicion ? 'Editar usuario' : 'Nuevo usuario'; %>
 <% hero = false; %>
 
-<h1 class="h1-titulo"><%= title %></h1>
+<div class="header-compact">
+  <h1 class="h1-titulo"><%= title %></h1>
+  <a href="/usuarios" class="enlace-final">← Volver</a>
+</div>
 
-<form id="form-usuario" method="POST" action="<%= isEdicion ? '/usuarios/' + usuario.id + '/editar' : '/usuarios/nuevo' %>" class="formulario-alumno" style="border: 2px solid #FF9501; border-radius: 0.75rem; padding: 1rem;">
+<form method="POST"
+      action="<%= isEdicion ? '/usuarios/' + usuario.id + '/editar' : '/usuarios/nuevo' %>"
+      class="formulario-alumno contenedor-borde">
 
   <div class="grupo-campos">
-    <h2>Datos Personales</h2>
+    <h2>Datos personales</h2>
     <div class="form-grid-2">
       <label>Nombre:
-        <input type="text" name="nombre" id="nombre" value="<%= usuario?.nombre || '' %>" required>
+        <input type="text" name="nombre" required value="<%= usuario?.nombre || '' %>">
       </label>
       <label>Apellidos:
-        <input type="text" name="apellidos" id="apellidos" value="<%= usuario?.apellidos || '' %>" required>
+        <input type="text" name="apellidos" required value="<%= usuario?.apellidos || '' %>">
       </label>
     </div>
   </div>
@@ -22,38 +27,37 @@
     <h2>Credenciales</h2>
     <div class="form-grid-2">
       <label>Email:
-        <input type="email" name="email" id="email" value="<%= usuario?.email || '' %>" required>
+        <input type="email" name="email" required value="<%= usuario?.email || '' %>">
       </label>
-      <label><%= isEdicion ? 'Contraseña (deja vacío para mantener)' : 'Contraseña' %>:
-        <input type="password" name="password" id="password" <%= isEdicion ? '' : 'required' %>>
+      <label><%= isEdicion ? 'Contraseña (vacío = mantener)' : 'Contraseña' %>:
+        <input type="password" name="password" <%= isEdicion ? '' : 'required' %>>
       </label>
-            <label>Rol:
-        <select name="rol" id="rol" required>
-          <option value="admin"        <%= usuario?.rol === 'admin'        ? 'selected' : '' %>>Admin</option>
-          <option value="docente"      <%= usuario?.rol === 'docente'      ? 'selected' : '' %>>Docente</option>
-          <option value="usuario"      <%= usuario?.rol === 'usuario'      ? 'selected' : '' %>>Usuario</option>
-          <!-- Nuevos roles de guardia -->
-          <option value="guardia_josg" <%= usuario?.rol === 'guardia_josg' ? 'selected' : '' %>>Guardia JOSG</option>
-          <option value="guardia_oeg"  <%= usuario?.rol === 'guardia_oeg'  ? 'selected' : '' %>>Guardia OEG</option>
+      <label>Rol:
+        <select name="rol" required>
+          <% [
+            ['admin',        'Admin'],
+            ['docente',      'Docente'],
+            ['usuario',      'Usuario'],
+            ['guardia_josg', 'Guardia JOSG'],
+            ['guardia_oeg',  'Guardia OEG'],
+          ].forEach(([val, lbl]) => { %>
+            <option value="<%= val %>" <%= usuario?.rol === val ? 'selected' : '' %>><%= lbl %></option>
+          <% }) %>
         </select>
       </label>
     </div>
   </div>
 
   <div class="acciones-finales d-flex justify-content-between align-items-center mt-4">
-  <a href="/usuarios" class="enlace-final">← Volver</a>
-  <div class="d-flex align-items-center gap-2">
+    <a href="/usuarios" class="enlace-final-naranja">← Volver</a>
     <button type="submit" class="btn-main-blanco"><%= isEdicion ? 'Actualizar' : 'Registrar' %></button>
-    <% if (isEdicion) { %>
-      <button
-        type="submit"
-        class="btn-main-blanco"
-        formaction="/usuarios/<%= usuario.id %>/eliminar"
-        formmethod="POST"
-        onclick="return confirm('¿Eliminar este usuario?');"
-      >Eliminar</button>
-    <% } %>
   </div>
-</div>
 </form>
 
+<% if (isEdicion) { %>
+  <form method="POST" action="/usuarios/<%= usuario.id %>/eliminar"
+        onsubmit="return confirm('¿Eliminar este usuario?');"
+        class="text-center mt-3">
+    <button type="submit" class="btn-main-blanco btn-rojo btn-sm">Eliminar usuario</button>
+  </form>
+<% } %>

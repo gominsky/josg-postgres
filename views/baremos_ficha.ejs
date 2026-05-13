@@ -2,64 +2,36 @@
 <% title = isEdicion ? 'Editar baremo' : 'Nuevo baremo'; %>
 <% hero = false; %>
 
-<h1 class="h1-titulo"><%= title %></h1>
+<div class="header-compact">
+  <h1 class="h1-titulo"><%= title %></h1>
+  <a href="/baremos" class="enlace-final">← Volver</a>
+</div>
 
-<form
-  id="form-baremo"
-  method="POST"
-  action="<%= isEdicion ? '/baremos/editar/' + baremo.id : '/baremos' %>"
-  class="formulario-alumno"
-  style="border: 2px solid #FF9501; border-radius: 0.75rem; padding: 1rem;"
->
-
+<form method="POST"
+      action="<%= isEdicion ? '/baremos/editar/' + baremo.id : '/baremos' %>"
+      class="formulario-alumno contenedor-borde">
   <div class="grupo-campos">
     <h2>Datos del baremo</h2>
     <div class="form-grid-2">
       <label>Tipo:
-        <input
-          type="text"
-          name="tipo"
-          id="tipo"
-          value="<%= baremo?.tipo || '' %>"
-          required
-        >
+        <input type="text" name="tipo" required value="<%= baremo?.tipo || '' %>">
       </label>
-
       <label>Porcentaje:
-        <input
-          type="number"
-          name="porcentaje"
-          id="porcentaje"
-          min="0"
-          max="100"
-          step="0.01"
-          value="<%= baremo?.porcentaje || '' %>"
-          required
-        > %
+        <input type="number" name="porcentaje" min="0" max="100" step="0.01"
+               required value="<%= baremo?.porcentaje || '' %>"> %
       </label>
     </div>
   </div>
-
   <div class="acciones-finales d-flex justify-content-between align-items-center mt-4">
-    <a href="/baremos" class="enlace-final">← Volver</a>
-    <div class="d-flex align-items-center gap-2">
-      <button type="submit" class="btn-main-blanco">
-        <%= isEdicion ? 'Actualizar' : 'Registrar' %>
-      </button>
-
-      <% if (isEdicion) { %>
-        <button
-          type="submit"
-          class="btn-main-blanco"
-          form="form-baremo"
-          formaction="/baremos/eliminar/<%= baremo.id %>"
-          formmethod="POST"
-          onclick="return confirm('¿Eliminar este baremo?');"
-        >
-          Eliminar
-        </button>
-      <% } %>
-    </div>
+    <a href="/baremos" class="enlace-final-naranja">← Volver</a>
+    <button type="submit" class="btn-main-blanco"><%= isEdicion ? 'Actualizar' : 'Crear' %></button>
   </div>
-
 </form>
+
+<% if (isEdicion) { %>
+  <form method="POST" action="/baremos/eliminar/<%= baremo.id %>"
+        onsubmit="return confirm('¿Eliminar este baremo?');"
+        class="text-center mt-3">
+    <button type="submit" class="btn-main-blanco btn-rojo btn-sm">Eliminar baremo</button>
+  </form>
+<% } %>

@@ -1,11 +1,10 @@
 <% title = 'Ayuda · Alumnos (gestión de músicos)' %>
 <% hero  = false %>
 
-<link rel="stylesheet" href="/styles/estilos_help.css">
 
 <div class="help-wrap" data-help-theme="blue">
   <div class="panel">
-    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+    <div class="help-article-head">
       <h1 class="h1">Ayuda · Alumnos <span style="opacity:.6">(gestión de músicos)</span></h1>
       <!-- sin CTA superior -->
     </div>
@@ -126,19 +125,18 @@
       <ul class="list">
         <li><strong>Estado</strong>: Todos, Activos, No activos.</li>
         <li><strong>Grupo</strong>: Todos o uno concreto.</li>
-        <li><strong>Buscar</strong>: por nombre, apellidos o instrumentos.</li>
+        <li><strong>Buscar</strong>: por nombre, apellidos o instrumentos (en tiempo real).</li>
       </ul>
     </div>
     <div class="card">
-      <h3>Vistas y ordenación</h3>
+      <h3>Vistas y colores</h3>
       <ul class="list">
-        <li><strong>Tarjetas</strong>: cuadrícula rápida con nombre e instrumento.</li>
-        <li><strong>Tabla</strong>: compacta, con cabeceras <em>ordenables</em>.</li>
-        <li>Columna <strong>Nombre</strong> ordena por <em>apellidos</em> (y nombre si empata).</li>
+        <li><strong>Tarjetas</strong>: cuadrícula con nombre e instrumento. Color según grupo: amarillo (JOSG), naranja (OEG), azul (Reservas), verde (Invitados).</li>
+        <li><strong>Tabla</strong>: compacta con cabeceras ordenables.</li>
+        <li>Usa el <strong>switch</strong> de la cabecera para alternar entre vistas.</li>
       </ul>
     </div>
   </div>
-  <p class="notice info">Usa el <strong>switch</strong> de la cabecera para alternar entre <em>Tarjetas</em> y <em>Lista</em>.</p>
 </section>
 
 <!-- Ficha del alumno -->

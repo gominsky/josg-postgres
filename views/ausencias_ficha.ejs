@@ -1,33 +1,33 @@
 <% const isEdicion = Boolean(item && item.id); %>
-<% title = isEdicion ? 'Editar ausencia' : 'Nueva ausencia'; %>
+<% title = isEdicion ? 'Editar tipo de ausencia' : 'Nuevo tipo de ausencia'; %>
 <% hero = false; %>
 
-<h1 class="h1-titulo"><%= title %></h1>
+<div class="header-compact">
+  <h1 class="h1-titulo"><%= title %></h1>
+  <a href="/ausencias" class="enlace-final">← Volver</a>
+</div>
 
-<form id="form-ausencia" method="POST" action="<%= isEdicion ? '/ausencias/editar/' + item.id : '/ausencias' %>" class="formulario-alumno" style="border: 2px solid #FF9501; border-radius: 0.75rem; padding: 1rem;">
+<form method="POST"
+      action="<%= isEdicion ? '/ausencias/editar/' + item.id : '/ausencias' %>"
+      class="formulario-alumno contenedor-borde">
   <div class="grupo-campos">
     <h2>Datos</h2>
     <div class="form-grid-2">
       <label>Tipo:
-        <input type="text" name="tipo" id="tipo" value="<%= item?.tipo || '' %>" required>
+        <input type="text" name="tipo" required value="<%= item?.tipo || '' %>">
       </label>
     </div>
   </div>
-
   <div class="acciones-finales d-flex justify-content-between align-items-center mt-4">
-    <a href="/ausencias" class="enlace-final">← Volver</a>
-    <div class="d-flex align-items-center gap-2">
-      <button type="submit" class="btn-main-blanco"><%= isEdicion ? 'Actualizar' : 'Registrar' %></button>
-      <% if (isEdicion) { %>
-        <button
-          type="submit"
-          class="btn-main-blanco"
-          form="form-ausencia"
-          formaction="/ausencias/eliminar/<%= item.id %>"
-          formmethod="POST"
-          onclick="return confirm('¿Eliminar esta ausencia?');"
-        >Eliminar</button>
-      <% } %>
-    </div>
+    <a href="/ausencias" class="enlace-final-naranja">← Volver</a>
+    <button type="submit" class="btn-main-blanco"><%= isEdicion ? 'Actualizar' : 'Crear' %></button>
   </div>
 </form>
+
+<% if (isEdicion) { %>
+  <form method="POST" action="/ausencias/eliminar/<%= item.id %>"
+        onsubmit="return confirm('¿Eliminar este tipo de ausencia?');"
+        class="text-center mt-3">
+    <button type="submit" class="btn-main-blanco btn-rojo btn-sm">Eliminar</button>
+  </form>
+<% } %>

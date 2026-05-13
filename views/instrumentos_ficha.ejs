@@ -1,50 +1,45 @@
 <% const isEdicion = Boolean(instrumento && instrumento.id); %>
-<% title = isEdicion ? 'Editar Instrumento' : 'Nuevo Instrumento'; %>
+<% title = isEdicion ? 'Editar instrumento' : 'Nuevo instrumento'; %>
 <% hero = false; %>
 
-<h1 class="h1-titulo"><%= title %></h1>
+<div class="header-compact">
+  <h1 class="h1-titulo"><%= title %></h1>
+  <a href="/instrumentos" class="enlace-final">← Volver</a>
+</div>
 
-<form 
-  id="form-instrumento" 
-  method="POST" 
-  action="<%= isEdicion ? '/instrumentos/editar/' + instrumento.id : '/instrumentos' %>" 
-  class="formulario-alumno" 
-  style="border: 2px solid #FF9501; border-radius: 0.75rem; padding: 1rem;"
->
+<form method="POST"
+      action="<%= isEdicion ? '/instrumentos/editar/' + instrumento.id : '/instrumentos' %>"
+      class="formulario-alumno contenedor-borde">
+
   <div class="grupo-campos">
-    <h2>Datos del Instrumento</h2>
+    <h2>Datos del instrumento</h2>
     <div class="form-grid-2">
       <label>Nombre:
-        <input type="text" name="nombre" id="nombre" value="<%= instrumento?.nombre || '' %>" required>
+        <input type="text" name="nombre" required value="<%= instrumento?.nombre || '' %>">
       </label>
       <label>Familia:
-        <select name="familia" required>
-          <% familias.forEach(fam => { %>
-            <option
-              value="<%= fam %>"
-              <%= instrumento && instrumento.familia === fam ? 'selected' : '' %>
-            ><%= fam %></option>
+        <select name="familia">
+          <option value="">— Sin familia —</option>
+          <% ['Cuerda','Viento madera','Viento metal','Percusión'].forEach(f => { %>
+            <option value="<%= f %>" <%= instrumento?.familia === f ? 'selected' : '' %>><%= f %></option>
           <% }) %>
         </select>
-       </label>
+      </label>
     </div>
   </div>
 
   <div class="acciones-finales d-flex justify-content-between align-items-center mt-4">
-    <a href="/instrumentos" class="enlace-final">← Volver</a>
-    <div class="d-flex align-items-center gap-2">
-      <button type="submit" class="btn-main-blanco"><%= isEdicion ? 'Actualizar' : 'Registrar' %></button>
-      <% if (isEdicion) { %>
-        <button
-          type="submit"
-          class="btn-main-blanco"
-          formaction="/instrumentos/<%= instrumento.id %>?_method=DELETE"
-          formmethod="POST"
-          onclick="return confirm('¿Eliminar este instrumento?');"
-        >Eliminar</button>
-      <% } %>
-    </div>
+    <a href="/instrumentos" class="enlace-final-naranja">← Volver</a>
+    <button type="submit" class="btn-main-blanco">
+      <%= isEdicion ? 'Actualizar' : 'Crear instrumento' %>
+    </button>
   </div>
 </form>
 
-
+<% if (isEdicion) { %>
+  <form method="POST" action="/instrumentos/eliminar/<%= instrumento.id %>"
+        onsubmit="return confirm('¿Eliminar este instrumento?');"
+        class="text-center mt-3">
+    <button type="submit" class="btn-main-blanco btn-rojo btn-sm">Eliminar instrumento</button>
+  </form>
+<% } %>

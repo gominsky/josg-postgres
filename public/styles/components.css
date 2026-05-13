@@ -3637,3 +3637,169 @@ body:has(.evt-toolbar) .footer-content a {
   vertical-align: middle;
   letter-spacing: .02em;
 }
+
+/* ════════════════════════════════════════════════════════
+   CENTRO DE AYUDA
+   ════════════════════════════════════════════════════════ */
+
+/* Buscador del menú */
+.help-search {
+  flex: 0 0 260px;
+  height: 36px;
+  padding: .3rem .75rem;
+  border: 1.5px solid var(--border-strong);
+  border-radius: var(--radius);
+  font-size: .85rem;
+  background: var(--bg);
+}
+.help-search:focus {
+  outline: none;
+  border-color: var(--naranja);
+  box-shadow: 0 0 0 3px rgba(255,149,1,.12);
+}
+
+/* Icono en cards de ayuda */
+.help-icon {
+  font-size: 1.6rem;
+  margin-bottom: 6px;
+  display: block;
+}
+
+/* Artículos de ayuda — estructura común */
+.help-wrap {
+  max-width: 820px;
+}
+.help-wrap .panel {
+  background: var(--bg);
+  border-radius: var(--radius-lg);
+  padding: 28px 32px;
+  border: 1px solid var(--border);
+}
+.help-wrap h1 { font-size: 1.4rem; font-weight: 800; margin-bottom: 16px; }
+.help-wrap h2 { font-size: 1rem; font-weight: 700; margin: 24px 0 8px; color: var(--negro); }
+.help-wrap h3 { font-size: .9rem; font-weight: 700; margin: 16px 0 6px; color: var(--naranja); }
+.help-wrap p  { font-size: .88rem; line-height: 1.65; color: var(--muted); margin-bottom: 10px; }
+.help-wrap ul, .help-wrap ol {
+  font-size: .88rem; line-height: 1.65; color: var(--muted);
+  margin-bottom: 10px; padding-left: 1.2rem;
+}
+.help-wrap li { margin-bottom: 4px; }
+
+/* Índice de navegación */
+.help-wrap .toc {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 24px;
+  padding: 12px 16px;
+  background: var(--bg-subtle);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+}
+.help-wrap .toc a {
+  font-size: .78rem;
+  font-weight: 600;
+  color: var(--naranja);
+  text-decoration: none;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--naranja);
+  white-space: nowrap;
+}
+.help-wrap .toc a:hover { background: var(--naranja-claro); }
+
+/* Secciones */
+.help-wrap .section {
+  border-top: 1px solid var(--border);
+  padding-top: 20px;
+  margin-top: 20px;
+}
+.help-wrap .section:first-of-type { border-top: none; padding-top: 0; margin-top: 0; }
+
+/* CTA links */
+.help-wrap .cta {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.help-wrap .cta a {
+  font-size: .78rem;
+  font-weight: 700;
+  padding: .25rem .65rem;
+  border-radius: var(--radius-sm);
+  border: 1.5px solid var(--naranja);
+  color: var(--naranja);
+  text-decoration: none;
+}
+.help-wrap .cta a:hover { background: var(--naranja-claro); }
+
+/* Pestañas segmento */
+.help-wrap .seg-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 20px;
+  border-bottom: 2px solid var(--border);
+  padding-bottom: 0;
+}
+.help-wrap .seg-tabs a {
+  font-size: .85rem;
+  font-weight: 700;
+  padding: 6px 16px;
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  text-decoration: none;
+  color: var(--muted);
+  border: 1px solid transparent;
+  border-bottom: none;
+  margin-bottom: -2px;
+}
+.help-wrap .seg-tabs a.is-active {
+  color: var(--negro);
+  background: var(--bg);
+  border-color: var(--border);
+  border-bottom: 2px solid var(--bg);
+}
+
+/* Vistas de pestañas */
+.help-wrap .view { display: none; }
+.help-wrap .view.is-active { display: block; }
+
+/* Código inline */
+.help-wrap code {
+  font-family: monospace;
+  font-size: .82rem;
+  background: var(--bg-subtle);
+  padding: 1px 5px;
+  border-radius: 4px;
+  color: var(--negro);
+}
+
+/* Callout / nota */
+.help-wrap .callout {
+  padding: 12px 16px;
+  border-radius: var(--radius);
+  border-left: 4px solid var(--naranja);
+  background: var(--naranja-claro);
+  font-size: .85rem;
+  margin: 12px 0;
+}
+.help-article-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+/* Tags de ayuda en tabla */
+.help-tags { display: flex; gap: 4px; flex-wrap: wrap; }
+.tag-help {
+  font-size: .68rem;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  white-space: nowrap;
+}

@@ -144,7 +144,9 @@ router.post('/login', async (req, res) => {
 /* ------------------------------ FIRMA POR QR ----------------------------- */
 // Protegido por JWT; toma el alumno_id del token (no del body)
 // minutos de cortesía por defecto (respeta tu env)
-const QR_GRACE_MINUTES = parseInt(process.env.QR_GRACE_MINUTES || '15', 10);
+const QR_GRACE_MINUTES  = parseInt(process.env.QR_GRACE_MINUTES  || '15', 10);
+const QR_OPEN_MINUTES   = parseInt(process.env.QR_OPEN_MINUTES   || '30', 10);  // minutos antes del inicio que abre el QR
+const QR_CLOSE_MINUTES  = parseInt(process.env.QR_CLOSE_MINUTES  || '90', 10);  // minutos después del inicio que cierra el QR
 
 async function handleFirmarQR(req, res) {
   try {
@@ -176,7 +178,41 @@ async function handleFirmarQR(req, res) {
       return res.status(400).json({ success: false, mensaje: 'Evento no válido o inactivo' });
     }
 
-    // tu SQL actual (no toco el cálculo)
+    // Verificar que el músico está asignado al evento
+    const asign = await db.query(
+      `SELECT 1 FROM evento_asignaciones
+        WHERE evento_id = $1::int AND alumno_id = $2::int`,
+      [evento_id, alumnoId]
+    );
+    if (asign.rowCount === 0) {
+      return res.status(403).json({
+        success: false,
+        mensaje: 'No estás convocado a este evento'
+      });
+    }
+
+    // Verificar ventana de tiempo del QR
+    const evRow = ev.rows[0];
+    if (evRow.fecha_inicio && evRow.hora_inicio) {
+      const horaStr = String(evRow.hora_inicio).slice(0, 5);
+      const fechaStr = String(evRow.fecha_inicio).slice(0, 10);
+      const inicio = new Date(`${fechaStr}T${horaStr}:00`);
+      const minutosDesdeInicio = (Date.now() - inicio.getTime()) / 60000;
+
+      if (minutosDesdeInicio < -QR_OPEN_MINUTES) {
+        return res.status(400).json({
+          success: false,
+          mensaje: `El QR todavía no está activo. Podrás firmar a partir de ${QR_OPEN_MINUTES} minutos antes del inicio.`
+        });
+      }
+      if (minutosDesdeInicio > QR_CLOSE_MINUTES) {
+        return res.status(400).json({
+          success: false,
+          mensaje: 'El plazo para firmar ha finalizado.'
+        });
+      }
+    }
+
     const sql = `
       WITH base AS (
         SELECT
@@ -241,12 +277,22 @@ async function handleFirmarQR(req, res) {
     const up = await db.query(sql, [alumnoId, evento_id, ubicacion, QR_GRACE_MINUTES]);
 
     const yaFirmado = up.rowCount === 0;
+    const minutos = up.rows[0]?.minutos_perdidos ?? null;
+
+    let mensaje;
+    if (yaFirmado) {
+      mensaje = 'Tu asistencia ya estaba registrada para este evento';
+    } else if (minutos && minutos > 0) {
+      mensaje = `✅ Asistencia registrada — llegas ${minutos} minuto${minutos !== 1 ? 's' : ''} tarde`;
+    } else {
+      mensaje = '✅ Asistencia registrada — ¡a tiempo!';
+    }
+
     return res.json({
       success: true,
       yaFirmado,
-      mensaje: yaFirmado ? 'Asistencia ya estaba registrada para este evento'
-                         : 'Asistencia registrada correctamente',
-      minutos_perdidos: up.rows[0]?.minutos_perdidos ?? null
+      mensaje,
+      minutos_perdidos: minutos
     });
   } catch (err) {
     console.error('firmar-qr:', err);

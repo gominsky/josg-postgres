@@ -1,25 +1,18 @@
-<% title = 'Baremos' %>
-<% hero = false %>
+<% title = 'Baremos'; hero = false %>
 
 <div class="header-compact">
   <h1 class="h1-titulo">Baremos</h1>
   <a href="/baremos/nuevo" class="btn-main-blanco">+ Añadir baremo</a>
 </div>
 
-<% if (baremos.length === 0) { %>
-  <p class="enlace-final" style="text-align: center; margin-top: 2rem;">
-    No hay baremos registrados.
-  </p>
+<% if (!baremos || baremos.length === 0) { %>
+  <p class="text-muted mt-3 text-center">No hay baremos registrados.</p>
 <% } else { %>
   <div class="dashboard-grid">
     <% baremos.forEach(b => { %>
-      <a href="/baremos/editar/<%= b.id %>" class="card-oro" style="text-decoration: none;">
-        <div style="font-weight: 600; font-size: 1rem;">
-          <%= b.tipo %>
-        </div>
-        <div>
-          <%= b.porcentaje %>%
-        </div>
+      <a href="/baremos/editar/<%= b.id %>" class="card activo card--oeg" style="text-decoration:none;">
+        <div class="alumno-nombre"><%= b.tipo %></div>
+        <div class="alumno-instrumento"><%= b.porcentaje %>%</div>
       </a>
     <% }) %>
   </div>

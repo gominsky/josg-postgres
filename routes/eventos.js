@@ -2,8 +2,38 @@ const express = require('express');
 const router = express.Router();
 const db = require('../database/db');
 const QRCode = require('qrcode');
+const QR_OPEN_MINUTES  = parseInt(process.env.QR_OPEN_MINUTES  || '30', 10);
+const QR_CLOSE_MINUTES = parseInt(process.env.QR_CLOSE_MINUTES || '90', 10);
+const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const { toISODate } = require('../utils/fechas');
 const { pdfControlAsistencia } = require('../utils/pdfControlAsistencia');
+
+// ── Bloqueo de modificaciones si el evento tiene firmas QR ──
+async function requireNoFirmas(req, res, next) {
+  const eventoId = parseInt(req.params.id, 10);
+  if (!Number.isFinite(eventoId)) return next();
+  try {
+    const { rows } = await db.query(
+      `SELECT COUNT(*) AS n FROM asistencias WHERE evento_id = $1 AND tipo = 'qr'`,
+      [eventoId]
+    );
+    if (parseInt(rows[0].n, 10) > 0) {
+      const esAPI = req.headers.accept?.includes('application/json') ||
+                    req.headers['content-type']?.includes('application/json');
+      if (esAPI) {
+        return res.status(423).json({
+          ok: false,
+          error: 'El evento tiene firmas registradas. Para modificar los músicos, usa Restaurar para reiniciar el evento.'
+        });
+      }
+      return res.status(423).send('El evento tiene firmas registradas. Usa Restaurar para reiniciar.');
+    }
+    next();
+  } catch(e) {
+    console.error('[requireNoFirmas]', e);
+    next(); // en caso de error de BD, dejamos pasar
+  }
+}
 // ── Helpers ──────────────────────────────────────────────
 async function grupoIdPorTipo(client, tipo /* 'invitados' | 'reservas' */) {
   const { rows } = await client.query(
@@ -628,29 +658,45 @@ router.get('/:id/qr', async (req, res) => {
       // Si quieres ocultar la hora si es 00:00, cambia esta línea
       fechaFormateada = `${fechaES}, ${hhmm}`;
     }
-    res.send(`
-      <html>
-        <head>
-          <title>QR para ${tituloConGrupo}</title>
-          <style>
-            body { font-family: sans-serif; text-align: center; background: #f4f4f4; padding: 2rem; }
-            .qr-container { background: white; display: inline-block; padding: 2rem; border-radius: 1rem; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
-            img { width: 300px; height: 300px; }
-            button { margin-top: 1.5rem; padding: 0.8rem 2rem; font-size: 1rem; border: none; border-radius: 0.5rem; background-color: #FF9501; color: white; cursor: pointer; }
-            @media print { button { display: none; } }
-          </style>
-        </head>
-        <body>
-          <div class="qr-container">
-            <h2>${tituloConGrupo}</h2>
-            <p><strong>${fechaFormateada}</strong></p>
-            <img src="${qrDataUrl}" alt="QR Evento ${tituloConGrupo}" />
-            <p style="margin-top:1rem;color:gray;">Escanéalo con la app del alumno</p>
-            <button onclick="window.print()">Imprimir QR</button>
-          </div>
-        </body>
-      </html>
-    `);
+    res.send(`<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>QR · ${esc(tituloConGrupo)}</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:system-ui,sans-serif;background:#fff3dc;min-height:100vh;
+         display:flex;align-items:center;justify-content:center;padding:24px;}
+    .card{background:#fff;border-radius:20px;padding:32px 28px;text-align:center;
+          box-shadow:0 4px 24px rgba(0,0,0,.10);max-width:380px;width:100%;}
+    .logo{width:56px;margin-bottom:16px;}
+    h1{font-size:1.15rem;font-weight:800;color:#111827;margin-bottom:4px;}
+    .fecha{font-size:.85rem;color:#FF9501;font-weight:700;margin-bottom:20px;}
+    .qr-wrap{background:#f9f9f9;border-radius:12px;padding:16px;display:inline-block;margin-bottom:20px;}
+    .qr-wrap img{width:260px;height:260px;display:block;}
+    .hint{font-size:.78rem;color:#6b7280;margin-bottom:20px;line-height:1.5;}
+    .badge{display:inline-block;background:#111827;color:#fff;font-size:.72rem;
+           font-weight:700;padding:4px 12px;border-radius:999px;margin-bottom:20px;}
+    .btn-print{display:inline-block;padding:.55rem 1.4rem;background:#FF9501;color:#fff;
+               border:none;border-radius:10px;font-size:.9rem;font-weight:700;cursor:pointer;}
+    @media print{.btn-print{display:none;}.card{box-shadow:none;}}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <img src="/imagenes/logoJOSG.png" alt="JOSG" class="logo">
+    <h1>${esc(tituloConGrupo)}</h1>
+    <div class="fecha">${esc(fechaFormateada)}</div>
+    <div class="qr-wrap">
+      <img src="${qrDataUrl}" alt="QR Evento">
+    </div>
+    <p class="hint">Escanéalo con la app del alumno para registrar la asistencia</p>
+    <div class="badge">Solo músicos convocados · ${QR_OPEN_MINUTES} min antes / ${QR_CLOSE_MINUTES} min después</div><br>
+    <button class="btn-print" onclick="window.print()">🖨 Imprimir QR</button>
+  </div>
+</body>
+</html>`);
   } catch (err) {
     console.error('Error generando el QR:', err);
     res.status(500).send('Error generando el QR');
@@ -1086,7 +1132,7 @@ router.put('/:id/asignaciones/:alumnoId', async (req, res) => {
     client.release();
   }
 });
-router.delete('/:id/asignaciones/:alumnoId', async (req, res) => {
+router.delete('/:id/asignaciones/:alumnoId', requireNoFirmas, async (req, res) => {
   const eventoId = Number(req.params.id);
   const alumnoId = Number(req.params.alumnoId);
   if (!Number.isInteger(eventoId) || !Number.isInteger(alumnoId)) {
@@ -1127,6 +1173,22 @@ router.delete('/:id/asignaciones/:alumnoId', async (req, res) => {
     client.release();
   }
 });
+
+// GET ligero — ¿tiene este evento firmas QR registradas?
+router.get('/:id/asignaciones/tiene-firmas', async (req, res) => {
+  const eventoId = Number(req.params.id);
+  if (!Number.isFinite(eventoId)) return res.status(400).json({ hayFirmas: false });
+  try {
+    const { rows } = await db.query(
+      `SELECT EXISTS(SELECT 1 FROM asistencias WHERE evento_id=$1 AND tipo='qr') AS hay`,
+      [eventoId]
+    );
+    res.json({ hayFirmas: rows[0].hay });
+  } catch(e) {
+    res.json({ hayFirmas: false });
+  }
+});
+
 router.post('/:id/asignaciones/refresh', async (req, res) => {
   const eventoId = Number(req.params.id);
   if (!Number.isInteger(eventoId)) {
@@ -1516,7 +1578,7 @@ router.put('/:id/instrumentos', async (req, res) => {
     client.release();
   }
 });
-router.delete('/:id/instrumentos', async (req, res) => {
+router.delete('/:id/instrumentos', requireNoFirmas, async (req, res) => {
   const eventoId = Number(req.params.id);
   const { instrumento_key } = req.body || {};
   if (!Number.isInteger(eventoId) || typeof instrumento_key !== 'string') {
@@ -1725,7 +1787,7 @@ router.put('/:id/familias', async (req, res) => {
     res.status(500).json({ ok:false, error:'Error actualizando por familia' });
   }
 });
-router.delete('/:id/familias', async (req, res) => {
+router.delete('/:id/familias', requireNoFirmas, async (req, res) => {
   const eventoId = Number(req.params.id);
   const { familia_key } = req.body || {};
   if (!Number.isInteger(eventoId) || !familia_key || typeof familia_key !== 'string') {
@@ -1828,7 +1890,7 @@ router.get('/:id/extras/:tipo', async (req, res) => {
     client.release();
   }
 });
-router.post('/:id/extras/:tipo/add', async (req, res) => {
+router.post('/:id/extras/:tipo/add', requireNoFirmas, async (req, res) => {
   const eventoId = Number(req.params.id);
   const tipo = (req.params.tipo || '').toLowerCase();
   const { alumnos } = req.body || {};

@@ -1,17 +1,22 @@
-<% title = 'Grupos' %>
-<% hero = false %>
+<% title = 'Grupos'; hero = false %>
+
 <div class="header-compact">
-  <h1 class="h1-titulo">Grupos de trabajo</h1>
+  <h1 class="h1-titulo">Grupos</h1>
   <a href="/grupos/nuevo" class="btn-main-blanco">+ Añadir grupo</a>
 </div>
 
-<% if (grupos.length === 0) { %>
-  <p class="enlace-final" style="text-align: center; margin-top: 2rem;">No hay grupos registrados.</p>
+<% if (!grupos || grupos.length === 0) { %>
+  <p class="text-muted mt-3 text-center">No hay grupos registrados.</p>
 <% } else { %>
   <div class="dashboard-grid">
-    <% grupos.forEach(i => { %>
-      <a href="/grupos/editar/<%= i.id %>" class="card-oro" style="text-decoration: none;">
-        <div style="font-weight: 600; font-size: 1rem;"><%= i.nombre %></div>
+    <% grupos.forEach(g => { %>
+      <a href="/grupos/editar/<%= g.id %>"
+         class="card activo"
+         style="background:#7B9E87;text-decoration:none;">
+        <div class="alumno-nombre"><%= g.nombre %></div>
+        <% if (g.descripcion) { %>
+          <div class="alumno-instrumento" style="color:rgba(255,255,255,.85)"><%= g.descripcion %></div>
+        <% } %>
       </a>
     <% }) %>
   </div>
@@ -20,7 +25,3 @@
 <div class="volver-bloque-izquierda">
   <a href="/configuracion" class="enlace-final">← Volver a configuración</a>
 </div>
-
-
-
-

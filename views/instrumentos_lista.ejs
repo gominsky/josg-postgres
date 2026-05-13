@@ -1,22 +1,45 @@
-<% title = 'Listado de Instrumentos' %>
-<% hero = false %>
+<% title = 'Instrumentos'; hero = false %>
+
+<%
+const colorFamilia = {
+  'Cuerda':        '#8B5E3C',
+  'Viento madera': '#7B9E87',
+  'Viento metal':  '#C9A84C',
+  'Percusión':     '#B22222',
+};
+function colorPorFamilia(f) {
+  return colorFamilia[f] || '#888';
+}
+%>
+
 <div class="header-compact">
-  <h1 class="h1-titulo">Listado de Instrumentos</h1>
+  <h1 class="h1-titulo">Instrumentos</h1>
   <a href="/instrumentos/nuevo" class="btn-main-blanco">+ Añadir instrumento</a>
 </div>
-  <% if (instrumentos.length === 0) { %>
-    <p class="enlace-final" style="text-align: center; margin-top: 2rem;">No hay instrumentos registrados.</p>
-  <% } else { %>
-    <div class="dashboard-grid" style="margin-top: 2rem;">
-      <% instrumentos.forEach(i => { %>
-        <a href="/instrumentos/<%= i.id %>/editar" class="card-marron" style="text-decoration: none;">
-          <div style="font-weight: 600; font-size: 1rem;"><%= i.nombre %></div>
-          <div style="font-size: 0.85rem; color: #f5f1f1;"><%= i.familia %></div>
-        </a>
-      <% }) %>
-    </div>
-  <% } %>
-  <div class="volver-bloque-izquierda">
+
+<% if (!instrumentos || instrumentos.length === 0) { %>
+  <p class="text-muted mt-3 text-center">No hay instrumentos registrados.</p>
+<% } else { %>
+  <div class="dashboard-grid">
+    <% instrumentos
+        .slice()
+        .filter(i => i.familia && i.familia.toLowerCase() !== 'otra')
+        .sort((a,b) => (a.nombre||'').localeCompare(b.nombre||'', 'es'))
+        .forEach(i => {
+          const color = colorPorFamilia(i.familia);
+    %>
+      <a href="/instrumentos/<%= i.id %>/editar"
+         class="card activo"
+         style="background:<%= color %>;text-decoration:none;">
+        <div class="alumno-nombre"><%= i.nombre %></div>
+        <% if (i.familia) { %>
+          <div class="alumno-instrumento" style="color:rgba(255,255,255,.8)"><%= i.familia %></div>
+        <% } %>
+      </a>
+    <% }) %>
+  </div>
+<% } %>
+
+<div class="volver-bloque-izquierda">
   <a href="/configuracion" class="enlace-final">← Volver a configuración</a>
-</div>
 </div>

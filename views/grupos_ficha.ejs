@@ -1,39 +1,40 @@
 <% const isEdicion = Boolean(grupo && grupo.id); %>
-<% title = isEdicion ? 'Editar Grupo' : 'Nuevo Grupo'; %>
+<% title = isEdicion ? 'Editar grupo' : 'Nuevo grupo'; %>
 <% hero = false; %>
 
-<h1 class="h1-titulo"><%= title %></h1>
+<div class="header-compact">
+  <h1 class="h1-titulo"><%= title %></h1>
+  <a href="/grupos" class="enlace-final">← Volver</a>
+</div>
 
-<form id="form-grupo" method="POST" action="<%= isEdicion ? '/grupos/editar/' + grupo.id : '/grupos' %>" class="formulario-alumno" style="border: 2px solid #FF9501; border-radius: 0.75rem; padding: 1rem;">
+<form method="POST"
+      action="<%= isEdicion ? '/grupos/editar/' + grupo.id : '/grupos' %>"
+      class="formulario-alumno contenedor-borde">
 
   <div class="grupo-campos">
-    <h2>Datos del Grupo</h2>
+    <h2>Datos del grupo</h2>
     <div class="form-grid-2">
       <label>Nombre:
-        <input type="text" name="nombre" id="nombre" value="<%= grupo?.nombre || '' %>" required>
+        <input type="text" name="nombre" required value="<%= grupo?.nombre || '' %>">
       </label>
       <label>Descripción:
-        <textarea name="descripcion" id="descripcion" rows="3"><%= grupo?.descripcion || '' %></textarea>
+        <textarea name="descripcion" rows="3"><%= grupo?.descripcion || '' %></textarea>
       </label>
     </div>
   </div>
 
   <div class="acciones-finales d-flex justify-content-between align-items-center mt-4">
-    <a href="/grupos" class="enlace-final">← Volver</a>
-    <div class="d-flex align-items-center gap-2">
-      <button type="submit" class="btn-main-blanco"><%= isEdicion ? 'Actualizar' : 'Registrar' %></button>
-      <% if (isEdicion) { %>
-        <button
-          type="submit"
-          class="btn-main-blanco"
-          form="form-grupo"
-          formaction="/grupos/eliminar/<%= grupo.id %>"
-          formmethod="POST"
-          onclick="return confirm('¿Eliminar este grupo?');"
-        >Eliminar</button>
-      <% } %>
-    </div>
+    <a href="/grupos" class="enlace-final-naranja">← Volver</a>
+    <button type="submit" class="btn-main-blanco">
+      <%= isEdicion ? 'Actualizar' : 'Crear grupo' %>
+    </button>
   </div>
-
 </form>
 
+<% if (isEdicion) { %>
+  <form method="POST" action="/grupos/eliminar/<%= grupo.id %>"
+        onsubmit="return confirm('¿Eliminar este grupo?');"
+        class="text-center mt-3">
+    <button type="submit" class="btn-main-blanco btn-rojo btn-sm">Eliminar grupo</button>
+  </form>
+<% } %>
