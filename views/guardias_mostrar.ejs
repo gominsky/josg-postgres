@@ -5,51 +5,172 @@
   <h1 class="h1-titulo">Planilla de guardias</h1>
 </div>
 
-<% if ((guardias||[]).length>0) { %>
+<%
+// Mensajes de sesión
+if (typeof mensaje !== 'undefined' && mensaje) { %>
+  <div class="alert alert-success alert-dismissible fade show mx-auto mt-2" style="max-width:1200px;" role="alert">
+    <%= mensaje %>
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+  </div>
+<% } %>
+<% if (typeof error !== 'undefined' && error) { %>
+  <div class="alert alert-danger alert-dismissible fade show mx-auto mt-2" style="max-width:1200px;" role="alert">
+    <%= error %>
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+  </div>
+<% } %>
+
+<!-- ── Filtros inline ── -->
+<div class="mx-auto mt-3" style="max-width:1200px; padding:0 1rem;">
+  <form id="filtro-form" method="GET" action="/guardias/mostrar"
+        class="contenedor-borde p-3 mb-3">
+
+    <div style="display:flex; flex-wrap:wrap; gap:.75rem; align-items:flex-end;">
+
+      <!-- Grupo -->
+      <div style="display:flex; flex-direction:column; gap:.25rem; flex:1 1 160px; min-width:140px;">
+        <label for="f-grupo" style="font-size:.8rem; font-weight:500;">Grupo</label>
+        <select id="f-grupo" name="grupo" class="form-select form-select-sm">
+          <option value="">Todos</option>
+          <% (grupos||[]).forEach(g => { %>
+            <option value="<%= g.id %>" <%= String(grupo||'')===String(g.id)?'selected':'' %>><%= g.nombre %></option>
+          <% }) %>
+        </select>
+      </div>
+
+      <!-- Desde -->
+      <div style="display:flex; flex-direction:column; gap:.25rem; flex:0 0 140px;">
+        <label for="f-desde" style="font-size:.8rem; font-weight:500;">Desde</label>
+        <input type="date" id="f-desde" name="desde"
+               value="<%= desde||'' %>"
+               class="form-control form-control-sm">
+      </div>
+
+      <!-- Hasta -->
+      <div style="display:flex; flex-direction:column; gap:.25rem; flex:0 0 140px;">
+        <label for="f-hasta" style="font-size:.8rem; font-weight:500;">Hasta</label>
+        <input type="date" id="f-hasta" name="hasta"
+               value="<%= hasta||'' %>"
+               class="form-control form-control-sm">
+      </div>
+
+      <!-- Chips rango rápido -->
+      <div style="display:flex; flex-direction:column; gap:.25rem;">
+        <label style="font-size:.8rem; font-weight:500;">Rango rápido</label>
+        <div style="display:flex; flex-wrap:nowrap; gap:.4rem;">
+          <span class="chip" data-range="mes" style="cursor:pointer; white-space:nowrap;">Mes</span>
+          <span class="chip" data-range="trim" style="cursor:pointer; white-space:nowrap;">Trimestre</span>
+          <span class="chip" data-range="anio" style="cursor:pointer; white-space:nowrap;">Año</span>
+        </div>
+      </div>
+
+      <!-- Botón filtrar -->
+      <div style="flex:0 0 auto; align-self:flex-end;">
+        <button type="submit" class="btn-primary-negro btn-sm" style="white-space:nowrap;">Filtrar</button>
+      </div>
+
+    </div>
+  </form>
+</div>
+
+<!-- ── Tabla ── -->
+<% if ((guardias||[]).length > 0) { %>
+  <%
+    // helper fecha ES — acepta string ISO o objeto Date que devuelve pg para columnas DATE
+    const fmtES = s => {
+      if (!s) return '';
+      if (s instanceof Date) {
+        const y = s.getUTCFullYear();
+        const m = String(s.getUTCMonth() + 1).padStart(2, '0');
+        const d = String(s.getUTCDate()).padStart(2, '0');
+        return `${d}/${m}/${y}`;
+      }
+      const str = String(s);
+      const ymd = str.includes('T') ? str.split('T')[0] : str;
+      const [y, m, d] = ymd.split('-');
+      return (y && m && d) ? `${d}/${m}/${y}` : '';
+    };
+
+    // label tipo guardia
+    const tipoLabel = g => {
+      if (!g.tipo_guardia || g.tipo_guardia === 'normal') return '';
+      const t = g.tipo_actividad || '';
+      return t === 'montaje'    ? '🔧 Montaje'
+           : t === 'desmontaje' ? '📦 Desmontaje'
+           : t === 'ambas'      ? '🔧📦 Ambas'
+           : '🎵 Actividad';
+    };
+
+    // lista de músicos para la fila (cubre normal y actividad)
+    const nombresMap = typeof nombresExtra !== 'undefined' ? nombresExtra : {};
+    const listMusicos = g => {
+      if (g.tipo_guardia === 'actividad' && Array.isArray(g.alumno_ids) && g.alumno_ids.length) {
+        return g.alumno_ids.map(id => nombresMap[id] || `#${id}`).join(' · ');
+      }
+      const p = [g.guardia1, g.guardia2].filter(n => n && n !== '-');
+      return p.join(' · ') || '-';
+    };
+  %>
+
   <div class="mx-auto" style="max-width:1200px; padding:0 1rem;">
-    <div class="table-responsive mt-3">
-      <table class="tabla-estilizada tabla-tight tabla-hover">
+    <div class="table-responsive">
+      <table class="tabla-estilizada tabla-tight tabla-hover" id="tabla-guardias">
         <thead>
           <tr>
-            <th>Fecha</th>
-            <th>Evento</th>
-            <th>Grupo</th>
-            <th>Guardia 1</th>
-            <th>Guardia 2</th>
-            <th class="text-center">Eliminar / sugerir guardia</th>
+            <th class="sortable" data-col="0">Fecha <span class="sort-icon">↕</span></th>
+            <th class="sortable" data-col="1">Evento <span class="sort-icon">↕</span></th>
+            <th class="sortable" data-col="2">Grupo <span class="sort-icon">↕</span></th>
+            <th>Tipo</th>
+            <th>Músicos</th>
+            <th class="text-center">Acciones</th>
           </tr>
         </thead>
         <tbody>
         <% guardias.forEach(g => { %>
-          <tr class="fila-enlace clickable-row <% if (typeof selectedId !== 'undefined' && selectedId == g.guardia_id) { %>fila-seleccionada<% } %>"
-              <% if (g.guardia_id) { %>
-                onclick="location.href='/guardias/editar/<%= g.guardia_id %>?desde=<%= desde %>&hasta=<%= hasta %>&grupo=<%= grupo %>'"
+          <%
+            const esTipoActividad = g.tipo_guardia === 'actividad';
+            const tieneGuardia    = Boolean(g.guardia_id);
+          %>
+          <tr class="fila-enlace <%= tieneGuardia ? 'clickable-row' : 'fila-sin-guardia' %>"
+              <% if (tieneGuardia) { %>
+                onclick="location.href='/guardias/editar/<%= g.guardia_id %>?desde=<%= encodeURIComponent(desde||'') %>&hasta=<%= encodeURIComponent(hasta||'') %>&grupo=<%= encodeURIComponent(grupo||'') %>'"
               <% } %>>
-              <%
-              // helper: formatea 'YYYY-MM-DD' (o 'YYYY-MM-DDTHH:MM') a 'DD/MM/YYYY' sin tocar zona horaria
-              const fmtES = (s) => {
-                const str = String(s || '');
-                const ymd = str.includes('T') ? str.split('T')[0] : str;
-                const [y, m, d] = (ymd || '').split('-');
-                return (y && m && d) ? `${d}/${m}/${y}` : '';
-              };
-            %>
-            <td><%= fmtES(g.fecha_inicio) %></td>  
+            <td><%= fmtES(g.fecha_inicio) %></td>
             <td><%= g.evento %></td>
-            <td><%= g.grupo %></td>
-            <td><%= g.guardia1 || '-' %></td>
-            <td><%= g.guardia2 || '-' %></td>
+            <td><%= g.grupo || '-' %></td>
+            <td>
+              <% if (esTipoActividad) { %>
+                <span class="badge-soft" style="font-size:.75rem;"><%= tipoLabel(g) %></span>
+                <% if (g.num_musicos) { %>
+                  <span class="badge-soft ms-1" style="font-size:.72rem;"><%= g.num_musicos %> mús.</span>
+                <% } %>
+              <% } else if (tieneGuardia) { %>
+                <span class="badge-soft" style="font-size:.75rem; opacity:.7;">Normal</span>
+              <% } else { %>
+                <span class="text-muted" style="font-size:.8rem;">—</span>
+              <% } %>
+            </td>
+            <td style="font-size:.88rem;">
+              <%= listMusicos(g) %>
+            </td>
             <td class="text-center" onclick="event.stopPropagation();">
-              <% if (g.guardia_id) { %>
-                <form method="POST" action="/guardias/eliminar/<%= g.guardia_id %>?desde=<%= encodeURIComponent(desde || '') %>&hasta=<%= encodeURIComponent(hasta || '') %>&grupo=<%= encodeURIComponent(grupo || '') %>" onsubmit="event.stopPropagation()" style="display:inline;background:transparent;">
-                  <button type="submit" class="btn btn-sm text-danger fw-bold" style="font-size:1rem;line-height:1;" title="Eliminar">×</button>
+              <% if (tieneGuardia) { %>
+                <form method="POST"
+                      action="/guardias/eliminar/<%= g.guardia_id %>?desde=<%= encodeURIComponent(desde||'') %>&hasta=<%= encodeURIComponent(hasta||'') %>&grupo=<%= encodeURIComponent(grupo||'') %>"
+                      class="form-eliminar"
+                      style="display:inline;background:transparent;">
+                  <button type="submit" class="btn btn-sm text-danger fw-bold"
+                          style="font-size:1rem;line-height:1;" title="Eliminar guardia">×</button>
                 </form>
               <% } else { %>
-                <form method="POST" action="/guardias/generar" style="margin:0;display:inline;background:transparent;">
+                <form method="POST" action="/guardias/generar"
+                      class="form-generar"
+                      style="margin:0;display:inline;background:transparent;">
                   <input type="hidden" name="evento_id" value="<%= g.evento_id %>">
-                  <input type="hidden" name="desde" value="<%= desde %>">
-                  <input type="hidden" name="hasta" value="<%= hasta %>">
-                  <button type="submit" class="btn-primary-negro btn-sm px-2 py-1" style="font-size:.8rem;line-height:1;">Asignar guardia</button>
+                  <input type="hidden" name="desde"     value="<%= desde||'' %>">
+                  <input type="hidden" name="hasta"     value="<%= hasta||'' %>">
+                  <button type="submit" class="btn-primary-negro btn-sm px-2 py-1"
+                          style="font-size:.8rem;line-height:1;">Asignar</button>
                 </form>
               <% } %>
             </td>
@@ -58,65 +179,138 @@
         </tbody>
       </table>
     </div>
+
+    <!-- Resumen de carga -->
+    <% 
+      // Calcular carga por músico a partir de los datos de la planilla
+      const cargaMusico = {};
+      guardias.forEach(g => {
+        if (!g.guardia_id) return;
+        let ids = [];
+        if (g.tipo_guardia === 'actividad' && Array.isArray(g.alumno_ids)) {
+          ids = g.alumno_ids.filter(Boolean);
+        } else {
+          if (g.guardia1 && g.guardia1 !== '-') ids.push(g.guardia1);
+          if (g.guardia2 && g.guardia2 !== '-') ids.push(g.guardia2);
+        }
+        ids.forEach(id => {
+          // Para guardia normal usamos el nombre como clave (sin id disponible en la fila)
+          const k = typeof id === 'number' ? (nombresMap[id] || id) : id;
+          cargaMusico[k] = (cargaMusico[k] || 0) + 1;
+        });
+      });
+      const cargaEntries = Object.entries(cargaMusico).sort((a,b) => b[1] - a[1]);
+    %>
+    <% if (cargaEntries.length > 0) { %>
+      <details class="mt-4" style="font-size:.88rem;">
+        <summary class="fw-semibold" style="cursor:pointer; user-select:none; list-style:none; display:flex; align-items:center; gap:.4rem;">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M6 2h8M6 8h8M6 14h8M2 2h.01M2 8h.01M2 14h.01"/></svg>
+          Carga en este periodo (<%= cargaEntries.length %> músicos)
+        </summary>
+        <div class="table-responsive mt-2">
+          <table class="tabla-estilizada tabla-tight" style="max-width:480px;">
+            <thead><tr><th>Músico</th><th class="text-center">Guardias en periodo</th></tr></thead>
+            <tbody>
+              <% cargaEntries.forEach(([nombre, n]) => { %>
+                <tr>
+                  <td><%= nombre %></td>
+                  <td class="text-center">
+                    <span class="badge-soft" style="font-size:.78rem;"><%= n %></span>
+                  </td>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        </div>
+      </details>
+    <% } %>
+
   </div>
+
 <% } else { %>
-  <p class="mt-4" style="text-align:center;">No hay eventos registrados con esos filtros.</p>
+  <p class="mt-4 text-center text-muted">No hay eventos registrados con esos filtros.</p>
 <% } %>
 
 <div class="volver-bloque-izquierda mt-4">
-  <a href="/guardias?<%= new URLSearchParams({ desde: desde||'', hasta: hasta||'', grupo: grupo||'' }).toString() %>" class="enlace-final">← Volver</a>
+  <a href="/guardias?<%= new URLSearchParams({ desde: desde||'', hasta: hasta||'', grupo: grupo||'' }).toString() %>"
+     class="enlace-final">← Volver</a>
 </div>
+
 <script>
-    (() => {
-      // helper: post x-www-form-urlencoded y luego recargar
-      const postForm = (url, form) => {
-        const data = new URLSearchParams(new FormData(form));
-        return fetch(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
-          body: data.toString(),
-          redirect: 'follow'
+(() => {
+  /* ── Chips de rango rápido ── */
+  const elDesde = document.getElementById('f-desde');
+  const elHasta = document.getElementById('f-hasta');
+  const pad = n => String(n).padStart(2, '0');
+  const fmt = (y, m, d) => `${y}-${pad(m+1)}-${pad(d)}`;
+
+  const rangos = {
+    mes()  { const n=new Date(),y=n.getFullYear(),m=n.getMonth(); elDesde.value=fmt(y,m,1); elHasta.value=fmt(y,m,new Date(y,m+1,0).getDate()); },
+    trim() { const n=new Date(),y=n.getFullYear(),m=n.getMonth(),q=Math.floor(m/3),mI=q*3,mF=mI+2; elDesde.value=fmt(y,mI,1); elHasta.value=fmt(y,mF,new Date(y,mF+1,0).getDate()); },
+    anio() { const y=new Date().getFullYear(); elDesde.value=`${y}-01-01`; elHasta.value=`${y}-12-31`; }
+  };
+  document.querySelectorAll('.chip[data-range]').forEach(chip => {
+    chip.addEventListener('click', () => {
+      rangos[chip.dataset.range]?.();
+      document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+    });
+  });
+
+  /* ── Helpers de fetch POST ── */
+  const postForm = (url, form) => {
+    const data = new URLSearchParams(new FormData(form));
+    return fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
+      body: data.toString(),
+      redirect: 'follow'
+    });
+  };
+
+  /* ── Asignar guardia individual (botón Asignar) ── */
+  document.querySelectorAll('.form-generar').forEach(form => {
+    form.addEventListener('submit', async e => {
+      e.preventDefault();
+      const btn = form.querySelector('button[type="submit"]');
+      if (btn) { btn.disabled = true; btn.textContent = '…'; }
+      try { await postForm(form.action, form); } finally { location.reload(); }
+    });
+  });
+
+  /* ── Eliminar guardia (botón ×) ── */
+  document.querySelectorAll('.form-eliminar').forEach(form => {
+    form.addEventListener('submit', async e => {
+      e.preventDefault();
+      if (!confirm('¿Eliminar esta guardia?')) return;
+      const btn = form.querySelector('button[type="submit"]');
+      if (btn) { btn.disabled = true; btn.textContent = '…'; }
+      try { await postForm(form.action, form); } finally { location.reload(); }
+    });
+  });
+
+  /* ── Ordenación de columnas ── */
+  const tabla = document.getElementById('tabla-guardias');
+  if (tabla) {
+    let sortCol = -1, sortAsc = true;
+    tabla.querySelectorAll('th.sortable').forEach(th => {
+      th.style.cursor = 'pointer';
+      th.addEventListener('click', () => {
+        const col = parseInt(th.dataset.col);
+        if (sortCol === col) sortAsc = !sortAsc;
+        else { sortCol = col; sortAsc = true; }
+        tabla.querySelectorAll('th .sort-icon').forEach(i => i.textContent = '↕');
+        th.querySelector('.sort-icon').textContent = sortAsc ? '↑' : '↓';
+        const tbody = tabla.querySelector('tbody');
+        const rows  = [...tbody.querySelectorAll('tr')];
+        rows.sort((a, b) => {
+          const va = a.cells[col]?.textContent.trim() || '';
+          const vb = b.cells[col]?.textContent.trim() || '';
+          return sortAsc ? va.localeCompare(vb, 'es') : vb.localeCompare(va, 'es');
         });
-      };
-    
-      // 1) Asignar guardia (botón por fila)
-      document.querySelectorAll('form[action="/guardias/generar"]').forEach(form => {
-        form.addEventListener('submit', async (e) => {
-          e.preventDefault();
-          const btn = form.querySelector('button[type="submit"]');
-          if (btn) { btn.disabled = true; btn.textContent = 'Asignando…'; }
-          try { await postForm(form.action, form); }
-          finally { location.reload(); } // 👈 vuelves a la misma planilla con filtros
-        });
+        rows.forEach(r => tbody.appendChild(r));
       });
-    
-      // 2) Asignar guardias MÚLTIPLES (el botón con formaction dentro del form de filtros)
-      const filtrosForm = document.getElementById('filtro-form');
-      if (filtrosForm) {
-        filtrosForm.addEventListener('submit', async (e) => {
-          const submitter = e.submitter;
-          const fa = submitter?.getAttribute('formaction');
-          if (fa === '/guardias/generar-multiples') {
-            e.preventDefault();
-            submitter.disabled = true; submitter.textContent = 'Asignando…';
-            try { await postForm(fa, filtrosForm); }
-            finally { location.reload(); }
-          }
-          // si no es el botón de múltiples, deja que el form haga su GET normal (Filtrar)
-        });
-      }
-    
-      // 3) Eliminar guardia (botón × por fila)
-      document.querySelectorAll('form[action^="/guardias/eliminar"]').forEach(form => {
-        form.addEventListener('submit', async (e) => {
-          e.preventDefault();
-          if (!confirm('¿Eliminar guardia?')) return;
-          const btn = form.querySelector('button[type="submit"]');
-          if (btn) { btn.disabled = true; btn.textContent = 'Eliminando…'; }
-          try { await postForm(form.action, form); }
-          finally { location.reload(); }
-        });
-      });
-    })();
-    </script>
-    
+    });
+  }
+})();
+</script>

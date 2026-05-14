@@ -1,60 +1,246 @@
-<% const isEdicion = Boolean(guardia && guardia.id); %>
-<% title = isEdicion ? 'Editar Guardia' : 'Nueva Guardia'; %>
+<%
+  const isEdicion    = Boolean(guardia && guardia.id);
+  const esActividad  = isEdicion && guardia.tipo_guardia === 'actividad';
+%>
+<% title = isEdicion ? (esActividad ? 'Editar guardia de actividad' : 'Editar guardia') : 'Nueva guardia'; %>
 <% hero = false; %>
 
-<h1 class="h1-titulo"><%= title %></h1>
+<div class="header-compact">
+  <h1 class="h1-titulo"><%= title %></h1>
+  <a href="/guardias?<%= desde ? 'desde='+desde+'&' : '' %><%= hasta ? 'hasta='+hasta : '' %>"
+     class="enlace-final">← Volver</a>
+</div>
 
-<form id="form-guardia" method="POST" action="<%= isEdicion ? '/guardias/guardar' : '/guardias/crear' %>" class="formulario-alumno" style="border: 2px solid #FF9501; border-radius: 0.75rem; padding: 1rem;">
-  <% if (isEdicion) { %>
-    <input type="hidden" name="id" value="<%= guardia.id %>">
-    <input type="hidden" name="evento_id" value="<%= guardia.evento_id %>">
-    <input type="hidden" name="curso" value="<%= guardia.curso %>">
-    <input type="hidden" name="desde" value="<%= desde %>">
-    <input type="hidden" name="hasta" value="<%= hasta %>">
-    <input type="hidden" name="grupo" value="<%= grupo %>">
-  <% } %>
-
-  <div class="grupo-campos">
-    <h2>Miembros de Guardia</h2>
-    <div class="form-grid-2">
-      <label>Miembro 1:
-        <select name="alumno_id_1" required class="form-centrado-select">
-          <option value="">Selecciona un alumno</option>
-          <% disponibles.forEach(a => { %>
-            <option value="<%= a.id %>" <%= a.id == guardia.alumno_id_1 ? 'selected' : '' %>>
-              <%= a.apellidos %>, <%= a.nombre %>
-            </option>
-          <% }) %>
-        </select>
-      </label>
-
-      <label>Miembro 2:
-        <select name="alumno_id_2" required class="form-centrado-select">
-          <option value="">Selecciona un alumno</option>
-          <% disponibles.forEach(a => { %>
-            <option value="<%= a.id %>" <%= a.id == guardia.alumno_id_2 ? 'selected' : '' %>>
-              <%= a.apellidos %>, <%= a.nombre %>
-            </option>
-          <% }) %>
-        </select>
-      </label>
+<!-- Info del evento -->
+<% if (isEdicion) { %>
+  <div class="mx-auto mb-3" style="max-width:700px;">
+    <div class="contenedor-borde p-3" style="font-size:.9rem;">
+      <strong>Evento:</strong> <%= eventoTitulo %> &nbsp;
+      <%
+        const fmtES = s => {
+          if (!s) return '';
+          if (s instanceof Date) {
+            const y = s.getUTCFullYear();
+            const m = String(s.getUTCMonth() + 1).padStart(2, '0');
+            const d = String(s.getUTCDate()).padStart(2, '0');
+            return `${d}/${m}/${y}`;
+          }
+          const str = String(s);
+          const ymd = str.includes('T') ? str.split('T')[0] : str;
+          const [y,m,d] = ymd.split('-');
+          return (y&&m&&d) ? `${d}/${m}/${y}` : '';
+        };
+      %>
+      <strong class="ms-3">Fecha:</strong> <%= fmtES(guardia.fecha_inicio) %>
+      <% if (esActividad) { %>
+        &nbsp;<span class="badge-soft ms-2">
+          <%= guardia.tipo_actividad === 'montaje'    ? '🔧 Montaje'
+            : guardia.tipo_actividad === 'desmontaje' ? '📦 Desmontaje'
+            : guardia.tipo_actividad === 'ambas'      ? '🔧📦 Ambas'
+            : '🎵 Actividad' %>
+        </span>
+        <% if (guardia.num_musicos) { %>
+          <span class="badge-soft ms-1"><%= guardia.num_musicos %> músicos</span>
+        <% } %>
+      <% } %>
     </div>
   </div>
+<% } %>
 
+<form id="form-guardia" method="POST"
+      action="<%= isEdicion ? '/guardias/guardar' : '/guardias/crear' %>"
+      class="formulario-alumno contenedor-borde mx-auto" style="max-width:700px;">
+
+  <% if (isEdicion) { %>
+    <input type="hidden" name="id"        value="<%= guardia.id %>">
+    <input type="hidden" name="evento_id" value="<%= guardia.evento_id %>">
+    <input type="hidden" name="curso"     value="<%= guardia.curso %>">
+    <input type="hidden" name="desde"     value="<%= desde %>">
+    <input type="hidden" name="hasta"     value="<%= hasta %>">
+    <input type="hidden" name="grupo"     value="<%= grupo %>">
+  <% } %>
+
+  <!-- ═══════════════════════════════════════
+       GUARDIA NORMAL: selects alumno 1 y 2
+       ═══════════════════════════════════════ -->
+  <% if (!esActividad) { %>
+    <div class="grupo-campos">
+      <h2>Músicos de guardia</h2>
+      <p class="text-muted" style="font-size:.85rem; margin-top:-.3rem;">
+        Los músicos marcados con ⚠️ están asignados a otra guardia ese día.
+      </p>
+      <div class="form-grid-2">
+        <label>Músico 1:
+          <select name="alumno_id_1" required class="form-centrado-select">
+            <option value="">Selecciona un músico</option>
+            <% disponibles.forEach(a => { %>
+              <option value="<%= a.id %>"
+                      <%= (isEdicion && a.id == guardia.alumno_id_1) ? 'selected' : '' %>>
+                <%= a.apellidos %>, <%= a.nombre %>
+                (<%= a.guardias_actual || 0 %> guard.)
+              </option>
+            <% }) %>
+            <% /* Mostrar siempre el alumno actual aunque esté ocupado ese día */ %>
+            <% if (isEdicion) { %>
+              <% (ocupados||[]).filter(a => a.id == guardia.alumno_id_1).forEach(a => { %>
+                <option value="<%= a.id %>" selected>
+                  ⚠️ <%= a.apellidos %>, <%= a.nombre %> (<%= a.guardias_actual || 0 %> guard.)
+                </option>
+              <% }) %>
+            <% } %>
+          </select>
+        </label>
+
+        <label>Músico 2:
+          <select name="alumno_id_2" required class="form-centrado-select">
+            <option value="">Selecciona un músico</option>
+            <% disponibles.forEach(a => { %>
+              <option value="<%= a.id %>"
+                      <%= (isEdicion && a.id == guardia.alumno_id_2) ? 'selected' : '' %>>
+                <%= a.apellidos %>, <%= a.nombre %>
+                (<%= a.guardias_actual || 0 %> guard.)
+              </option>
+            <% }) %>
+            <% if (isEdicion) { %>
+              <% (ocupados||[]).filter(a => a.id == guardia.alumno_id_2).forEach(a => { %>
+                <option value="<%= a.id %>" selected>
+                  ⚠️ <%= a.apellidos %>, <%= a.nombre %> (<%= a.guardias_actual || 0 %> guard.)
+                </option>
+              <% }) %>
+            <% } %>
+          </select>
+        </label>
+      </div>
+    </div>
+
+  <!-- ═══════════════════════════════════════
+       GUARDIA DE ACTIVIDAD: checkboxes multi
+       ═══════════════════════════════════════ -->
+  <% } else { %>
+    <div class="grupo-campos">
+      <h2>Músicos asignados</h2>
+      <p class="text-muted" style="font-size:.85rem; margin-top:-.3rem;">
+        Marca los músicos que participan en esta guardia de actividad.
+        Los marcados con ⚠️ están en otra guardia ese día.
+      </p>
+
+      <%
+        const asignadosSet = new Set(
+          (alumnosAsignados||[]).map(a => a.id)
+        );
+      %>
+
+      <div class="row g-2 mt-1">
+        <!-- Asignados actualmente -->
+        <% if ((alumnosAsignados||[]).length > 0) { %>
+          <div class="col-12">
+            <p class="fw-semibold mb-1" style="font-size:.85rem;">Asignados actualmente:</p>
+            <div class="row g-1">
+              <% alumnosAsignados.forEach(a => { %>
+                <div class="col-12 col-sm-6">
+                  <label class="d-flex align-items-center gap-2 p-2 rounded-2"
+                         style="border:1px solid var(--color-borde,#ddd); font-size:.88rem; cursor:pointer;">
+                    <input type="checkbox" name="alumno_ids_multi"
+                           value="<%= a.id %>" checked>
+                    <span>
+                      <strong><%= a.nombre_completo || (a.apellidos+', '+a.nombre) %></strong>
+                      <span class="text-muted">(<%= a.guardias_actual || 0 %> guard.)</span>
+                    </span>
+                  </label>
+                </div>
+              <% }) %>
+            </div>
+          </div>
+        <% } %>
+
+        <!-- Disponibles no asignados -->
+        <% const noAsignados = (disponibles||[]).filter(a => !asignadosSet.has(a.id)); %>
+        <% if (noAsignados.length > 0) { %>
+          <div class="col-12 mt-2">
+            <p class="fw-semibold mb-1" style="font-size:.85rem;">Disponibles:</p>
+            <div class="row g-1">
+              <% noAsignados.forEach(a => { %>
+                <div class="col-12 col-sm-6">
+                  <label class="d-flex align-items-center gap-2 p-2 rounded-2"
+                         style="border:1px solid var(--color-borde,#ddd); font-size:.88rem; cursor:pointer;">
+                    <input type="checkbox" name="alumno_ids_multi" value="<%= a.id %>">
+                    <span>
+                      <%= a.apellidos %>, <%= a.nombre %>
+                      <span class="text-muted">(<%= a.guardias_actual || 0 %> guard.)</span>
+                    </span>
+                  </label>
+                </div>
+              <% }) %>
+            </div>
+          </div>
+        <% } %>
+
+        <!-- Ocupados ese día (no asignados a esta guardia) -->
+        <% const ocupadosNoAsig = (ocupados||[]).filter(a => !asignadosSet.has(a.id)); %>
+        <% if (ocupadosNoAsig.length > 0) { %>
+          <div class="col-12 mt-2">
+            <p class="fw-semibold mb-1 text-muted" style="font-size:.82rem;">⚠️ Con otra guardia ese día:</p>
+            <div class="row g-1">
+              <% ocupadosNoAsig.forEach(a => { %>
+                <div class="col-12 col-sm-6">
+                  <label class="d-flex align-items-center gap-2 p-2 rounded-2"
+                         style="border:1px solid var(--color-borde,#ddd); font-size:.85rem; cursor:pointer; opacity:.7;">
+                    <input type="checkbox" name="alumno_ids_multi" value="<%= a.id %>">
+                    <span>
+                      ⚠️ <%= a.apellidos %>, <%= a.nombre %>
+                      <span class="text-muted">(<%= a.guardias_actual || 0 %> guard.)</span>
+                    </span>
+                  </label>
+                </div>
+              <% }) %>
+            </div>
+          </div>
+        <% } %>
+      </div>
+
+      <!-- Contador seleccionados -->
+      <p class="mt-2 text-muted" style="font-size:.82rem;" id="contador-seleccionados">
+        0 músico(s) seleccionado(s)
+      </p>
+    </div>
+  <% } %>
+
+  <!-- Notas -->
   <div class="grupo-campos">
     <h2>Notas</h2>
-    <textarea name="notas" rows="4" class="form-control"><%= guardia.notas || '' %></textarea>
+    <textarea name="notas" rows="3" class="form-control"><%= guardia?.notas || '' %></textarea>
   </div>
 
   <div class="acciones-finales d-flex justify-content-between align-items-center mt-4">
-    <a href="/guardias?<%= desde ? 'desde=' + desde + '&' : '' %><%= hasta ? 'hasta=' + hasta : '' %>" class="enlace-final-naranja">← Volver</a>
-    <div class="d-flex gap-2">
-      <button type="submit" class="btn-main"><%= isEdicion ? 'Actualizar' : 'Crear' %></button>
+    <a href="/guardias?<%= desde ? 'desde='+desde+'&' : '' %><%= hasta ? 'hasta='+hasta : '' %>"
+       class="enlace-final-naranja">← Volver</a>
+    <div class="d-flex gap-2 align-items-center">
+      <button type="submit" class="btn-main">
+        <%= isEdicion ? 'Guardar cambios' : 'Crear' %>
+      </button>
       <% if (isEdicion) { %>
-        <form method="POST" action="/guardias/eliminar/<%= guardia.id %>?desde=<%= desde %>&hasta=<%= hasta %>" onsubmit="return confirm('¿Eliminar esta guardia?');" class="ms-2" style="display:inline;">
+        <form method="POST"
+              action="/guardias/eliminar/<%= guardia.id %>?desde=<%= encodeURIComponent(desde||'') %>&hasta=<%= encodeURIComponent(hasta||'') %>&grupo=<%= encodeURIComponent(grupo||'') %>"
+              onsubmit="return confirm('¿Eliminar esta guardia? No se puede deshacer.');"
+              style="display:inline;">
           <button type="submit" class="btn-rojo">Eliminar</button>
         </form>
       <% } %>
     </div>
   </div>
 </form>
+
+<% if (esActividad) { %>
+<script>
+(() => {
+  const checkboxes = document.querySelectorAll('input[name="alumno_ids_multi"]');
+  const contador   = document.getElementById('contador-seleccionados');
+  function actualizarContador() {
+    const n = [...checkboxes].filter(c => c.checked).length;
+    contador.textContent = `${n} músico${n !== 1 ? 's' : ''} seleccionado${n !== 1 ? 's' : ''}`;
+  }
+  checkboxes.forEach(c => c.addEventListener('change', actualizarContador));
+  actualizarContador();
+})();
+</script>
+<% } %>

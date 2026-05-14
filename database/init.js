@@ -440,19 +440,44 @@ async function init({ reset = false } = {}) {
       CREATE TABLE IF NOT EXISTS guardias (
         id          INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
         evento_id   INTEGER NOT NULL REFERENCES eventos(id) ON DELETE CASCADE,
-        fecha       DATE NOT NULL,
-        alumno_id_1 INTEGER NOT NULL REFERENCES alumnos(id) ON DELETE CASCADE,
-        alumno_id_2 INTEGER NOT NULL REFERENCES alumnos(id) ON DELETE CASCADE,
+        alumno_id_1 INTEGER REFERENCES alumnos(id) ON DELETE CASCADE,
+        alumno_id_2 INTEGER REFERENCES alumnos(id) ON DELETE CASCADE,
         notas       TEXT,
         curso       TEXT,
         created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        CONSTRAINT ck_guardias_distintos CHECK (alumno_id_1 <> alumno_id_2)
+        CONSTRAINT ck_guardias_distintos CHECK (alumno_id_1 IS DISTINCT FROM alumno_id_2)
       );
       CREATE INDEX IF NOT EXISTS idx_guardias_evento  ON guardias(evento_id);
       CREATE INDEX IF NOT EXISTS idx_guardias_alumno1 ON guardias(alumno_id_1);
       CREATE INDEX IF NOT EXISTS idx_guardias_alumno2 ON guardias(alumno_id_2);
     `, 'tables:eventos+asistencias+guardias');
+
+    // ── Migración guardias: soporte actividades complementarias ──
+    await run(`
+      ALTER TABLE guardias ADD COLUMN IF NOT EXISTS tipo_guardia   TEXT NOT NULL DEFAULT 'normal'
+        CHECK (tipo_guardia IN ('normal','actividad'));
+      ALTER TABLE guardias ADD COLUMN IF NOT EXISTS tipo_actividad TEXT
+        CHECK (tipo_actividad IN ('montaje','desmontaje','ambas'));
+      ALTER TABLE guardias ADD COLUMN IF NOT EXISTS actividad_id   INTEGER
+        REFERENCES actividades_complementarias(id) ON DELETE SET NULL;
+      ALTER TABLE guardias ADD COLUMN IF NOT EXISTS num_musicos    SMALLINT DEFAULT 2;
+      ALTER TABLE guardias ADD COLUMN IF NOT EXISTS alumno_ids     INTEGER[];
+      CREATE INDEX IF NOT EXISTS idx_guardias_tipo_guardia ON guardias(tipo_guardia);
+      CREATE INDEX IF NOT EXISTS idx_guardias_actividad_id ON guardias(actividad_id);
+      UPDATE guardias
+         SET alumno_ids = ARRAY_REMOVE(ARRAY[alumno_id_1, alumno_id_2], NULL)
+       WHERE alumno_ids IS NULL
+         AND (alumno_id_1 IS NOT NULL OR alumno_id_2 IS NOT NULL);
+      -- Solo 1 guardia normal por evento; actividades sin límite
+      ALTER TABLE guardias
+        DROP CONSTRAINT IF EXISTS uq_guardias_evento_tipo;
+      ALTER TABLE guardias
+        DROP CONSTRAINT IF EXISTS uq_guardias_evento_normal;
+      CREATE UNIQUE INDEX IF NOT EXISTS uq_guardias_evento_normal
+        ON guardias (evento_id)
+        WHERE tipo_guardia = 'normal';
+    `, 'migrate:guardias-actividades');
      
       
     // ============================

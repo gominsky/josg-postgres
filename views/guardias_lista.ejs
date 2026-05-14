@@ -1,226 +1,273 @@
 <% title = 'Guardias' %>
 <% hero  = false %>
 
-<div id="g-wrap" class="container my-4">
-  <!-- ====== ESTILOS ====== -->
+<div class="header-compact">
+  <h1 class="h1-titulo">Guardias</h1>
+</div>
 
-  <!-- ====== FORMULARIO + TARJETAS ====== -->
-  <form id="filtros-form" class="filtros-card" action="/guardias/mostrar" method="GET">
-    <div class="filtros-header">
-      <h1 class="h1-titulo"><%= title %></h1>
-    </div>
+<form id="filtros-form" class="filtros-card" action="/guardias/mostrar" method="GET">
 
-    <!-- Fila 1: Grupo -->
-    <div class="row g-3 align-items-end">
-      <div class="col-12 col-md-6">
-        <label for="grupo" class="form-label">Grupo</label>
-        <select id="grupo" name="grupo" class="form-select form-select-sm">
-          <option value="">Todos</option>
-          <% (grupos||[]).forEach(g => { %>
-            <option value="<%= g.id %>" <%= String(grupo||'')===String(g.id)?'selected':'' %>><%= g.nombre %></option>
-          <% }) %>
-        </select>
-      </div>
-    </div>
-
-    <!-- Fila 2: Fechas (Desde / Hasta + chips) -->
-    <div class="row g-3 align-items-end mt-0">
-      <div class="col-12 col-sm-6 col-lg-3">
-        <label for="desde" class="form-label">Fecha inicio</label>
-        <input type="date" id="desde" name="desde" value="<%= typeof desde!=='undefined'?desde:'' %>" class="form-control form-control-sm date-input">
-      </div>
-      <div class="col-12 col-sm-6 col-lg-3">
-        <label for="hasta" class="form-label">Fecha fin</label>
-        <input type="date" id="hasta" name="hasta" value="<%= typeof hasta!=='undefined'?hasta:'' %>" class="form-control form-control-sm date-input">
-      </div>
-      <div class="col-12 col-lg-6">
-        <label class="form-label">Rango rápido</label>
-        <div class="chips">
-          <span class="chip" data-range="mes">Este mes</span>
-          <span class="chip" data-range="trim">Este trimestre</span>
-          <span class="chip" data-range="anio">Este año</span>
-        </div>
-      </div>
-    </div>
-
-    <!-- Tarjetas de acción -->
-    <div class="action-grid">
-      <!-- Ver planilla -->
-      <a href="#" id="cardVer" class="action-card" aria-label="Ver planilla de guardias">
-        <div class="icon-badge" aria-hidden="true">
-          <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="1.5" y="3" width="13" height="11" rx="2"></rect>
-            <path d="M1.5 6h13M6 6v8M10 6v8"></path>
-          </svg>
-        </div>
-        <div>
-          <p class="action-title">Ver planilla</p>
-          <p class="action-desc">Mostrar tabla filtrada de guardias.</p>
-          <span class="badge-soft">Usa los filtros de arriba</span>
-        </div>
-      </a>
-
-      <!-- Asignar guardias múltiples -->
-      <a href="#" id="cardAsignar" class="action-card" aria-label="Asignar guardias múltiples">
-        <div class="icon-badge" aria-hidden="true">
-          <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M10.5 13v-1a3 3 0 0 0-3-3H5a3 3 0 0 0-3 3v1"/><circle cx="6.5" cy="5.5" r="2.2"/>
-            <path d="M13 5.5v4M15 7.5h-4"/>
-          </svg>
-        </div>
-        <div>
-          <p class="action-title">Asignar guardias múltiples</p>
-          <p class="action-desc">Asignación automática en el rango de fechas.</p>
-          <span class="badge-soft">Requiere: fechas</span>
-        </div>
-      </a>
-
-      <!-- Generar PDF -->
-      <a href="#" id="cardPDF" class="action-card" aria-label="Generar PDF">
-        <div class="icon-badge" aria-hidden="true">
-          <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M9.5 1.5H4A1.5 1.5 0 0 0 2.5 3v10A1.5 1.5 0 0 0 4 14.5h8A1.5 1.5 0 0 0 13.5 13V5.5z"/>
-            <path d="M9.5 1.5V5.5h4M5.5 9h5M5.5 12h3"/>
-          </svg>
-        </div>
-        <div>
-          <p class="action-title">Generar PDF</p>
-          <p class="action-desc">Informe por grupo y periodo.</p>
-          <span class="badge-soft">Requiere: fechas y grupo</span>
-        </div>
-      </a>
-<!-- Compartir planilla (PDF público) -->
-<a href="#" id="cardShareGuardias" class="action-card" aria-label="Generar enlace público de la planilla (PDF)">
-  <div class="icon-badge" aria-hidden="true">
-    <!-- icono link -->
-    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"
-         viewBox="0 0 16 16" fill="currentColor">
-      <path d="M6.354 5.5H4a3 3 0 0 0 0 6h3a3 3 0 0 0 2.674-1.664.5.5 0 1 1 .893.448A4 4 0 0 1 7 12.5H4a4 4 0 0 1 0-8h2.354a.5.5 0 0 1 0 1z"/>
-      <path d="M12 3.5H9a3 3 0 0 0-2.674 1.664.5.5 0 1 1-.893-.448A4 4 0 0 1 9 2.5h3a4 4 0 0 1 0 8H9.646a.5.5 0 0 1 0-1H12a3 3 0 0 0 0-6z"/>
-    </svg>
-  </div>
-  <div>
-    <p class="action-title">Enlace público de la planilla</p>
-    <p class="action-desc">Genera un link firmado al PDF según el rango de fechas (y grupo opcional).</p>
-    <p class="req-line"><span class="badge-soft">Requiere: fechas</span></p>
-
-    <!-- Controles compactos -->
-    <div class="row g-2 align-items-end mt-1">
-      <div class="col-7 col-md-7">
-        <label class="form-label form-label-sm mb-1">Caducidad</label>
-        <select class="form-select form-select-sm" id="shareGuardiasExpire">
-          <option value="">Sin caducidad</option>
-          <option value="168">7 días</option>
-          <option value="720" selected>30 días</option>
-          <option value="2160">90 días</option>
-        </select>
-      </div>
-      <div class="col-5 col-md-5 d-grid">
-        <button type="button" class="btn btn-main-blanco btn-sm" id="shareGuardiasBtn">
-          Generar enlace
-        </button>
-      </div>
-    </div>
-
-    <!-- Resultado inline -->
-    <div class="mt-2 d-none" id="shareGuardiasMini">
-      <div class="input-group input-group-sm">
-        <input type="text" class="form-control" id="shareGuardiasUrl" readonly>
-        <button type="button" class="btn btn-outline-secondary" id="shareGuardiasCopy">Copiar</button>
-      </div>
-      <div class="mt-1 d-flex gap-2 align-items-center">
-        <span class="badge-soft d-none" id="shareGuardiasExpBadge"></span>
-        <small class="text-muted d-none" id="shareGuardiasHint">Se copia automáticamente al generar.</small>
-      </div>
-      <small class="text-danger d-none" id="shareGuardiasErr"></small>
+  <!-- Fila 1: Grupo -->
+  <div class="row g-3 align-items-end">
+    <div class="col-12 col-md-6">
+      <label for="grupo" class="form-label">Grupo</label>
+      <select id="grupo" name="grupo" class="form-select form-select-sm">
+        <option value="">Todos</option>
+        <% (grupos||[]).forEach(g => { %>
+          <option value="<%= g.id %>" <%= String(grupo||'')===String(g.id)?'selected':'' %>><%= g.nombre %></option>
+        <% }) %>
+      </select>
     </div>
   </div>
-</a>
-<!-- Ayuda de Guardias -->
-<a href="/guardias/ayuda" class="action-card" aria-label="Ayuda de guardias">
-  <div class="icon-badge" aria-hidden="true">
-    <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
-      <circle cx="8" cy="8" r="6"></circle>
-      <path d="M6.5 6.2a1.8 1.8 0 1 1 3 1.5c-.6.4-1 .8-1 1.3v.3M8 11.8h.01"></path>
-    </svg>
-  </div>
-  <div>
-    <p class="action-title">Ayuda</p>
-    <p class="action-desc">Cómo usar la planilla y asignar guardias.</p>
-    <span class="badge-soft">Guía y preguntas frecuentes</span>
-  </div>
-</a>
-    </div>
-  </form>
 
-  <div class="volver-bloque-izquierda mt-4">
-    <a href="/" class="enlace-final">← Volver al inicio</a>
+  <!-- Fila 2: Fechas + chips -->
+  <div class="row g-3 align-items-end mt-0">
+    <div class="col-12 col-sm-6 col-lg-3">
+      <label for="desde" class="form-label">Fecha inicio</label>
+      <input type="date" id="desde" name="desde" value="<%= desde||'' %>" class="form-control form-control-sm">
+    </div>
+    <div class="col-12 col-sm-6 col-lg-3">
+      <label for="hasta" class="form-label">Fecha fin</label>
+      <input type="date" id="hasta" name="hasta" value="<%= hasta||'' %>" class="form-control form-control-sm">
+    </div>
+    <div class="col-12 col-lg-6">
+      <label class="form-label">Rango rápido</label>
+      <div class="chips">
+        <span class="chip" data-range="mes">Este mes</span>
+        <span class="chip" data-range="trim">Este trimestre</span>
+        <span class="chip" data-range="anio">Este año</span>
+      </div>
+    </div>
   </div>
+
+  <!-- Tarjetas de acción -->
+  <div class="action-grid">
+
+    <!-- Ver planilla -->
+    <a href="#" id="cardVer" class="action-card" aria-label="Ver planilla de guardias">
+      <div class="icon-badge" aria-hidden="true">
+        <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="1.5" y="3" width="13" height="11" rx="2"></rect>
+          <path d="M1.5 6h13M6 6v8M10 6v8"></path>
+        </svg>
+      </div>
+      <div>
+        <p class="action-title">Ver planilla</p>
+        <p class="action-desc">Tabla filtrada de todas las guardias asignadas.</p>
+        <span class="badge-soft">Usa los filtros de arriba</span>
+      </div>
+    </a>
+
+    <!-- Asignar guardias normales (múltiples) -->
+    <a href="#" id="cardAsignar" class="action-card" aria-label="Asignar guardias normales múltiples">
+      <div class="icon-badge" aria-hidden="true">
+        <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M10.5 13v-1a3 3 0 0 0-3-3H5a3 3 0 0 0-3 3v1"/><circle cx="6.5" cy="5.5" r="2.2"/>
+          <path d="M13 5.5v4M15 7.5h-4"/>
+        </svg>
+      </div>
+      <div>
+        <p class="action-title">Asignar guardias normales</p>
+        <p class="action-desc">Asignación automática (2 músicos) para todos los eventos sin guardia en el rango.</p>
+        <span class="badge-soft">Requiere: fechas</span>
+      </div>
+    </a>
+
+    <!-- Guardia de actividad complementaria -->
+    <a href="#" id="cardActividad" class="action-card" aria-label="Asignar guardia de actividad complementaria">
+      <div class="icon-badge" aria-hidden="true">
+        <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M2 13V8a6 6 0 0 1 12 0v5"/><rect x="1" y="11" width="3" height="4" rx="1"/><rect x="12" y="11" width="3" height="4" rx="1"/>
+          <path d="M8 2v2M5 3.5l1 1.7M11 3.5l-1 1.7"/>
+        </svg>
+      </div>
+      <div>
+        <p class="action-title">Guardia de actividad</p>
+        <p class="action-desc">Montaje, desmontaje o ambas. Número de músicos configurable.</p>
+        <span class="badge-soft">Requiere: fechas y evento</span>
+
+        <!-- Panel expandible (oculto por defecto) -->
+        <div id="panelActividad" class="mt-2 d-none">
+          <div class="row g-2 align-items-end">
+            <!-- Evento (select AJAX) -->
+            <div class="col-12">
+              <label class="form-label form-label-sm mb-1">Evento</label>
+              <select class="form-select form-select-sm" id="act_evento_id">
+                <option value="">— selecciona fechas primero —</option>
+              </select>
+              <small class="text-muted" id="act_eventos_hint" style="font-size:.75rem;">
+                Selecciona un rango de fechas arriba para cargar los eventos.
+              </small>
+            </div>
+            <!-- Tipo de actividad -->
+            <div class="col-12 col-sm-6">
+              <label class="form-label form-label-sm mb-1">Tipo de actividad</label>
+              <select class="form-select form-select-sm" id="act_tipo_actividad">
+                <option value="montaje">Montaje</option>
+                <option value="desmontaje">Desmontaje</option>
+                <option value="ambas">Ambas (montaje y desmontaje)</option>
+              </select>
+            </div>
+            <!-- Nº músicos -->
+            <div class="col-6 col-sm-3">
+              <label class="form-label form-label-sm mb-1">Nº músicos</label>
+              <input type="number" class="form-control form-control-sm" id="act_num_musicos" value="4" min="1" max="20">
+            </div>
+            <!-- Actividad complementaria (opcional) -->
+            <div class="col-6 col-sm-3">
+              <label class="form-label form-label-sm mb-1">Actividad</label>
+              <select class="form-select form-select-sm" id="act_actividad_id">
+                <option value="">— ninguna —</option>
+                <% (actividades||[]).forEach(a => { %>
+                  <option value="<%= a.id %>"><%= a.tipo %> <% if(a.descripcion){%>· <%= a.descripcion %><% } %></option>
+                <% }) %>
+              </select>
+            </div>
+            <div class="col-12 d-grid">
+              <button type="button" class="btn btn-main-blanco btn-sm" id="act_btn_generar">
+                Asignar guardia de actividad
+              </button>
+            </div>
+          </div>
+          <small class="text-danger d-none mt-1" id="act_error"></small>
+        </div>
+      </div>
+    </a>
+
+    <!-- Generar PDF -->
+    <a href="#" id="cardPDF" class="action-card" aria-label="Generar PDF">
+      <div class="icon-badge" aria-hidden="true">
+        <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M9.5 1.5H4A1.5 1.5 0 0 0 2.5 3v10A1.5 1.5 0 0 0 4 14.5h8A1.5 1.5 0 0 0 13.5 13V5.5z"/>
+          <path d="M9.5 1.5V5.5h4M5.5 9h5M5.5 12h3"/>
+        </svg>
+      </div>
+      <div>
+        <p class="action-title">Generar PDF</p>
+        <p class="action-desc">Informe de guardias por grupo y periodo.</p>
+        <span class="badge-soft">Requiere: fechas y grupo</span>
+      </div>
+    </a>
+
+    <!-- Enlace público de la planilla -->
+    <a href="#" id="cardShareGuardias" class="action-card" aria-label="Enlace público de la planilla">
+      <div class="icon-badge" aria-hidden="true">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 16 16" fill="currentColor">
+          <path d="M6.354 5.5H4a3 3 0 0 0 0 6h3a3 3 0 0 0 2.674-1.664.5.5 0 1 1 .893.448A4 4 0 0 1 7 12.5H4a4 4 0 0 1 0-8h2.354a.5.5 0 0 1 0 1z"/>
+          <path d="M12 3.5H9a3 3 0 0 0-2.674 1.664.5.5 0 1 1-.893-.448A4 4 0 0 1 9 2.5h3a4 4 0 0 1 0 8H9.646a.5.5 0 0 1 0-1H12a3 3 0 0 0 0-6z"/>
+        </svg>
+      </div>
+      <div>
+        <p class="action-title">Enlace público de la planilla</p>
+        <p class="action-desc">Genera un link firmado al PDF según el rango de fechas (y grupo opcional).</p>
+        <div class="row g-2 align-items-end mt-1">
+          <div class="col-7">
+            <label class="form-label form-label-sm mb-1">Caducidad</label>
+            <select class="form-select form-select-sm" id="shareGuardiasExpire">
+              <option value="">Sin caducidad</option>
+              <option value="168">7 días</option>
+              <option value="720" selected>30 días</option>
+              <option value="2160">90 días</option>
+            </select>
+          </div>
+          <div class="col-5 d-grid">
+            <button type="button" class="btn btn-main-blanco btn-sm" id="shareGuardiasBtn">Generar enlace</button>
+          </div>
+        </div>
+        <div class="mt-2 d-none" id="shareGuardiasMini">
+          <div class="input-group input-group-sm">
+            <input type="text" class="form-control" id="shareGuardiasUrl" readonly>
+            <button type="button" class="btn btn-outline-secondary" id="shareGuardiasCopy">Copiar</button>
+          </div>
+          <span class="badge-soft d-none mt-1" id="shareGuardiasExpBadge"></span>
+        </div>
+        <small class="text-danger d-none" id="shareGuardiasErr"></small>
+      </div>
+    </a>
+
+    <!-- Ayuda -->
+    <a href="/guardias/ayuda" class="action-card" aria-label="Ayuda de guardias">
+      <div class="icon-badge" aria-hidden="true">
+        <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="8" cy="8" r="6"></circle>
+          <path d="M6.5 6.2a1.8 1.8 0 1 1 3 1.5c-.6.4-1 .8-1 1.3v.3M8 11.8h.01"></path>
+        </svg>
+      </div>
+      <div>
+        <p class="action-title">Ayuda</p>
+        <p class="action-desc">Cómo usar la planilla, reglas de novatos y actividades complementarias.</p>
+        <span class="badge-soft">Guía y preguntas frecuentes</span>
+      </div>
+    </a>
+
+  </div><!-- /action-grid -->
+</form>
+
+<div class="volver-bloque-izquierda mt-4">
+  <a href="/" class="enlace-final">← Volver al inicio</a>
 </div>
 
 <script>
 (() => {
-  const form   = document.getElementById('filtros-form');
-  const elDesde= document.getElementById('desde');
-  const elHasta= document.getElementById('hasta');
-  const elGrupo= document.getElementById('grupo');
+  /* ── Elementos base ── */
+  const elDesde = document.getElementById('desde');
+  const elHasta = document.getElementById('hasta');
+  const elGrupo = document.getElementById('grupo');
 
-  const cardVer      = document.getElementById('cardVer');
-  const cardAsignar  = document.getElementById('cardAsignar');
-  const cardPDF      = document.getElementById('cardPDF');
+  /* ── Chips de rango rápido (unificados) ── */
+  const pad  = n => String(n).padStart(2, '0');
+  const fmt  = (y, m, d) => `${y}-${pad(m + 1)}-${pad(d)}`;
 
-  // RANGOS RÁPIDOS (chips)
-  const fmt = d => d.toISOString().slice(0,10);
-  const setRange = (a,b) => { elDesde.value = fmt(a); elHasta.value = fmt(b); };
-  const setActive = chip => {
-    document.querySelectorAll('.chip').forEach(c=>c.classList.remove('active'));
-    chip?.classList.add('active');
-  };
-  document.querySelectorAll('.chip[data-range]').forEach(chip=>{
-    chip.addEventListener('click', ()=>{
-      const now = new Date();
-      const end = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      const kind = chip.dataset.range;
-      if (kind === '30d') {
-        const start = new Date(end); start.setDate(start.getDate() - 29);
-        setRange(start, end);
-      } else if (kind === 'q') {
-        const m = end.getMonth(); const q = Math.floor(m/3);
-        const prevQ = (q + 3) % 4; const y = q===0 ? end.getFullYear()-1 : end.getFullYear();
-        const start = new Date(y, prevQ*3, 1);
-        const finish= new Date(y, prevQ*3 + 3, 0);
-        setRange(start, finish);
-      } else if (kind === 'ytd') {
-        setRange(new Date(end.getFullYear(),0,1), end);
-      }
-      setActive(chip); updateURL();
+  function rangoMes() {
+    const now = new Date(), y = now.getFullYear(), m = now.getMonth();
+    elDesde.value = fmt(y, m, 1);
+    elHasta.value = fmt(y, m, new Date(y, m + 1, 0).getDate());
+  }
+  function rangoTrimestre() {
+    const now = new Date(), y = now.getFullYear(), m = now.getMonth();
+    const q = Math.floor(m / 3), mI = q * 3, mF = mI + 2;
+    elDesde.value = fmt(y, mI, 1);
+    elHasta.value = fmt(y, mF, new Date(y, mF + 1, 0).getDate());
+  }
+  function rangoAnio() {
+    const y = new Date().getFullYear();
+    elDesde.value = `${y}-01-01`;
+    elHasta.value = `${y}-12-31`;
+  }
+
+  document.querySelectorAll('.chip[data-range]').forEach(chip => {
+    chip.addEventListener('click', () => {
+      const k = chip.dataset.range;
+      if (k === 'mes')  rangoMes();
+      if (k === 'trim') rangoTrimestre();
+      if (k === 'anio') rangoAnio();
+      document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+      updateURL();
     });
   });
 
-  // Persistir filtros en la URL
-  const campos = ['grupo','desde','hasta'];
-  function loadFromURL(){
+  /* ── Persistir filtros en la URL ── */
+  function loadFromURL() {
     const p = new URLSearchParams(location.search);
-    campos.forEach(id=>{
+    ['grupo', 'desde', 'hasta'].forEach(id => {
       const el = document.getElementById(id);
       if (el && p.has(id)) el.value = p.get(id);
     });
   }
-  function updateURL(){
+  function updateURL() {
     const p = new URLSearchParams(location.search);
-    campos.forEach(id=>{
-      const el = document.getElementById(id);
-      if (!el) return;
-      if (el.value) p.set(id, el.value); else p.delete(id);
+    [['grupo', elGrupo], ['desde', elDesde], ['hasta', elHasta]].forEach(([k, el]) => {
+      if (el?.value) p.set(k, el.value); else p.delete(k);
     });
     const qs = p.toString();
-    history.replaceState(null, '', `${location.pathname}${qs ? ('?' + qs) : ''}`);
+    history.replaceState(null, '', location.pathname + (qs ? '?' + qs : ''));
   }
   loadFromURL();
-  campos.forEach(id=>document.getElementById(id)?.addEventListener('change', updateURL));
+  [elGrupo, elDesde, elHasta].forEach(el => el?.addEventListener('change', updateURL));
 
-  // Acciones
-  function qsFromFiltros(){
+  /* ── Helper: QS desde filtros ── */
+  function qsFromFiltros() {
     const p = new URLSearchParams();
     if (elDesde.value) p.set('desde', elDesde.value);
     if (elHasta.value) p.set('hasta', elHasta.value);
@@ -228,180 +275,188 @@
     return p.toString();
   }
 
-  // Ver planilla
-  cardVer?.addEventListener('click', (e)=>{
+  /* ── Ver planilla ── */
+  document.getElementById('cardVer')?.addEventListener('click', e => {
     e.preventDefault();
     const qs = qsFromFiltros();
-    location.href = '/guardias/mostrar' + (qs ? ('?' + qs) : '');
+    location.href = '/guardias/mostrar' + (qs ? '?' + qs : '');
   });
 
-  // Asignar múltiples (POST)
-  cardAsignar?.addEventListener('click', (e)=>{
+  /* ── Asignar guardias normales (POST múltiples) ── */
+  document.getElementById('cardAsignar')?.addEventListener('click', e => {
     e.preventDefault();
     if (!elDesde.value || !elHasta.value) { alert('Indica un rango de fechas.'); return; }
     const f = document.createElement('form');
     f.method = 'POST'; f.action = '/guardias/generar-multiples';
-    for (const [k,v] of Object.entries({desde: elDesde.value, hasta: elHasta.value, grupo: elGrupo.value||''})) {
-      const i = document.createElement('input'); i.type='hidden'; i.name=k; i.value=v;
+    [['desde', elDesde.value], ['hasta', elHasta.value], ['grupo', elGrupo.value || '']].forEach(([k, v]) => {
+      const i = document.createElement('input'); i.type = 'hidden'; i.name = k; i.value = v;
       f.appendChild(i);
-    }
+    });
     document.body.appendChild(f); f.submit();
   });
 
-  // Generar PDF (POST) — requiere fechas y grupo
-  cardPDF?.addEventListener('click', (e)=>{
+  /* ── Guardia de actividad: toggle del panel ── */
+  const cardActividad  = document.getElementById('cardActividad');
+  const panelActividad = document.getElementById('panelActividad');
+  cardActividad?.addEventListener('click', e => {
+    if (e.target.closest('#panelActividad')) return;
+    e.preventDefault();
+    const abriendo = panelActividad.classList.contains('d-none');
+    panelActividad.classList.toggle('d-none');
+    // Al abrir, cargar eventos si hay fechas
+    if (abriendo && elDesde.value && elHasta.value) cargarEventos();
+  });
+
+  /* ── AJAX: cargar eventos del rango en el select ── */
+  const selEvento = document.getElementById('act_evento_id');
+  const hintEvento = document.getElementById('act_eventos_hint');
+
+  async function cargarEventos() {
+    if (!elDesde.value || !elHasta.value) return;
+    selEvento.innerHTML = '<option value="">Cargando…</option>';
+    selEvento.disabled = true;
+    try {
+      const p = new URLSearchParams({ desde: elDesde.value, hasta: elHasta.value });
+      if (elGrupo.value) p.set('grupo', elGrupo.value);
+      const r = await fetch('/guardias/eventos-rango?' + p.toString());
+      const j = await r.json();
+      if (!j.ok || !j.eventos.length) {
+        selEvento.innerHTML = '<option value="">— sin eventos en ese rango —</option>';
+        if (hintEvento) hintEvento.textContent = 'No hay eventos en el rango seleccionado.';
+        return;
+      }
+      const pad = n => String(n).padStart(2,'0');
+      const fmtFecha = s => {
+        const d = new Date(s);
+        return `${pad(d.getUTCDate())}/${pad(d.getUTCMonth()+1)}/${d.getUTCFullYear()}`;
+      };
+      selEvento.innerHTML = '<option value="">— selecciona un evento —</option>' +
+        j.eventos.map(e =>
+          `<option value="${e.id}">${fmtFecha(e.fecha)} · ${e.titulo}${e.grupo ? ' ['+e.grupo+']' : ''}</option>`
+        ).join('');
+      if (hintEvento) hintEvento.textContent = `${j.eventos.length} evento(s) encontrado(s).`;
+    } catch(err) {
+      selEvento.innerHTML = '<option value="">— error al cargar —</option>';
+    } finally {
+      selEvento.disabled = false;
+    }
+  }
+
+  // Recargar eventos cuando cambian las fechas o el grupo (si el panel está abierto)
+  [elDesde, elHasta, elGrupo].forEach(el => {
+    el?.addEventListener('change', () => {
+      if (!panelActividad.classList.contains('d-none')) cargarEventos();
+    });
+  });
+
+  /* ── Guardia de actividad: generar ── */
+  document.getElementById('act_btn_generar')?.addEventListener('click', async e => {
+    e.stopPropagation();
+    const errBox  = document.getElementById('act_error');
+    const eventoId = selEvento.value;
+    const tipoAct  = document.getElementById('act_tipo_actividad').value;
+    const numMus   = document.getElementById('act_num_musicos').value;
+    const actId    = document.getElementById('act_actividad_id').value;
+
+    errBox.classList.add('d-none');
+
+    if (!elDesde.value || !elHasta.value) {
+      errBox.textContent = 'Indica un rango de fechas primero.';
+      errBox.classList.remove('d-none'); return;
+    }
+    if (!eventoId) {
+      errBox.textContent = 'Selecciona un evento de la lista.';
+      errBox.classList.remove('d-none'); return;
+    }
+
+    const f = document.createElement('form');
+    f.method = 'POST'; f.action = '/guardias/generar-actividad';
+    [
+      ['evento_id',      eventoId],
+      ['actividad_id',   actId],
+      ['tipo_actividad', tipoAct],
+      ['num_musicos',    numMus],
+      ['desde',          elDesde.value],
+      ['hasta',          elHasta.value],
+    ].forEach(([k, v]) => {
+      const i = document.createElement('input'); i.type = 'hidden'; i.name = k; i.value = v;
+      f.appendChild(i);
+    });
+    document.body.appendChild(f); f.submit();
+  });
+
+  /* ── Generar PDF ── */
+  document.getElementById('cardPDF')?.addEventListener('click', e => {
     e.preventDefault();
     if (!elDesde.value || !elHasta.value || !elGrupo.value) {
       alert('⚠️ Para el PDF necesitas indicar fechas y un grupo.'); return;
     }
     const f = document.createElement('form');
     f.method = 'POST'; f.action = '/guardias/informe';
-    for (const [k,v] of Object.entries({desde: elDesde.value, hasta: elHasta.value, grupo: elGrupo.value})) {
-      const i = document.createElement('input'); i.type='hidden'; i.name=k; i.value=v;
+    [['desde', elDesde.value], ['hasta', elHasta.value], ['grupo', elGrupo.value]].forEach(([k, v]) => {
+      const i = document.createElement('input'); i.type = 'hidden'; i.name = k; i.value = v;
       f.appendChild(i);
-    }
+    });
     document.body.appendChild(f); f.submit();
   });
 
-})();
-</script>
-<script>
+  /* ── Enlace público ── */
   (() => {
-    const elDesde = document.getElementById('desde');
-    const elHasta = document.getElementById('hasta');
-    if (!elDesde || !elHasta) return;
-  
-    const pad = n => String(n).padStart(2, '0');
-    const fmt = (y, m, d) => `${y}-${pad(m+1)}-${pad(d)}`; // m: 0..11
-  
-    function rangoMesActual() {
-      const now  = new Date();
-      const y    = now.getFullYear();
-      const m    = now.getMonth();          // 0..11
-      const last = new Date(y, m + 1, 0).getDate();
-      elDesde.value = fmt(y, m, 1);
-      elHasta.value = fmt(y, m, last);
+    const card   = document.getElementById('cardShareGuardias');
+    if (!card) return;
+    card.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); });
+
+    const mini   = document.getElementById('shareGuardiasMini');
+    const urlInp = document.getElementById('shareGuardiasUrl');
+    const expBad = document.getElementById('shareGuardiasExpBadge');
+    const errBox = document.getElementById('shareGuardiasErr');
+    const btn    = document.getElementById('shareGuardiasBtn');
+    const copyBt = document.getElementById('shareGuardiasCopy');
+    const expSel = document.getElementById('shareGuardiasExpire');
+
+    async function generateLink() {
+      errBox.classList.add('d-none');
+      if (!elDesde.value || !elHasta.value) {
+        errBox.textContent = 'Indica un rango de fechas para compartir la planilla.';
+        errBox.classList.remove('d-none'); return;
+      }
+      btn.disabled = true; const old = btn.textContent; btn.textContent = 'Generando…';
+      try {
+        const payload = {
+          kind: 'guardias',
+          params: {
+            desde: elDesde.value,
+            hasta: elHasta.value,
+            ...(elGrupo.value ? { grupo: elGrupo.value } : {})
+          }
+        };
+        if (expSel?.value) payload.expireHours = Number(expSel.value);
+        const r = await fetch('/api/share', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const j = await r.json();
+        if (!j.ok) throw new Error(j.msg || 'No se pudo crear el enlace');
+        urlInp.value = j.url;
+        mini.classList.remove('d-none');
+        if (j.expiresAt) {
+          expBad.textContent = 'Caduca: ' + new Date(j.expiresAt).toLocaleString();
+          expBad.classList.remove('d-none');
+        }
+        try { await navigator.clipboard.writeText(j.url); } catch {}
+      } catch (e) {
+        errBox.textContent = e.message || 'Error'; errBox.classList.remove('d-none');
+      } finally {
+        btn.disabled = false; btn.textContent = old;
+      }
     }
-  
-    function rangoTrimestreActual() {
-      const now   = new Date();
-      const y     = now.getFullYear();
-      const m     = now.getMonth();         // 0..11
-      const q     = Math.floor(m / 3);      // 0..3 (Q1=0 -> ene-mar)
-      const mIni  = q * 3;
-      const mFin  = mIni + 2;
-      const last  = new Date(y, mFin + 1, 0).getDate();
-      elDesde.value = fmt(y, mIni, 1);
-      elHasta.value = fmt(y, mFin, last);
-    }
-  
-    function rangoAnioActual() {
-      const y = new Date().getFullYear();
-      elDesde.value = `${y}-01-01`;
-      elHasta.value = `${y}-12-31`;
-    }
-  
-    const setActive = chip => {
-      document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
-      chip.classList.add('active');
-    };
-  
-    document.querySelectorAll('.chip[data-range]').forEach(chip => {
-      chip.addEventListener('click', () => {
-        const k = chip.dataset.range;
-        if (k === 'mes')  rangoMesActual();
-        if (k === 'trim') rangoTrimestreActual();
-        if (k === 'anio') rangoAnioActual();
-        setActive(chip);
-  
-        // ¿Quieres que se aplique el filtro automáticamente?
-        // document.getElementById('filtro-form')?.submit();
-      });
+
+    btn.addEventListener('click', generateLink);
+    copyBt.addEventListener('click', async () => {
+      try { await navigator.clipboard.writeText(urlInp.value); } catch {}
     });
   })();
-  </script>
-  <script>
-    (() => {
-      const card   = document.getElementById('cardShareGuardias');
-      if (!card) return;
-      card.addEventListener('click', (e) => {
-      e.preventDefault();   // evita navegar a "#"
-      e.stopPropagation();  // por si hay escuchas en contenedores
-    });
-  
-      const desde  = document.getElementById('desde');   // ya existen
-      const hasta  = document.getElementById('hasta');   // en esta vista
-      const grupo  = document.getElementById('grupo');   // (opcional)
-      const expSel = document.getElementById('shareGuardiasExpire');
-    
-      const mini   = document.getElementById('shareGuardiasMini');
-      const urlInp = document.getElementById('shareGuardiasUrl');
-      const expBad = document.getElementById('shareGuardiasExpBadge');
-      const hint   = document.getElementById('shareGuardiasHint');
-      const errBox = document.getElementById('shareGuardiasErr');
-      const btn    = document.getElementById('shareGuardiasBtn');
-      const copyBt = document.getElementById('shareGuardiasCopy');
-    
-      async function generateLink() {
-        errBox.classList.add('d-none');
-    
-        if (!desde.value || !hasta.value) {
-          errBox.textContent = 'Indica un rango de fechas para compartir la planilla.';
-          errBox.classList.remove('d-none');
-          return;
-        }
-    
-        btn.disabled = true; const old = btn.textContent; btn.textContent = 'Generando…';
-        try {
-          const payload = {
-            kind: 'guardias',
-            params: {
-              desde: desde.value,
-              hasta: hasta.value,
-              ...(grupo && grupo.value ? { grupo: grupo.value } : {})
-            }
-          };
-          const exp = expSel && expSel.value ? Number(expSel.value) : null;
-          if (exp) payload.expireHours = exp;
-    
-          const r = await fetch('/api/share', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-          });
-          const j = await r.json();
-          if (!j.ok) throw new Error(j.msg || 'No se pudo crear el enlace');
-    
-          urlInp.value = j.url;
-          mini.classList.remove('d-none');
-          hint.classList.remove('d-none');
-    
-          if (j.expiresAt) {
-            const d = new Date(j.expiresAt);
-            expBad.textContent = 'Caduca: ' + d.toLocaleString();
-            expBad.classList.remove('d-none');
-          } else {
-            expBad.classList.add('d-none');
-          }
-    
-          try { await navigator.clipboard.writeText(j.url); } catch {}
-        } catch (e) {
-          errBox.textContent = e.message || 'Error';
-          errBox.classList.remove('d-none');
-        } finally {
-          btn.disabled = false; btn.textContent = old;
-        }
-      }
-    
-      // Accesos: click en el botón, Enter/Espacio sobre la card
-      btn.addEventListener('click', generateLink);
-      card.addEventListener('keydown', (ev) => {
-        if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); generateLink(); }
-      });
-      copyBt.addEventListener('click', async () => {
-        try { await navigator.clipboard.writeText(urlInp.value); } catch {}
-      });
-    })();
-    </script>
-    
 
+})();
+</script>
