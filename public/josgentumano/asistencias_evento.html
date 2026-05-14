@@ -21,6 +21,48 @@
     .asistencia-nombre{ font-weight:800; }
     .asistencia-detalle{ color:#6b7280; font-size:.92rem; display:flex; gap:.5rem; flex-wrap:wrap; }
   </style>
+  <style>
+    :root {
+      --naranja: #FF9501;
+      --crema: #fff8f0;
+      --negro: #111827;
+      --muted-color: #6b7280;
+      --border-color: #e5e7eb;
+      --shadow-sm: 0 2px 10px rgba(0,0,0,.07);
+      --shadow-md: 0 4px 18px rgba(0,0,0,.11);
+      --shadow-lg: 0 8px 28px rgba(0,0,0,.14);
+      --radius: 14px;
+      --radius-pill: 999px;
+    }
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center;
+      padding: .65rem 1.5rem; border-radius: var(--radius);
+      font-weight: 700; font-size: .95rem; border: none; cursor: pointer;
+      box-shadow: var(--shadow-sm); text-decoration: none;
+      transition: transform .12s ease, box-shadow .12s ease, filter .12s ease;
+    }
+    .btn:hover  { transform: translateY(-1px); box-shadow: var(--shadow-md); filter: brightness(1.06); }
+    .btn:active { transform: translateY(0); }
+    .btn-primary { background: linear-gradient(180deg,#ffb24a,#f59e0b); color:#fff; border:1px solid #e8900a; }
+    .btn-accent  { background: linear-gradient(180deg,#f28d63,#ea6b38); color:#fff; border:1px solid #cc5c2f; }
+    .btn-ghost   { background:#fff; color:var(--negro); border:1.5px solid var(--border-color); }
+    .btn-ghost:hover { border-color:var(--naranja); color:var(--naranja); }
+    .info-row {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 0; border-bottom: 1px solid var(--border-color);
+      font-size: .92rem;
+    }
+    .info-row:last-child { border-bottom: none; }
+    .info-row .label { color: var(--muted-color); font-size: .8rem; min-width: 60px; }
+    .badge {
+      display: inline-flex; align-items: center; gap:.3rem;
+      padding:.2rem .65rem; border-radius:var(--radius-pill);
+      font-size:.78rem; font-weight:700;
+    }
+    .badge-green  { background:#e9f7ef; color:#186a3b; border:1px solid #c8e6d1; }
+    .badge-orange { background:#fff3e0; color:#7a3f00; border:1px solid #f5c27a; }
+    .badge-gray   { background:#f3f4f6; color:#374151; border:1px solid #e5e7eb; }
+  </style>
 </head>
 <body>
   <div class="container">
@@ -50,33 +92,7 @@
     </div>
   </div>
 
-  <!-- Pill + logout -->
-  <script>
-    (function(){
-      async function cargarUsuarioPill(){
-        const pill = document.getElementById('user-pill'); if(!pill) return;
-        let nombre = localStorage.getItem('usuario_nombre') || '';
-        try{
-          const r = await fetch('/josgmaestro/api/yo', { credentials:'same-origin' });
-          if (r.ok) { const me = await r.json(); if (me?.nombre) nombre = me.nombre; }
-        }catch(e){}
-        if(!nombre){ pill.style.display='none'; return; }
-        pill.querySelector('.avatar').textContent = (nombre.trim()[0]||'U').toUpperCase();
-        pill.querySelector('.name').textContent   = nombre;
-        pill.style.display = 'inline-flex';
-      }
-      function bindLogout(){
-        const btn = document.getElementById('btn-logout');
-        if (!btn) return;
-        btn.addEventListener('click', ()=>{
-          fetch('/josgmaestro/logout', { method:'POST', credentials:'include' })
-          .finally(()=>{ localStorage.clear(); location.href='/josgentumano/login.html'; });
-        });
-      }
-      document.addEventListener('DOMContentLoaded', cargarUsuarioPill);
-      document.addEventListener('DOMContentLoaded', bindLogout);
-    })();
-  </script>
+  
 
   <!-- Lógica asistencias -->
   <script>
@@ -107,7 +123,7 @@
     async function cargarAsistencias() {
       try {
         const url = `${API_BASE}/eventos/${evento_id}/asistencias?ts=${Date.now()}`;
-        const res = await fetch(url, { cache: 'no-store', credentials:'same-origin' });
+        const res = await fetch(url, { cache: 'no-store' });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const asistencias = await res.json();
 
@@ -172,6 +188,57 @@
       window.addEventListener('pageshow',e=>{if(e.persisted)setTimeout(place,0);});
       let tm=null; window.addEventListener('resize',()=>{clearTimeout(tm);tm=setTimeout(place,120);});
     })();
+  </script>
+
+  <!-- Auth unificado: sesión maestro + JWT -->
+  <script>
+  (function(){
+    const TOKEN  = localStorage.getItem('token');
+    const ROL    = (localStorage.getItem('rol') || '').toLowerCase();
+    const NOMBRE = localStorage.getItem('usuario_nombre') || localStorage.getItem('alumno_nombre') || '';
+
+    // Guardia de sesión: necesita token JWT o cookie de sesión
+    // (no redirigimos aquí; cada página decide si necesita auth)
+
+    // Helper fetch autenticado global
+    window.authFetch = function(url, opts) {
+      opts = opts || {};
+      const headers = Object.assign({}, opts.headers || {});
+      if (TOKEN) headers['Authorization'] = 'Bearer ' + TOKEN;
+      return fetch(url, Object.assign({}, opts, { headers: headers }));
+    };
+
+    // Pill de usuario
+    function mostrarPill(nombre) {
+      const pill = document.getElementById('user-pill');
+      if (!pill || !nombre) return;
+      pill.querySelector('.avatar').textContent = nombre.trim()[0].toUpperCase();
+      pill.querySelector('.name').textContent   = nombre.trim();
+      pill.style.display = 'inline-flex';
+    }
+
+    if (NOMBRE) {
+      mostrarPill(NOMBRE);
+    } else {
+      window.authFetch('/josgmaestro/api/yo')
+        .then(function(r){ return r.ok ? r.json() : null; })
+        .then(function(me){
+          if (!me || !me.nombre) return;
+          localStorage.setItem('usuario_nombre', me.nombre);
+          mostrarPill(me.nombre);
+        }).catch(function(){});
+    }
+
+    // Logout
+    const btn = document.getElementById('btn-logout');
+    if (btn) {
+      btn.style.display = 'flex';
+      btn.addEventListener('click', function() {
+        fetch('/josgmaestro/logout', { method:'POST' })
+          .finally(function(){ localStorage.clear(); location.href = '/josgentumano/login.html'; });
+      });
+    }
+  })();
   </script>
 </body>
 </html>

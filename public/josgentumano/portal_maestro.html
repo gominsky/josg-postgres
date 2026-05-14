@@ -65,17 +65,57 @@
   margin-top: 12px;   /* prueba con 2–3 px según tu ojo */
 }
   </style>
+  <style>
+    :root {
+      --naranja: #FF9501;
+      --crema: #fff8f0;
+      --negro: #111827;
+      --muted-color: #6b7280;
+      --border-color: #e5e7eb;
+      --shadow-sm: 0 2px 10px rgba(0,0,0,.07);
+      --shadow-md: 0 4px 18px rgba(0,0,0,.11);
+      --shadow-lg: 0 8px 28px rgba(0,0,0,.14);
+      --radius: 14px;
+      --radius-pill: 999px;
+    }
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center;
+      padding: .65rem 1.5rem; border-radius: var(--radius);
+      font-weight: 700; font-size: .95rem; border: none; cursor: pointer;
+      box-shadow: var(--shadow-sm); text-decoration: none;
+      transition: transform .12s ease, box-shadow .12s ease, filter .12s ease;
+    }
+    .btn:hover  { transform: translateY(-1px); box-shadow: var(--shadow-md); filter: brightness(1.06); }
+    .btn:active { transform: translateY(0); }
+    .btn-primary { background: linear-gradient(180deg,#ffb24a,#f59e0b); color:#fff; border:1px solid #e8900a; }
+    .btn-accent  { background: linear-gradient(180deg,#f28d63,#ea6b38); color:#fff; border:1px solid #cc5c2f; }
+    .btn-ghost   { background:#fff; color:var(--negro); border:1.5px solid var(--border-color); }
+    .btn-ghost:hover { border-color:var(--naranja); color:var(--naranja); }
+    .info-row {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 0; border-bottom: 1px solid var(--border-color);
+      font-size: .92rem;
+    }
+    .info-row:last-child { border-bottom: none; }
+    .info-row .label { color: var(--muted-color); font-size: .8rem; min-width: 60px; }
+    .badge {
+      display: inline-flex; align-items: center; gap:.3rem;
+      padding:.2rem .65rem; border-radius:var(--radius-pill);
+      font-size:.78rem; font-weight:700;
+    }
+    .badge-green  { background:#e9f7ef; color:#186a3b; border:1px solid #c8e6d1; }
+    .badge-orange { background:#fff3e0; color:#7a3f00; border:1px solid #f5c27a; }
+    .badge-gray   { background:#f3f4f6; color:#374151; border:1px solid #e5e7eb; }
+  </style>
 </head>
 <body>
   <div class="container">
     <!-- Topbar -->
     <div class="topbar">
-      <div style="display:flex; align-items:center; gap:8px;">
-        <div id="user-pill" class="user-pill" style="display:none; position:static;">
-          <span class="avatar"></span><span class="name"></span>
-        </div>
-        <button id="btn-logout" class="icon-btn" title="Cerrar sesión" aria-label="Cerrar sesión">⎋</button>
+      <div id="user-pill" class="user-pill" style="display:none;">
+        <span class="avatar"></span><span class="name"></span>
       </div>
+      <button id="btn-logout" class="icon-btn" title="Cerrar sesión" aria-label="Cerrar sesión">⎋</button>
     </div>
 
     <!-- Hero con pentagrama envolviendo acciones y próximos -->
@@ -87,8 +127,8 @@
 
       <div class="panel">
         <div class="grid-actions">
-          <a class="action action--orange" href="mensajes_movil.html">Mensajes</a>
-          <a class="action action--orange" href="eventos.html">Eventos</a>
+          <a class="action action--orange" href="/josgentumano/mensajes.html">Mensajes</a>
+          <a class="action action--orange" href="/josgentumano/eventos.html">Calendario</a>
          <!-- Después (ruta absoluta) -->
           <a class="action action--orange" href="/documentos/info%20guardias%2024-25.pdf" target="_blank" rel="noopener">Info Guardias</a>
           <a class="action action--accent" href="https://www.josg.org" target="_blank" rel="noopener">josg.org</a>
@@ -103,18 +143,18 @@
     <script>
   (async function () {
     try{
-      const r = await fetch('/josgmaestro/api/yo', { credentials: 'same-origin' });
+      const r = await fetch('/josgmaestro/api/yo', { });
       if (!r.ok) return;
       const me  = await r.json();
       const rol = String(me?.rol || '').toLowerCase();
       if (rol === 'usuario' || rol.startsWith('guardia_')) {
-        const link = document.querySelector('.grid-actions a[href="mensajes_movil.html"]');
+        const link = document.querySelector('.grid-actions a[href="/josgentumano/mensajes.html"]');
         if (link) link.remove(); // o link.style.display='none';
       }
     }catch(_){}
   })();
   </script>
-  <!-- Lógica portal (pill + logout + próximos) -->
+  
   <script>
     (function () {
       const API_BASE = '/josgmaestro/api';
@@ -123,7 +163,7 @@
       const $logout = document.getElementById('btn-logout');
       if ($logout) {
         $logout.addEventListener('click', () => {
-          fetch('/josgmaestro/logout', { method: 'POST', credentials: 'include' })
+          fetch('/josgmaestro/logout', { method: 'POST' })
           .finally(() => { localStorage.clear(); location.href = '/josgentumano/login.html'; });
         });
       }
@@ -132,7 +172,7 @@
         const pill = document.getElementById('user-pill'); if(!pill) return;
         let nombre = localStorage.getItem('usuario_nombre') || '';
         try{
-          const r = await fetch('/josgmaestro/api/yo', { credentials:'same-origin' });
+          const r = await fetch('/josgmaestro/api/yo', { });
           if (r.ok) { const me = await r.json(); if (me?.nombre) nombre = me.nombre; }
         }catch(e){}
         if(!nombre){ pill.style.display='none'; return; }
@@ -155,7 +195,7 @@
         const venue  = ev.espacio || ev.lugar || ev.sala || ev.ubicacion || ev.grupo_nombre || '';
 
         const idParam = encodeURIComponent(String(ev.id));
-        const href = `evento_detalle.html?id=${idParam}`;
+        const href = `/josgentumano/evento_detalle.html?id=${idParam}`;
 
         return `
           <a class="poster" href="${href}" aria-label="Abrir ${ev.title || 'evento'}">
@@ -210,7 +250,7 @@
         if (!wrap || !empty) return;
         wrap.innerHTML = ''; empty.style.display = 'none';
         try{
-          const res = await fetch(`${API_EVENTOS}`, { headers: { 'Accept': 'application/json' }, cache: 'no-store', credentials: 'same-origin' });
+          const res = await fetch(`${API_EVENTOS}`, { headers: { 'Accept': 'application/json' }, cache: 'no-store' });
           if (res.status === 401) { localStorage.clear(); location.href = 'index.html'; return; }
           if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
@@ -269,6 +309,57 @@
       window.addEventListener('pageshow',e=>{if(e.persisted)setTimeout(place,0);});
       let tm=null; window.addEventListener('resize',()=>{clearTimeout(tm);tm=setTimeout(place,120);});
     })();
+  </script>
+
+  <!-- Auth unificado: sesión maestro + JWT -->
+  <script>
+  (function(){
+    const TOKEN  = localStorage.getItem('token');
+    const ROL    = (localStorage.getItem('rol') || '').toLowerCase();
+    const NOMBRE = localStorage.getItem('usuario_nombre') || localStorage.getItem('alumno_nombre') || '';
+
+    // Guardia de sesión: necesita token JWT o cookie de sesión
+    // (no redirigimos aquí; cada página decide si necesita auth)
+
+    // Helper fetch autenticado global
+    window.authFetch = function(url, opts) {
+      opts = opts || {};
+      const headers = Object.assign({}, opts.headers || {});
+      if (TOKEN) headers['Authorization'] = 'Bearer ' + TOKEN;
+      return fetch(url, Object.assign({}, opts, { headers: headers }));
+    };
+
+    // Pill de usuario
+    function mostrarPill(nombre) {
+      const pill = document.getElementById('user-pill');
+      if (!pill || !nombre) return;
+      pill.querySelector('.avatar').textContent = nombre.trim()[0].toUpperCase();
+      pill.querySelector('.name').textContent   = nombre.trim();
+      pill.style.display = 'inline-flex';
+    }
+
+    if (NOMBRE) {
+      mostrarPill(NOMBRE);
+    } else {
+      window.authFetch('/josgmaestro/api/yo')
+        .then(function(r){ return r.ok ? r.json() : null; })
+        .then(function(me){
+          if (!me || !me.nombre) return;
+          localStorage.setItem('usuario_nombre', me.nombre);
+          mostrarPill(me.nombre);
+        }).catch(function(){});
+    }
+
+    // Logout
+    const btn = document.getElementById('btn-logout');
+    if (btn) {
+      btn.style.display = 'flex';
+      btn.addEventListener('click', function() {
+        fetch('/josgmaestro/logout', { method:'POST' })
+          .finally(function(){ localStorage.clear(); location.href = '/josgentumano/login.html'; });
+      });
+    }
+  })();
   </script>
 </body>
 </html>

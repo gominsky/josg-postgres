@@ -28,7 +28,7 @@
               return;
             }
             if (rol === 'docente' || rol === 'admin' || rol.startsWith('guardia_')) {
-              location.replace('/josgmaestro/portal_maestro.html'); // o toDocente()
+              location.replace('/josgentumano/portal_maestro.html'); // o toDocente()
               return;
             }
           }
@@ -93,7 +93,7 @@
         return base + 'index.html';
       };
       // portal Docencia/Admin (ruta ABSOLUTA correcta)
-      const toDocente = ()=> '/josgmaestro/portal_maestro.html';
+      const toDocente = ()=> '/josgentumano/portal_maestro.html';
 
       // puente de sesión para Docencia/Admin: crea req.session en /josgmaestro
       async function ensureMaestroSession(email, password){

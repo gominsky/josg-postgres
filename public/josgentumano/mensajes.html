@@ -205,9 +205,43 @@
   border-radius:8px; font-size:.88rem; cursor:pointer; transition:background .1s;
 }
 .doc-check-item:hover { background:#fff8ee; }
-.doc-check-item input[type="checkbox"] {
-  width:15px; height:15px; accent-color:var(--msg-naranja);
-  cursor:pointer; flex:0 0 auto; margin:0;
+.doc-cb-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+}
+.doc-cb-wrap input[type="checkbox"] {
+  position: absolute;
+  opacity: 0;
+  width: 20px; height: 20px;
+  margin: 0; padding: 0;
+  cursor: pointer;
+  z-index: 1;
+}
+.doc-cb-box {
+  display: inline-block;
+  width: 20px; height: 20px;
+  border: 2px solid #9ca3af;
+  border-radius: 6px;
+  background: #fff;
+  transition: border-color .12s ease, background .12s ease;
+  position: relative;
+  flex: 0 0 20px;
+}
+.doc-cb-wrap input[type="checkbox"]:checked + .doc-cb-box {
+  background: #FF9501;
+  border-color: #FF9501;
+}
+.doc-cb-wrap input[type="checkbox"]:checked + .doc-cb-box::after {
+  content: "";
+  position: absolute;
+  left: 5px; top: 2px;
+  width: 6px; height: 11px;
+  border: 2.5px solid #fff;
+  border-top: none;
+  border-left: none;
+  transform: rotate(45deg);
 }
 .doc-sublabel { font-size:.78rem; font-weight:700; color:#9ca3af; margin:4px 0; }
 .doc-aviso { padding:.5rem .8rem; border-radius:10px; font-size:.85rem; font-weight:700; margin-top:6px; }
@@ -260,7 +294,7 @@
         <div id="list" class="list"></div>
         <div id="pager" class="pager"></div>
         <div class="actions" style="margin-top:.9rem;">
-          <button class="btn btn-primary" onclick="location.href='index.html'">&larr; Inicio</button>
+          <button class="btn btn-primary" onclick="location.href='/josgentumano/portal_maestro.html'">&larr; Inicio</button>
         </div>
       </div>
 
@@ -291,7 +325,9 @@
           <!-- Adjuntos -->
           <div class="doc-field">
             <label class="doc-file-label" for="d-files">📎 Adjuntar archivos</label>
-            <input id="d-files" type="file" multiple style="display:none;" />
+            <input id="d-files" type="file" multiple
+              accept=".pdf,.png,.jpg,.jpeg,.webp,.gif,.zip,.doc,.docx,.xls,.xlsx"
+              style="width:100%;margin-top:4px;font-size:.85rem;" />
             <ul id="d-files-preview" class="files-preview"></ul>
           </div>
 
@@ -347,7 +383,7 @@
         </div>
 
         <div class="actions" style="margin-top:.9rem;">
-          <button class="btn btn-primary" onclick="location.href='index.html'">&larr; Inicio</button>
+          <button class="btn btn-primary" onclick="location.href='/josgentumano/index.html'">&larr; Inicio</button>
         </div>
       </div>
     </div>
@@ -376,13 +412,18 @@
   <script>
     (function () {
       const btn = document.getElementById('btn-logout');
+      const rol = (localStorage.getItem('rol') || '').toLowerCase();
+      const esDoc = rol === 'docente' || rol === 'admin';
+
       function doLogout(){
-        try{
-          localStorage.removeItem('token');
-          localStorage.removeItem('alumno_id');
-          localStorage.removeItem('alumno_nombre');
-        }catch(e){}
-        location.href = 'login.html';
+        // Sesión Express (docentes)
+        if (esDoc) {
+          fetch('/josgmaestro/logout', { method:'POST', credentials:'include' })
+            .finally(()=>{ localStorage.clear(); location.href = '/josgentumano/login.html'; });
+        } else {
+          try { localStorage.removeItem('token'); localStorage.removeItem('alumno_id'); localStorage.removeItem('alumno_nombre'); } catch(e){}
+          location.href = '/josgentumano/login.html';
+        }
       }
       if (btn){
         btn.addEventListener('click', doLogout);
@@ -750,31 +791,9 @@ if (rawPrimary && !isAttachmentPath(rawPrimary)) {
     }
 // Delegación: Clip / Ver más / Marcar leído
 $list.addEventListener('click', async (ev) => {
-  const chipLink = ev.target.closest('.chips a[href]');
-if (chipLink){
-  ev.preventDefault(); ev.stopPropagation(); ev.stopImmediatePropagation();
-  try {
-    const w = window.open(chipLink.href, '_blank', 'noopener');
-    if (!w) location.assign(chipLink.href);
-  } catch {
-    location.assign(chipLink.href);
-  }
-  return;
-}
-  const attLink = ev.target.closest('.att-list a[href]');
-if (attLink){
-  const url = attLink.href;
-  ev.preventDefault();
-  ev.stopPropagation();
-  ev.stopImmediatePropagation();
-  try {
-    const w = window.open(url, '_blank', 'noopener');
-    if (!w) location.assign(url); // fallback si bloquea popups
-  } catch {
-    location.assign(url);
-  }
-  return;
-}
+  // Chips de enlace y adjuntos: dejar comportamiento nativo del <a target="_blank">
+  if (ev.target.closest('.chips a[href]')) return;
+  if (ev.target.closest('.att-list a[href]')) return;
   // 1) Clip: mostrar/ocultar adjuntos
   const clipBtn = ev.target.closest('button[data-clip]');
   if (clipBtn){
@@ -900,15 +919,26 @@ document.addEventListener('visibilitychange', () => {
 
     function checkItem(val, label, name){
       return `<label class="doc-check-item">
-        <input type="checkbox" name="${name}" value="${val}"> ${label}
+        <span class="doc-cb-wrap">
+          <input type="checkbox" name="${name}" value="${val}">
+          <span class="doc-cb-box" aria-hidden="true"></span>
+        </span>
+        <span>${label}</span>
       </label>`;
     }
 
     function renderChecklists(){
-      $('d-lista-grupos').innerHTML = GRUPOS.map(g => checkItem(g.id, g.nombre, 'grupo')).join('');
-      $('d-lista-inst').innerHTML   = INSTS.map(i  => checkItem(i.id, i.nombre, 'inst')).join('');
-      $('d-combo-grupos').innerHTML = GRUPOS.map(g => checkItem(g.id, g.nombre, 'combo-grupo')).join('');
-      $('d-combo-inst').innerHTML   = INSTS.map(i  => checkItem(i.id, i.nombre, 'combo-inst')).join('');
+      const JOSG_ID = '2'; // grupo JOSG
+      $('d-lista-grupos').innerHTML  = GRUPOS.map(g => checkItem(g.id, g.nombre, 'grupo')).join('');
+      $('d-lista-inst').innerHTML    = INSTS.map(i  => checkItem(i.id, i.nombre, 'inst')).join('');
+      $('d-combo-grupos').innerHTML  = GRUPOS.map(g => checkItem(g.id, g.nombre, 'combo-grupo')).join('');
+      $('d-combo-inst').innerHTML    = INSTS.map(i  => checkItem(i.id, i.nombre, 'combo-inst')).join('');
+
+      // Preseleccionar JOSG en todos los selectores de grupo
+      ['d-lista-grupos','d-combo-grupos'].forEach(listId => {
+        const cb = $( listId )?.querySelector(`input[value="${JOSG_ID}"]`);
+        if (cb) cb.checked = true;
+      });
     }
 
     // Buscador en checklist
@@ -943,8 +973,6 @@ document.addEventListener('visibilitychange', () => {
     let archivosSeleccionados = [];
     document.addEventListener('DOMContentLoaded', ()=>{
       const input = $('d-files');
-      const label = document.querySelector('.doc-file-label');
-      if (label) label.addEventListener('click', () => input.click());
       input.addEventListener('change', () => {
         Array.from(input.files).forEach(f => {
           if (!archivosSeleccionados.find(x => x.name===f.name && x.size===f.size))
@@ -1003,7 +1031,15 @@ document.addEventListener('visibilitychange', () => {
         fd.append('cuerpo', cuerpo);
         const url = $('d-url').value.trim();
         if (url) fd.append('url', url);
-        archivosSeleccionados.forEach(f => fd.append('adjuntos', f));
+
+        // Adjuntos: combinar el array acumulado + lo que haya en el input en este momento
+        const inputFiles = Array.from($('d-files').files || []);
+        const todosArchivos = [...archivosSeleccionados];
+        inputFiles.forEach(f => {
+          if (!todosArchivos.find(x => x.name === f.name && x.size === f.size))
+            todosArchivos.push(f);
+        });
+        todosArchivos.forEach(f => fd.append('adjuntos', f));
 
         // Formato que espera el servidor: broadcast / grupos[] / instrumentos[]
         if (modoActual === 'todos') {
@@ -1047,6 +1083,11 @@ document.addEventListener('visibilitychange', () => {
       renderFilesPreview();
       document.querySelectorAll('.doc-checklist input[type="checkbox"]')
         .forEach(cb => cb.checked = false);
+      // Restaurar JOSG preseleccionado
+      ['d-lista-grupos','d-combo-grupos'].forEach(listId => {
+        const cb = $(listId)?.querySelector('input[value="2"]');
+        if (cb) cb.checked = true;
+      });
       $('d-c-titulo').textContent = '0/120';
       $('d-c-cuerpo').textContent = '0/2000';
       // reset modo → todos

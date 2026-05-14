@@ -141,6 +141,25 @@ app.use('/eventos/styles', express.static(path.join(__dirname, 'public', 'styles
 app.use(express.static(path.join(__dirname, 'public')));
 
 // ─── Rutas ───────────────────────────────────────────────────────
+
+// ─── Redireccionamiento josgmaestro → josgentumano ────────────────
+// Páginas HTML migradas: redirige permanentemente a la nueva ubicación
+const PAGINAS_MIGRADAS = [
+  'portal_maestro.html',
+  'eventos.html',
+  'evento_detalle.html',
+  'asistencias_evento.html',
+  'mensajes_movil.html',
+];
+app.use('/josgmaestro', (req, res, next) => {
+  const pagina = req.path.replace(/^\//, '');
+  if (PAGINAS_MIGRADAS.includes(pagina)) {
+    const query = req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : '';
+    return res.redirect(301, `/josgentumano/${pagina}${query}`);
+  }
+  next();
+});
+
 const josgmaestroRouter = require('./routes/josgmaestro');
 app.use('/josgmaestro', josgmaestroRouter);
 app.use('/josgmaestro', requireAuthPage, express.static(path.join(__dirname, 'public/josgmaestro')));
@@ -148,10 +167,9 @@ app.use('/josgmaestro', requireAuthPage, express.static(path.join(__dirname, 'pu
 const authRoutes = require('./routes/auth');
 app.use(loginLimiter, authRoutes); // rate limiting aplicado al login
 
-app.get(
-  ['/josgentumano/mensajes.html', '/firmas/mensajes.html', '/mensajes.html'],
-  (req, res) => res.redirect(302, '/josgentumano/login.html')
-);
+// ─── Estáticos josgentumano (app unificada alumno + docente) ─────
+// No requiere sesión Express — el auth lo gestiona cada página con JWT
+app.use('/josgentumano', express.static(path.join(__dirname, 'public/josgentumano')));
 
 const authUnificado       = require('./routes/auth_unificado');
 const baremosRouter       = require('./routes/baremos');

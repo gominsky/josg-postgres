@@ -32,12 +32,19 @@ const upload = multer({
   fileFilter(req, file, cb) {
     const okTypes = [
       'application/pdf',
-      'image/png', 'image/jpeg', 'image/webp',
+      'image/png', 'image/jpeg', 'image/webp', 'image/gif',
       'application/zip', 'application/x-zip-compressed',
-      'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'application/vnd.ms-excel',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'application/octet-stream',   // fallback genérico que usan algunos navegadores móviles
+      'application/x-pdf',
+      'image/jpg',
     ];
-    cb(null, okTypes.includes(file.mimetype));
+    const ok = okTypes.includes(file.mimetype);
+    console.log(`[multer] archivo="${file.originalname}" mime="${file.mimetype}" ok=${ok}`);
+    cb(null, ok);
   }
 });
 

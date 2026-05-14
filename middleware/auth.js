@@ -91,7 +91,20 @@ function isDocenteApi(req, res, next) {
 
 // --- App alumno (p. ej. /mensajes/app/*) ------------------------------------
 function requireAlumno(req, res, next) {
-  const id = Number(req.session?.alumno_id || 0);
+  // 1) Sesión Express (portal web)
+  const idSesion = Number(req.session?.alumno_id || 0);
+  if (idSesion) { req.alumno_id = idSesion; return next(); }
+
+  // 2) JWT Bearer (app móvil)
+  const payload = verifyBearer(req);
+  if (!payload) return res.status(401).json({ error: 'auth_required' });
+
+  const id = Number(
+    payload.alumno_id ||
+    payload.usuario?.alumno_id ||
+    payload.sub ||
+    0
+  );
   if (!id) return res.status(401).json({ error: 'auth_required' });
   req.alumno_id = id;
   next();

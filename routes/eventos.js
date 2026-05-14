@@ -387,7 +387,15 @@ router.post('/', async (req, res) => {
     const hora_inicio = hhmmOrNull(hiFromIni);
     const hora_fin    = hhmmOrNull(hfFromFin);
     const token = Math.random().toString(36).substring(2, 10);
-    const baremoIdVal = baremo_id ? Number(baremo_id) : null;
+
+    // Baremo: usar el enviado, o buscar "Medio" como defecto
+    let baremoIdVal = baremo_id ? Number(baremo_id) : null;
+    if (!baremoIdVal) {
+      const def = await db.query(
+        `SELECT id FROM baremos WHERE LOWER(tipo) = 'medio' LIMIT 1`
+      );
+      if (def.rows.length) baremoIdVal = def.rows[0].id;
+    }
 
     const sql = `
       INSERT INTO eventos (
@@ -463,30 +471,37 @@ router.post('/masivo', async (req, res) => {
     try {
       await client.query('BEGIN');
 
+      // Buscar baremo Medio por defecto
+      const defBaremo = await db.query(
+        `SELECT id FROM baremos WHERE LOWER(tipo) = 'medio' LIMIT 1`
+      );
+      const baremoIdMasivo = defBaremo.rows[0]?.id || null;
+
       const rowsPlaceholders = [];
       const params = [];
       let i = 1;
 
       for (const day of validDays) {
         const token = Math.random().toString(36).slice(2, 10);
-        rowsPlaceholders.push(`($${i++}, $${i++}, $${i++}, $${i++}, $${i++}, $${i++}, $${i++}, $${i++}, $${i++}, $${i++})`);
+        rowsPlaceholders.push(`($${i++}, $${i++}, $${i++}, $${i++}, $${i++}, $${i++}, $${i++}, $${i++}, $${i++}, $${i++}, $${i++})`);
         params.push(
           titulo || null,
           descripcion || null,
-          day,                 // fecha_inicio (YYYY-MM-DD)
-          day,                 // fecha_fin    (YYYY-MM-DD) -> mismo día
+          day,
+          day,
           grupo_id,
           activoVal,
-          hora_inicio,         // TIME: lo castea PG
-          hora_fin,            // TIME
+          hora_inicio,
+          hora_fin,
           token,
-          espacio_id || null
+          espacio_id || null,
+          baremoIdMasivo
         );
       }
 
       const sql = `
         INSERT INTO eventos
-          (titulo, descripcion, fecha_inicio, fecha_fin, grupo_id, activo, hora_inicio, hora_fin, token, espacio_id)
+          (titulo, descripcion, fecha_inicio, fecha_fin, grupo_id, activo, hora_inicio, hora_fin, token, espacio_id, baremo_id)
         VALUES ${rowsPlaceholders.join(',')}
         RETURNING id
       `;
