@@ -8,6 +8,7 @@ require('dayjs/locale/es');
 dayjs.locale('es');
 
 const { generarPdfGuardias } = require('../utils/pdfGuardias');
+const { generarPdfCruzada }   = require('../utils/pdfCruzada');
 const { toISODate }          = require('../utils/fechas');
 
 /* =========================
@@ -618,7 +619,7 @@ router.post('/guardar', async (req, res) => {
         if (rowCount > 0) {
           await client.query('ROLLBACK'); tx = false;
           req.session.mensaje = `⚠️ El alumno ya tiene guardia ese día.`;
-          return res.redirect('/guardias' + buildQs({ desde, hasta, grupo }));
+          return res.redirect('/guardias/mostrar' + buildQs({ desde, hasta, grupo }));
         }
       }
 
@@ -634,7 +635,7 @@ router.post('/guardar', async (req, res) => {
         if (esNovatoAlumno(mapa[newIds[0]], dia) && esNovatoAlumno(mapa[newIds[1]], dia)) {
           await client.query('ROLLBACK'); tx = false;
           req.session.mensaje = '⚠️ No se pueden asignar dos novatos en la misma guardia.';
-          return res.redirect('/guardias' + buildQs({ desde, hasta, grupo }));
+          return res.redirect('/guardias/mostrar' + buildQs({ desde, hasta, grupo }));
         }
       }
     }
@@ -682,7 +683,7 @@ router.post('/guardar', async (req, res) => {
 
     await client.query('COMMIT'); tx = false;
 
-    res.redirect('/guardias' + buildQs({ desde, hasta, grupo }));
+    res.redirect('/guardias/mostrar' + buildQs({ desde, hasta, grupo }));
 
   } catch (e) {
     if (tx) { try { await client.query('ROLLBACK'); } catch {} }
@@ -711,7 +712,7 @@ router.post('/eliminar/:id', async (req, res) => {
     if (rowCount === 0) {
       await client.query('ROLLBACK');
       req.session.error = 'No se encontró la guardia';
-      return res.redirect('/guardias');
+      return res.redirect('/guardias/mostrar');
     }
 
     const g = rows[0];
@@ -733,13 +734,13 @@ router.post('/eliminar/:id', async (req, res) => {
     await client.query('COMMIT');
 
     req.session.mensaje = 'Guardia eliminada ✅';
-    res.redirect('/guardias' + buildQs({ desde, hasta, grupo }));
+    res.redirect('/guardias/mostrar' + buildQs({ desde, hasta, grupo }));
 
   } catch (e) {
     await client.query('ROLLBACK');
     console.error('❌ POST /guardias/eliminar:', e);
     req.session.error = 'Error al eliminar la guardia';
-    res.redirect('/guardias');
+    res.redirect('/guardias/mostrar');
   } finally {
     client.release();
   }
@@ -902,6 +903,105 @@ router.post('/informe',     handleGuardiasPdf);
 router.get('/planilla.pdf', handleGuardiasPdf);
 
 /* ============================================================
+   GET /guardias/cruzada  — tabla referencias cruzadas músicos × eventos
+   ============================================================ */
+router.get('/cruzada', async (req, res) => {
+  try {
+    const { desde = '', hasta = '', grupo = '' } = req.query;
+    const { rows: grupos } = await db.query('SELECT id, nombre FROM grupos ORDER BY nombre');
+
+    if (!desde || !hasta) {
+      return res.render('guardias_cruzada', {
+        title: 'Tabla de asistencias', hero: false,
+        grupos, desde, hasta, grupo,
+        eventos: [], alumnos: [], matriz: {}
+      });
+    }
+
+    // Eventos con guardia en el rango
+    const params = [desde, hasta];
+    const whereGrupo = grupo ? `AND e.grupo_id = $${params.push(grupo)}` : '';
+
+    const { rows: eventos } = await db.query(`
+      SELECT DISTINCT e.id, e.titulo, e.fecha_inicio, gr.nombre AS grupo_nombre
+      FROM eventos e
+      JOIN guardias g ON g.evento_id = e.id
+      LEFT JOIN grupos gr ON gr.id = e.grupo_id
+      WHERE DATE(e.fecha_inicio) BETWEEN $1::date AND $2::date
+      ${whereGrupo}
+      ORDER BY e.fecha_inicio ASC
+    `, params);
+
+    if (!eventos.length) {
+      return res.render('guardias_cruzada', {
+        title: 'Tabla de asistencias', hero: false,
+        grupos, desde, hasta, grupo,
+        eventos: [], alumnos: [], matriz: {}
+      });
+    }
+
+    const eventoIds = eventos.map(e => e.id);
+
+    // Todas las guardias de esos eventos
+    const { rows: guardias } = await db.query(`
+      SELECT g.evento_id, g.tipo_guardia, g.tipo_actividad,
+             g.alumno_id_1, g.alumno_id_2, g.alumno_ids
+      FROM guardias g
+      WHERE g.evento_id = ANY($1)
+    `, [eventoIds]);
+
+    // Recopilar todos los alumno_ids afectados
+    const alumnoIdsSet = new Set();
+    guardias.forEach(g => {
+      if (Array.isArray(g.alumno_ids)) g.alumno_ids.forEach(id => { if (id) alumnoIdsSet.add(id); });
+      if (g.alumno_id_1) alumnoIdsSet.add(g.alumno_id_1);
+      if (g.alumno_id_2) alumnoIdsSet.add(g.alumno_id_2);
+    });
+
+    if (!alumnoIdsSet.size) {
+      return res.render('guardias_cruzada', {
+        title: 'Tabla de asistencias', hero: false,
+        grupos, desde, hasta, grupo,
+        eventos, alumnos: [], matriz: {}
+      });
+    }
+
+    // Datos de alumnos
+    const { rows: alumnos } = await db.query(`
+      SELECT id, nombre, apellidos
+      FROM alumnos WHERE id = ANY($1)
+      ORDER BY apellidos, nombre
+    `, [[...alumnoIdsSet]]);
+
+    // Construir matriz: matriz[alumno_id][evento_id] = { tipo, subtipo }
+    const matriz = {};
+    guardias.forEach(g => {
+      const ids = Array.isArray(g.alumno_ids) && g.alumno_ids.length
+        ? g.alumno_ids.filter(Boolean)
+        : [g.alumno_id_1, g.alumno_id_2].filter(Boolean);
+
+      ids.forEach(aid => {
+        if (!matriz[aid]) matriz[aid] = {};
+        matriz[aid][g.evento_id] = {
+          tipo:    g.tipo_guardia || 'normal',
+          subtipo: g.tipo_actividad || ''
+        };
+      });
+    });
+
+    res.render('guardias_cruzada', {
+      title: 'Tabla de asistencias', hero: false,
+      grupos, desde, hasta, grupo,
+      eventos, alumnos, matriz
+    });
+
+  } catch (e) {
+    console.error('❌ GET /guardias/cruzada:', e);
+    res.status(500).send('Error al generar tabla de asistencias');
+  }
+});
+
+/* ============================================================
    GET /guardias/eventos-rango  (AJAX — para el select de evento)
    Devuelve eventos del rango de fechas, opcionalmente por grupo.
    ============================================================ */
@@ -942,18 +1042,157 @@ router.get('/eventos-rango', async (req, res) => {
   }
 });
 
+/* ============================================================
+   GET /guardias/cruzada-pdf — descarga PDF tabla referencias cruzadas
+   ============================================================ */
+router.get('/cruzada-pdf', async (req, res) => {
+  try {
+    const { desde = '', hasta = '', grupo = '' } = req.query;
+
+    if (!desde || !hasta) {
+      return res.status(400).send('Faltan parámetros desde/hasta');
+    }
+
+    const { rows: grupos } = await db.query('SELECT id, nombre FROM grupos ORDER BY nombre');
+    const grupoRow = grupo ? grupos.find(g => String(g.id) === String(grupo)) : null;
+    const grupoNombre = grupoRow ? grupoRow.nombre : 'Todos los grupos';
+
+    // Eventos con guardia en el rango
+    const params = [desde, hasta];
+    const whereGrupo = grupo ? `AND e.grupo_id = $${params.push(grupo)}` : '';
+
+    const { rows: eventos } = await db.query(`
+      SELECT DISTINCT e.id, e.titulo, e.fecha_inicio
+      FROM eventos e
+      JOIN guardias g ON g.evento_id = e.id
+      LEFT JOIN grupos gr ON gr.id = e.grupo_id
+      WHERE DATE(e.fecha_inicio) BETWEEN $1::date AND $2::date
+      ${whereGrupo}
+      ORDER BY e.fecha_inicio ASC
+    `, params);
+
+    if (!eventos.length) {
+      return res.status(404).send('No hay guardias en ese periodo.');
+    }
+
+    const eventoIds = eventos.map(e => e.id);
+    const { rows: guardias } = await db.query(`
+      SELECT g.evento_id, g.tipo_guardia, g.tipo_actividad,
+             g.alumno_id_1, g.alumno_id_2, g.alumno_ids
+      FROM guardias g WHERE g.evento_id = ANY($1)
+    `, [eventoIds]);
+
+    const alumnoIdsSet = new Set();
+    guardias.forEach(g => {
+      if (Array.isArray(g.alumno_ids)) g.alumno_ids.forEach(id => { if (id) alumnoIdsSet.add(id); });
+      if (g.alumno_id_1) alumnoIdsSet.add(g.alumno_id_1);
+      if (g.alumno_id_2) alumnoIdsSet.add(g.alumno_id_2);
+    });
+
+    let alumnos = [];
+    if (alumnoIdsSet.size) {
+      const { rows } = await db.query(`
+        SELECT id, nombre, apellidos FROM alumnos WHERE id = ANY($1) ORDER BY apellidos, nombre
+      `, [[...alumnoIdsSet]]);
+      alumnos = rows;
+    }
+
+    // Construir matriz
+    const matriz = {};
+    guardias.forEach(g => {
+      const ids = Array.isArray(g.alumno_ids) && g.alumno_ids.length
+        ? g.alumno_ids.filter(Boolean)
+        : [g.alumno_id_1, g.alumno_id_2].filter(Boolean);
+      ids.forEach(aid => {
+        if (!matriz[aid]) matriz[aid] = {};
+        matriz[aid][g.evento_id] = { tipo: g.tipo_guardia || 'normal', subtipo: g.tipo_actividad || '' };
+      });
+    });
+
+    generarPdfCruzada(res, { alumnos, eventos, matriz, desde, hasta, grupoNombre });
+
+  } catch (e) {
+    console.error('❌ GET /guardias/cruzada-pdf:', e);
+    res.status(500).send('Error al generar PDF');
+  }
+});
+router.post('/cruzada-pdf', async (req, res) => {
+  try {
+    const { desde = '', hasta = '', grupo = '' } = req.body;
+
+    if (!desde || !hasta) {
+      return res.status(400).send('Faltan parámetros desde/hasta');
+    }
+
+    const { rows: grupos } = await db.query('SELECT id, nombre FROM grupos ORDER BY nombre');
+    const grupoRow = grupo ? grupos.find(g => String(g.id) === String(grupo)) : null;
+    const grupoNombre = grupoRow ? grupoRow.nombre : 'Todos los grupos';
+
+    // Eventos con guardia en el rango
+    const params = [desde, hasta];
+    const whereGrupo = grupo ? `AND e.grupo_id = $${params.push(grupo)}` : '';
+
+    const { rows: eventos } = await db.query(`
+      SELECT DISTINCT e.id, e.titulo, e.fecha_inicio
+      FROM eventos e
+      JOIN guardias g ON g.evento_id = e.id
+      LEFT JOIN grupos gr ON gr.id = e.grupo_id
+      WHERE DATE(e.fecha_inicio) BETWEEN $1::date AND $2::date
+      ${whereGrupo}
+      ORDER BY e.fecha_inicio ASC
+    `, params);
+
+    if (!eventos.length) {
+      return res.status(404).send('No hay guardias en ese periodo.');
+    }
+
+    const eventoIds = eventos.map(e => e.id);
+    const { rows: guardias } = await db.query(`
+      SELECT g.evento_id, g.tipo_guardia, g.tipo_actividad,
+             g.alumno_id_1, g.alumno_id_2, g.alumno_ids
+      FROM guardias g WHERE g.evento_id = ANY($1)
+    `, [eventoIds]);
+
+    const alumnoIdsSet = new Set();
+    guardias.forEach(g => {
+      if (Array.isArray(g.alumno_ids)) g.alumno_ids.forEach(id => { if (id) alumnoIdsSet.add(id); });
+      if (g.alumno_id_1) alumnoIdsSet.add(g.alumno_id_1);
+      if (g.alumno_id_2) alumnoIdsSet.add(g.alumno_id_2);
+    });
+
+    let alumnos = [];
+    if (alumnoIdsSet.size) {
+      const { rows } = await db.query(`
+        SELECT id, nombre, apellidos FROM alumnos WHERE id = ANY($1) ORDER BY apellidos, nombre
+      `, [[...alumnoIdsSet]]);
+      alumnos = rows;
+    }
+
+    // Construir matriz
+    const matriz = {};
+    guardias.forEach(g => {
+      const ids = Array.isArray(g.alumno_ids) && g.alumno_ids.length
+        ? g.alumno_ids.filter(Boolean)
+        : [g.alumno_id_1, g.alumno_id_2].filter(Boolean);
+      ids.forEach(aid => {
+        if (!matriz[aid]) matriz[aid] = {};
+        matriz[aid][g.evento_id] = { tipo: g.tipo_guardia || 'normal', subtipo: g.tipo_actividad || '' };
+      });
+    });
+
+    generarPdfCruzada(res, { alumnos, eventos, matriz, desde, hasta, grupoNombre });
+
+  } catch (e) {
+    console.error('❌ GET /guardias/cruzada-pdf:', e);
+    res.status(500).send('Error al generar PDF');
+  }
+});
+
 /* ========
    Ayuda
    ======== */
 router.get('/ayuda', (req, res) => {
-  const locals = { title: 'Ayuda · Guardias', hero: false };
-  req.app.render('ayudas_guardias', locals, (err, html) => {
-    if (!err && html) return res.send(html);
-    req.app.render('ayuda_guardias', locals, (err2, html2) => {
-      if (!err2 && html2) return res.send(html2);
-      res.status(404).send('No se encontró la plantilla de ayuda.');
-    });
-  });
+  res.render('ayuda_guardias', { title: 'Ayuda · Guardias', hero: false });
 });
 
 module.exports = router;

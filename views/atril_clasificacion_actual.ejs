@@ -13,7 +13,7 @@
       <a id="btnPlanoNuevo" class="btn btn-dark btn-sm">Plantilla (número de atril)</a>
     </div>
     <p class="text-muted small mb-0">
-      Selecciona un instrumento (p. ej. “Violín I”) y asigna los puestos. “Guardar” solo guarda ese instrumento.
+      Selecciona un instrumento para filtrar. Con "Todos", "Guardar" guarda todos los instrumentos a la vez.
     </p>
   </div>
 
@@ -166,10 +166,16 @@
   
     function updateGuardarState(){
       const instSel = norm($fInst.value);
-      const hayPuestos = (window.DATA || []).some(r =>
-        instSel && norm(r.instrumento) === instSel && Number.isInteger(r.puesto) && r.puesto >= 1
-      );
-      $btnGuardar.disabled = isSaving || !instSel || !hayPuestos || !hasDirty;
+      // Con instrumento concreto: hay puestos para ese instrumento
+      // Con "Todos": hay cualquier puesto válido en los datos
+      const hayPuestos = (window.DATA || []).some(r => {
+        if (instSel && norm(r.instrumento) !== instSel) return false;
+        return Number.isInteger(r.puesto) && r.puesto >= 1;
+      });
+      $btnGuardar.disabled = isSaving || !hayPuestos || !hasDirty;
+      $btnGuardar.title = hasDirty
+        ? (instSel ? `Guardar clasificación de ${instSel}` : 'Guardar todos los instrumentos')
+        : 'No hay cambios pendientes';
     }
   
     function renderOptions(select, items, value){
@@ -317,23 +323,37 @@
   
     async function save(){
       try{
-        const instSel = norm($fInst.value);
-        if (!instSel) { alert('Elige un instrumento para guardar.'); return; }
-  
+        const instSel = norm($fInst.value); // '' = Todos los instrumentos
+
         const items = (window.DATA || [])
-          .filter(r => norm(r.instrumento) === instSel && Number.isInteger(r.puesto) && r.puesto >= 1)
+          .filter(r => {
+            if (instSel && norm(r.instrumento) !== instSel) return false;
+            return Number.isInteger(r.puesto) && r.puesto >= 1;
+          })
           .map(r => ({ alumno_id: r.alumno_id, instrumento: r.instrumento, puesto: Number(r.puesto) }));
-  
-        if (!items.length) { alert('No hay puestos válidos para ese instrumento.'); return; }
-  
-        const payload = { grupo_id: grupoId, instrumento: instSel, items };
-  
-        // bloquear botón y mostrar “Guardando…”
+
+        if (!items.length) {
+          alert(instSel
+            ? 'No hay puestos válidos para ese instrumento.'
+            : 'No hay puestos válidos para guardar.');
+          return;
+        }
+
+        // Si instrumento concreto: el servidor borra/reinserta solo ese.
+        // Si "Todos": el servidor infiere instrumentos de los propios items.
+        const payload = { grupo_id: grupoId, items };
+        if (instSel) payload.instrumento = instSel;
+
+        // bloquear botón y mostrar "Guardando…"
         isSaving = true;
         $btnGuardar.textContent = 'Guardando…';
         updateGuardarState();
-  
-        const res = await fetch(`../actual?instrumento=${encodeURIComponent(instSel)}`, {
+
+        const fetchUrl = instSel
+          ? `../actual?instrumento=${encodeURIComponent(instSel)}`
+          : '../actual';
+
+        const res = await fetch(fetchUrl, {
           method:'PUT',
           headers:{ 'Content-Type':'application/json' },
           body: JSON.stringify(payload)
@@ -374,7 +394,9 @@
       return lines.join('\n');
     }
     function download(filename, text){
-      const blob = new Blob([text], {type:'text/csv;charset=utf-8;'});
+      // BOM UTF-8 (\uFEFF) para que Excel abra correctamente los acentos
+      const BOM = '\uFEFF';
+      const blob = new Blob([BOM + text], {type:'text/csv;charset=utf-8;'});
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a'); a.href=url; a.download=filename; a.click();
       URL.revokeObjectURL(url);
@@ -391,19 +413,6 @@
       download(`informe_general.csv`, toCSV(rows));
     });
   
-    // ===== Plano (pruebas de atril) =====
-    if ($btnPlanoCls) {
-      $btnPlanoCls.addEventListener('click', (e)=>{
-        e.preventDefault();
-        const sel = norm($fInst.value);
-        // Shift+click → SVG, click normal → PDF
-        const ext = e.shiftKey ? 'svg' : 'pdf';
-        const base = `/plano/clasif/${encodeURIComponent(grupoId)}.${ext}`;
-        const insts = sel ? [sel] : [...new Set((window.DATA||[]).map(r=>r.instrumento).filter(Boolean))];
-        const url = insts.length ? `${base}?inst=${insts.map(encodeURIComponent).join(',')}` : base;
-        window.open(url, '_blank', 'noopener');
-      });
-    }
   
     // ===== Eventos de filtro y guardar =====
     $fInst.addEventListener('change', ()=>{ render(); updateGuardarState(); });

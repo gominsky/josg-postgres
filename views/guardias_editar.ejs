@@ -7,7 +7,7 @@
 
 <div class="header-compact">
   <h1 class="h1-titulo"><%= title %></h1>
-  <a href="/guardias?<%= desde ? 'desde='+desde+'&' : '' %><%= hasta ? 'hasta='+hasta : '' %>"
+  <a href="/guardias/mostrar?desde=<%= encodeURIComponent(desde||'') %>&hasta=<%= encodeURIComponent(hasta||'') %>&grupo=<%= encodeURIComponent(grupo||'') %>"
      class="enlace-final">← Volver</a>
 </div>
 
@@ -211,22 +211,15 @@
     <textarea name="notas" rows="3" class="form-control"><%= guardia?.notas || '' %></textarea>
   </div>
 
-  <div class="acciones-finales d-flex justify-content-between align-items-center mt-4">
-    <a href="/guardias?<%= desde ? 'desde='+desde+'&' : '' %><%= hasta ? 'hasta='+hasta : '' %>"
-       class="enlace-final-naranja">← Volver</a>
-    <div class="d-flex gap-2 align-items-center">
-      <button type="submit" class="btn-main">
-        <%= isEdicion ? 'Guardar cambios' : 'Crear' %>
-      </button>
-      <% if (isEdicion) { %>
-        <form method="POST"
-              action="/guardias/eliminar/<%= guardia.id %>?desde=<%= encodeURIComponent(desde||'') %>&hasta=<%= encodeURIComponent(hasta||'') %>&grupo=<%= encodeURIComponent(grupo||'') %>"
-              onsubmit="return confirm('¿Eliminar esta guardia? No se puede deshacer.');"
-              style="display:inline;">
-          <button type="submit" class="btn-rojo">Eliminar</button>
-        </form>
-      <% } %>
+  <div class="acciones-finales mt-4">
+    <div style="display:flex; gap:.75rem; align-items:center;">
+      <a href="/guardias/mostrar?desde=<%= encodeURIComponent(desde||'') %>&hasta=<%= encodeURIComponent(hasta||'') %>&grupo=<%= encodeURIComponent(grupo||'') %>"
+         class="enlace-final-naranja">← Volver</a>
+
     </div>
+    <button type="submit" class="btn-main">
+      <%= isEdicion ? 'Guardar cambios' : 'Crear' %>
+    </button>
   </div>
 </form>
 

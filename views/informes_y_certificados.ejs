@@ -98,6 +98,18 @@
           <p class="action-title">Pruebas de atril, situación actual (editar)</p>
           <p class="action-desc">Tabla editable por instrumento y alumno. Genera el plano usando esta clasificación.</p>
           <p class="req-line"><span class="badge-soft">Requiere: Grupo</span></p>
+          <div style="margin-top:.4rem;" onclick="event.stopPropagation();">
+            <select id="grupoAtril" class="form-select form-select-sm">
+              <option value="">— selecciona un grupo —</option>
+              <%
+                const EXCLUIR_ATRIL = /reserva|invitado|viol[ií]n\s*(i{1,2})\s*$/i;
+                const gruposAtril = (grupos||[]).filter(g => !EXCLUIR_ATRIL.test(g.nombre));
+              %>
+              <% gruposAtril.forEach(g => { %>
+                <option value="<%= g.id %>"><%= g.nombre %></option>
+              <% }) %>
+            </select>
+          </div>
         </div>
       </button>
       <!-- Listado / Tabla dinámica (lleva filtros) -->
@@ -415,80 +427,15 @@
     (function () {
       const btn = document.getElementById('cardAtrilActual');
       if (!btn) return;
-      btn.addEventListener('click', () => {
-        const grupoSel = document.getElementById('grupo')?.value || '';
-        if (!grupoSel || grupoSel === 'todos' || grupoSel === 'ninguno') {
+      btn.addEventListener('click', (e) => {
+        // Ignorar clicks dentro del select propio del card
+        if (e.target.closest('select')) return;
+        const grupoSel = document.getElementById('grupoAtril')?.value || '';
+        if (!grupoSel) {
           return alert('Selecciona un grupo para editar su clasificación actual.');
         }
-        // Abre el editor con el grupo elegido
         window.location.href = `/atril/actual/editor?grupo_id=${encodeURIComponent(grupoSel)}`;
       });
     })();
   </script>
-  <script>
-    (() => {
-      const card    = document.getElementById('cardSharePlano');
-      const btn     = document.getElementById('sharePlanoBtn');
-      const mini    = document.getElementById('sharePlanoMini');
-      const urlInp  = document.getElementById('sharePlanoUrl');
-      const btnCopy = document.getElementById('sharePlanoCopy');
-      const exp     = document.getElementById('sharePlanoExpBadge');
-      const hint    = document.getElementById('sharePlanoHint');
-      const errBox  = document.getElementById('sharePlanoErr');
-    
-      if (!btn) return;
-    
-      function getGrupoId() {
-        // adapta si tu selector de grupo es otro
-        const v = document.querySelector('[name="grupo_id"], #inpGrupo, #grupoSelect')?.value || '';
-        return String(v).trim();
-      }
-    
-      async function generateLink() {
-        errBox.classList.add('d-none');
-        const grupo = getGrupoId();
-        if (!grupo) { errBox.textContent = 'Selecciona un grupo'; errBox.classList.remove('d-none'); return; }
-    
-        btn.disabled = true;
-        const oldTxt = btn.innerText;
-        btn.innerText = 'Generando…';
-    
-        try {
-          // NUEVO: usamos src:'clasif' (puedes pasar ?inst CSV si quieres acotar)
-          const body = {
-            kind: 'plano',
-            params: { grupo, src: 'clasif' },
-            expireHours: 24 * 7   // 7 días
-          };
-          const r = await fetch('/api/share', {
-            method: 'POST',
-            headers: { 'Content-Type':'application/json' },
-            body: JSON.stringify(body)
-          });
-          const j = await r.json().catch(() => ({}));
-          if (!r.ok || !j.ok) throw new Error(j.msg || 'No se pudo crear el enlace');
-    
-          urlInp.value = j.url;
-          mini.classList.remove('d-none');
-          hint.classList.remove('d-none');
-          exp.textContent = j.expiresAt ? new Date(j.expiresAt).toLocaleString() : '—';
-    
-          btnCopy.onclick = () => {
-            navigator.clipboard.writeText(j.url).then(() => {
-              btnCopy.innerText = 'Copiado ✓';
-              setTimeout(() => (btnCopy.innerText = 'Copiar'), 1200);
-            });
-          };
-        } catch (e) {
-          errBox.textContent = e.message || 'Error creando el enlace';
-          errBox.classList.remove('d-none');
-        } finally {
-          btn.disabled = false;
-          btn.innerText = oldTxt;
-        }
-      }
-    
-      btn.addEventListener('click', (ev) => { ev.preventDefault(); generateLink(); });
-    })();
-    </script>
     

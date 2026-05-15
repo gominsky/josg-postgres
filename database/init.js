@@ -457,8 +457,9 @@ async function init({ reset = false } = {}) {
     await run(`
       ALTER TABLE guardias ADD COLUMN IF NOT EXISTS tipo_guardia   TEXT NOT NULL DEFAULT 'normal'
         CHECK (tipo_guardia IN ('normal','actividad'));
-      ALTER TABLE guardias ADD COLUMN IF NOT EXISTS tipo_actividad TEXT
-        CHECK (tipo_actividad IN ('montaje','desmontaje','ambas'));
+      ALTER TABLE guardias ADD COLUMN IF NOT EXISTS tipo_actividad TEXT;
+      -- Eliminar constraint CHECK de tipo_actividad si existe (acepta cualquier valor)
+      ALTER TABLE guardias DROP CONSTRAINT IF EXISTS guardias_tipo_actividad_check;
       ALTER TABLE guardias ADD COLUMN IF NOT EXISTS actividad_id   INTEGER
         REFERENCES actividades_complementarias(id) ON DELETE SET NULL;
       ALTER TABLE guardias ADD COLUMN IF NOT EXISTS num_musicos    SMALLINT DEFAULT 2;
@@ -1358,6 +1359,13 @@ await run(`
     ADD CONSTRAINT cuotas_alumno_unique
     UNIQUE (alumno_id, cuota_id, fecha_vencimiento);
 `, 'patch:cuotas_alumno-unique');
+
+// 5) Normalizar rutas de partituras: añadir barra inicial si falta
+await run(`
+  UPDATE partituras
+     SET enlace_partitura = '/' || enlace_partitura
+   WHERE enlace_partitura LIKE 'partituren/%';
+`, 'patch:partituras-normalizar-ruta');
 
     await run('COMMIT', 'tx-commit');
     console.log('✅ init (producción) completado.');

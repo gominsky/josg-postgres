@@ -1,61 +1,69 @@
-<% title = 'Informe: % Horas' %>
+<% title = 'Informe: % Horas de asistencia' %>
 <% hero = false %>
 <%
-  // Función para dar formato dd/mm/aa
   function fmtFecha(f) {
     if (!f) return '';
-    const d = new Date(f);
-    if (isNaN(d)) return f; // Fallback si no es una fecha válida
-    const dd = String(d.getDate()).padStart(2, '0');
-    const mm = String(d.getMonth() + 1).padStart(2, '0');
-    const yy = String(d.getFullYear()).slice(-2);
-    return `${dd}/${mm}/${yy}`;
+    // T12:00:00 evita desfase por zona horaria
+    const d = new Date(f + 'T12:00:00');
+    if (isNaN(d)) return f;
+    return d.toLocaleDateString('es-ES', { day:'2-digit', month:'2-digit', year:'numeric' });
   }
-
-  const fechaFormateada = fmtFecha(fecha);
-  const fechaFinFormateada = fecha_fin ? fmtFecha(fecha_fin) : null;
+  const fechaFmt    = fmtFecha(fecha);
+  const fechaFinFmt = fecha_fin ? fmtFecha(fecha_fin) : null;
 %>
-<h1 class="h1-titulo text-center mb-4">
-  Porcentaje de horas de asistencia
-  (<%= fechaFormateada %><% if (fechaFinFormateada) { %> – <%= fechaFinFormateada %><% } %>)
-</h1>
 
-
-<div class="text-center mb-4">
-  <form action="/informes/horas/guardar" method="POST" class="d-inline-block" style="background-color: transparent;">
-    <input type="hidden" name="fecha" value="<%= fecha %>">
-    <input type="hidden" name="fecha_fin" value="<%= fecha_fin %>">
-    <input type="hidden" name="grupo" value="<%= grupo %>">
+<div class="header-compact">
+  <h1 class="h1-titulo">
+    % Horas de asistencia
+    <span style="font-size:.8em; font-weight:500; opacity:.7;">
+      (<%= fechaFmt %><% if (fechaFinFmt) { %> – <%= fechaFinFmt %><% } %>)
+    </span>
+  </h1>
+  <% if (resultados && resultados.length > 0) { %>
+  <form action="/informes/horas/guardar" method="POST" style="display:contents;">
+    <input type="hidden" name="fecha"       value="<%= fecha %>">
+    <input type="hidden" name="fecha_fin"   value="<%= fecha_fin %>">
+    <input type="hidden" name="grupo"       value="<%= grupo %>">
     <input type="hidden" name="instrumento" value="<%= instrumento %>">
-    <% /* Serializar resultados con alumno_id, horas y porcentaje */ %>
-    <% const datosParaGuardar = resultados.map(r => ({ alumno_id: r.id, horas: r.horas, porcentaje: r.porcentaje })); %>
-    <input type="hidden" name="resultados" value='<%- JSON.stringify(datosParaGuardar) %>'>
-
-    <button type="submit" class="btn-main-blanco fw-bold px-4 py-2">Guardar informe</button>
+    <%
+      const datosGuardar = resultados.map(r => ({
+        alumno_id: r.id, horas: r.horas, porcentaje: r.porcentaje
+      }));
+    %>
+    <input type="hidden" name="resultados" value='<%- JSON.stringify(datosGuardar) %>'>
+    <button type="submit" class="btn-main-blanco">Guardar informe</button>
   </form>
+  <% } %>
 </div>
 
-<div class="table-responsive mb-4" style="max-width:800px; margin:0 auto;">
-  <table class="tabla-estilizada mx-auto" style="width:80%;">
-    <thead>
-      <tr>
-        <th class="sortable">Alumno</th>
-        <th class="sortable">Horas</th>
-        <th class="sortable">% sobre total</th>
-        <th class="sortable">% Caso de empate</th>
-      </tr>
-    </thead>
-    <tbody>
-      <% resultados.forEach(r => { %>
-        <tr>
-          <td data-value="<%= r.id %>"><%= r.alumno %></td>
-          <td data-value="<%= r.horas %>"><%= r.horas %> h</td>
-          <td data-value="<%= r.porcentaje %>"><%= r.porcentaje %> %</td>
-          <td data-value="<%= r.porcentaje_empate %>"><%= r.porcentaje_caso_empate %> %
-        </tr>
-      <% }) %>
-    </tbody>
-  </table>
+<!-- Tabla -->
+<div class="mx-auto" style="max-width:900px; padding:0 1rem 2rem;">
+  <% if (!resultados || resultados.length === 0) { %>
+    <p class="text-center text-muted mt-4">No hay datos para los filtros seleccionados.</p>
+  <% } else { %>
+    <div class="table-responsive">
+      <table class="tabla-estilizada tabla-tight tabla-hover" id="tabla-horas">
+        <thead>
+          <tr>
+            <th class="sortable" data-col="0">Alumno <span class="sort-icon">↕</span></th>
+            <th class="sortable text-center" data-col="1">Horas asistidas <span class="sort-icon">↕</span></th>
+            <th class="sortable text-center" data-col="2">Total horas <span class="sort-icon">↕</span></th>
+            <th class="sortable text-center" data-col="3">% Asistencia <span class="sort-icon">↕</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          <% resultados.forEach(r => { %>
+            <tr>
+              <td><%= r.alumno %></td>
+              <td class="text-center" data-value="<%= r.horas %>"><%= r.horas %> h</td>
+              <td class="text-center" data-value="<%= r.total_horas %>"><%= r.total_horas %> h</td>
+              <td class="text-center" data-value="<%= r.porcentaje %>"><%= r.porcentaje %> %</td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  <% } %>
 </div>
 
 <div class="volver-bloque-izquierda">
@@ -63,33 +71,34 @@
 </div>
 
 <script>
-  document.addEventListener('DOMContentLoaded', () => {
-    document.querySelectorAll('th.sortable').forEach((th, idx) => {
-      let asc = true;
-      th.style.cursor = 'pointer';
-      th.addEventListener('click', () => {
-        const table = th.closest('table');
-        const tbody = table.querySelector('tbody');
-        const rows = Array.from(tbody.querySelectorAll('tr'));
-        rows.sort((a, b) => {
-          const cellA = a.children[idx];
-          const cellB = b.children[idx];
-          const valA = cellA.dataset.value !== undefined
-            ? parseFloat(cellA.dataset.value)
-            : cellA.textContent.trim();
-          const valB = cellB.dataset.value !== undefined
-            ? parseFloat(cellB.dataset.value)
-            : cellB.textContent.trim();
-          if (!isNaN(valA) && !isNaN(valB)) {
-            return asc ? valA - valB : valB - valA;
-          }
-          return asc
-            ? String(valA).localeCompare(String(valB))
-            : String(valB).localeCompare(String(valA));
-        });
-        rows.forEach(row => tbody.appendChild(row));
-        asc = !asc;
+(() => {
+  const table = document.getElementById('tabla-horas');
+  if (!table) return;
+  const tbody = table.querySelector('tbody');
+  let sortCol = -1, sortAsc = true;
+
+  table.querySelectorAll('th.sortable').forEach(th => {
+    th.style.cursor = 'pointer';
+    th.addEventListener('click', () => {
+      const col = parseInt(th.dataset.col);
+      if (sortCol === col) sortAsc = !sortAsc;
+      else { sortCol = col; sortAsc = true; }
+      table.querySelectorAll('th .sort-icon').forEach(i => i.textContent = '↕');
+      th.querySelector('.sort-icon').textContent = sortAsc ? '↑' : '↓';
+
+      const rows = [...tbody.querySelectorAll('tr')];
+      rows.sort((a, b) => {
+        const ca = a.children[col], cb = b.children[col];
+        const va = ca?.dataset?.value ?? ca?.textContent?.trim() ?? '';
+        const vb = cb?.dataset?.value ?? cb?.textContent?.trim() ?? '';
+        const na = parseFloat(va), nb = parseFloat(vb);
+        const cmp = (!isNaN(na) && !isNaN(nb))
+          ? na - nb
+          : String(va).localeCompare(String(vb), 'es');
+        return sortAsc ? cmp : -cmp;
       });
+      rows.forEach(r => tbody.appendChild(r));
     });
   });
+})();
 </script>

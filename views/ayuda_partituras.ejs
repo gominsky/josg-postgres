@@ -1,148 +1,158 @@
 <% title = 'Ayuda · Partituras' %>
 <% hero  = false %>
-<link rel="stylesheet" href="/styles/estilos_help.css">
 
-<div id="help-wrap" class="container my-4">
-
-  <div class="head">
-    <h1>Ayuda · Partituras</h1>
-  </div>
-
-  <nav class="toc" aria-label="Índice">
-    <a href="#repo">Repositorio (web)</a>
-    <a href="#subida">Subir / enlazar</a>
-    <a href="#campos">Campos y relaciones</a>
-    <a href="#acciones">Búsqueda · Ordenación · Edición</a>
-    <a href="#app">App “¡JOSG en tu mano!”</a>
-    <a href="#faq">FAQ</a>
-  </nav>
-
-  <section id="repo" class="section">
-    <h2>Repositorio (web)</h2>
-    <div class="grid-2">
-      <div>
-        <ul class="list">
-          <li>Listado con <strong>Título</strong>, <strong>Autor</strong>, <strong>Grupo</strong>, <strong>Duración</strong>, <strong>Género</strong>, <strong>Activa</strong> y enlaces a <em>Partitura</em> y <em>Audio/Vídeo</em>.</li>
-          <li>Botón <strong>Nueva partitura</strong> abre modal de creación/edición.</li>
-          <li>El buscador acepta <em>título</em>, <em>autor</em>, <em>grupo</em> o <em>género</em>.</li>
-        </ul>
-        <p class="mini">Los enlaces de la tabla se normalizan para ser absolutos cuando falta el protocolo (https). Ver <code>abs()</code> en la vista.</p>
-      </div>
-      <div>
-        <ul class="list">
-          <li>Las cabeceras son <strong>ordenables</strong> (asc/desc).</li>
-          <li>Fila clicable para <strong>editar</strong> (carga vía <code>GET /partituras/:id</code>, devuelve JSON).</li>
-        </ul>
-        <p class="mini">Los archivos locales se sirven desde <code>/partituren/…</code> y los externos se abren en pestaña nueva.</p>
+<div class="help-wrap" data-help-theme="blue">
+  <div class="panel">
+    <div class="help-article-head">
+      <h1 class="h1">Ayuda · Partituras</h1>
+      <div class="cta">
+        <a href="/partituras">Repositorio →</a>
+        <a href="/partituras/ayuda">Esta página →</a>
       </div>
     </div>
-  </section>
 
-  <section id="subida" class="section">
-    <h2>Subir / enlazar</h2>
-    <div class="grid-2">
-      <div>
-        <h3 class="mini" style="font-weight:800;">Archivos</h3>
-        <ul class="list">
-          <li>Subida con <strong>arrastre</strong> o selector al campo “Archivo de partitura (PDF/ZIP)”. Límite <strong>25MB</strong>.</li>
-          <li>Guardado en <code>/public/partituren</code> con nombre normalizado y sello de tiempo.</li>
-          <li>En edición, puedes <strong>quitar</strong> el fichero actual y subir otro.</li>
-        </ul>
-      </div>
-      <div>
-        <h3 class="mini" style="font-weight:800;">Enlaces</h3>
-        <ul class="list">
-          <li>Alternativa al archivo: pega una <strong>URL</strong> de partitura (<code>https://…</code>); se valida y completa protocolo si falta.</li>
-          <li>Campo adicional para <strong>Audio/Vídeo</strong> (YouTube, Drive, etc.).</li>
-        </ul>
-        <p class="mini">La lógica de guardado prioriza el <strong>archivo</strong>; si no hay archivo, usa el <strong>enlace</strong>.</p>
-      </div>
-    </div>
-  </section>
+    <nav class="toc" aria-label="Índice">
+      <a href="#repo">Repositorio (web)</a>
+      <a href="#subida">Subir / enlazar</a>
+      <a href="#campos">Campos y relaciones</a>
+      <a href="#acciones">Búsqueda y edición</a>
+      <a href="#app">App móvil</a>
+      <a href="#faq">FAQ</a>
+    </nav>
 
-  <section id="campos" class="section">
-    <h2>Campos y relaciones</h2>
-    <div class="grid-2">
-      <div>
-        <ul class="list">
-          <li><strong>Obligatorios</strong>: Título, Grupo y Partitura (archivo o URL válida).</li>
-          <li><strong>Opcionales</strong>: Autor, Arreglista, Duración, Género, Descripción, Tags.</li>
-          <li><strong>Activa (pública)</strong>: controla visibilidad general.</li>
-        </ul>
+    <section id="repo" class="section">
+      <h2>Repositorio (web)</h2>
+      <div class="grid-2">
+        <div class="card">
+          <h3 style="margin:.1rem 0 .35rem;">Listado</h3>
+          <ul class="list">
+            <li>Columnas: <strong>Título</strong>, <strong>Autor</strong>, <strong>Grupo</strong>, <strong>Duración</strong>, <strong>Género</strong>, <strong>Activa</strong> y enlaces a <em>Partitura</em> y <em>Audio/Vídeo</em>.</li>
+            <li>Cabeceras <strong>ordenables</strong> — pulsa para ordenar asc/desc.</li>
+            <li>Fila clicable para <strong>editar</strong>.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3 style="margin:.1rem 0 .35rem;">Acceso a archivos</h3>
+          <ul class="list">
+            <li>Los archivos locales se sirven desde <code>/partituren/…</code>.</li>
+            <li>Los externos se abren en pestaña nueva.</li>
+            <li>Botón <strong>Nueva partitura</strong> abre el modal de creación.</li>
+          </ul>
+        </div>
       </div>
-      <div>
-        <ul class="list">
-          <li><strong>Instrumentos</strong> (múltiple): relación N–N con tabla intermedia; se reescribe en cada edición.</li>
-          <li><strong>Grupo</strong>: obligatorio; determina el acceso desde la app del alumno.</li>
-        </ul>
-      </div>
-    </div>
-  </section>
+    </section>
 
-  <section id="acciones" class="section">
-    <h2>Búsqueda · Ordenación · Edición</h2>
-    <div class="grid-2">
-      <div>
-        <ul class="list">
-          <li><strong>Buscar</strong>: en tiempo real por título/autor (tabla) y con query <code>?q=</code> en servidor.</li>
-          <li><strong>Ordenar</strong>: pulsa cabecera para alternar asc/desc.</li>
-          <li><strong>Editar</strong>: clic en fila → modal completo con datos y selección múltiple de instrumentos.</li>
-        </ul>
+    <section id="subida" class="section">
+      <h2>Subir / enlazar</h2>
+      <div class="grid-2">
+        <div class="card">
+          <h3 style="margin:.1rem 0 .35rem;">Archivos locales</h3>
+          <ul class="list">
+            <li>Sube un <strong>PDF o ZIP</strong> desde el modal. Límite <strong>25 MB</strong>.</li>
+            <li>Se guarda en <code>/public/partituren</code> con nombre normalizado y sello de tiempo.</li>
+            <li>En edición puedes <strong>quitar</strong> el fichero actual y subir otro; el anterior se borra del disco.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3 style="margin:.1rem 0 .35rem;">Enlaces externos</h3>
+          <ul class="list">
+            <li>Alternativa al archivo: pega una <strong>URL</strong> de partitura; se valida y completa protocolo si falta.</li>
+            <li>Campo adicional para <strong>Audio/Vídeo</strong> (YouTube, Drive, etc.).</li>
+            <li>El archivo tiene prioridad sobre el enlace si se suben los dos.</li>
+          </ul>
+        </div>
       </div>
-      <div>
-        <ul class="list">
-          <li><strong>Guardar</strong>: crea (<code>POST /partituras</code>) o actualiza (<code>PUT /partituras/:id</code>).</li>
-          <li><strong>Eliminar</strong>: borra relación instrumentos y después la partitura (<code>DELETE /partituras/:id</code>).</li>
-        </ul>
-        <p class="mini">En errores de validación, se muestra un mensaje con el detalle devuelto por el servidor.</p>
-      </div>
-    </div>
-  </section>
+      <p class="notice info">Para archivos mayores de 25 MB usa un enlace externo (Drive, Dropbox, etc.).</p>
+    </section>
 
-  <section id="app" class="section">
-    <h2>App “¡JOSG en tu mano!”</h2>
-    <div class="grid-2">
-      <div>
-        <ul class="list">
-          <li>Pantalla de <strong>Partituras</strong> con <em>buscador</em> y <strong>tarjetas</strong> (Autor · Título · Duración) a color.</li>
-          <li>Botones <strong>Partitura</strong> y <strong>Audio/Vídeo</strong> como <em>chips</em> con apertura en pestaña nueva.</li>
-          <li>Requiere sesión (token) y <strong>alumno_id</strong> para listar sólo las de sus grupos.</li>
-        </ul>
+    <section id="campos" class="section">
+      <h2>Campos y relaciones</h2>
+      <div class="grid-2">
+        <div class="card">
+          <h3 style="margin:.1rem 0 .35rem;">Obligatorios</h3>
+          <ul class="list">
+            <li><strong>Título</strong> — nombre de la obra.</li>
+            <li><strong>Grupo</strong> — determina el acceso desde la app del músico.</li>
+            <li><strong>Partitura</strong> — archivo subido <em>o</em> URL válida (una de las dos).</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3 style="margin:.1rem 0 .35rem;">Opcionales</h3>
+          <ul class="list">
+            <li>Autor, Arreglista, Duración, Género, Descripción.</li>
+            <li><strong>Instrumentos</strong> (múltiple): relación N–N; se reescribe en cada edición.</li>
+            <li><strong>Activa (pública)</strong>: controla visibilidad en la app.</li>
+          </ul>
+        </div>
       </div>
-      <div>
-        <ul class="list">
-          <li>Si la URL no es pública válida, la app usa un <strong>fallback firmado</strong> vía API para entregar el archivo.</li>
-          <li>Se normalizan enlaces: sólo se aceptan rutas públicas <code>/partituren/…</code> o URLs absolutas con protocolo.</li>
-          <li>Salir: botón ⎋ limpia token e identifica‑dor local.</li>
-        </ul>
-        <p class="mini">Los motivos musicales y colores de tarjeta son puramente visuales; no afectan a los enlaces.</p>
-      </div>
-    </div>
-  </section>
+    </section>
 
-  <section id="faq" class="section">
-    <h2>FAQ</h2>
-    <div class="grid-2">
-      <div>
-        <h3 class="mini" style="font-weight:800;">No abre la partitura</h3>
-        <p class="mini">Comprueba que el enlace tenga <code>https://</code> o que el archivo exista en <code>/partituren/</code>. En caso contrario, usa el enlace firmado de la app.</p>
+    <section id="acciones" class="section">
+      <h2>Búsqueda y edición</h2>
+      <div class="grid-2">
+        <div class="card">
+          <h3 style="margin:.1rem 0 .35rem;">Buscar y ordenar</h3>
+          <ul class="list">
+            <li>Buscador en tiempo real por título, autor, grupo y género.</li>
+            <li>Pulsa cualquier cabecera para ordenar asc/desc.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3 style="margin:.1rem 0 .35rem;">Crear / Editar / Eliminar</h3>
+          <ul class="list">
+            <li><strong>Nueva</strong>: botón superior abre modal vacío.</li>
+            <li><strong>Editar</strong>: clic en fila carga el modal con los datos actuales.</li>
+            <li><strong>Eliminar</strong>: botón en el modal de edición, borra partitura y sus relaciones.</li>
+          </ul>
+          <p class="notice info">En errores de validación se muestra el detalle devuelto por el servidor.</p>
+        </div>
       </div>
-      <div>
-        <h3 class="mini" style="font-weight:800;">Audio/Vídeo no válido</h3>
-        <p class="mini">Pega una URL absoluta (YouTube, Drive…); el sistema añade protocolo si falta.</p>
-      </div>
-      <div>
-        <h3 class="mini" style="font-weight:800;">Instrumentos</h3>
-        <p class="mini">Selecciona varios con Ctrl/Cmd. En edición, la selección <em>reemplaza</em> la anterior.</p>
-      </div>
-      <div>
-        <h3 class="mini" style="font-weight:800;">Tamaños</h3>
-        <p class="mini">Archivos hasta 25MB. Para más, usa enlaces externos.</p>
-      </div>
-    </div>
-  </section>
+    </section>
 
-  <div class="panel-header volver" style="margin-top:10px;">
-    <a href="/ayudas" class="enlace-final">← Volver al Centro de ayuda</a>
+    <section id="app" class="section">
+      <h2>App "¡JOSG en tu mano!"</h2>
+      <div class="grid-2">
+        <div class="card">
+          <h3 style="margin:.1rem 0 .35rem;">Vista en la app</h3>
+          <ul class="list">
+            <li>Tarjetas a color con <strong>Autor</strong>, <strong>Título</strong> y <strong>Duración</strong>.</li>
+            <li>Chips <strong>Partitura</strong> y <strong>Audio/Vídeo</strong> que abren en pestaña nueva.</li>
+            <li>Buscador en tiempo real por título y autor.</li>
+            <li>Solo se muestran las partituras del grupo del músico y marcadas como <em>Activa</em>.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3 style="margin:.1rem 0 .35rem;">Acceso a archivos</h3>
+          <ul class="list">
+            <li>Rutas públicas <code>/partituren/…</code> se sirven directamente sin necesidad de token.</li>
+            <li>Si la URL no es pública válida, la app usa un <strong>enlace firmado</strong> vía API como fallback.</li>
+            <li>Solo se aceptan rutas <code>/partituren/…</code> o URLs absolutas con protocolo.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section id="faq" class="section">
+      <h2>Preguntas frecuentes (FAQ)</h2>
+      <div class="grid-2">
+        <div class="card">
+          <h3>No abre la partitura</h3>
+          <p>Comprueba que el enlace tenga <code>https://</code> o que el archivo exista en <code>/partituren/</code>. La app usa el enlace firmado como fallback automático.</p>
+        </div>
+        <div class="card">
+          <h3>Audio/Vídeo no válido</h3>
+          <p>Pega una URL absoluta (YouTube, Drive…). El sistema añade <code>https://</code> si falta el protocolo.</p>
+        </div>
+        <div class="card">
+          <h3>Selección de instrumentos</h3>
+          <p>Selecciona varios con <kbd>Ctrl</kbd> / <kbd>Cmd</kbd>. En edición, la selección <em>reemplaza</em> la anterior completa.</p>
+        </div>
+        <div class="card">
+          <h3>No aparece en la app del músico</h3>
+          <p>Comprueba que la partitura esté marcada como <strong>Activa</strong> y que el grupo coincida con el del músico.</p>
+        </div>
+      </div>
+    </section>
+
   </div>
 </div>

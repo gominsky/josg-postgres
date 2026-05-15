@@ -6,178 +6,249 @@
     if (!s) return '';
     if (s.startsWith('/')) return s;
     if (/^[a-zA-Z][\w+.-]*:\/\//.test(s)) return s;
-    return 'https://' + s; // completa protocolo si falta
+    return 'https://' + s;
+  }
+  function esLocal(u){
+    if (!u) return false;
+    const s = String(u).trim();
+    return s.startsWith('/partituren/') || s.startsWith('partituren/');
+  }
+  function absLocal(u){
+    if (!u) return '';
+    const s = String(u).trim();
+    if (!s) return '';
+    // Fuerza barra inicial para rutas locales
+    if (s.startsWith('partituren/')) return '/' + s;
+    if (s.startsWith('/')) return s;
+    if (/^[a-zA-Z][\w+.-]*:\/\//.test(s)) return s;
+    return 'https://' + s;
   }
 %>
-<div class="container-fluid mt-4" style="max-width: 1400px;">
-  <div class="d-flex justify-content-between align-items-center mb-3">
-    <h1 class="h1-titulo mb-0">Repositorio de partituras</h1>
 
-    <div class="d-flex align-items-center gap-2">
-      <form class="d-flex" method="GET" action="/partituras">
-        <input id="filtroQ"
-       name="q"
-       value="<%= (typeof q !== 'undefined' ? q : '') %>"
-       class="form-control me-2"
-       placeholder="Buscar por título, autor, grupo, género…"
-       autocomplete="off">
-      </form>
-      <button class="btn-main-blanco fw-bold px-3 py-2" id="btnNueva" type="button">Nueva partitura</button>
-    </div>
-  </div>
+<div class="header-compact">
+  <h1 class="h1-titulo">Repositorio de partituras</h1>
+  <button class="btn-main-blanco fw-bold" id="btnNueva" type="button">+ Nueva partitura</button>
+</div>
 
+<!-- Buscador -->
+<div class="mx-auto mb-3" style="max-width:1400px; padding:0 1rem;">
+  <input id="filtroQ"
+         class="form-control form-control-sm"
+         placeholder="Buscar por título, autor, grupo, género…"
+         autocomplete="off"
+         value="<%= (typeof q !== 'undefined' ? q : '') %>">
+</div>
+
+<!-- Tabla -->
+<div class="mx-auto" style="max-width:1400px; padding:0 1rem 2rem;">
   <div class="table-responsive">
-    <table class="table table-striped tabla-estilizada" id="tablaPartituras">
+    <table class="tabla-estilizada tabla-tight tabla-hover" id="tablaPartituras">
       <thead>
         <tr>
-          <th role="button" data-sort="titulo"        aria-sort="none">Título</th>
-          <th role="button" data-sort="autor"         aria-sort="none">Autor</th>
-          <th role="button" data-sort="grupo_nombre"  aria-sort="none">Grupo</th>
-          <th role="button" data-sort="duracion"      aria-sort="none">Duración</th>
-          <th role="button" data-sort="genero"        aria-sort="none">Género</th>
-          <th role="button" data-sort="activo"        aria-sort="none" class="text-center">Activa</th>
+          <th class="sortable" data-col="0">Título <span class="sort-icon">↕</span></th>
+          <th class="sortable" data-col="1">Autor <span class="sort-icon">↕</span></th>
+          <th class="sortable" data-col="2">Grupo <span class="sort-icon">↕</span></th>
+          <th class="sortable" data-col="3">Duración <span class="sort-icon">↕</span></th>
+          <th class="sortable" data-col="4">Género <span class="sort-icon">↕</span></th>
+          <th class="text-center">Activa</th>
           <th>Partitura</th>
           <th>Audio/Vídeo</th>
         </tr>
       </thead>
       <tbody>
         <% (partituras || []).forEach(p => { %>
-          <tr class="partitura-row fila-enlace" style="cursor:pointer"
+          <tr class="partitura-row clickable-row"
               data-id="<%= p.id %>"
               data-titulo="<%- (p.titulo || '').toLowerCase() %>"
               data-autor="<%- (p.autor || '').toLowerCase() %>"
-              data-grupo_nombre="<%- (p.grupo_nombre || '').toLowerCase() %>"
+              data-grupo="<%- (p.grupo_nombre || '').toLowerCase() %>"
               data-duracion="<%- (p.duracion || '').toLowerCase() %>"
               data-genero="<%- (p.genero || '').toLowerCase() %>"
-              data-activo="<%= p.activo ? '1' : '0' %>">
+              data-json="<%- JSON.stringify({
+                id: p.id,
+                titulo: p.titulo || '',
+                autor: p.autor || '',
+                arreglista: p.arreglista || '',
+                grupo_id: p.grupo_id,
+                duracion: p.duracion || '',
+                genero: p.genero || '',
+                activo: p.activo,
+                enlace_partitura: p.enlace_partitura || '',
+                enlace_audio: p.enlace_audio || '',
+                descripcion: p.descripcion || '',
+                instrumentos: p.instrumentos || []
+              }).replace(/&/g,'&amp;').replace(/"/g,'&quot;') %>">
             <td><strong><%= p.titulo %></strong></td>
             <td><%= p.autor || '—' %></td>
             <td><%= p.grupo_nombre || '—' %></td>
             <td><%= p.duracion || '—' %></td>
             <td><%= p.genero || '—' %></td>
             <td class="text-center">
-              <span class="badge <%= p.activo ? 'bg-success' : 'bg-secondary' %>">
+              <span class="badge-soft" style="font-size:.72rem; <%= p.activo ? '' : 'opacity:.5;' %>">
                 <%= p.activo ? 'Sí' : 'No' %>
               </span>
             </td>
-            <td>
-                <% if (p.enlace_partitura) { %>
-               <a href="<%= abs(p.enlace_partitura) %>" target="_blank" rel="noopener">Descargar</a>
-                <% } else { %>—<% } %>
+            <td onclick="event.stopPropagation();">
+              <% if (p.enlace_partitura) { %>
+                <%
+                  const _ep = String(p.enlace_partitura || '').trim();
+                  const _epUrl = _ep.startsWith('partituren/') ? '/' + _ep
+                               : _ep.startsWith('/') ? _ep
+                               : /^[a-zA-Z][\w+.-]*:\/\//.test(_ep) ? _ep
+                               : 'https://' + _ep;
+                  const _epLabel = (_ep.startsWith('/partituren/') || _ep.startsWith('partituren/')) ? '📄 PDF' : '🔗 Abrir';
+                %>
+                <a href="<%= _epUrl %>" target="_blank" rel="noopener"
+                   class="btn-outline-xs" style="text-decoration:none;">
+                  <%= _epLabel %>
+                </a>
+              <% } else { %>
+                <span class="text-muted" style="font-size:.8rem;">—</span>
+              <% } %>
             </td>
-            <td>
+            <td onclick="event.stopPropagation();">
               <% if (p.enlace_audio) { %>
-                <a href="<%= p.enlace_audio %>" target="_blank" rel="noopener">Abrir</a>
-              <% } else { %>—<% } %>
+                <a href="<%= abs(p.enlace_audio) %>" target="_blank" rel="noopener"
+                   class="btn-outline-xs" style="text-decoration:none;">▶ Escuchar/Ver</a>
+              <% } else { %>
+                <span class="text-muted" style="font-size:.8rem;">—</span>
+              <% } %>
             </td>
           </tr>
         <% }) %>
+        <tr id="noResultsRow" style="display:none;">
+          <td colspan="8" class="text-center text-muted py-3">Sin resultados</td>
+        </tr>
       </tbody>
     </table>
   </div>
 </div>
 
-
-<!-- ===== Modal (sin footer) ===== -->
-<div class="modal fade modal-sheet" id="partituraModal" tabindex="-1" aria-labelledby="partituraModalTitulo" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered">
+<!-- ── Modal crear / editar ── -->
+<div class="modal fade modal-sheet" id="partituraModal" tabindex="-1"
+     aria-labelledby="partituraModalTitulo" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
     <form id="partituraForm" class="modal-content" enctype="multipart/form-data">
       <input type="hidden" name="id">
 
-      <!-- Cabecera -->
       <div class="sheet-head">
         <h5 class="modal-title mb-0" id="partituraModalTitulo">Nueva partitura</h5>
         <button type="button" class="btn-close ms-auto" data-bs-dismiss="modal" aria-label="Cerrar"></button>
       </div>
 
-      <!-- Cuerpo -->
-      <div class="modal-body" style="padding: 12px 14px;">
-        <div class="mb-2">
-          <label class="form-label">Título</label>
-          <input type="text" name="titulo" class="form-control" required>
-        </div>
+      <div class="modal-body" style="padding:0; overflow-y:auto; max-height:80vh;">
 
-        <div class="row g-2">
-          <div class="col-sm-6">
-            <label class="form-label">Autor</label>
-            <input type="text" name="autor" class="form-control">
+        <!-- Sección: Datos principales -->
+        <div class="grupo-campos">
+          <h2>Obra</h2>
+          <div class="form-grid-1">
+            <label>
+              <span style="display:flex; align-items:center; gap:.25rem; white-space:nowrap;">
+                Título <span class="text-danger">*</span>
+              </span>
+              <input type="text" name="titulo" class="form-control" required>
+            </label>
           </div>
-          <div class="col-sm-6">
-            <label class="form-label">Arreglista</label>
-            <input type="text" name="arreglista" class="form-control">
+          <div class="form-grid-2">
+            <label>Autor
+              <input type="text" name="autor" class="form-control">
+            </label>
+            <label>Arreglista
+              <input type="text" name="arreglista" class="form-control">
+            </label>
           </div>
-        </div>
-
-        <div class="row g-2 mt-0">
-          <div class="col-sm-6">
-            <label class="form-label">Grupo</label>
-            <select name="grupo_id" class="form-select">
-              <option value="">—</option>
-              <% (grupos || []).forEach(g => { %>
-                <option value="<%= g.id %>"><%= g.nombre %></option>
-              <% }) %>
-            </select>
+          <div class="form-grid-3">
+            <label>
+              <span style="display:flex; align-items:center; gap:.25rem; white-space:nowrap;">
+                Grupo <span class="text-danger">*</span>
+              </span>
+              <select name="grupo_id" class="form-select form-centrado-select">
+                <option value="">—</option>
+                <% (grupos || []).forEach(g => { %>
+                  <option value="<%= g.id %>"><%= g.nombre %></option>
+                <% }) %>
+              </select>
+            </label>
+            <label>Duración
+              <input type="text" name="duracion" class="form-control" placeholder="03:45">
+            </label>
+            <label>Género
+              <input type="text" name="genero" class="form-control">
+            </label>
           </div>
-          <div class="col-sm-3">
-            <label class="form-label">Duración</label>
-            <input type="text" name="duracion" class="form-control" placeholder="03:45 / 3-4 min">
-          </div>
-          <div class="col-sm-3">
-            <label class="form-label">Género</label>
-            <input type="text" name="genero" class="form-control">
-          </div>
-        </div>
-
-        <div class="form-check form-switch my-2">
-          <input type="checkbox" name="activo" id="activo" class="form-check-input">
-          <label for="activo" class="form-check-label ms-2">Activa (pública)</label>
-        </div>
-
-        <div class="mb-2">
-          <label class="form-label">Archivo de partitura (PDF/ZIP)</label>
-          <input type="file" name="archivo_partitura" class="form-control" accept=".pdf,.zip,.PDF,.ZIP">
-          <div class="form-text">Si no subes fichero, puedes indicar un enlace directamente.</div>
-                  <!-- Mostrar archivo actual si existe -->
-        <div id="archivoActualWrap" class="d-flex align-items-center gap-2 mt-2" hidden>
-          <span class="badge bg-secondary">Archivo actual</span>
-          <a id="archivoActualLink" href="#" target="_blank" rel="noopener" class="small text-decoration-underline"></a>
-          <button type="button" id="quitarArchivoBtn" class="btn btn-link btn-sm text-danger p-0 ms-1" data-action="quitar-archivo">Quitar</button>
-        </div>
-        <!-- Flag opcional para pedir al servidor borrar el archivo -->
-        <input type="hidden" name="eliminar_archivo_partitura" value="0">
-        </div>
-
-        <div class="row g-2">
-          <div class="col-sm-6">
-            <label class="form-label">Enlace partitura (URL)</label>
-            <input type="url" name="enlace_partitura" class="form-control" placeholder="https://…">
-          </div>
-          <div class="col-sm-6">
-            <label class="form-label">Enlace audio/vídeo (URL)</label>
-            <input type="url" name="enlace_audio" class="form-control" placeholder="https://…">
+          <div class="form-check form-switch mt-1">
+            <input type="checkbox" name="activo" id="activo" class="form-check-input">
+            <label for="activo" class="form-check-label ms-2" style="font-size:.85rem;">Activa (visible en app)</label>
           </div>
         </div>
 
-        <div class="row g-2 mt-0">
-          <div class="col-sm-6">
-            <label class="form-label">Instrumentos (múltiple)</label>
-            <select name="instrumentos" id="selInstrumentos" class="form-select" multiple size="10">
-              <% (instrumentos || []).forEach(i => { %>
-                <option value="<%= i.id %>"><%= i.nombre %></option>
-              <% }) %>
-            </select>
+        <!-- Sección: Archivo y enlaces -->
+        <div class="grupo-campos">
+          <h2>Archivo y enlaces</h2>
+          <label class="d-block mb-2" style="font-size:.85rem; font-weight:500;">
+            Subir PDF o ZIP <span style="font-weight:400; color:var(--muted);">— máx. 25 MB</span>
+            <input type="file" name="archivo_partitura" id="inputArchivo"
+                   class="form-control mt-1" accept=".pdf,.zip,.PDF,.ZIP">
+          </label>
+          <div id="archivoActualWrap" class="d-flex align-items-center gap-2 mb-2" hidden>
+            <span class="badge-soft" style="font-size:.72rem;">Archivo actual</span>
+            <a id="archivoActualLink" href="#" target="_blank" rel="noopener"
+               class="small text-decoration-underline"></a>
+            <button type="button" data-action="quitar-archivo"
+                    class="btn-ghost-sm" style="font-size:.78rem; color:#aa2a2a;">Quitar</button>
           </div>
-          <div class="col-sm-6">
-            <label class="form-label">Descripción</label>
-            <textarea name="descripcion" class="form-control" rows="10" placeholder="Notas, indicaciones…"></textarea>
+          <input type="hidden" name="eliminar_archivo_partitura" value="0">
+          <div class="form-grid-2">
+            <label style="font-size:.85rem; font-weight:500;">Enlace partitura (URL externa)
+              <input type="text" name="enlace_partitura" class="form-control mt-1" placeholder="https://…">
+            </label>
+            <label style="font-size:.85rem; font-weight:500;">Enlace audio/vídeo
+              <input type="text" name="enlace_audio" class="form-control mt-1" placeholder="https://…">
+            </label>
           </div>
         </div>
 
-        <div class="mt-3">
-          <button type="submit" class="btn btn-dark">Guardar</button>
-          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
-          <button type="button" id="btnEliminar" class="btn btn-outline-danger d-none float-end">Eliminar</button>
+        <!-- Sección: Instrumentos y descripción -->
+        <div class="grupo-campos">
+          <h2>Detalles adicionales</h2>
+          <div class="form-grid-2">
+            <label style="font-size:.85rem; font-weight:500;">Instrumentos
+              <span style="font-weight:400; color:var(--muted);">(Ctrl/Cmd para múltiple)</span>
+              <select name="instrumentos" id="selInstrumentos"
+                      class="form-select mt-1" multiple size="7">
+                <% (instrumentos || []).forEach(i => { %>
+                  <option value="<%= i.id %>"><%= i.nombre %></option>
+                <% }) %>
+              </select>
+            </label>
+            <label style="font-size:.85rem; font-weight:500;">Descripción
+              <textarea name="descripcion" class="form-control mt-1" rows="7"
+                        placeholder="Notas, indicaciones de interpretación…"></textarea>
+            </label>
+          </div>
         </div>
+
+        <!-- Acciones -->
+        <div style="display:flex; justify-content:space-between; align-items:center;
+                    padding:.75rem 1rem; border-top:1px solid var(--color-borde,#eee); gap:.5rem;">
+          <button type="button" id="btnEliminar"
+                  class="btn-outline-danger-neutral d-none"
+                  style="margin:0; padding:.42rem .9rem; font-size:.85rem; line-height:1.4;">
+            Eliminar
+          </button>
+          <div style="display:flex; gap:.5rem; align-items:center; margin-left:auto;">
+            <button type="button" data-bs-dismiss="modal"
+                    class="btn-outline"
+                    style="margin:0; padding:.42rem .9rem; font-size:.85rem; line-height:1.4;">
+              Cancelar
+            </button>
+            <button type="submit" class="btn-main"
+                    style="margin:0; padding:.42rem .9rem; font-size:.85rem; line-height:1.4;">
+              Guardar
+            </button>
+          </div>
+        </div>
+
       </div>
     </form>
   </div>
@@ -193,276 +264,199 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnNueva    = document.getElementById('btnNueva');
   const btnEliminar = document.getElementById('btnEliminar');
 
-  // Borde negro al form de búsqueda
-  const searchForm = document.getElementById('filtroQ')?.form;
-  if (searchForm) searchForm.classList.add('borde-negro');
-  // === Filtro en vivo para la lista de partituras (según se escribe) ===
-const inputQ = document.getElementById('filtroQ');
-const tbody  = document.querySelector('#tablaPartituras tbody');
+  /* ── Filtro en vivo ── */
+  const inputQ = document.getElementById('filtroQ');
+  const tbody  = document.querySelector('#tablaPartituras tbody');
 
-function normalize(s){
-  return (s||'').toString().toLowerCase()
-    .normalize('NFD').replace(/[\u0300-\u036f]/g,'') // quita acentos
-    .trim();
-}
-
-function rowText(r){
-  return [
-    r.dataset.titulo,
-    r.dataset.autor,
-    r.dataset.grupo_nombre,
-    r.dataset.duracion,
-    r.dataset.genero
-  ].map(normalize).join(' ');
-}
-
-function ensureNoResultsRow(){
-  let noRow = document.getElementById('noResultsRow');
-  if (!noRow) {
-    noRow = document.createElement('tr');
-    noRow.id = 'noResultsRow';
-    const td = document.createElement('td');
-    td.colSpan = 8; // coincide con tus 8 columnas
-    td.className = 'text-center text-muted';
-    td.textContent = 'Sin resultados';
-    noRow.appendChild(td);
-    tbody.appendChild(noRow);
+  function normalize(s){
+    return (s||'').toString().toLowerCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
   }
-  return noRow;
-}
+  function rowText(r){
+    return [r.dataset.titulo, r.dataset.autor, r.dataset.grupo,
+            r.dataset.duracion, r.dataset.genero].map(normalize).join(' ');
+  }
+  let lastQ = '';
+  function applyFilter(q){
+    const nq = normalize(q);
+    if (nq === lastQ) return;
+    lastQ = nq;
+    const tokens = nq.split(/\s+/).filter(Boolean);
+    let visibles = 0;
+    tbody.querySelectorAll('tr.partitura-row').forEach(r => {
+      const ok = !tokens.length || tokens.every(t => rowText(r).includes(t));
+      r.style.display = ok ? '' : 'none';
+      if (ok) visibles++;
+    });
+    document.getElementById('noResultsRow').style.display = visibles === 0 ? '' : 'none';
+    const url = new URL(location.href);
+    if (nq) url.searchParams.set('q', q); else url.searchParams.delete('q');
+    history.replaceState(null, '', url);
+  }
+  inputQ?.addEventListener('input', () => applyFilter(inputQ.value));
+  applyFilter(inputQ?.value || '');
 
-let lastQ = '';
-function applyFilter(q){
-  const nq = normalize(q);
-  if (nq === lastQ) return;
-  lastQ = nq;
-
-  const tokens = nq.split(/\s+/).filter(Boolean);
-  let visibles = 0;
-
-  tbody.querySelectorAll('tr.partitura-row').forEach(r => {
-    const haystack = rowText(r);
-    const ok = tokens.every(t => haystack.includes(t));
-    r.style.display = ok ? '' : 'none';
-    if (ok) visibles++;
+  /* ── Ordenación de columnas ── */
+  let sortCol = -1, sortAsc = true;
+  document.querySelectorAll('#tablaPartituras th.sortable').forEach(th => {
+    th.style.cursor = 'pointer';
+    th.addEventListener('click', () => {
+      const col = parseInt(th.dataset.col);
+      if (sortCol === col) sortAsc = !sortAsc; else { sortCol = col; sortAsc = true; }
+      document.querySelectorAll('#tablaPartituras th .sort-icon')
+              .forEach(i => i.textContent = '↕');
+      th.querySelector('.sort-icon').textContent = sortAsc ? '↑' : '↓';
+      const rows = [...tbody.querySelectorAll('tr.partitura-row')];
+      rows.sort((a, b) => {
+        const va = a.cells[col]?.textContent.trim() || '';
+        const vb = b.cells[col]?.textContent.trim() || '';
+        return sortAsc ? va.localeCompare(vb,'es') : vb.localeCompare(va,'es');
+      });
+      rows.forEach(r => tbody.appendChild(r));
+    });
   });
 
-  const noRow = ensureNoResultsRow();
-  noRow.style.display = visibles === 0 ? '' : 'none';
-
-  const url = new URL(location.href);
-  if (nq) url.searchParams.set('q', q); else url.searchParams.delete('q');
-  history.replaceState(null, '', url);
-}
-
-if (inputQ) {
-  inputQ.addEventListener('input', () => applyFilter(inputQ.value));
-  inputQ.form?.addEventListener('submit', (e) => {
-    e.preventDefault();
-    applyFilter(inputQ.value);
-  });
-  // Filtro inicial por si viene ?q=... o hay valor en el input
-  applyFilter(inputQ.value || '');
-}
-
-  // Normaliza rutas a URL absoluta (evita error en <input type="url">)
-  function toAbsoluteUrl(v) {
+  /* ── Helpers de URL ── */
+  // Limpia antes de guardar: si es URL con nuestro origen, extrae solo la ruta
+  function cleanUrl(v) {
+    if (!v) return '';
+    let s = String(v).trim();
+    // Si tiene nuestro origen, extraer solo la ruta
+    try {
+      const u = new URL(s);
+      if (u.origin === location.origin) return u.pathname;
+    } catch {}
+    // Normalizar rutas partituren sin barra inicial
+    if (s.startsWith('partituren/')) return '/' + s;
+    return s;
+  }
+  // Para mostrar en inputs: si es ruta local, añade origen para que se vea bien
+  function displayUrl(v) {
     if (!v) return '';
     const s = String(v).trim();
-    if (/^https?:\/\//i.test(s)) return s;
-    if (s.startsWith('/')) return location.origin + s;
-    return location.origin + '/' + s;
+    if (s.startsWith('/partituren/')) return s; // mostrar ruta limpia, no la URL completa
+    return s;
   }
-  // === Helper: marcar <option> seleccionadas en un <select multiple> ===
-function setSelectValues(selectElem, arr) {
-  if (!selectElem || !Array.isArray(arr)) return;
-  const values = arr.map(String);
-  Array.from(selectElem.options).forEach(opt => {
-    opt.selected = values.includes(opt.value);
+
+  /* ── Select múltiple ── */
+  function setSelectValues(el, arr) {
+    if (!el || !Array.isArray(arr)) return;
+    const vals = arr.map(String);
+    Array.from(el.options).forEach(o => { o.selected = vals.includes(o.value); });
+  }
+
+  /* ── Quitar archivo actual ── */
+  document.addEventListener('click', ev => {
+    if (!ev.target.closest('[data-action="quitar-archivo"]')) return;
+    ev.preventDefault();
+    document.getElementById('archivoActualWrap').hidden = true;
+    form.querySelector('[name="eliminar_archivo_partitura"]').value = '1';
+    document.getElementById('inputArchivo').value = '';
+    form.enlace_partitura.value = '';
   });
-}
 
-// === Listener delegado para el botón "Quitar" del archivo actual ===
-// (añádelo una única vez, fuera de fillForm/clearForm)
-document.addEventListener('click', (ev) => {
-  const btn = ev.target.closest('[data-action="quitar-archivo"]');
-  if (!btn) return;
-
-  ev.preventDefault();
-
-  const wrap = document.getElementById('archivoActualWrap');
-  const link = document.getElementById('archivoActualLink');
-  const flag = form.querySelector('input[name="eliminar_archivo_partitura"]');
-  const file = form.querySelector('input[name="archivo_partitura"]');
-
-  if (wrap) wrap.hidden = true;
-  if (link) { link.removeAttribute('href'); link.textContent = ''; }
-  if (flag) flag.value = '1';
-  if (file) file.value = '';
-});
-
-// === Rellena el formulario al editar ===
-function fillForm(p){
-  form.querySelector('input[name="id"]').value = p.id || '';
-  form.titulo.value             = p.titulo || '';
-  form.autor.value              = p.autor || '';
-  form.arreglista.value         = p.arreglista || '';
-  if (form.grupo_id) form.grupo_id.value = p.grupo_id || '';
-  form.duracion.value           = p.duracion || '';
-  form.genero.value             = p.genero || '';
-  form.enlace_partitura.value   = toAbsoluteUrl(p.enlace_partitura || '');
-  // Si usas un único campo para audio/vídeo, ajústalo aquí (ej. form.enlace_audio o form.enlace_video)
-  if (form.enlace_audio) form.enlace_audio.value = toAbsoluteUrl(p.enlace_audio || p.enlace_video || p.enlace || '');
-  form.descripcion.value        = p.descripcion || '';
-  if (form.activo) form.activo.checked = !!p.activo;
-
-  // Select múltiple de instrumentos (si existe)
-  if (typeof selInst !== 'undefined' && selInst) {
+  /* ── Rellenar formulario (editar) ── */
+  function fillForm(p) {
+    form.querySelector('[name="id"]').value = p.id || '';
+    form.titulo.value       = p.titulo || '';
+    form.autor.value        = p.autor || '';
+    form.arreglista.value   = p.arreglista || '';
+    if (form.grupo_id) form.grupo_id.value = p.grupo_id || '';
+    form.duracion.value     = p.duracion || '';
+    form.genero.value       = p.genero || '';
+    form.enlace_partitura.value = displayUrl(p.enlace_partitura || '');
+    form.enlace_audio.value     = displayUrl(p.enlace_audio || '');
+    form.descripcion.value  = p.descripcion || '';
+    if (form.activo) form.activo.checked = !!p.activo;
     setSelectValues(selInst, (p.instrumentos || []).map(String));
-  }
+    btnEliminar.classList.remove('d-none');
+    document.getElementById('partituraModalTitulo').textContent = 'Editar partitura';
 
-  // UI editar
-  if (typeof btnEliminar !== 'undefined' && btnEliminar) btnEliminar.classList.remove('d-none');
-  const t = document.getElementById('partituraModalTitulo');
-  if (t) t.textContent = 'Editar partitura';
-
-  // === Mostrar "Archivo actual" si existe ===
-  const wrap = document.getElementById('archivoActualWrap');
-  const link = document.getElementById('archivoActualLink');
-  const hiddenFlag = form.querySelector('input[name="eliminar_archivo_partitura"]');
-
-  const ruta   = (p.ruta_partitura || p.ruta || p.archivo_partitura || '').toString().trim();
-  const enlace = (p.enlace_partitura || '').toString().trim();
-
-  let urlActual = '';
-  if (ruta && ruta.startsWith('/')) {
-    urlActual = location.origin + ruta;
-  } else if (enlace) {
-    urlActual = toAbsoluteUrl(enlace);
-  }
-
-  if (urlActual) {
-    if (link) {
-      link.href = urlActual;
-      link.textContent = urlActual.split('/').pop();
+    // Archivo actual
+    const enlace = (p.enlace_partitura || '').toString().trim();
+    const wrap   = document.getElementById('archivoActualWrap');
+    const link   = document.getElementById('archivoActualLink');
+    form.querySelector('[name="eliminar_archivo_partitura"]').value = '0';
+    const enlaceLimpio = enlace.startsWith('partituren/') ? '/' + enlace : enlace;
+    if (enlaceLimpio.startsWith('/partituren/')) {
+      link.href        = enlaceLimpio;
+      link.textContent = decodeURIComponent(enlaceLimpio.split('/').pop());
+      wrap.hidden      = false;
+    } else {
+      wrap.hidden = true;
     }
-    if (wrap) wrap.hidden = false;
-    if (hiddenFlag) hiddenFlag.value = '0';
-  } else {
-    if (wrap) wrap.hidden = true;
-    if (hiddenFlag) hiddenFlag.value = '0';
+    document.getElementById('inputArchivo').value = '';
   }
 
-  // Limpia input[file] al entrar en edición (evita confusiones)
-  const file = form.querySelector('input[name="archivo_partitura"]');
-  if (file) file.value = '';
-}
-
-// === Limpia el formulario al crear nueva partitura ===
-function clearForm(){
-  form.reset();
-  form.querySelector('input[name="id"]').value = '';
-  if (typeof selInst !== 'undefined' && selInst) {
-    Array.from(selInst.options).forEach(o => (o.selected = false));
-  }
-  if (typeof btnEliminar !== 'undefined' && btnEliminar) btnEliminar.classList.add('d-none');
-  const t = document.getElementById('partituraModalTitulo');
-  if (t) t.textContent = 'Nueva partitura';
-
-  const wrap = document.getElementById('archivoActualWrap');
-  const hiddenFlag = form.querySelector('input[name="eliminar_archivo_partitura"]');
-  if (wrap) wrap.hidden = true;
-  if (hiddenFlag) hiddenFlag.value = '0';
-
-  const file = form.querySelector('input[name="archivo_partitura"]');
-  if (file) file.value = '';
-}
-
-  // Nueva
-  if (btnNueva) {
-    btnNueva.addEventListener('click', e => {
-      e.preventDefault();
-      clearForm();
-      modal.show();
-    });
+  /* ── Limpiar formulario (nueva) ── */
+  function clearForm() {
+    form.reset();
+    form.querySelector('[name="id"]').value = '';
+    Array.from(selInst?.options || []).forEach(o => { o.selected = false; });
+    btnEliminar.classList.add('d-none');
+    document.getElementById('partituraModalTitulo').textContent = 'Nueva partitura';
+    document.getElementById('archivoActualWrap').hidden = true;
+    form.querySelector('[name="eliminar_archivo_partitura"]').value = '0';
+    document.getElementById('inputArchivo').value = '';
   }
 
-  // Click en filas -> editar
+  /* ── Botón nueva ── */
+  btnNueva?.addEventListener('click', e => { e.preventDefault(); clearForm(); modal.show(); });
+
+  /* ── Click en fila → editar ── */
   document.querySelectorAll('.partitura-row').forEach(row => {
-    row.style.cursor = 'pointer';
-    row.addEventListener('click', async ev => {
-      if (ev.target.closest('a,button')) return;
-      const id = row.dataset.id;
-      if (!id) return;
-
+    row.addEventListener('click', ev => {
+      if (ev.target.closest('a, button')) return;
+      const raw = row.dataset.json;
+      if (!raw) return;
       try {
-        const r = await fetch(`/partituras/${id}`, {
-          headers: { 'Accept': 'application/json' },
-          credentials: 'same-origin'
-        });
-        const body = await r.text();
-        if (!r.ok) throw new Error(`${r.status} ${r.statusText}\n${body}`);
-        const p = JSON.parse(body);
+        const p = JSON.parse(raw);
         clearForm();
         fillForm(p);
         modal.show();
       } catch (e) {
-        console.error(e);
-        alert(`No se pudo cargar la partitura.\n\n${e.message}`);
+        console.error('Error al parsear datos de la fila:', e);
       }
     });
   });
 
-  // Guardar (POST nuevo, PUT edición)
+  /* ── Guardar ── */
   form.addEventListener('submit', async e => {
     e.preventDefault();
+    form.enlace_partitura.value = cleanUrl(form.enlace_partitura.value);
+    form.enlace_audio.value     = cleanUrl(form.enlace_audio.value);
 
-    // Asegura URLs absolutas
-    form.enlace_partitura.value = toAbsoluteUrl(form.enlace_partitura.value);
-    form.enlace_audio.value     = toAbsoluteUrl(form.enlace_audio.value);
-
-    const id = form.querySelector('input[name="id"]').value.trim();
+    const id = form.querySelector('[name="id"]').value.trim();
     const fd = new FormData(form);
 
     if (selInst) {
-      const sel = Array.from(selInst.selectedOptions).map(o => o.value);
       fd.delete('instrumentos');
-      sel.forEach(v => fd.append('instrumentos', v));
+      Array.from(selInst.selectedOptions).forEach(o => fd.append('instrumentos', o.value));
     }
     if (form.activo) fd.set('activo', form.activo.checked ? '1' : '0');
 
-    const url = id ? `/partituras/${id}` : '/partituras';
+    const url    = id ? `/partituras/${id}` : '/partituras';
     const method = id ? 'PUT' : 'POST';
 
     try {
-      const r = await fetch(url, {
-        method,
-        body: fd,
-        credentials: 'same-origin'
-      });
+      const r   = await fetch(url, { method, body: fd, credentials: 'same-origin' });
       const txt = await r.text();
-      if (!r.ok) throw new Error(`${method} ${url} -> ${r.status} ${r.statusText}\n${txt}`);
+      if (!r.ok) throw new Error(`${method} ${url} → ${r.status}\n${txt}`);
       modal.hide();
       location.reload();
     } catch (err) {
       console.error(err);
-      alert(`Error al guardar la partitura.\n\n${err.message}`);
+      alert(`Error al guardar.\n\n${err.message}`);
     }
   });
 
-  // Eliminar
+  /* ── Eliminar ── */
   btnEliminar.addEventListener('click', async () => {
-    const id = form.querySelector('input[name="id"]').value.trim();
-    if (!id) return;
-    if (!confirm('¿Eliminar esta partitura?')) return;
-
+    const id = form.querySelector('[name="id"]').value.trim();
+    if (!id || !confirm('¿Eliminar esta partitura? Esta acción no se puede deshacer.')) return;
     try {
-      const r = await fetch(`/partituras/${id}`, {
-        method: 'DELETE',
-        credentials: 'same-origin'
-      });
-      const txt = await r.text();
-      if (!r.ok) throw new Error(`DELETE /partituras/${id} -> ${r.status} ${r.statusText}\n${txt}`);
+      const r = await fetch(`/partituras/${id}`, { method: 'DELETE', credentials: 'same-origin' });
+      if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
       modal.hide();
       location.reload();
     } catch (err) {
@@ -471,5 +465,6 @@ function clearForm(){
     }
   });
 });
+
 
 </script>

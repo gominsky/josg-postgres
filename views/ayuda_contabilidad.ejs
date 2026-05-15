@@ -1,58 +1,61 @@
-<% title = 'Ayuda · Contabilidad (Gastos)' %>
+<% title = 'Ayuda · Contabilidad' %>
 <% hero  = false %>
-<link rel="stylesheet" href="/styles/estilos_help.css">
 
-
-<div class="help-wrap">
-  
-
+<div class="help-wrap" data-help-theme="blue">
   <div class="panel">
-    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
-      <h1 class="h1">Ayuda · Contabilidad (Gastos)</h1>
+    <div class="help-article-head">
+      <h1 class="h1">Ayuda · Contabilidad</h1>
       <div class="cta">
-        <a href="/contabilidad/facturas">Ir a Facturas →</a>
-        <a href="/proveedores">Ir a Proveedores →</a>
-        <a href="/cuentas">Ir a Cuentas →</a>
+        <a href="/contabilidad/facturas">Facturas →</a>
+        <a href="/proveedores">Proveedores →</a>
+        <a href="/cuentas">Cuentas →</a>
       </div>
     </div>
 
-    <!-- Índice -->
     <nav class="toc" aria-label="Índice">
       <a href="#flujo">Flujo rápido</a>
       <a href="#listado">Listado y filtros</a>
-      <a href="#factura">Nueva/Editar factura</a>
+      <a href="#factura">Nueva / Editar factura</a>
       <a href="#adjuntos">Adjuntos</a>
-      <a href="#pagos">Pagos a proveedor</a>
-      <a href="#proveedores">Proveedores & tarjetas</a>
-      <a href="#cuentas">Cuentas contables</a>
+      <a href="#pagos">Pagos</a>
+      <a href="#proveedores">Proveedores</a>
+      <a href="#cuentas">Cuentas</a>
       <a href="#faq">FAQ</a>
     </nav>
 
-    <!-- Flujo rápido -->
     <section id="flujo" class="section">
       <h2>Flujo rápido</h2>
       <ol class="list">
-        <li>Ve a <span class="kbd">Contabilidad → Facturas</span> y pulsa <strong>Nueva factura</strong>.</li>
-        <li>Elige proveedor (o escribe uno nuevo: se crea automáticamente si no seleccionas de la lista).</li>
-        <li>Rellena <strong>nº</strong>, <strong>emisión</strong> y <strong>vencimiento</strong>, base/IVA/total y guarda.</li>
+        <li>Ve a <strong>Facturas</strong> y pulsa <em>Nueva factura</em>.</li>
+        <li>Elige proveedor (o escríbelo: se crea automáticamente si no está en la lista).</li>
+        <li>Rellena nº, emisión, vencimiento, base/IVA/total y guarda.</li>
         <li>Adjunta el PDF o imagen de la factura.</li>
-        <li>Desde la ficha, registra un <strong>pago</strong> y aplícalo a la factura (total o parcial).</li>
+        <li>Desde la ficha, registra un <strong>pago</strong> y aplícalo a la factura.</li>
       </ol>
-      <p class="notice info">El estado de la factura se recalcula automáticamente: <em>Pendiente</em>, <em>Parcial</em> o <em>Pagada</em> (se respeta <em>Anulada</em> si la marcas así).</p>
+      <p class="notice info">El estado se recalcula automáticamente: <em>Pendiente</em>, <em>Parcial</em> o <em>Pagada</em>.</p>
     </section>
 
-    <!-- Listado -->
     <section id="listado" class="section">
       <h2>Listado y filtros</h2>
-      <p>El listado de facturas permite filtrar por fechas, proveedor, texto libre, <strong>estado</strong> y <strong>vencimiento en 7/15/30 días o vencidas</strong>. Incluye paginación y un resumen (nº, suma base y suma total).</p>
-      <ul class="list">
-        <li><strong>Orden</strong>: por fecha de emisión (asc/desc), proveedor o total.</li>
-        <li><strong>Vencimiento</strong>: muestra próximas a vencer o ya vencidas (excluye <em>pagadas</em>).</li>
-        <li><span class="pill">Export</span> Desde “Pagos” puedes sacar CSV con rangos de fechas.</li>
-      </ul>
+      <div class="grid-2">
+        <div class="card">
+          <h3 style="margin:.1rem 0 .35rem;">Filtros</h3>
+          <ul class="list">
+            <li>Por fechas, proveedor, texto libre y <strong>estado</strong>.</li>
+            <li>Vencimiento en 7/15/30 días o vencidas.</li>
+            <li>Paginación y resumen (nº, suma base, suma total).</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3 style="margin:.1rem 0 .35rem;">Ordenación y exportación</h3>
+          <ul class="list">
+            <li>Por fecha de emisión, proveedor o total.</li>
+            <li>Desde "Pagos" puedes exportar CSV con rangos de fechas.</li>
+          </ul>
+        </div>
+      </div>
     </section>
 
-    <!-- Nueva/Editar -->
     <section id="factura" class="section">
       <h2>Nueva / Editar factura</h2>
       <div class="grid-2">
@@ -60,39 +63,42 @@
           <h3 style="margin:.1rem 0 .35rem;">Campos clave</h3>
           <ul class="list">
             <li><strong>Proveedor</strong>: si escribes un nombre y no eliges de la lista, se crea al guardar.</li>
-            <li><strong>Fechas</strong>: Emisión y Vencimiento (acepta <span class="kbd">YYYY-MM-DD</span> o <span class="kbd">DD/MM/YYYY</span>).</li>
-            <li><strong>Totales</strong>: base, %IVA y total (el total se calcula si no lo indicas).</li>
-            <li><strong>Estado</strong>: por defecto <em>Pendiente</em>; cambia solo según pagos o si lo ajustas manualmente.</li>
+            <li><strong>Fechas</strong>: Emisión y Vencimiento.</li>
+            <li><strong>Totales</strong>: base, %IVA y total (se calcula si no lo indicas).</li>
           </ul>
         </div>
         <div class="card">
           <h3 style="margin:.1rem 0 .35rem;">Estados automáticos</h3>
-          <p>Tras guardar o aplicar/eliminar un pago, el sistema recalcula el estado:</p>
           <ul class="list">
             <li><em>Pendiente</em>: sin pagos.</li>
             <li><em>Parcial</em>: pagada parcialmente.</li>
-            <li><em>Pagada</em>: pagado = total (tolerancia de céntimos).</li>
+            <li><em>Pagada</em>: pagado = total.</li>
             <li><em>Anulada</em>: se respeta, no se reescribe automáticamente.</li>
           </ul>
         </div>
       </div>
     </section>
 
-    <!-- Adjuntos -->
     <section id="adjuntos" class="section">
-      <h2>Adjuntos de factura</h2>
-      <p>Desde la ficha puedes subir hasta 5 archivos por operación (tamaño máx. 10 MB por archivo). Se admiten PDF y formatos de imagen (JPG/PNG/WebP). También puedes eliminar adjuntos individuales.</p>
-      <p class="notice info">Los adjuntos se guardan con nombre seguro en <span class="kbd">/uploads/facturas</span>.</p>
+      <h2>Adjuntos</h2>
+      <ul class="list">
+        <li>Hasta 5 archivos por operación (máx. 10 MB por archivo).</li>
+        <li>Se admiten PDF y formatos de imagen (JPG/PNG/WebP).</li>
+        <li>También puedes eliminar adjuntos individuales.</li>
+      </ul>
+      <p class="notice info">Los adjuntos se guardan en <code>/uploads/facturas</code>.</p>
     </section>
 
-    <!-- Pagos -->
     <section id="pagos" class="section">
       <h2>Pagos a proveedor</h2>
       <div class="grid-2">
         <div class="card">
-          <h3 style="margin:.1rem 0 .35rem;">Desde la ficha de factura</h3>
-          <p>Registra un pago indicando fecha, importe, método y referencia. El sistema impide pagar por encima del saldo de la factura.</p>
-          <p class="notice info">Cada pago genera una cabecera y una aplicación a la factura. Borrar un pago deshace sus aplicaciones y se recalculan estados.</p>
+          <h3 style="margin:.1rem 0 .35rem;">Registrar pago</h3>
+          <ul class="list">
+            <li>Indica fecha, importe, método y referencia.</li>
+            <li>El sistema impide pagar por encima del saldo de la factura.</li>
+            <li>Borrar un pago deshace sus aplicaciones y recalcula estados.</li>
+          </ul>
         </div>
         <div class="card">
           <h3 style="margin:.1rem 0 .35rem;">Listado y exportación</h3>
@@ -104,59 +110,46 @@
       </div>
     </section>
 
-    <!-- Proveedores -->
     <section id="proveedores" class="section">
-      <h2>Proveedores & tarjetas</h2>
+      <h2>Proveedores</h2>
       <ul class="list">
-        <li>Listado con búsqueda, filtro activo/inactivo y <em>tarjetas de visita</em> con 3 estilos (Color/Contorno/Glass).</li>
-        <li>Selección múltiple rápida: “Seleccionar visibles / Quitar selección”.</li>
-        <li><strong>Exportar</strong>:
-          <ul class="list">
-            <li><span class="badge">PDF</span> (varias por A4).</li>
-            <li><span class="badge">PNG</span> (una imagen por tarjeta en un ZIP).</li>
-            <li><span class="badge">vCard</span> (.vcf) combinando contactos.</li>
-          </ul>
-        </li>
+        <li>Listado con búsqueda, filtro activo/inactivo y tarjetas de visita con 3 estilos.</li>
+        <li>Selección múltiple rápida: "Seleccionar visibles / Quitar selección".</li>
+        <li><strong>Exportar:</strong> PDF (varias por A4), PNG (ZIP) o vCard (.vcf).</li>
       </ul>
       <p class="notice info">Si no seleccionas nada, las exportaciones usan las tarjetas visibles con los filtros actuales.</p>
     </section>
 
-    <!-- Cuentas -->
     <section id="cuentas" class="section">
       <h2>Cuentas contables</h2>
       <ul class="list">
-        <li>Listado ordenado alfabéticamente (<span class="kbd">/cuentas?ver=todas</span> para incluir inactivas).</li>
+        <li>Listado ordenado alfabéticamente (añade <code>?ver=todas</code> para incluir inactivas).</li>
         <li>Alta y edición con nombre, tipo (banco/caja), IBAN, saldo inicial y fecha.</li>
         <li>Campo <em>Activo</em> para activar/desactivar sin borrar.</li>
       </ul>
     </section>
 
-    <!-- FAQ -->
     <section id="faq" class="section">
-      <h2>FAQ</h2>
+      <h2>Preguntas frecuentes (FAQ)</h2>
       <div class="grid-2">
         <div class="card">
-          <h3 style="margin:.1rem 0 .35rem;">¿Puedo pagar varias facturas con un solo pago?</h3>
-          <p>Sí. Desde “Pagos” puedes distribuir un pago entre varias facturas del mismo proveedor, con validación de saldos.</p>
+          <h3>¿Puedo pagar varias facturas con un solo pago?</h3>
+          <p>Sí. Desde "Pagos" puedes distribuir un pago entre varias facturas del mismo proveedor.</p>
         </div>
         <div class="card">
-          <h3 style="margin:.1rem 0 .35rem;">¿Qué pasa si borro un pago?</h3>
+          <h3>¿Qué pasa si borro un pago?</h3>
           <p>Se eliminan sus aplicaciones y se recalcula el estado de las facturas afectadas.</p>
         </div>
         <div class="card">
-          <h3 style="margin:.1rem 0 .35rem;">¿Qué formatos de adjunto se aceptan?</h3>
+          <h3>¿Qué formatos de adjunto se aceptan?</h3>
           <p>PDF, JPG/JPEG, PNG y WebP. Tamaño máximo 10 MB por archivo.</p>
         </div>
         <div class="card">
-          <h3 style="margin:.1rem 0 .35rem;">¿Cómo exporto proveedores?</h3>
-          <p>En la vista de proveedores, usa los chips <em>Exportar</em> para PDF, PNG o vCard. Si no hay selección, exporta los visibles.</p>
+          <h3>¿Cómo exporto proveedores?</h3>
+          <p>Usa los chips <em>Exportar</em> para PDF, PNG o vCard. Sin selección, exporta los visibles.</p>
         </div>
       </div>
     </section>
 
-    <div class="section" style="display:flex;gap:10px;flex-wrap:wrap;">
-      <a class="link" href="/contabilidad/facturas"><span class="pill">← Volver a Facturas</span></a>
-      <a class="link" href="/"><span class="pill">← Volver al inicio</span></a>
-    </div>
   </div>
 </div>

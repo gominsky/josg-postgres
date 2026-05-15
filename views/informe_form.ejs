@@ -1,7 +1,7 @@
 <% title = 'Crear Informe' %>
 <% hero = false %>
 
-<div class="container my-4">
+<div class="mx-auto" style="max-width:1300px; padding:0 1rem 2rem;">
   <div class="row g-4">
 
     <!-- ========== PASO 1: NOMBRE (y filtros ocultos recibidos) ========== -->
@@ -55,7 +55,7 @@
           </div>
 
           <div class="d-flex justify-content-center gap-2 mb-3">
-            <button type="submit" class="btn btn-dark btn-sm">Guardar nombre</button>
+            <button type="submit" class="btn-main">Guardar nombre</button>
           </div>
         </form>
       </div>
@@ -84,7 +84,7 @@
           <input type="hidden" name="sec_violin" value="<%= (typeof sec_violin !== 'undefined' ? sec_violin : '') %>">
           <h2 class="h5 mb-3 text-dark text-center">Elegir campos para el informe</h2>
           <div class="text-center mb-3">
-            <button type="button" class="btn btn-dark btn-sm" onclick="event.preventDefault(); addCampo()">+ Añadir campo</button>
+            <button type="button" class="btn-outline" onclick="event.preventDefault(); addCampo()">+ Añadir campo</button>
           </div>
 
           <table class="table table-bordered table-sm" id="tabla-campos">
@@ -102,7 +102,7 @@
           <div id="alumnos-container" class="table-responsive mb-3"></div>
 
           <div class="text-center">
-            <button type="submit" class="btn btn-dark btn-sm">Guardar informe</button>
+            <button type="submit" class="btn-main">Guardar informe</button>
           </div>
         </form>
 
@@ -177,7 +177,7 @@
                 <input type="checkbox" class="form-check-input"
                        onchange="updateCampo(${idx},'obligatorio',this.checked?1:0)">
               </td>
-              <td><button type="button" class="btn btn-sm text-danger" onclick="removeCampo(${idx})">×</button></td>
+              <td><button type="button" class="aspa-roja" style="background:none;border:none;cursor:pointer;" onclick="removeCampo(${idx})">×</button></td>
             `;
             tbody.appendChild(tr);
             renderTablaAlumnos(campos);
@@ -253,7 +253,7 @@
                          ${c.obligatorio ? 'checked' : ''}
                          onchange="updateCampo(${idx},'obligatorio',this.checked?1:0)">
                 </td>
-                <td><button type="button" class="btn btn-sm text-danger" onclick="removeCampo(${idx})">×</button></td>
+                <td><button type="button" class="aspa-roja" style="background:none;border:none;cursor:pointer;" onclick="removeCampo(${idx})">×</button></td>
               `;
               tbody.appendChild(tr);
             });

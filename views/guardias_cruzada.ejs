@@ -1,0 +1,249 @@
+<% title = 'Asistencias a guardias' %>
+<% hero  = false %>
+
+<div class="header-compact">
+  <h1 class="h1-titulo">Tabla de asistencias</h1>
+</div>
+
+
+<% if (!eventos || eventos.length === 0) { %>
+  <p class="text-center text-muted mt-4">No hay guardias en ese periodo. Selecciona un rango de fechas.</p>
+<% } else { %>
+
+<%
+  const fmtCorto = s => {
+    if (!s) return '';
+    if (s instanceof Date) {
+      const d = String(s.getUTCDate()).padStart(2,'0');
+      const m = String(s.getUTCMonth()+1).padStart(2,'0');
+      return `${d}/${m}`;
+    }
+    const ymd = String(s).split('T')[0];
+    const [,mm,dd] = ymd.split('-');
+    return `${dd}/${mm}`;
+  };
+%>
+
+<div class="mx-auto" style="max-width:1400px; padding:0 1rem 2rem;">
+
+  <!-- Leyenda contadores -->
+  <div style="display:flex; gap:1rem; flex-wrap:wrap; margin-bottom:.75rem; font-size:.82rem; align-items:center;">
+    <span><strong><%= alumnos.length %></strong> músicos</span>
+    <span>·</span>
+    <span><strong><%= eventos.length %></strong> eventos con guardia</span>
+    <span>·</span>
+    <span style="display:flex; align-items:center; gap:.3rem;">
+      <span style="display:inline-flex; align-items:center; justify-content:center;
+                   width:18px; height:18px; background:var(--color-acento,#e87722);
+                   border-radius:3px; color:#fff; font-size:.7rem; font-weight:700;">✓</span>
+      guardia asignada
+    </span>
+    <span style="display:flex; align-items:center; gap:.3rem;">
+      <span style="display:inline-flex; align-items:center; justify-content:center;
+                   width:18px; height:18px; background:#f0f0f0; border-radius:3px;
+                   font-size:.7rem; color:#aaa;">·</span>
+      sin guardia
+    </span>
+    <span style="margin-left:auto;">
+<form method="POST" action="/guardias/cruzada-pdf" style="display:inline;">
+        <input type="hidden" name="desde" value="<%= desde||'' %>">
+        <input type="hidden" name="hasta" value="<%= hasta||'' %>">
+        <input type="hidden" name="grupo" value="<%= grupo||'' %>">
+        <button type="submit" class="btn-solid-sm btn-sm">⬇ PDF tabla</button>
+      </form>
+    </span>
+  </div>
+
+  <div style="overflow-x:auto; -webkit-overflow-scrolling:touch;">
+    <table class="tabla-cruzada" id="tabla-cruzada">
+      <thead>
+        <tr>
+          <!-- Cabecera fija: músico + total -->
+          <th class="col-alumno" style="min-width:160px; position:sticky; left:0; z-index:2;">Músico</th>
+          <th class="col-total" style="min-width:48px; position:sticky; left:160px; z-index:2; text-align:center;">Total</th>
+          <!-- Una columna por evento -->
+          <% eventos.forEach(ev => { %>
+            <th class="col-evento" title="<%= ev.titulo %>">
+              <div class="evento-header">
+                <span class="evento-fecha"><%= fmtCorto(ev.fecha_inicio) %></span>
+                <span class="evento-nombre"><%= ev.titulo.length > 18 ? ev.titulo.slice(0,16)+'…' : ev.titulo %></span>
+              </div>
+            </th>
+          <% }) %>
+        </tr>
+      </thead>
+      <tbody>
+        <% alumnos.forEach(alumno => {
+             const totalAlumno = eventos.filter(ev => matriz[alumno.id] && matriz[alumno.id][ev.id]).length;
+        %>
+        <tr class="<%= totalAlumno === 0 ? 'fila-sin-guardias' : '' %>">
+          <td class="col-alumno" style="position:sticky; left:0; z-index:1;">
+            <%= alumno.apellidos %>, <%= alumno.nombre %>
+          </td>
+          <td class="col-total" style="position:sticky; left:160px; z-index:1; text-align:center; font-weight:600;">
+            <% if (totalAlumno > 0) { %>
+              <span class="badge-total"><%= totalAlumno %></span>
+            <% } else { %>
+              <span style="color:#ccc;">0</span>
+            <% } %>
+          </td>
+          <% eventos.forEach(ev => {
+               const tieneGuardia = matriz[alumno.id] && matriz[alumno.id][ev.id];
+               const esActividad  = tieneGuardia && tieneGuardia.tipo === 'actividad';
+          %>
+            <td class="celda-marca <%= tieneGuardia ? 'tiene-guardia' : '' %>"
+                title="<%= tieneGuardia ? (esActividad ? 'Actividad: '+tieneGuardia.subtipo : 'Guardia') : '' %>">
+              <% if (tieneGuardia) { %>
+                <span class="marca <%= esActividad ? 'marca-actividad' : 'marca-normal' %>"
+                      style="font-size:<%= esActividad && tieneGuardia.subtipo && tieneGuardia.subtipo.length > 2 ? '.6rem' : '.72rem' %>;">
+                  <%= esActividad ? (tieneGuardia.subtipo || 'Act') : '✓' %>
+                </span>
+              <% } %>
+            </td>
+          <% }) %>
+        </tr>
+        <% }) %>
+      </tbody>
+      <!-- Fila de totales por evento -->
+      <tfoot>
+        <tr>
+          <td class="col-alumno" style="position:sticky; left:0; font-weight:600; font-size:.78rem;">
+            Total músicos
+          </td>
+          <td class="col-total" style="position:sticky; left:160px;"></td>
+          <% eventos.forEach(ev => {
+               const totalEv = alumnos.filter(a => matriz[a.id] && matriz[a.id][ev.id]).length;
+          %>
+            <td class="celda-marca" style="text-align:center; font-size:.75rem; font-weight:600; color:var(--color-acento,#e87722);">
+              <%= totalEv || '' %>
+            </td>
+          <% }) %>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+
+</div>
+
+<style>
+.tabla-cruzada {
+  border-collapse: collapse;
+  font-size: .8rem;
+  width: 100%;
+}
+.tabla-cruzada th,
+.tabla-cruzada td {
+  border: 1px solid var(--color-borde, #ddd);
+  padding: 0;
+}
+.tabla-cruzada thead th {
+  background: var(--color-negro, #1a1a1a);
+  color: #fff;
+  font-weight: 600;
+  vertical-align: bottom;
+}
+.col-alumno {
+  padding: .3rem .5rem !important;
+  background: var(--color-negro, #1a1a1a);
+  color: #fff;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.col-total {
+  background: #2a2a2a !important;
+  color: #fff !important;
+  border-right: 2px solid #555 !important;
+}
+tbody .col-alumno {
+  background: var(--color-superficie, #fafafa) !important;
+  color: var(--color-texto, #111) !important;
+  font-size: .8rem;
+}
+tbody .col-total {
+  background: #f5f5f5 !important;
+  color: var(--color-texto, #111) !important;
+  border-right: 2px solid #ccc !important;
+}
+.col-evento {
+  min-width: 52px;
+  max-width: 72px;
+  padding: .25rem .2rem !important;
+}
+.evento-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: .1rem;
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  height: 90px;
+  justify-content: flex-end;
+}
+.evento-fecha {
+  font-size: .68rem;
+  opacity: .75;
+  font-weight: 400;
+}
+.evento-nombre {
+  font-size: .72rem;
+  font-weight: 600;
+  line-height: 1.1;
+}
+.celda-marca {
+  text-align: center;
+  vertical-align: middle;
+  height: 28px;
+  width: 52px;
+}
+.celda-marca.tiene-guardia {
+  background: #fff8f0;
+}
+.marca {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 3px;
+  font-size: .72rem;
+  font-weight: 700;
+}
+.marca-normal {
+  background: var(--color-acento, #e87722);
+  color: #fff;
+}
+.marca-actividad {
+  background: #2e7d32;
+  color: #fff;
+}
+.badge-total {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 20px;
+  background: var(--color-acento, #e87722);
+  color: #fff;
+  border-radius: 10px;
+  font-size: .72rem;
+  padding: 0 .3rem;
+}
+.fila-sin-guardias td {
+  opacity: .5;
+}
+tfoot td {
+  background: #f8f8f8;
+  padding: .25rem .3rem !important;
+}
+  .tabla-cruzada { font-size: .65rem; }
+  .evento-header { height: 70px; }
+}
+</style>
+
+<% } %>
+
+<div class="volver-bloque-izquierda mt-3">
+  <a href="/guardias?desde=<%= encodeURIComponent(desde||'') %>&hasta=<%= encodeURIComponent(hasta||'') %>&grupo=<%= encodeURIComponent(grupo||'') %>"
+     class="enlace-final">← Volver</a>
+</div>
+

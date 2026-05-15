@@ -44,7 +44,7 @@
   <div class="action-grid">
 
     <!-- Ver planilla -->
-    <a href="#" id="cardVer" class="action-card" aria-label="Ver planilla de guardias">
+    <a href="#" id="cardVer" class="action-card" aria-label="Ver listado de guardias">
       <div class="icon-badge" aria-hidden="true">
         <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
           <rect x="1.5" y="3" width="13" height="11" rx="2"></rect>
@@ -52,7 +52,7 @@
         </svg>
       </div>
       <div>
-        <p class="action-title">Ver planilla</p>
+        <p class="action-title">Ver listado</p>
         <p class="action-desc">Tabla filtrada de todas las guardias asignadas.</p>
         <span class="badge-soft">Usa los filtros de arriba</span>
       </div>
@@ -87,50 +87,53 @@
         <span class="badge-soft">Requiere: fechas y evento</span>
 
         <!-- Panel expandible (oculto por defecto) -->
-        <div id="panelActividad" class="mt-2 d-none">
-          <div class="row g-2 align-items-end">
-            <!-- Evento (select AJAX) -->
-            <div class="col-12">
-              <label class="form-label form-label-sm mb-1">Evento</label>
-              <select class="form-select form-select-sm" id="act_evento_id">
-                <option value="">— selecciona fechas primero —</option>
-              </select>
-              <small class="text-muted" id="act_eventos_hint" style="font-size:.75rem;">
-                Selecciona un rango de fechas arriba para cargar los eventos.
-              </small>
-            </div>
-            <!-- Tipo de actividad -->
-            <div class="col-12 col-sm-6">
-              <label class="form-label form-label-sm mb-1">Tipo de actividad</label>
-              <select class="form-select form-select-sm" id="act_tipo_actividad">
-                <option value="montaje">Montaje</option>
-                <option value="desmontaje">Desmontaje</option>
-                <option value="ambas">Ambas (montaje y desmontaje)</option>
-              </select>
-            </div>
-            <!-- Nº músicos -->
-            <div class="col-6 col-sm-3">
-              <label class="form-label form-label-sm mb-1">Nº músicos</label>
-              <input type="number" class="form-control form-control-sm" id="act_num_musicos" value="4" min="1" max="20">
-            </div>
-            <!-- Actividad complementaria (opcional) -->
-            <div class="col-6 col-sm-3">
-              <label class="form-label form-label-sm mb-1">Actividad</label>
+        <div id="panelActividad" class="mt-2" style="display:none; flex-direction:column; gap:.5rem;">
+          <!-- Evento -->
+          <div style="display:flex; flex-direction:column; gap:.2rem;">
+            <label style="font-size:.78rem; font-weight:500;">Evento</label>
+            <select class="form-select form-select-sm" id="act_evento_id">
+              <option value="">— selecciona fechas primero —</option>
+            </select>
+            <small class="text-muted" id="act_eventos_hint" style="font-size:.72rem;">Selecciona un rango de fechas para cargar los eventos.</small>
+          </div>
+          <!-- Actividad + Nº músicos en fila -->
+          <div style="display:flex; gap:.5rem; align-items:flex-end; flex-wrap:wrap;">
+            <div style="flex:1 1 160px; display:flex; flex-direction:column; gap:.2rem;">
+              <label style="font-size:.78rem; font-weight:500;">Actividad</label>
               <select class="form-select form-select-sm" id="act_actividad_id">
-                <option value="">— ninguna —</option>
+                <option value="">— sin actividad específica —</option>
                 <% (actividades||[]).forEach(a => { %>
-                  <option value="<%= a.id %>"><%= a.tipo %> <% if(a.descripcion){%>· <%= a.descripcion %><% } %></option>
+                  <option value="<%= a.id %>" data-tipo="<%= a.tipo %>">
+                    <%= a.tipo %><% if(a.descripcion){ %> · <%= a.descripcion %><% } %>
+                  </option>
                 <% }) %>
               </select>
             </div>
-            <div class="col-12 d-grid">
-              <button type="button" class="btn btn-main-blanco btn-sm" id="act_btn_generar">
-                Asignar guardia de actividad
-              </button>
+            <div style="flex:0 0 90px; display:flex; flex-direction:column; gap:.2rem;">
+              <label style="font-size:.78rem; font-weight:500;">Nº músicos</label>
+              <input type="number" class="form-control form-control-sm" id="act_num_musicos" value="4" min="1" max="20">
             </div>
+            <button type="button" class="btn-primary-negro btn-sm" id="act_btn_generar" style="flex:0 0 auto; white-space:nowrap;">
+              Asignar
+            </button>
           </div>
-          <small class="text-danger d-none mt-1" id="act_error"></small>
+          <small class="text-danger d-none" id="act_error"></small>
         </div>
+      </div>
+    </a>
+
+    <!-- Tabla de referencias cruzadas -->
+    <a href="#" id="cardCruzada" class="action-card" aria-label="Tabla de referencias cruzadas">
+      <div class="icon-badge" aria-hidden="true">
+        <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="1.5" y="1.5" width="13" height="13" rx="1.5"/>
+          <path d="M1.5 5.5h13M5.5 5.5v9"/>
+        </svg>
+      </div>
+      <div>
+        <p class="action-title">Tabla de asistencias</p>
+        <p class="action-desc">Referencias cruzadas: eventos en columnas, músicos en filas.</p>
+        <span class="badge-soft">Requiere: fechas</span>
       </div>
     </a>
 
@@ -150,7 +153,7 @@
     </a>
 
     <!-- Enlace público de la planilla -->
-    <a href="#" id="cardShareGuardias" class="action-card" aria-label="Enlace público de la planilla">
+    <a href="#" id="cardShareGuardias" class="action-card" aria-label="Enlace público del listado">
       <div class="icon-badge" aria-hidden="true">
         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 16 16" fill="currentColor">
           <path d="M6.354 5.5H4a3 3 0 0 0 0 6h3a3 3 0 0 0 2.674-1.664.5.5 0 1 1 .893.448A4 4 0 0 1 7 12.5H4a4 4 0 0 1 0-8h2.354a.5.5 0 0 1 0 1z"/>
@@ -158,7 +161,7 @@
         </svg>
       </div>
       <div>
-        <p class="action-title">Enlace público de la planilla</p>
+        <p class="action-title">Enlace público del listado</p>
         <p class="action-desc">Genera un link firmado al PDF según el rango de fechas (y grupo opcional).</p>
         <div class="row g-2 align-items-end mt-1">
           <div class="col-7">
@@ -301,9 +304,8 @@
   cardActividad?.addEventListener('click', e => {
     if (e.target.closest('#panelActividad')) return;
     e.preventDefault();
-    const abriendo = panelActividad.classList.contains('d-none');
-    panelActividad.classList.toggle('d-none');
-    // Al abrir, cargar eventos si hay fechas
+    const abriendo = panelActividad.style.display === 'none' || panelActividad.style.display === '';
+    panelActividad.style.display = abriendo ? 'flex' : 'none';
     if (abriendo && elDesde.value && elHasta.value) cargarEventos();
   });
 
@@ -345,18 +347,22 @@
   // Recargar eventos cuando cambian las fechas o el grupo (si el panel está abierto)
   [elDesde, elHasta, elGrupo].forEach(el => {
     el?.addEventListener('change', () => {
-      if (!panelActividad.classList.contains('d-none')) cargarEventos();
+      if (panelActividad.style.display !== 'none' && panelActividad.style.display !== '') cargarEventos();
     });
   });
 
   /* ── Guardia de actividad: generar ── */
   document.getElementById('act_btn_generar')?.addEventListener('click', async e => {
     e.stopPropagation();
-    const errBox  = document.getElementById('act_error');
+    const errBox   = document.getElementById('act_error');
     const eventoId = selEvento.value;
-    const tipoAct  = document.getElementById('act_tipo_actividad').value;
+    const actSel   = document.getElementById('act_actividad_id');
+    const actId    = actSel.value;
+    // tipo_actividad se toma del data-tipo de la opción seleccionada, o 'general' si no hay actividad
+    const selectedOpt = actSel.selectedOptions[0];
+    // Si hay actividad seleccionada usamos su data-tipo; si no, null (sin restricción de tipo)
+    const tipoAct = (actId && selectedOpt?.dataset?.tipo) ? selectedOpt.dataset.tipo : null;
     const numMus   = document.getElementById('act_num_musicos').value;
-    const actId    = document.getElementById('act_actividad_id').value;
 
     errBox.classList.add('d-none');
 
@@ -383,6 +389,15 @@
       f.appendChild(i);
     });
     document.body.appendChild(f); f.submit();
+  });
+
+  /* ── Tabla referencias cruzadas ── */
+  document.getElementById('cardCruzada')?.addEventListener('click', e => {
+    e.preventDefault();
+    if (!elDesde.value || !elHasta.value) { alert('Indica un rango de fechas.'); return; }
+    const qs = new URLSearchParams({ desde: elDesde.value, hasta: elHasta.value });
+    if (elGrupo.value) qs.set('grupo', elGrupo.value);
+    location.href = '/guardias/cruzada?' + qs.toString();
   });
 
   /* ── Generar PDF ── */
@@ -417,7 +432,7 @@
     async function generateLink() {
       errBox.classList.add('d-none');
       if (!elDesde.value || !elHasta.value) {
-        errBox.textContent = 'Indica un rango de fechas para compartir la planilla.';
+        errBox.textContent = 'Indica un rango de fechas para compartir el listado.';
         errBox.classList.remove('d-none'); return;
       }
       btn.disabled = true; const old = btn.textContent; btn.textContent = 'Generando…';

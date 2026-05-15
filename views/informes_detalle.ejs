@@ -24,7 +24,7 @@
       <small id="estado-titulo" class="estado-titulo" style="margin-left:.5rem;"></small>
       <!-- metadatos -->
       <ul class="meta-informe list-unstyled mb-0" style="margin-top:.25rem;">
-        <li><strong>Fecha:</strong> <%= new Date(informe.fecha).toLocaleDateString('es-ES') %></li>
+        <li><strong>Fecha:</strong> <%= new Date(informe.fecha + 'T12:00:00').toLocaleDateString('es-ES') %></li>
         <% if (showGroup) { %><li><strong>Grupo:</strong> <%= informe.informeGrupo %></li><% } %>
         <% if (showInstrument) { %><li><strong>Instrumento:</strong> <%= informe.informeInstrumento %></li><% } %>
       </ul>
@@ -43,8 +43,8 @@
 
   <% if (tieneAlumnos) { %>
   <div class="text-end mb-2">
-    <button id="toggleGrupo" type="button" class="btn btn-sm btn-outline-secondary me-2">Ocultar/Mostrar Grupo</button>
-    <button id="toggleInst"  type="button" class="btn btn-sm btn-outline-secondary">Ocultar/Mostrar Instrumento</button>
+    <button id="toggleGrupo" type="button" class="btn-ghost-sm">Grupo</button>
+    <button id="toggleInst"  type="button" class="btn-ghost-sm">Instrumento</button>
   </div>
   <% } %>
   
@@ -53,7 +53,7 @@
     <div id="empty-state" class="<%= filas.length===0 ? '' : 'd-none' %> py-4 text-center text-muted">
       <% if (!tieneAlumnos) { %>
         <div class="mb-2">Aún no hay registros.</div>
-        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="addCampo()">+ Añadir el primer registro</button>
+        <button type="button" class="btn-outline" onclick="addCampo()">+ Añadir el primer registro</button>
       <% } else { %>
         <div>No hay datos para mostrar.</div>
       <% } %>
@@ -110,21 +110,21 @@
   <!-- 🔘 Botonera SIEMPRE visible (dentro del form) -->
   <div class="text-center mt-3 mb-4" id="acciones-informe">
     <% if (!tieneAlumnos) { %>
-      <button type="button" class="btn-main-blanco me-2" onclick="addCampo()">+ Añadir registro</button>
+      <button type="button" class="btn-outline" onclick="addCampo()">+ Añadir registro</button>
     <% } %>
       <!-- 👇 Nuevo botón eliminar: NO hay form anidado -->
       <button
         type="submit"
         id="btnEliminar"
-        class="btn btn-dark btn-sm me-2"
+        class="btn-outline-danger-neutral"
         formaction="/informes/eliminar/<%= informe.id %>"
         formmethod="POST"
         onclick="return confirm('¿Eliminar informe completo?')">
         Eliminar informe
       </button>
-      <button type="submit" id="btnGuardar" class="btn btn-dark btn-sm me-2">Guardar cambios</button>
+      <button type="submit" id="btnGuardar" class="btn-main">Guardar cambios</button>
       <!-- dentro de #acciones-informe -->
-      <a id="btnVerPDF" class="btn btn-dark btn-sm me-2" href="#">Ver PDF</a>
+      <a id="btnVerPDF" class="btn-main-blanco" href="#" style="text-decoration:none;">Ver PDF</a>
 
       <%
       const slug = (typeof publicSlug !== 'undefined') ? publicSlug : (locals && locals.publicSlug);
@@ -133,7 +133,7 @@
 
     <span id="share-wrap" class="d-inline-flex align-items-center gap-2">
       <% if (!tieneSlug) { %>
-        <button type="button" id="btnShare" class="btn btn-outline-secondary btn-sm">
+        <button type="button" id="btnShare" class="btn-ghost-sm">
           Generar enlace público
         </button>
       <% } %>
@@ -146,8 +146,8 @@
           readonly
           value="/i/<%= slug %>.pdf"   <!-- 👈 usa slug -->
         />
-        <button type="button" id="btnCopy" class="btn btn-outline-secondary btn-sm">Copiar</button>
-        <button type="button" id="btnRevoke" class="btn btn-outline-danger btn-sm">Revocar</button>
+        <button type="button" id="btnCopy" class="btn-ghost-sm">Copiar</button>
+        <button type="button" id="btnRevoke" class="btn-outline-danger-neutral">Revocar</button>
       <% } %>
     </span>
 
@@ -155,7 +155,7 @@
   <!-- Contenido base para PDF (oculto) -->
 <div id="pdf-content" style="display:none; background:white; color:black; font-size:12px;">
   <h2 style="text-align:center;margin:8px 0 0;font-size:1.05rem;"><strong><%= informe.informe %></strong></h2>
-  <p style="font-size:10px;margin:16px 0;"><strong>Fecha del informe:</strong> <%= new Date(informe.fecha).toLocaleDateString('es-ES') %></p>
+  <p style="font-size:10px;margin:16px 0;"><strong>Fecha del informe:</strong> <%= new Date(informe.fecha + 'T12:00:00').toLocaleDateString('es-ES') %></p>
   <% if (showGroup) { %><p class="pdf-grupo" style="font-size:10px;margin:4px 0;"><strong>Grupo:</strong> <%= informe.informeGrupo %></p><% } %>
   <% if (showInstrument) { %><p class="pdf-inst"  style="font-size:10px;margin:4px 0;"><strong>Instrumento:</strong> <%= informe.informeInstrumento %></p><% } %>
 
@@ -307,10 +307,10 @@
         if (fueOk && sessionStorage.getItem(key) === 'saving') {
           sessionStorage.removeItem(key);
           btn.disabled = false;
-          btn.classList.remove('btn-dark'); btn.classList.add('btn-success');
+          btn.classList.add('guardado-ok');
           btn.textContent = '✓ guardado';
           setTimeout(() => {
-            btn.classList.remove('btn-success'); btn.classList.add('btn-dark');
+            btn.classList.remove('guardado-ok');
             btn.textContent = 'Guardar cambios';
           }, 3000);
         } else {
@@ -329,7 +329,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
   <script>
     document.addEventListener('DOMContentLoaded', () => {
-      const btn    = document.getElementById('btnPDF');
+      const btn    = document.getElementById('btnVerPDF');
       const srcEl  = document.getElementById('pdf-content');
       const tabla  = document.getElementById('tabla-principal') || document.querySelector('.tabla-estilizada');
       if (!btn || !srcEl) return;
@@ -592,8 +592,8 @@
     wrap.innerHTML = `
       <input id="publicUrl" class="form-control form-control-sm" style="width:360px;" readonly
              value="/i/${data.slug}.pdf" />
-      <button type="button" id="btnCopy" class="btn btn-outline-secondary btn-sm">Copiar</button>
-      <button type="button" id="btnRevoke" class="btn btn-outline-danger btn-sm">Revocar</button>`;
+      <button type="button" id="btnCopy" class="btn-ghost-sm">Copiar</button>
+      <button type="button" id="btnRevoke" class="btn-outline-danger-neutral">Revocar</button>`;
     hook();
   }
   async function revokeSlug(){
@@ -602,7 +602,7 @@
       headers:{ 'Content-Type':'application/json', 'CSRF-Token': csrf }
     });
     const wrap = document.getElementById('share-wrap');
-    wrap.innerHTML = `<button type="button" id="btnShare" class="btn btn-outline-secondary btn-sm">
+    wrap.innerHTML = `<button type="button" id="btnShare" class="btn-ghost-sm">
       Generar enlace público</button>`;
     hook();
   }

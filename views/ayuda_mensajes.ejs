@@ -1,162 +1,133 @@
 <% title = 'Ayuda · Mensajes' %>
 <% hero  = false %>
-<link rel="stylesheet" href="/styles/estilos_help.css">
 
-<div id="help-wrap" class="container my-4">
-
-  <div class="head">
-    <h1>Ayuda · Mensajes</h1>
-  </div>
-
-  <nav class="toc" aria-label="Índice">
-    <a href="#bandeja">Bandeja (app alumnos)</a>
-    <a href="#componer">Componer y enviar</a>
-    <a href="#adjuntos">Adjuntos y enlaces</a>
-    <a href="#destinatarios">Destinatarios</a>
-    <a href="#push">Notificaciones</a>
-    <a href="#api">API y estados</a>
-    <a href="#faq">FAQ</a>
-  </nav>
-
-  <section id="bandeja" class="section">
-    <h2>Bandeja (app alumnos)</h2>
-    <div class="grid-2">
-      <div>
-        <ul class="list">
-          <li>Listado paginado de avisos con <strong>Título</strong>, <strong>Autor</strong> y <em>fecha</em>.</li>
-          <li><strong>Ver más / Ver menos</strong> expande y contrae el cuerpo del mensaje.</li>
-          <li>Botones de <strong>enlaces</strong> y <strong>adjuntos</strong> se abren en pestaña nueva.</li>
-          <li><strong>Marcar como leído</strong> cambia el estado visual y oculta el botón.</li>
-        </ul>
-        <p class="mini">El estado «leído» se refleja en servidor y se conserva al volver a entrar.</p>
-      </div>
-      <div>
-        <ul class="list">
-          <li>Si hay varios adjuntos, usa el icono de <em>clip</em> para mostrarlos/ocultarlos.</li>
-          <li>Los mensajes nuevos aparecen con fondo más intenso hasta que se marcan como leídos.</li>
-          <li>Acceso rápido desde la app: <em>Inicio → Mensajes</em>.</li>
-        </ul>
+<div class="help-wrap" data-help-theme="blue">
+  <div class="panel">
+    <div class="help-article-head">
+      <h1 class="h1">Ayuda · Mensajes</h1>
+      <div class="cta">
+        <a href="/mensajes">Mensajes →</a>
+        <a href="/mensajes/nuevo">Nuevo mensaje →</a>
       </div>
     </div>
-  </section>
 
-  <section id="componer" class="section">
-    <h2>Componer y enviar</h2>
-    <div class="grid-2">
-      <div>
-        <h3 class="mini" style="font-weight:800;">Campos</h3>
-        <ul class="list">
-          <li><strong>Título</strong> (máx. 80 caracteres).</li>
-          <li><strong>Mensaje</strong> (web: máx. 500; móvil docente: máx. 2000).</li>
-          <li><strong>Enlace</strong> opcional (se muestra como botón «Abrir»).</li>
-          <li><strong>Adjuntos</strong> (hasta 5 archivos).</li>
-        </ul>
-        <p class="mini">La vista de escritorio incluye <em>contador de caracteres</em> y <em>vista previa</em> en tiempo real.</p>
-      </div>
-      <div>
-        <h3 class="mini" style="font-weight:800;">Envío</h3>
-        <ul class="list">
-          <li>Elige el <strong>alcance</strong>: <em>Todos</em>, <em>Grupos</em>, <em>Instrumento</em> o <em>Grupo + Instrumento</em>.</li>
-          <li>Filtros rápidos para <strong>marcar/quitar todo</strong> y cuadros con búsqueda.</li>
-          <li>Tras enviar, se muestra un <em>toast</em> de confirmación e incluirá el mensaje en «Últimos mensajes».</li>
-        </ul>
-      </div>
-    </div>
-  </section>
+    <nav class="toc" aria-label="Índice">
+      <a href="#bandeja">Bandeja (app músicos)</a>
+      <a href="#componer">Componer y enviar</a>
+      <a href="#adjuntos">Adjuntos y enlaces</a>
+      <a href="#destinatarios">Destinatarios</a>
+      <a href="#push">Notificaciones</a>
+      <a href="#faq">FAQ</a>
+    </nav>
 
-  <section id="adjuntos" class="section">
-    <h2>Adjuntos y enlaces</h2>
-    <div class="grid-2">
-      <div>
-        <ul class="list">
-          <li>Formatos recomendados: <strong>PDF</strong>, imágenes y audio.</li>
-          <li>Tamaño máx. por archivo: <strong>10&nbsp;MB</strong>. Máximo <strong>5</strong> adjuntos por mensaje.</li>
-          <li>Los adjuntos se guardan en <code>/public/mensajes</code> y se listan en la ficha de «Últimos mensajes».</li>
-        </ul>
+    <section id="bandeja" class="section">
+      <h2>Bandeja (app músicos)</h2>
+      <div class="grid-2">
+        <div class="card">
+          <h3 style="margin:.1rem 0 .35rem;">Listado</h3>
+          <ul class="list">
+            <li>Mensajes paginados con Título, Autor y fecha.</li>
+            <li><strong>Ver más / Ver menos</strong> expande y contrae el cuerpo.</li>
+            <li>Botones de <strong>enlaces</strong> y <strong>adjuntos</strong> se abren en pestaña nueva.</li>
+            <li><strong>Marcar como leído</strong> cambia el estado visual y se conserva al volver a entrar.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3 style="margin:.1rem 0 .35rem;">Detalles</h3>
+          <ul class="list">
+            <li>Si hay varios adjuntos, usa el icono de clip para mostrarlos/ocultarlos.</li>
+            <li>Los mensajes nuevos aparecen con fondo más intenso hasta que se leen.</li>
+            <li>Acceso rápido desde la app: <em>Inicio → Mensajes</em>.</li>
+          </ul>
+        </div>
       </div>
-      <div>
-        <ul class="list">
-          <li>Los <strong>enlaces</strong> pegan URLs absolutas (<code>https://…</code>). Si falta el protocolo, se completa automáticamente.</li>
-          <li>En la app del alumno, los adjuntos internos se sirven como rutas <code>/mensajes/…</code> y se abren en pestaña nueva.</li>
-        </ul>
-      </div>
-    </div>
-  </section>
+    </section>
 
-  <section id="destinatarios" class="section">
-    <h2>Destinatarios</h2>
-    <div class="grid-2">
-      <div>
-        <ul class="list">
-          <li><strong>Todos</strong>: entrega a todos los alumnos activos.</li>
-          <li><strong>Por grupos</strong>: selecciona uno o varios grupos.</li>
-          <li><strong>Por instrumento</strong>: selecciona uno o varios instrumentos.</li>
-          <li><strong>Grupo + instrumento</strong>: sólo alumnos que pertenecen a <em>esos grupos</em> y tocan <em>esos instrumentos</em>.</li>
-        </ul>
+    <section id="componer" class="section">
+      <h2>Componer y enviar</h2>
+      <div class="grid-2">
+        <div class="card">
+          <h3 style="margin:.1rem 0 .35rem;">Campos</h3>
+          <ul class="list">
+            <li><strong>Título</strong> (máx. 80 caracteres).</li>
+            <li><strong>Mensaje</strong> (web: máx. 500; móvil docente: máx. 2000).</li>
+            <li><strong>Enlace</strong> opcional (se muestra como botón "Abrir").</li>
+            <li><strong>Adjuntos</strong> (hasta 5 archivos).</li>
+          </ul>
+          <p class="notice info">La vista de escritorio incluye contador de caracteres y vista previa en tiempo real.</p>
+        </div>
+        <div class="card">
+          <h3 style="margin:.1rem 0 .35rem;">Envío</h3>
+          <ul class="list">
+            <li>Elige el <strong>alcance</strong>: Todos, Grupos, Instrumento o Grupo + Instrumento.</li>
+            <li>Filtros rápidos para marcar/quitar todo.</li>
+            <li>Tras enviar, aparece un toast de confirmación.</li>
+          </ul>
+        </div>
       </div>
-      <div>
-        <p class="mini">El sistema resuelve los destinatarios y crea entregas individuales para cada alumno. Esto permite marcar lectura por alumno.</p>
-      </div>
-    </div>
-  </section>
+    </section>
 
-  <section id="push" class="section">
-    <h2>Notificaciones</h2>
-    <div class="grid-2">
-      <div>
-        <ul class="list">
-          <li>La app puede <strong>suscribirse</strong> a notificaciones <em>push</em> (Web Push) desde el dispositivo del alumno.</li>
-          <li>Al enviar un mensaje, se notifica a los dispositivos suscritos del alumno destinatario.</li>
-        </ul>
+    <section id="adjuntos" class="section">
+      <h2>Adjuntos y enlaces</h2>
+      <div class="grid-2">
+        <div class="card">
+          <h3 style="margin:.1rem 0 .35rem;">Adjuntos</h3>
+          <ul class="list">
+            <li>Formatos: <strong>PDF</strong>, imágenes y audio.</li>
+            <li>Tamaño máx. por archivo: <strong>10 MB</strong>. Máximo <strong>5</strong> adjuntos por mensaje.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3 style="margin:.1rem 0 .35rem;">Enlaces</h3>
+          <ul class="list">
+            <li>URLs absolutas (<code>https://…</code>). Si falta el protocolo, se completa automáticamente.</li>
+            <li>Se abren en pestaña nueva desde la app del músico.</li>
+          </ul>
+        </div>
       </div>
-      <div>
-        <p class="mini">Si una suscripción expira, el sistema la elimina automáticamente al detectarlo en el envío.</p>
-      </div>
-    </div>
-  </section>
+    </section>
 
-  <section id="api" class="section">
-    <h2>API y estados</h2>
-    <div class="grid-2">
-      <div>
-        <ul class="list">
-          <li><code>GET /mensajes/app/mensajes?desde_id=0</code> &middot; Lista los mensajes del alumno (con adjuntos y enlaces).</li>
-          <li><code>POST /mensajes/app/mensajes/:id/leer</code> &middot; Marca un mensaje como <em>leído</em> para ese alumno.</li>
-          <li><code>GET /mensajes/ultimos</code> (web) &middot; Devuelve paginado para el panel de últimos.</li>
-        </ul>
-      </div>
-      <div>
-        <ul class="list">
-          <li>Los mensajes incluyen <code>leido_at</code> por alumno para distinguir leídos/no leídos.</li>
-          <li>Envío: creación del mensaje, alta de adjuntos y <em>entregas</em> por alumno según el alcance.</li>
-        </ul>
-      </div>
-    </div>
-  </section>
+    <section id="destinatarios" class="section">
+      <h2>Destinatarios</h2>
+      <ul class="list">
+        <li><strong>Todos</strong>: entrega a todos los músicos activos.</li>
+        <li><strong>Por grupos</strong>: selecciona uno o varios grupos.</li>
+        <li><strong>Por instrumento</strong>: selecciona uno o varios instrumentos.</li>
+        <li><strong>Grupo + instrumento</strong>: solo músicos que pertenecen a esos grupos y tocan esos instrumentos.</li>
+      </ul>
+      <p class="notice info">El sistema crea entregas individuales por músico para poder marcar lectura independientemente.</p>
+    </section>
 
-  <section id="faq" class="section">
-    <h2>FAQ</h2>
-    <div class="grid-2">
-      <div>
-        <h3 class="mini" style="font-weight:800;">No me llegan notificaciones</h3>
-        <p class="mini">Revisa que el navegador permita notificaciones y que te hayas suscrito. Si cambiaste de dispositivo, vuelve a suscribirte.</p>
-      </div>
-      <div>
-        <h3 class="mini" style="font-weight:800;">El enlace no se abre</h3>
-        <p class="mini">Comprueba que la URL sea absoluta (<code>https://…</code>). Se completa el protocolo automáticamente si falta.</p>
-      </div>
-      <div>
-        <h3 class="mini" style="font-weight:800;">Adjunto demasiado grande</h3>
-        <p class="mini">Reduce el tamaño o usa un servicio externo y pega el enlace.</p>
-      </div>
-      <div>
-        <h3 class="mini" style="font-weight:800;">Leídos que vuelven a no leídos</h3>
-        <p class="mini">Asegúrate de tener conexión al marcar como leído. La app aplica el estado al instante y sincroniza con el servidor.</p>
-      </div>
-    </div>
-  </section>
+    <section id="push" class="section">
+      <h2>Notificaciones push</h2>
+      <ul class="list">
+        <li>La app puede <strong>suscribirse</strong> a notificaciones Web Push desde el dispositivo del músico.</li>
+        <li>Al enviar un mensaje, se notifica a los dispositivos suscritos del músico destinatario.</li>
+        <li>Si una suscripción expira, el sistema la elimina automáticamente al detectarlo.</li>
+      </ul>
+    </section>
 
-  <div class="panel-header volver" style="margin-top:10px;">
-    <a href="/ayudas" class="enlace-final">← Volver al Centro de ayuda</a>
+    <section id="faq" class="section">
+      <h2>Preguntas frecuentes (FAQ)</h2>
+      <div class="grid-2">
+        <div class="card">
+          <h3>No me llegan notificaciones</h3>
+          <p>Revisa que el navegador permita notificaciones y que te hayas suscrito. Si cambiaste de dispositivo, vuelve a suscribirte.</p>
+        </div>
+        <div class="card">
+          <h3>El enlace no se abre</h3>
+          <p>Comprueba que la URL sea absoluta (<code>https://…</code>). El protocolo se completa automáticamente si falta.</p>
+        </div>
+        <div class="card">
+          <h3>Adjunto demasiado grande</h3>
+          <p>Reduce el tamaño o usa un servicio externo y pega el enlace en el campo de enlace.</p>
+        </div>
+        <div class="card">
+          <h3>Leídos que vuelven a no leídos</h3>
+          <p>Asegúrate de tener conexión al marcar como leído. La app aplica el estado al instante y sincroniza con el servidor.</p>
+        </div>
+      </div>
+    </section>
+
   </div>
 </div>

@@ -1,36 +1,48 @@
-<% title = 'Listado de Informes' %>
+<% title = 'Informes guardados' %>
 <% hero = false %>
 
-<div class="container mt-4">
-    <h1 class="h1-titulo"><%= title %></h1>
-    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-      <input
-        id="busqueda-informes"
-        type="text"
-        placeholder="Buscar por nombre, grupo..."
-        class="form-control"
-        style="max-width: 300px;"
-      >
-    </div>
+<div class="header-compact">
+  <h1 class="h1-titulo">Informes guardados</h1>
+  <a href="/informes" class="enlace-final">← Volver</a>
+</div>
 
-  <% if (informes.length === 0) { %>
-    <p class="mt-4 text-center">No hay informes disponibles.</p>
-  <% } else { %>
+<div class="mx-auto mb-3" style="max-width:1200px; padding:0 1rem;">
+  <input id="busqueda-informes" type="text"
+         placeholder="Buscar por nombre, grupo, instrumento…"
+         class="form-control form-control-sm"
+         autocomplete="off">
+</div>
+
+<% if (informes.length === 0) { %>
+  <p class="mt-4 text-center text-muted">No hay informes disponibles.</p>
+<% } else { %>
+  <div class="mx-auto" style="max-width:1200px; padding:0 1rem 2rem;">
     <div class="table-responsive">
-      <table class="tabla-estilizada" id="tabla-informes">
-        <thead class="table-light text-center">
+      <table class="tabla-estilizada tabla-tight tabla-hover" id="tabla-informes">
+        <thead>
           <tr>
-            <th class="sortable" data-type="text">Informe</th>
-            <th class="sortable" data-type="date">Fecha</th>
-            <th class="sortable" data-type="text">Grupo</th>
-            <th class="sortable" data-type="text">Instrumento</th>
+            <th class="sortable" data-type="text" data-col="0">
+              Informe <span class="sort-icon">↕</span>
+            </th>
+            <th class="sortable" data-type="date" data-col="1">
+              Fecha <span class="sort-icon">↕</span>
+            </th>
+            <th class="sortable" data-type="text" data-col="2">
+              Grupo <span class="sort-icon">↕</span>
+            </th>
+            <th class="sortable" data-type="text" data-col="3">
+              Instrumento <span class="sort-icon">↕</span>
+            </th>
           </tr>
         </thead>
         <tbody>
           <% informes.forEach(i => { %>
-            <tr class="fila-enlace clickable-row" onclick="location.href='/informes/detalle/<%= i.id %>'">
+            <tr class="clickable-row fila-enlace"
+                onclick="location.href='/informes/detalle/<%= i.id %>'">
               <td><%= i.informe %></td>
-              <td data-value="<%= i.fecha %>"><%= new Date(i.fecha).toLocaleDateString('es-ES') %></td>
+              <td data-value="<%= i.fecha %>">
+                <%= new Date(i.fecha + 'T12:00:00').toLocaleDateString('es-ES') %>
+              </td>
               <td><%= i.grupo || '—' %></td>
               <td><%= i.instrumento || '—' %></td>
             </tr>
@@ -38,73 +50,62 @@
         </tbody>
       </table>
     </div>
-  <% } %>
-
-  <div class="volver-bloque-izquierda mt-4">
-    <a href="/informes" class="enlace-final">← Volver a informes</a>
   </div>
-</div>
+<% } %>
 
 <script>
-  document.getElementById('busqueda-informes').addEventListener('input', function () {
-    const filtro = this.value.toLowerCase().trim();
-    document.querySelectorAll('#tabla-informes tbody tr').forEach(fila => {
-      fila.style.display = fila.textContent.toLowerCase().includes(filtro) ? '' : 'none';
+(() => {
+  /* ── Buscador con normalización de acentos ── */
+  const input = document.getElementById('busqueda-informes');
+  const tbody = document.querySelector('#tabla-informes tbody');
+
+  function norm(s) {
+    return (s || '').toString().toLowerCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+  }
+
+  input?.addEventListener('input', () => {
+    const q = norm(input.value);
+    tbody?.querySelectorAll('tr').forEach(tr => {
+      tr.style.display = !q || norm(tr.textContent).includes(q) ? '' : 'none';
     });
   });
-</script>
-<script>
-  (function () {
-    const table = document.getElementById('tabla-informes');
-    if (!table) return;
 
-    const ths = table.querySelectorAll('thead th.sortable');
-    ths.forEach((th, idx) => {
-      th.setAttribute('aria-sort', 'none');
+  /* ── Ordenación de columnas ── */
+  const table = document.getElementById('tabla-informes');
+  if (!table) return;
 
-      th.addEventListener('click', () => {
-        // limpiar estado en otros <th>
-        ths.forEach(o => { if (o !== th) { o.classList.remove('sorted-asc','sorted-desc'); o.setAttribute('aria-sort','none'); } });
+  let sortCol = -1, sortAsc = true;
+  table.querySelectorAll('th.sortable').forEach(th => {
+    th.style.cursor = 'pointer';
+    th.addEventListener('click', () => {
+      const col  = parseInt(th.dataset.col);
+      const type = th.dataset.type || 'text';
+      if (sortCol === col) sortAsc = !sortAsc;
+      else { sortCol = col; sortAsc = true; }
 
-        // alternar asc/desc
-        const asc = !th.classList.contains('sorted-asc');
-        th.classList.toggle('sorted-asc',  asc);
-        th.classList.toggle('sorted-desc', !asc);
-        th.setAttribute('aria-sort', asc ? 'ascending' : 'descending');
+      table.querySelectorAll('th .sort-icon').forEach(i => i.textContent = '↕');
+      th.querySelector('.sort-icon').textContent = sortAsc ? '↑' : '↓';
 
-        const tbody = table.querySelector('tbody');
-        const rows  = Array.from(tbody.querySelectorAll('tr'));
+      const rows = [...tbody.querySelectorAll('tr')];
+      const collator = new Intl.Collator('es', { numeric: true, sensitivity: 'base' });
 
-        const type = th.dataset.type || 'text';
-        const collator = new Intl.Collator('es', { numeric: true, sensitivity: 'base' });
-
-        const key = (tr) => {
-          const cell = tr.children[idx];
-          const raw  = cell?.dataset?.value ?? cell?.textContent?.trim() ?? '';
-          if (type === 'date') {
-            // usamos ISO de data-value (YYYY-MM-DD) para ordenar estable
-            return String(raw);
-          }
-          const n = Number(String(raw).replace(',', '.'));
-          if (!Number.isNaN(n) && raw !== '') return n;
-          return String(raw).toLowerCase();
-        };
-
-        rows.sort((a, b) => {
-          const ka = key(a), kb = key(b);
-          let cmp;
-          if (typeof ka === 'number' && typeof kb === 'number') {
-            cmp = ka - kb;
-          } else if (type === 'date') {
-            cmp = ka < kb ? -1 : ka > kb ? 1 : 0; // ISO lexicográfico
-          } else {
-            cmp = collator.compare(ka, kb);
-          }
-          return asc ? cmp : -cmp;
-        });
-
-        rows.forEach(r => tbody.appendChild(r));
+      rows.sort((a, b) => {
+        const ca = a.children[col], cb = b.children[col];
+        const va = ca?.dataset?.value ?? ca?.textContent?.trim() ?? '';
+        const vb = cb?.dataset?.value ?? cb?.textContent?.trim() ?? '';
+        let cmp;
+        if (type === 'date') {
+          cmp = va < vb ? -1 : va > vb ? 1 : 0;
+        } else {
+          const na = Number(String(va).replace(',', '.'));
+          const nb = Number(String(vb).replace(',', '.'));
+          cmp = (!isNaN(na) && !isNaN(nb)) ? na - nb : collator.compare(va, vb);
+        }
+        return sortAsc ? cmp : -cmp;
       });
+      rows.forEach(r => tbody.appendChild(r));
     });
-  })();
+  });
+})();
 </script>

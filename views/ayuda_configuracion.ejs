@@ -1,90 +1,44 @@
 <% title = 'Ayuda · Configuración' %>
 <% hero  = false %>
 
-<div class="help-wrap">
+<div class="help-wrap" data-help-theme="blue">
   <div class="panel">
-
-  <div class="help-article-head">
-    <h1 class="h1">Ayuda · Configuración</h1>
-    <a href="/configuracion" class="enlace-final">← Volver a Configuración</a>
-  </div>
-
-  <div class="callout">
-    El menú de configuración funciona igual que el de inicio: puedes activar el <strong>Modo libre</strong> para mover los accesos donde quieras, y <strong>Restablecer</strong> para volver al orden original. Las posiciones se guardan por usuario.
-  </div>
-
-  <!-- Tarjetas de apartados -->
-  <div class="action-grid" id="help-grid" style="margin-bottom:24px;">
-
-    <a href="#sec-usuarios" class="action-card" data-text="usuarios roles permisos correo email contraseña admin editar nuevo">
-      <div><p class="action-title">Usuarios</p>
-      <p class="action-desc">Alta y edición, roles y contraseñas. Gestión de acceso a la plataforma.</p>
-      <p class="req-line"><span class="badge-soft">Rol</span><span class="badge-soft">Contraseña</span></p></div>
-    </a>
-
-    <a href="#sec-docentes" class="action-card" data-text="docentes profesores listado ficha instrumentos grupos estado foto contacto">
-      <div><p class="action-title">Docentes</p>
-      <p class="action-desc">Listado y ficha con contacto, estado, instrumentos y grupos.</p>
-      <p class="req-line"><span class="badge-soft">Ficha</span><span class="badge-soft">Instrumentos</span></p></div>
-    </a>
-
-    <a href="#sec-grupos" class="action-card" data-text="grupos crear editar descripcion integrantes asignacion color">
-      <div><p class="action-title">Grupos</p>
-      <p class="action-desc">Alta y edición de grupos de trabajo. Cada grupo muestra un color distintivo.</p>
-      <p class="req-line"><span class="badge-soft">Listado</span><span class="badge-soft">Ficha</span></p></div>
-    </a>
-
-    <a href="#sec-instrumentos" class="action-card" data-text="instrumentos familia cuerdas viento percusion editar registrar color">
-      <div><p class="action-title">Instrumentos</p>
-      <p class="action-desc">Catálogo por familias con colores: Cuerda, Viento madera, Viento metal, Percusión.</p>
-      <p class="req-line"><span class="badge-soft">Familia</span><span class="badge-soft">Catálogo</span></p></div>
-    </a>
-
-    <a href="#sec-espacios" class="action-card" data-text="espacios salas auditorios direccion maps ubicacion contacto aforo recursos">
-      <div><p class="action-title">Espacios</p>
-      <p class="action-desc">Salas y auditorios con dirección, contacto, aforo y enlace a Google Maps.</p>
-      <p class="req-line"><span class="badge-soft">Dirección</span><span class="badge-soft">Aforo</span></p></div>
-    </a>
-
-    <a href="#sec-ausencias" class="action-card" data-text="ausencias tipos justificada injustificada parcial retraso eventos informes">
-      <div><p class="action-title">Ausencias</p>
-      <p class="action-desc">Definición de tipos de ausencia para eventos e informes.</p>
-      <p class="req-line"><span class="badge-soft">Tipos</span><span class="badge-soft">Eventos</span></p></div>
-    </a>
-
-    <a href="#sec-actividades" class="action-card" data-text="actividades complementarias montaje desmontaje etiquetas eventos informes">
-      <div><p class="action-title">Actividades complementarias</p>
-      <p class="action-desc">Montaje, desmontaje y tareas vinculadas a eventos.</p>
-      <p class="req-line"><span class="badge-soft">Montaje</span><span class="badge-soft">Desmontaje</span></p></div>
-    </a>
-
-    <a href="#sec-guardias" class="action-card" data-text="guardias cuadrantes asignar pdf enlace publico planilla filtros">
-      <div><p class="action-title">Guardias</p>
-      <p class="action-desc">Planilla de guardias, asignaciones, PDF y enlace público con caducidad.</p>
-      <p class="req-line"><span class="badge-soft">Planilla</span><span class="badge-soft">PDF</span></p></div>
-    </a>
-
-  </div>
-    <section id="sec-usuarios" class="section">
-      <h2>Usuarios</h2>
-      <div class="cols">
-        <div>
-          <p class="bullet"><strong>Listado:</strong> nombre, email y rol; acceso a editar/eliminar; botón <em>+ Añadir</em>.</p>
-          <p class="bullet"><strong>Roles disponibles:</strong> <code>admin</code>, <code>docente</code> y <code>usuario</code>. El rol se selecciona en la ficha.</p>
-          <p class="bullet"><strong>Credenciales:</strong> si editas y dejas <em>Contraseña</em> vacía, <u>no</u> se cambia la actual.</p>
-          <p class="mini">Recomendación: usa emails únicos (en minúsculas) y una convención de nombres consistente.</p>
-        </div>
-        <div>
-          <p class="bullet"><strong>Campos de ficha:</strong> nombre, apellidos, email (obligatorio), rol y contraseña.</p>
-          <p class="bullet"><strong>Acciones:</strong> <em>Registrar/Actualizar</em> y <em>Eliminar</em> (con confirmación).</p>
-          <p class="mini">Tras crear un docente aquí, podrás completar su información en el módulo <em>Docentes</em>.</p>
-        </div>
+    <div class="help-article-head">
+      <h1 class="h1">Ayuda · Configuración</h1>
+      <div class="cta">
+        <a href="/configuracion">Configuración →</a>
       </div>
-      <div class="cols">
-        <div>
-          <h3 class="mini" style="font-weight:800;">Procedimiento rápido</h3>
-          <ol class="mini" style="padding-left:1.2rem;">
-            <li>Ir a <em>Configuración → Usuarios</em> y pulsar <strong>+ Añadir</strong>.</li>
+    </div>
+
+    <p class="notice info">El menú de configuración funciona igual que el de inicio: activa el <strong>Modo libre</strong> para mover los accesos donde quieras, y <strong>Restablecer</strong> para volver al orden original.</p>
+
+    <nav class="toc" aria-label="Índice">
+      <a href="#usuarios">Usuarios</a>
+      <a href="#docentes">Docentes</a>
+      <a href="#grupos">Grupos</a>
+      <a href="#instrumentos">Instrumentos</a>
+      <a href="#espacios">Espacios</a>
+      <a href="#ausencias">Ausencias</a>
+      <a href="#actividades">Actividades compl.</a>
+      <a href="#guardias">Guardias</a>
+      <a href="#backup">Copia de seguridad</a>
+    </nav>
+
+    <section id="usuarios" class="section">
+      <h2>Usuarios</h2>
+      <div class="grid-2">
+        <div class="card">
+          <h3 style="margin:.1rem 0 .35rem;">Listado y roles</h3>
+          <ul class="list">
+            <li>Nombre, email y rol; acceso a editar/eliminar; botón <em>+ Añadir</em>.</li>
+            <li><strong>Roles disponibles:</strong> <code>admin</code>, <code>docente</code> y <code>usuario</code>.</li>
+            <li>Si editas y dejas <em>Contraseña</em> vacía, no se cambia la actual.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3 style="margin:.1rem 0 .35rem;">Procedimiento rápido</h3>
+          <ol class="list">
+            <li>Ir a <em>Usuarios</em> y pulsar <strong>+ Añadir</strong>.</li>
             <li>Completar nombre, apellidos, email y <strong>rol</strong>.</li>
             <li>Elegir una contraseña segura y <strong>Registrar</strong>.</li>
           </ol>
@@ -92,192 +46,162 @@
       </div>
     </section>
 
-    <section id="sec-docentes" class="section">
+    <section id="docentes" class="section">
       <h2>Docentes</h2>
-      <div class="cols">
-        <div>
-          <p class="bullet"><strong>Listado:</strong> tarjetas con <em>Estado</em> (activo/no activo), foto (si existe) y búsqueda por nombre/apellidos.</p>
-          <p class="bullet"><strong>Ficha:</strong> foto, contacto (email/teléfono), dirección, instrumentos y grupos asignados como <em>chips</em>.</p>
-          <p class="bullet"><strong>Estado:</strong> cambia el <em>badge</em> de Activo/No activo (no elimina).</p>
+      <div class="grid-2">
+        <div class="card">
+          <h3 style="margin:.1rem 0 .35rem;">Ficha</h3>
+          <ul class="list">
+            <li>Foto, contacto (email/teléfono), dirección, instrumentos y grupos asignados como chips.</li>
+            <li><strong>Estado:</strong> activo/no activo (no elimina).</li>
+            <li>Un docente con usuario web puede acceder al <em>Portal Maestro</em>.</li>
+          </ul>
         </div>
-        <div>
-          <p class="bullet"><strong>Enlace con la app:</strong> un docente con usuario web puede acceder a <em>Portal Maestro</em> (rol <code>docente</code>).</p>
-          <p class="bullet"><strong>Acciones:</strong> Editar ficha y Volver al listado.</p>
-          <p class="mini">Para acceso web, crea/ajusta la cuenta en <em>Usuarios</em> (rol <code>docente</code> o <code>admin</code>).</p>
-        </div>
-      </div>
-      <div class="cols">
-        <div>
-          <h3 class="mini" style="font-weight:800;">Procedimiento rápido</h3>
-          <ol class="mini" style="padding-left:1.2rem;">
-            <li>Crear el usuario con rol <strong>docente</strong> (si no existe).</li>
-            <li>Entrar en <strong>Docentes</strong>, completar contacto e <strong>instrumentos/grupos</strong>.</li>
+        <div class="card">
+          <h3 style="margin:.1rem 0 .35rem;">Procedimiento rápido</h3>
+          <ol class="list">
+            <li>Crear el usuario con rol <strong>docente</strong> si no existe.</li>
+            <li>Entrar en <strong>Docentes</strong> y completar contacto, instrumentos y grupos.</li>
           </ol>
         </div>
       </div>
     </section>
 
-    <section id="sec-grupos" class="section">
+    <section id="grupos" class="section">
       <h2>Grupos</h2>
-      <div class="cols">
-        <div>
-          <p class="bullet"><strong>Listado:</strong> relación de grupos con acceso a editar y botón <em>+ Añadir</em>.</p>
-          <p class="bullet"><strong>Ficha:</strong> <em>Nombre</em> (obligatorio) y <em>Descripción</em> (opcional).</p>
+      <div class="grid-2">
+        <div class="card">
+          <h3 style="margin:.1rem 0 .35rem;">Ficha</h3>
+          <ul class="list">
+            <li><em>Nombre</em> (obligatorio) y <em>Descripción</em> (opcional).</li>
+            <li>Acciones: Registrar/Actualizar y Eliminar (con confirmación).</li>
+          </ul>
+          <p class="notice info">Los grupos se usan en Alumnos, Eventos, Informes y Guardias.</p>
         </div>
-        <div>
-          <p class="bullet"><strong>Acciones:</strong> Registrar/Actualizar y Eliminar (con confirmación).</p>
-          <p class="mini">Los grupos se usan en <em>Alumnos</em>, <em>Eventos</em>, <em>Informes</em> y <em>Guardias</em>.</p>
-        </div>
-      </div>
-      <div class="cols">
-        <div>
-          <h3 class="mini" style="font-weight:800;">Procedimiento rápido</h3>
-          <ol class="mini" style="padding-left:1.2rem;">
+        <div class="card">
+          <h3 style="margin:.1rem 0 .35rem;">Procedimiento rápido</h3>
+          <ol class="list">
             <li>Ir a <em>Grupos</em> → <strong>+ Añadir</strong>.</li>
-            <li>Escribir un nombre claro (ej.: <em>Cuerda 1</em>) y una descripción breve.</li>
+            <li>Escribir un nombre claro y una descripción breve.</li>
           </ol>
         </div>
       </div>
     </section>
 
-    <section id="sec-instrumentos" class="section">
+    <section id="instrumentos" class="section">
       <h2>Instrumentos</h2>
-      <div class="cols">
-        <div>
-          <p class="bullet"><strong>Listado:</strong> catálogo por familias (cuerdas, viento, percusión, etc.) con acceso a edición.</p>
-          <p class="bullet"><strong>Ficha:</strong> <em>Nombre</em> y <em>Familia</em> (selector); Registrar/Actualizar y Eliminar.</p>
+      <div class="grid-2">
+        <div class="card">
+          <h3 style="margin:.1rem 0 .35rem;">Catálogo</h3>
+          <ul class="list">
+            <li>Organizado por familias: cuerdas, viento madera, viento metal, percusión.</li>
+            <li>Ficha: <em>Nombre</em> y <em>Familia</em> (selector).</li>
+          </ul>
         </div>
-        <div>
-          <p class="mini">Asigna instrumentos a los alumnos desde su ficha para usarlos en filtros e informes.</p>
+        <div class="card">
+          <h3 style="margin:.1rem 0 .35rem;">Uso</h3>
+          <ul class="list">
+            <li>Asigna instrumentos a los músicos desde su ficha.</li>
+            <li>Se usan en filtros, planos e informes.</li>
+          </ul>
         </div>
       </div>
     </section>
 
-    <section id="sec-espacios" class="section">
+    <section id="espacios" class="section">
       <h2>Espacios</h2>
-      <div class="cols">
-        <div>
-          <p class="bullet"><strong>Listado:</strong> tarjetas con <em>Nombre</em> y acceso a edición; icono para abrir <strong>Google Maps</strong> si hay URL de ubicación.</p>
-          <p class="bullet"><strong>Ficha → Datos:</strong> nombre y propietario (obligatorios), dirección y enlace de <em>Maps</em> (con botón "Ver en Google Maps").</p>
-          <p class="bullet"><strong>Contacto:</strong> teléfono, email, sitio web.</p>
+      <div class="grid-2">
+        <div class="card">
+          <h3 style="margin:.1rem 0 .35rem;">Campos</h3>
+          <ul class="list">
+            <li>Nombre y propietario (obligatorios), dirección y enlace Google Maps.</li>
+            <li>Tipo (Auditorio, Teatro, Aire libre, Otro) y aforo.</li>
+            <li>Recursos y observaciones libres.</li>
+          </ul>
         </div>
-        <div>
-          <p class="bullet"><strong>Clasificación:</strong> tipo de espacio (Auditorio, Teatro, Aire libre, Otro) y <em>Aforo</em>.</p>
-          <p class="bullet"><strong>Recursos y observaciones:</strong> campos de texto libres para material disponible y notas.</p>
-          <p class="bullet"><strong>Acciones:</strong> Registrar/Actualizar y Eliminar (con confirmación).</p>
-        </div>
-      </div>
-      <div class="cols">
-        <div>
-          <h3 class="mini" style="font-weight:800;">Procedimiento rápido</h3>
-          <ol class="mini" style="padding-left:1.2rem;">
+        <div class="card">
+          <h3 style="margin:.1rem 0 .35rem;">Procedimiento rápido</h3>
+          <ol class="list">
             <li>Ir a <em>Espacios</em> → <strong>+ Nuevo espacio</strong>.</li>
             <li>Completar <strong>Nombre</strong>, <strong>Propietario</strong> y <strong>Dirección</strong>.</li>
-            <li>Si es posible, pegar la URL de <strong>Google Maps</strong> para situarlo.</li>
+            <li>Pegar la URL de Google Maps si es posible.</li>
           </ol>
         </div>
       </div>
     </section>
 
-    <section id="sec-ausencias" class="section">
+    <section id="ausencias" class="section">
       <h2>Ausencias</h2>
-      <div class="cols">
-        <div>
-          <p class="bullet"><strong>Listado:</strong> relación de tipos (ej.: Justificada, Injustificada, Parcial, Retraso) con <em>+ Añadir</em>.</p>
-          <p class="bullet"><strong>Ficha:</strong> campo único <em>Tipo</em> (obligatorio); Registrar/Actualizar y Eliminar.</p>
-          <p class="mini">Se usan en <em>Eventos</em> (firmas/asistencia) y en <em>Informes</em>.</p>
-        </div>
-        <div>
-          <h3 class="mini" style="font-weight:800;">Consejo</h3>
-          <p class="mini">Mantén un catálogo corto y claro para facilitar la estadística.</p>
-        </div>
-      </div>
-    </section>
-
-    <section id="sec-actividades" class="section">
-      <h2>Actividades complementarias</h2>
-      <div class="cols">
-        <div>
-          <p class="bullet"><strong>Listado:</strong> tarjetas con <em>Tipo</em> y <em>Descripción</em>; botón <em>+ Añadir</em>.</p>
-          <p class="bullet"><strong>Ficha:</strong> <em>Tipo</em> (obligatorio) y <em>Descripción</em> (opcional); Registrar/Actualizar y Eliminar.</p>
-          <p class="mini">Ejemplos: montaje, desmontaje, apoyo de producción…</p>
-        </div>
-        <div>
-          <h3 class="mini" style="font-weight:800;">Uso</h3>
-          <p class="mini">Vincula estas actividades a eventos para medir dedicación adicional y reflejarlo en informes.</p>
-        </div>
-      </div>
-    </section>
-
-    <section id="sec-guardias" class="section">
-      <h2>Guardias</h2>
-      <div class="cols">
-        <div>
-          <p class="bullet"><strong>Filtros:</strong> <em>Grupo</em>, <em>Fecha inicio</em> y <em>Fecha fin</em>. Chips de rango rápido: <em>Este mes</em>, <em>Este trimestre</em>, <em>Este año</em>.</p>
-          <p class="bullet"><strong>Planilla:</strong> columnas <em>Fecha</em>, <em>Evento</em>, <em>Grupo</em>, <em>Guardia 1</em>, <em>Guardia 2</em> y acciones por fila.</p>
-          <p class="bullet"><strong>Por fila:</strong> si no hay guardia → <em>Asignar guardia</em>; si existe → botón <em>× Eliminar</em>. Clic en fila con guardia → <em>Editar</em> (Miembro 1/2, Notas).</p>
-        </div>
-        <div>
-          <p class="bullet"><strong>Acciones principales:</strong></p>
-          <ul class="mini" style="padding-left:1.2rem;margin:.2rem 0;">
-            <li><strong>Ver planilla</strong> (GET <code>/guardias/mostrar</code>) — usa los filtros actuales.</li>
-            <li><strong>Asignar guardias múltiples</strong> (POST <code>/guardias/generar-multiples</code>) — requiere fechas.</li>
-            <li><strong>Generar PDF</strong> (POST <code>/guardias/informe</code>) — requiere fechas y grupo.</li>
-            <li><strong>Enlace público</strong> — genera URL firmada del PDF con caducidad <em>7/30/90 días</em> o <em>sin caducidad</em>; se copia al portapapeles.</li>
+      <div class="grid-2">
+        <div class="card">
+          <h3 style="margin:.1rem 0 .35rem;">Tipos</h3>
+          <ul class="list">
+            <li>Relación de tipos (Justificada, Injustificada, Parcial, Retraso) con botón <em>+ Añadir</em>.</li>
+            <li>Ficha: campo único <em>Tipo</em> (obligatorio).</li>
           </ul>
-          <p class="mini">Los filtros se guardan en la URL para que al volver conserves el contexto.</p>
+          <p class="notice info">Se usan en Eventos (firmas/asistencia) y en Informes.</p>
         </div>
-      </div>
-      <div class="cols">
-        <div>
-          <h3 class="mini" style="font-weight:800;">Procedimiento rápido</h3>
-          <ol class="mini" style="padding-left:1.2rem;">
-            <li>Ajusta <strong>Grupo</strong> y <strong>Fechas</strong> (o usa chips).</li>
-            <li>Pulsa <strong>Ver planilla</strong> y, por fila, usa <em>Asignar guardia</em> o <em>× Eliminar</em>.</li>
-            <li>Para varios eventos, usa <strong>Asignar múltiples</strong>.</li>
-            <li>Si necesitas compartir: <strong>Generar PDF</strong> o <strong>Enlace público</strong> con caducidad.</li>
-          </ol>
+        <div class="card">
+          <h3 style="margin:.1rem 0 .35rem;">Consejo</h3>
+          <ul class="list">
+            <li>Mantén un catálogo corto y claro para facilitar la estadística.</li>
+          </ul>
         </div>
       </div>
     </section>
 
-    <section id="sec-backup" class="section">
-      <h2>Copia de seguridad</h2>
-      <div class="cols">
-        <div>
-          <p class="bullet"><strong>Backup:</strong> realiza copias antes de operaciones masivas (importes, generación de cuotas, etc.).</p>
-          <p class="bullet"><strong>Restauración:</strong> verifica el fichero y, si puedes, prueba en un entorno de test antes de aplicar en producción.</p>
-          <p class="mini">Guarda las copias en un lugar seguro con control de versiones.</p>
+    <section id="actividades" class="section">
+      <h2>Actividades complementarias</h2>
+      <div class="grid-2">
+        <div class="card">
+          <h3 style="margin:.1rem 0 .35rem;">Ficha</h3>
+          <ul class="list">
+            <li><em>Tipo</em> (obligatorio) y <em>Descripción</em> (opcional).</li>
+            <li>Ejemplos: montaje, desmontaje, apoyo de producción…</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3 style="margin:.1rem 0 .35rem;">Uso</h3>
+          <ul class="list">
+            <li>Vincula estas actividades a eventos para medir dedicación adicional.</li>
+            <li>También se usan en <strong>Guardias</strong> para asignar músicos de montaje/desmontaje.</li>
+          </ul>
         </div>
       </div>
     </section>
+
+    <section id="guardias" class="section">
+      <h2>Guardias</h2>
+      <div class="grid-2">
+        <div class="card">
+          <h3 style="margin:.1rem 0 .35rem;">Planilla y asignación</h3>
+          <ul class="list">
+            <li>Filtros: <em>Grupo</em>, <em>Fecha inicio</em> y <em>Fecha fin</em>. Chips de rango rápido.</li>
+            <li>Por fila: si no hay guardia → <em>Asignar</em>; si existe → <em>Eliminar</em>. Clic en fila → <em>Editar</em>.</li>
+            <li>Asignación múltiple para rellenar rangos de fechas de golpe.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3 style="margin:.1rem 0 .35rem;">Acciones principales</h3>
+          <ul class="list">
+            <li><strong>Ver listado</strong> con los filtros actuales.</li>
+            <li><strong>Asignar múltiples</strong> — requiere fechas.</li>
+            <li><strong>Guardia de actividad</strong> — montaje/desmontaje, nº músicos configurable.</li>
+            <li><strong>Tabla de asistencias</strong> — referencias cruzadas músicos × eventos.</li>
+            <li><strong>PDF</strong> e <strong>Enlace público</strong> con caducidad configurable.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section id="backup" class="section">
+      <h2>Copia de seguridad</h2>
+      <ul class="list">
+        <li>Realiza copias antes de operaciones masivas (importes, generación de cuotas, etc.).</li>
+        <li>Verifica el fichero y, si puedes, prueba en un entorno de test antes de aplicar en producción.</li>
+        <li>Guarda las copias en un lugar seguro con control de versiones.</li>
+      </ul>
+    </section>
+
   </div>
 </div>
-
-<!-- Iconos (sprite) -->
-<svg width="0" height="0" style="position:absolute;visibility:hidden">
-  <symbol id="i-user" viewBox="0 0 24 24"><path d="M12 12a5 5 0 1 0-5-5 5 5 0 0 0 5 5Z"/><path d="M3 22a9 9 0 0 1 18 0"/></symbol>
-  <symbol id="i-teacher" viewBox="0 0 24 24"><path d="M7 4h10v6H7z"/><path d="M3 20V6l4 4v10H3z"/><path d="M17 10l4-4v14h-4V10z"/></symbol>
-  <symbol id="i-groups" viewBox="0 0 24 24"><path d="M9 10a3 3 0 1 0-3-3 3 3 0 0 0 3 3Zm8 0a3 3 0 1 0-3-3 3 3 0 0 0 3 3Z"/><path d="M2 22a6 6 0 0 1 12 0Zm8 0a6 6 0 0 1 12 0Z"/></symbol>
-  <symbol id="i-instrument" viewBox="0 0 24 24"><path d="M20 2l-8 8"/><circle cx="9" cy="15" r="4"/><path d="M16 4l4 4"/></symbol>
-  <symbol id="i-map" viewBox="0 0 24 24"><path d="M21 10c0 6-9 12-9 12S3 16 3 10a9 9 0 1 1 18 0Z"/><circle cx="12" cy="10" r="3"/></symbol>
-  <symbol id="i-absent" viewBox="0 0 24 24"><path d="M12 2a7 7 0 0 1 7 7v2a7 7 0 0 1-14 0V9a7 7 0 0 1 7-7Z"/><path d="M9 14h6M10 9h4"/></symbol>
-  <symbol id="i-wrench" viewBox="0 0 24 24"><path d="M14.7 6.3a4 4 0 1 0-5.4 5.4l-6 6 3 3 6-6a4 4 0 0 0 5.4-5.4Z"/></symbol>
-  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 2 4 5v6c0 5 3.5 9 8 11 4.5-2 8-6 8-11V5Z"/></symbol>
-  <symbol id="i-backup" viewBox="0 0 24 24"><path d="M4 7a4 4 0 0 1 4-4h8a4 4 0 0 1 4 4v10a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4Z"/><path d="M12 8v8M9 11l3-3 3 3"/></symbol>
-</svg>
-
-<script>
-(() => {
-  const q = document.getElementById('help-q');
-  const cards = Array.from(document.querySelectorAll('#help-grid .card'));
-  function filtrar(){
-    const s = (q.value || '').toLowerCase().trim();
-    cards.forEach(c => {
-      const t = c.innerText.toLowerCase() + ' ' + (c.getAttribute('data-text')||'');
-      c.style.display = !s || t.includes(s) ? '' : 'none';
-    });
-  }
-  q && q.addEventListener('input', filtrar);
-})();
-</script>

@@ -1,196 +1,167 @@
 <% title = 'Ayuda · Informes y certificados' %>
 <% hero  = false %>
 
-<link rel="stylesheet" href="/styles/estilos_help.css">
-
 <div class="help-wrap" data-help-theme="blue">
   <div class="panel">
-    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+    <div class="help-article-head">
       <h1 class="h1">Ayuda · Informes y certificados</h1>
       <div class="cta">
-        <a href="/informes">Informes y certificados →</a>
-        <a href="/informes/lista">Informes guardados →</a>
+        <a href="/informes">Informes →</a>
+        <a href="/informes/lista">Guardados →</a>
         <a href="/informes/ficha">Tabla dinámica →</a>
-        <a href="/informes/horas">% de asistencia →</a>
+        <a href="/informes/horas">% Asistencia →</a>
       </div>
     </div>
 
-```
-<!-- Índice -->
-<nav class="toc" aria-label="Índice">
-  <a href="#que">Qué puedes hacer</a>
-  <a href="#filtros">Filtros y rangos</a>
-  <a href="#acciones">Acciones disponibles</a>
-  <a href="#ficha">Tabla dinámica (ficha)</a>
-  <a href="#detalle">Detalle del informe</a>
-  <a href="#horas">Informe de % de horas</a>
-  <a href="#lista">Listado de informes</a>
-  <a href="#novedades">Novedades</a>
-  <a href="#faq">FAQ</a>
-</nav>
+    <nav class="toc" aria-label="Índice">
+      <a href="#que">Qué puedes hacer</a>
+      <a href="#filtros">Filtros y rangos</a>
+      <a href="#acciones">Acciones</a>
+      <a href="#ficha">Tabla dinámica</a>
+      <a href="#detalle">Detalle del informe</a>
+      <a href="#horas">% de horas</a>
+      <a href="#lista">Listado guardado</a>
+      <a href="#faq">FAQ</a>
+    </nav>
 
-<!-- Qué puedes hacer -->
-<section id="que" class="section">
-  <h2>Qué puedes hacer</h2>
-  <ul class="list">
-    <li>Filtrar por <strong>grupo</strong>, <strong>instrumento</strong> y fechas para generar informes.</li>
-    <li>Crear <strong>listados/tablas dinámicas</strong> añadiendo campos propios (texto, número, sí/no).</li>
-    <li>Guardar y <strong>editar</strong> informes: cambiar título, añadir/eliminar filas, ocultar columnas.</li>
-    <li>Exportar <strong>PDF</strong> y generar <strong>URL pública</strong> (con copiar y revocar).</li>
-    <li>Calcular el <strong>% de horas de asistencia</strong> en un rango de fechas.</li>
-  </ul>
-  <p class="notice info">Consejo: si quieres un listado sin alumnos (por ejemplo, inventario de material), selecciona <em>Grupo → Ninguno</em> en el inicio.</p>
-</section>
-
-<!-- Filtros y rangos -->
-<section id="filtros" class="section">
-  <h2>Filtros y rangos</h2>
-  <div class="grid-2">
-    <div class="card">
-      <h3 style="margin:.1rem 0 .35rem;">Grupo e instrumento</h3>
+    <section id="que" class="section">
+      <h2>Qué puedes hacer</h2>
       <ul class="list">
-        <li><strong>Grupo</strong>: Todos, Ninguno o uno concreto.</li>
-        <li><strong>Instrumento</strong>: Todos o uno concreto.</li>
-        <li>Si eliges <em>Violín</em>, aparece la <strong>Sección</strong> (I / II) en forma de <em>chips</em>.</li>
+        <li>Filtrar por <strong>grupo</strong>, <strong>instrumento</strong> y fechas para generar informes.</li>
+        <li>Crear <strong>tablas dinámicas</strong> con campos propios (texto, número, sí/no).</li>
+        <li>Guardar y <strong>editar</strong> informes: título, filas y columnas.</li>
+        <li>Exportar <strong>PDF</strong> y generar <strong>URL pública</strong> (con copiar y revocar).</li>
+        <li>Calcular el <strong>% de horas de asistencia</strong> en un rango de fechas.</li>
       </ul>
-    </div>
-    <div class="card">
-      <h3 style="margin:.1rem 0 .35rem;">Fechas</h3>
+      <p class="notice info">Si quieres un listado sin músicos (inventario de material), selecciona <em>Grupo → Ninguno</em>.</p>
+    </section>
+
+    <section id="filtros" class="section">
+      <h2>Filtros y rangos</h2>
+      <div class="grid-2">
+        <div class="card">
+          <h3 style="margin:.1rem 0 .35rem;">Grupo e instrumento</h3>
+          <ul class="list">
+            <li><strong>Grupo</strong>: Todos, Ninguno o uno concreto.</li>
+            <li><strong>Instrumento</strong>: Todos o uno concreto.</li>
+            <li>Si eliges Violín aparece la <strong>Sección</strong> (I / II) en chips.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3 style="margin:.1rem 0 .35rem;">Fechas</h3>
+          <ul class="list">
+            <li>Inicio y fin del rango.</li>
+            <li><strong>Rangos rápidos</strong>: Últ. 30 días, Trimestre, Año actual.</li>
+          </ul>
+        </div>
+      </div>
+      <p class="notice info">Los filtros se arrastran a todas las acciones de abajo (tabla dinámica, % horas, etc.).</p>
+    </section>
+
+    <section id="acciones" class="section">
+      <h2>Acciones disponibles</h2>
+      <div class="grid-2">
+        <div class="card">
+          <h3 style="margin:.1rem 0 .35rem;">Informes guardados</h3>
+          <p>Histórico de todos los informes generados. Busca, ordena y entra a editar.</p>
+        </div>
+        <div class="card">
+          <h3 style="margin:.1rem 0 .35rem;">Tabla dinámica</h3>
+          <p>Construye una tabla eligiendo los campos a medir o listar y guarda el resultado.</p>
+        </div>
+        <div class="card">
+          <h3 style="margin:.1rem 0 .35rem;">% de horas de asistencia</h3>
+          <p>Calcula horas y porcentaje por músico en el periodo seleccionado.</p>
+        </div>
+        <div class="card">
+          <h3 style="margin:.1rem 0 .35rem;">Prueba de atril</h3>
+          <p>Autocompleta campos y título con curso+trimestre para agilizar la evaluación.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="ficha" class="section">
+      <h2>Tabla dinámica (ficha)</h2>
+      <div class="grid-2">
+        <div class="card">
+          <h3 style="margin:.1rem 0 .35rem;">Paso 1 · Nombre y contexto</h3>
+          <ul class="list">
+            <li>Escribe el <strong>nombre</strong> del informe (sugerido con grupo/instrumento/fecha).</li>
+            <li>Los filtros heredados aparecen como chips informativos.</li>
+            <li>Para "Prueba de atril" el sistema añadirá curso + trimestre al guardar.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3 style="margin:.1rem 0 .35rem;">Paso 2 · Campos y músicos</h3>
+          <ul class="list">
+            <li><strong>+ Añadir campo</strong> (Texto / Número / Sí-No) y marca si es obligatorio.</li>
+            <li>En cuanto haya campos aparece la <strong>tabla de músicos</strong> para rellenar.</li>
+            <li>El envío guarda estructura + datos.</li>
+          </ul>
+        </div>
+      </div>
+      <p class="notice info">Si el grupo es <em>Ninguno</em>, puedes crear tablas sin músicos (solo campos y filas manuales).</p>
+    </section>
+
+    <section id="detalle" class="section">
+      <h2>Detalle del informe</h2>
+      <div class="grid-2">
+        <div class="card">
+          <h3 style="margin:.1rem 0 .35rem;">Edición rápida</h3>
+          <ul class="list">
+            <li>Edita el <strong>título</strong> directamente (guardado automático al salir del campo).</li>
+            <li>Añade registros con <strong>+ Añadir registro</strong> o elimina con la <strong>×</strong>.</li>
+            <li>Oculta/muestra Grupo o Instrumento en la tabla si no los necesitas.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3 style="margin:.1rem 0 .35rem;">Exportar y compartir</h3>
+          <ul class="list">
+            <li><strong>Ver PDF</strong>: abre el informe listo para imprimir.</li>
+            <li><strong>Generar enlace público</strong>: crea una URL de solo lectura.</li>
+            <li><strong>Copiar</strong> al portapapeles o <strong>Revocar</strong> para invalidarla.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section id="horas" class="section">
+      <h2>Informe de % de horas</h2>
       <ul class="list">
-        <li><strong>Inicio</strong> y <strong>fin</strong> del rango.</li>
-        <li><strong>Rangos rápidos</strong>: Últ. 30 días, Trimestre, Año actual.</li>
+        <li>Muestra por músico las <strong>horas</strong> y el <strong>% sobre el total</strong> en el rango.</li>
+        <li>Permite <strong>ordenar</strong> por columna y <strong>guardar</strong> como informe.</li>
       </ul>
-    </div>
-  </div>
-  <p class="notice info">Los filtros se arrastran a las acciones de abajo (tabla dinámica, % horas, etc.).</p>
-</section>
+    </section>
 
-<!-- Acciones disponibles -->
-<section id="acciones" class="section">
-  <h2>Acciones disponibles</h2>
-  <div class="grid-2">
-    <div class="card">
-      <h3 style="margin:.1rem 0 .35rem;">Informes guardados</h3>
-      <p>Histórico de todos los informes generados. Busca, ordena y entra a editar.</p>
-    </div>
-    <div class="card">
-      <h3 style="margin:.1rem 0 .35rem;">Tabla dinámica (ficha)</h3>
-      <p>Construye una tabla eligiendo los <strong>campos</strong> a medir o listar, y guarda el resultado.</p>
-    </div>
-    <div class="card">
-      <h3 style="margin:.1rem 0 .35rem;">% de horas de asistencia</h3>
-      <p>Calcula horas y porcentaje por alumno en el periodo seleccionado.</p>
-    </div>
-    <div class="card">
-      <h3 style="margin:.1rem 0 .35rem;">Prueba de atril (clasificación)</h3>
-      <p>Optimiza el trabajo de evaluación: se autocompletan campos y el título con curso+trimestre.</p>
-    </div>
-  </div>
-</section>
-
-<!-- Ficha / tabla dinámica -->
-<section id="ficha" class="section">
-  <h2>Tabla dinámica (ficha)</h2>
-  <div class="grid-2">
-    <div class="card">
-      <h3 style="margin:.1rem 0 .35rem;">Paso 1 · Nombre y contexto</h3>
+    <section id="lista" class="section">
+      <h2>Listado de informes guardados</h2>
       <ul class="list">
-        <li>Escribe el <strong>nombre</strong> del informe (sugerido con grupo/instrumento/fecha).</li>
-        <li>Se muestran los filtros heredados como <em>chips</em> informativos.</li>
-        <li>Para “<em>Prueba de atril …</em>” el sistema añadirá <strong>curso + trimestre</strong> al guardar.</li>
+        <li>Buscador rápido por texto y <strong>ordenación</strong> por columnas.</li>
+        <li>Haz clic en una fila para abrir el <strong>detalle</strong>.</li>
       </ul>
-    </div>
-    <div class="card">
-      <h3 style="margin:.1rem 0 .35rem;">Paso 2 · Campos y alumnos</h3>
-      <ul class="list">
-        <li><strong>+ Añadir campo</strong> (Texto / Número / Sí-No) y marca si es <em>obligatorio</em>.</li>
-        <li>En cuanto haya campos, aparece la <strong>tabla de alumnos</strong> para rellenar resultados.</li>
-        <li>El envío guarda <strong>estructura + datos</strong> y crea (o actualiza) el informe.</li>
-      </ul>
-    </div>
-  </div>
-  <p class="notice info">Si el grupo es <em>Ninguno</em>, podrás crear tablas sin alumnos (solo campos y filas manuales).</p>
-</section>
+    </section>
 
-<!-- Detalle del informe -->
-<section id="detalle" class="section">
-  <h2>Detalle del informe</h2>
-  <div class="grid-2">
-    <div class="card">
-      <h3 style="margin:.1rem 0 .35rem;">Edición rápida</h3>
-      <ul class="list">
-        <li>Edita el <strong>título</strong> directamente (guardado automático al salir del campo).</li>
-        <li>Añade registros con <strong>+ Añadir registro</strong> o elimina con la <strong>×</strong>.</li>
-        <li>Oculta/muestra <strong>Grupo</strong> o <strong>Instrumento</strong> en la tabla si no los necesitas.</li>
-      </ul>
-    </div>
-    <div class="card">
-      <h3 style="margin:.1rem 0 .35rem;">Exportar y compartir</h3>
-      <ul class="list">
-        <li><strong>Ver PDF</strong>: abre el informe listo para imprimir.</li>
-        <li><strong>Generar enlace público</strong>: crea una URL solo lectura para compartir.</li>
-        <li><strong>Copiar</strong> la URL al portapapeles o <strong>Revocar</strong> para invalidarla.</li>
-      </ul>
-    </div>
-  </div>
-</section>
-
-<!-- Informe de % de horas -->
-<section id="horas" class="section">
-  <h2>Informe de porcentaje de horas</h2>
-  <ul class="list">
-    <li>Muestra por alumno las <strong>horas</strong> y el <strong>% sobre el total</strong> en el rango.</li>
-    <li>Permite <strong>ordenar</strong> por columna y <strong>guardar</strong> como informe.</li>
-  </ul>
-</section>
-
-<!-- Listado de informes -->
-<section id="lista" class="section">
-  <h2>Listado de informes guardados</h2>
-  <ul class="list">
-    <li>Buscador rápido por texto y <strong>ordenación</strong> por columnas (nombre, fecha, grupo, instrumento).</li>
-    <li>Haz clic en una fila para abrir el <strong>detalle</strong>.</li>
-  </ul>
-</section>
-
-<!-- Novedades -->
-<section id="novedades" class="section">
-  <h2>Novedades (últimas incorporaciones)</h2>
-  <ul class="list">
-    <li><strong>Sección Violín</strong> (I/II) cuando el instrumento es Violín.</li>
-    <li><strong>Rangos rápidos</strong> de fechas (30 días, trimestre, YTD).</li>
-    <li><strong>Auto-campos</strong> para “Prueba de atril”: Puntuación (número) y Asistencia (sí/no).</li>
-    <li><strong>Título automático</strong> para “Prueba de atril …”: añade curso + trimestre.</li>
-    <li><strong>URL pública</strong> del informe: generar, copiar y revocar.</li>
-    <li><strong>Edición inline</strong> del título y <strong>PDF</strong> con columnas opcionales.</li>
-  </ul>
-</section>
-
-<!-- FAQ -->
-<section id="faq" class="section">
-  <h2>Preguntas frecuentes (FAQ)</h2>
-  <div class="grid-2">
-    <div class="card">
-      <h3>¿No aparecen alumnos?</h3>
-      <p>Revisa los filtros (Grupo/Instrumento) o usa <em>Grupo: Ninguno</em> si es un listado sin alumnos.</p>
-    </div>
-    <div class="card">
-      <h3>¿No sale la sección Violín?</h3>
-      <p>Selecciona <em>Instrumento: Violín</em> y elige I/II en los chips.</p>
-    </div>
-    <div class="card">
-      <h3>¿Cómo comparto el informe?</h3>
-      <p>En el detalle pulsa <em>Generar enlace público</em>, luego <em>Copiar</em>. Puedes <em>Revocar</em> cuando quieras.</p>
-    </div>
-    <div class="card">
-      <h3>¿Puedo editar el título rápidamente?</h3>
-      <p>Sí, el título es editable en el propio detalle y se guarda al salir del campo.</p>
-    </div>
-  </div>
-</section>
-```
+    <section id="faq" class="section">
+      <h2>Preguntas frecuentes (FAQ)</h2>
+      <div class="grid-2">
+        <div class="card">
+          <h3>¿No aparecen músicos?</h3>
+          <p>Revisa los filtros (Grupo/Instrumento) o usa <em>Grupo: Ninguno</em> para listados sin músicos.</p>
+        </div>
+        <div class="card">
+          <h3>¿No sale la sección Violín?</h3>
+          <p>Selecciona <em>Instrumento: Violín</em> y elige I/II en los chips.</p>
+        </div>
+        <div class="card">
+          <h3>¿Cómo comparto el informe?</h3>
+          <p>En el detalle pulsa <em>Generar enlace público</em>, luego <em>Copiar</em>. Puedes <em>Revocar</em> cuando quieras.</p>
+        </div>
+        <div class="card">
+          <h3>¿Puedo editar el título rápido?</h3>
+          <p>Sí, el título es editable en el propio detalle y se guarda al salir del campo.</p>
+        </div>
+      </div>
+    </section>
 
   </div>
 </div>
-
-

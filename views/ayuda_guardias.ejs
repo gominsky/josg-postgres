@@ -1,77 +1,71 @@
 <% title = 'Ayuda · Guardias' %>
 <% hero  = false %>
-<link rel="stylesheet" href="/styles/estilos_help.css">
 
-<div class="help-wrap">
+<div class="help-wrap" data-help-theme="blue">
   <div class="panel">
-
-    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+    <div class="help-article-head">
       <h1 class="h1">Ayuda · Guardias</h1>
       <div class="cta">
-        <a href="/guardias">Ir a Guardias →</a>
-        <a href="/eventos">Ir a Calendario →</a>
+        <a href="/guardias">Guardias →</a>
+        <a href="/guardias/mostrar">Ver listado →</a>
       </div>
     </div>
 
-    <!-- Índice -->
     <nav class="toc" aria-label="Índice">
       <a href="#flujo">Flujo rápido</a>
-      <a href="#planilla">Planilla & listado</a>
+      <a href="#listado">Listado de guardias</a>
       <a href="#asignacion">Asignación automática</a>
-      <a href="#edicion">Edición y notas</a>
-      <a href="#pdf">Informe PDF</a>
+      <a href="#actividad">Guardias de actividad</a>
+      <a href="#cruzada">Tabla de asistencias</a>
+      <a href="#edicion">Edición</a>
+      <a href="#pdf">PDF e informes</a>
       <a href="#reglas">Reglas del sistema</a>
-      <a href="#tips">Consejos</a>
       <a href="#faq">FAQ</a>
     </nav>
 
-    <!-- Flujo rápido -->
     <section id="flujo" class="section">
       <h2>Flujo rápido</h2>
       <ol class="list">
-        <li>Abre <span class="kbd">Guardias</span> y selecciona <strong>Grupo</strong> y <strong>Fechas</strong>.</li>
-        <li>Para rellenar huecos, usa <em>Asignación automática</em> (individual o múltiple por rango).</li>
-        <li>Para ajustes finos, abre una guardia en la planilla y <em>Edita</em> alumnos/notas.</li>
-        <li>Cuando esté listo, genera el <em>Informe PDF</em> del periodo filtrado.</li>
+        <li>Abre <strong>Guardias</strong> y selecciona <em>Grupo</em> y <em>Fechas</em> (o usa un chip de rango rápido).</li>
+        <li>Pulsa <strong>Ver listado</strong> para ver los eventos del periodo.</li>
+        <li>Para rellenar huecos usa <em>Asignar</em> por fila o <em>Asignar guardias normales</em> para el rango completo.</li>
+        <li>Para montajes y desmontajes usa <em>Guardia de actividad</em> con nº de músicos configurable.</li>
+        <li>Cuando esté listo genera el <em>PDF</em> o consulta la <em>Tabla de asistencias</em>.</li>
       </ol>
-      <p class="notice info">Los atajos de rango (<span class="pill">30 días</span>, <span class="pill">Trimestre</span>, <span class="pill">YTD</span>) funcionan igual que en Eventos/Informes.</p>
+      <p class="notice info">Los filtros se guardan en la URL para que al volver conserves el contexto.</p>
     </section>
 
-    <!-- Planilla & listado -->
-    <section id="planilla" class="section">
-      <h2>Planilla y listado</h2>
+    <section id="listado" class="section">
+      <h2>Listado de guardias</h2>
       <div class="grid-2">
         <div class="card">
-          <h3 style="margin:.1rem 0 .35rem;">Planilla</h3>
+          <h3 style="margin:.1rem 0 .35rem;">Tabla</h3>
           <ul class="list">
-            <li>Filtra por <strong>Grupo</strong> y <strong>Fechas</strong>; los filtros quedan en la URL para retomar el estado.</li>
-            <li>Cada fila muestra fecha, turno/guardia y los alumnos asignados (si los hay).</li>
-            <li>Haz clic en una fila para abrir la <em>Edición</em> (cambiar alumnos, añadir notas, eliminar).</li>
+            <li>Columnas: Fecha, Evento, Grupo, Tipo, Músicos y Acciones.</li>
+            <li>Cabeceras <strong>ordenables</strong> — pulsa para ordenar asc/desc.</li>
+            <li>Clic en fila con guardia → <strong>Editar</strong>.</li>
           </ul>
-          <p class="notice info">Si ves un hueco sin asignación, podrás lanzar la <em>Asignación automática</em> desde ahí mismo.</p>
         </div>
         <div class="card">
-          <h3 style="margin:.1rem 0 .35rem;">Listado (rango)</h3>
+          <h3 style="margin:.1rem 0 .35rem;">Acciones por fila</h3>
           <ul class="list">
-            <li>Pasa parámetros <span class="kbd">?desde=YYYY-MM-DD&hasta=YYYY-MM-DD</span> para listar guardias en tabla.</li>
-            <li>Cada fila es clicable y abre la edición de la guardia.</li>
-            <li>Incluye un mini formulario para consultar otro rango rápido.</li>
+            <li>Sin guardia → botón <strong>Asignar</strong> (asignación automática inmediata).</li>
+            <li>Con guardia → botón <strong>Eliminar</strong> con confirmación.</li>
           </ul>
         </div>
       </div>
+      <p class="notice info">Al final de la tabla hay un resumen de <strong>carga por músico</strong> en el periodo, desplegable.</p>
     </section>
 
-    <!-- Asignación -->
     <section id="asignacion" class="section">
       <h2>Asignación automática</h2>
       <div class="grid-2">
         <div class="card">
           <h3 style="margin:.1rem 0 .35rem;">Modos</h3>
           <ul class="list">
-            <li><strong>Individual</strong>: botón <em>Asignar guardia</em> en un hueco concreto.</li>
-            <li><strong>Múltiple</strong>: desde la portada indica <span class="kbd">Fechas</span> y (opcional) <span class="kbd">Grupo</span>.</li>
+            <li><strong>Individual</strong>: botón <em>Asignar</em> en una fila concreta del listado.</li>
+            <li><strong>Múltiple</strong>: desde el menú, selecciona fechas y (opcional) grupo, y pulsa <em>Asignar guardias normales</em>.</li>
           </ul>
-          <p class="notice info">Útil para rellenar muchos días de golpe manteniendo la equidad.</p>
         </div>
         <div class="card">
           <h3 style="margin:.1rem 0 .35rem;">Criterios</h3>
@@ -80,103 +74,130 @@
             <li><strong>Disponibilidad</strong>: nadie tendrá dos guardias el mismo día.</li>
             <li><strong>Novatos</strong>: impide asignar dos novatos juntos en la misma guardia.</li>
           </ul>
-          <p class="notice info">Si faltan datos de disponibilidad en un día, el sistema puede omitir esa asignación.</p>
         </div>
       </div>
     </section>
 
-    <!-- Edición y notas -->
-    <section id="edicion" class="section">
-      <h2>Edición y notas</h2>
+    <section id="actividad" class="section">
+      <h2>Guardias de actividad complementaria</h2>
       <div class="grid-2">
         <div class="card">
-          <h3 style="margin:.1rem 0 .35rem;">Edición</h3>
-          <ul class="list">
-            <li>Desde la planilla, abre la guardia para cambiar alumnos o turno.</li>
-            <li>Al guardar, se validan disponibilidad y la regla de novatos.</li>
-            <li>Acción <strong>Eliminar</strong> disponible si procede.</li>
-          </ul>
+          <h3 style="margin:.1rem 0 .35rem;">Cómo asignar</h3>
+          <ol class="list">
+            <li>En el menú, selecciona un rango de fechas.</li>
+            <li>Pulsa <em>Guardia de actividad</em> para abrir el panel.</li>
+            <li>Selecciona el <strong>evento</strong> del desplegable (cargado automáticamente).</li>
+            <li>Elige la <strong>actividad</strong> y el <strong>nº de músicos</strong>.</li>
+            <li>Pulsa <em>Asignar</em>.</li>
+          </ol>
         </div>
         <div class="card">
-          <h3 style="margin:.1rem 0 .35rem;">Notas</h3>
+          <h3 style="margin:.1rem 0 .35rem;">Características</h3>
           <ul class="list">
-            <li>Registra incidencias, cambios o comentarios operativos.</li>
-            <li>Se muestran junto a la guardia para trazabilidad.</li>
+            <li>Pueden coexistir varias guardias de actividad en el mismo evento.</li>
+            <li>El número de músicos es completamente libre (desde 1).</li>
+            <li>El tipo de actividad viene de tu catálogo de <em>Actividades complementarias</em>.</li>
+            <li>Se respetan las reglas de equidad y novatos.</li>
           </ul>
         </div>
       </div>
     </section>
 
-    <!-- PDF -->
-    <section id="pdf" class="section">
-      <h2>Informe PDF</h2>
-      <p>Genera un PDF por <strong>Grupo</strong> y <strong>Rango de fechas</strong> con la planilla del periodo.</p>
+    <section id="cruzada" class="section">
+      <h2>Tabla de asistencias</h2>
       <ul class="list">
-        <li>Ruta desde Guardias con filtros activos; el PDF respeta el rango seleccionado.</li>
-        <li>Útil para compartir en coordinación o archivar.</li>
+        <li>Referencias cruzadas: <strong>eventos en columnas</strong>, <strong>músicos en filas</strong>.</li>
+        <li><span style="display:inline-block;width:14px;height:14px;background:#e87722;border-radius:2px;vertical-align:middle;"></span> naranja = guardia normal &nbsp;·&nbsp; <span style="display:inline-block;width:14px;height:14px;background:#2e7d32;border-radius:2px;vertical-align:middle;"></span> verde = actividad.</li>
+        <li>Columna <strong>Total</strong> por músico y fila de totales por evento.</li>
+        <li>Botón <strong>PDF tabla</strong> para descargar en A4 landscape con el mismo formato.</li>
       </ul>
     </section>
 
-    <!-- Reglas -->
+    <section id="edicion" class="section">
+      <h2>Edición de guardia</h2>
+      <div class="grid-2">
+        <div class="card">
+          <h3 style="margin:.1rem 0 .35rem;">Guardia normal</h3>
+          <ul class="list">
+            <li>Selects de <strong>Músico 1</strong> y <strong>Músico 2</strong> con carga actual visible.</li>
+            <li>Músicos con ⚠️ están asignados a otra guardia ese día pero se pueden seleccionar.</li>
+            <li>Al guardar se validan disponibilidad y regla de novatos.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3 style="margin:.1rem 0 .35rem;">Guardia de actividad</h3>
+          <ul class="list">
+            <li>Checkboxes para marcar todos los músicos participantes.</li>
+            <li>Los asignados actualmente aparecen marcados al abrir.</li>
+            <li>Campo de <strong>Notas</strong> para incidencias o comentarios.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section id="pdf" class="section">
+      <h2>PDF e informes</h2>
+      <div class="grid-2">
+        <div class="card">
+          <h3 style="margin:.1rem 0 .35rem;">PDF de guardias</h3>
+          <ul class="list">
+            <li>Genera un PDF por <strong>Grupo</strong> y <strong>Rango de fechas</strong> con la planilla del periodo.</li>
+            <li>Útil para compartir en coordinación o archivar.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3 style="margin:.1rem 0 .35rem;">Enlace público</h3>
+          <ul class="list">
+            <li>Genera una URL firmada del PDF con caducidad de 7, 30 o 90 días (o sin caducidad).</li>
+            <li>Se copia al portapapeles automáticamente.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
     <section id="reglas" class="section">
       <h2>Reglas del sistema</h2>
       <div class="grid-2">
         <div class="card">
           <h3 style="margin:.1rem 0 .35rem;">Asignación</h3>
           <ul class="list">
-            <li>Solo se asignan alumnos <strong>activos</strong> del grupo.</li>
-            <li>Se evita <strong>2 guardias el mismo día</strong> para una persona.</li>
-            <li><strong>No</strong> se permiten <strong>dos novatos</strong> en la misma guardia.</li>
+            <li>Solo se asignan músicos <strong>activos</strong> del grupo.</li>
+            <li>Nadie puede tener <strong>dos guardias el mismo día</strong>.</li>
+            <li>No se permiten <strong>dos novatos</strong> en la misma guardia normal.</li>
+            <li>Solo <strong>una guardia normal</strong> por evento; actividades sin límite.</li>
           </ul>
         </div>
         <div class="card">
           <h3 style="margin:.1rem 0 .35rem;">Curso y novatos</h3>
           <ul class="list">
-            <li><strong>Cambio de curso (septiembre)</strong>: la carga actual se reinicia a 0; el histórico global se mantiene.</li>
-            <li><strong>Novato</strong>: matrícula posterior al <span class="kbd">1 de enero</span> del año del curso y menos de <span class="kbd">2 guardias</span>. Al completar 2 deja de ser novato.</li>
+            <li><strong>Cambio de curso (septiembre)</strong>: la carga actual se reinicia a 0; el histórico se mantiene.</li>
+            <li><strong>Novato</strong>: matrícula posterior al 1 de enero del año del curso y menos de 2 guardias realizadas.</li>
           </ul>
         </div>
       </div>
     </section>
 
-    <!-- Consejos -->
-    <section id="tips" class="section">
-      <h2>Consejos</h2>
-      <ul class="list">
-        <li>Empieza con un rango corto (<span class="pill">30 días</span>) y amplía si hace falta.</li>
-        <li>Si el reparto no te convence, reasigna puntualmente desde la planilla y vuelve a equilibrar.</li>
-        <li>Comprueba que todos los alumnos del grupo estén activos antes de asignar masivamente.</li>
-      </ul>
-      <p class="notice info">Los filtros de Guardias son compatibles con los de otras secciones para mantener coherencia.</p>
-    </section>
-
-    <!-- FAQ -->
     <section id="faq" class="section">
-      <h2>FAQ</h2>
+      <h2>Preguntas frecuentes (FAQ)</h2>
       <div class="grid-2">
         <div class="card">
-          <h3 style="margin:.1rem 0 .35rem;">¿Cómo sé si alguien es novato?</h3>
-          <p>Se calcula automáticamente con la fecha de matrícula y guardias del curso; al hacer 2 deja de ser novato.</p>
+          <h3>¿Cómo sé si alguien es novato?</h3>
+          <p>Se calcula automáticamente con la fecha de matrícula y guardias del curso. Al hacer 2 deja de ser novato.</p>
         </div>
         <div class="card">
-          <h3 style="margin:.1rem 0 .35rem;">Me avisa de “dos novatos”</h3>
-          <p>Significa que la combinación tiene dos novatos; cambia uno de los alumnos o intercambia con otro día.</p>
+          <h3>Me avisa de "dos novatos"</h3>
+          <p>Cambia uno de los músicos o usa la asignación automática para que el sistema lo resuelva.</p>
         </div>
         <div class="card">
-          <h3 style="margin:.1rem 0 .35rem;">¿Se puede exportar todo un trimestre?</h3>
-          <p>Sí. Selecciona el rango del trimestre y genera el PDF; quedará con la planilla de ese periodo.</p>
+          <h3>¿Puedo exportar todo un trimestre?</h3>
+          <p>Sí. Selecciona el rango del trimestre y genera el PDF; incluirá la planilla completa del periodo.</p>
         </div>
         <div class="card">
-          <h3 style="margin:.1rem 0 .35rem;">¿Puedo editar varias guardias a la vez?</h3>
-          <p>Para cambios masivos usa la asignación múltiple; para ajustes finos edita fila a fila en la planilla.</p>
+          <h3>No aparecen eventos en el selector de actividad</h3>
+          <p>Selecciona primero un rango de fechas válido. El desplegable se carga automáticamente al abrir el panel.</p>
         </div>
       </div>
     </section>
-
-    <div class="section" style="display:flex;gap:10px;flex-wrap:wrap;">
-      <a class="cta" href="/guardias"><span class="pill">← Volver a Guardias</span></a>
-      <a class="cta" href="/"><span class="pill">← Volver al inicio</span></a>
-    </div>
 
   </div>
 </div>

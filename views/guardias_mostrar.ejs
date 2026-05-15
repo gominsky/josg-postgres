@@ -1,8 +1,8 @@
-<% title = 'Planilla de guardias' %>
+<% title = 'Listado de guardias' %>
 <% hero  = false %>
 
 <div class="header-compact">
-  <h1 class="h1-titulo">Planilla de guardias</h1>
+  <h1 class="h1-titulo">Listado de guardias</h1>
 </div>
 
 <%
@@ -19,59 +19,6 @@ if (typeof mensaje !== 'undefined' && mensaje) { %>
     <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
   </div>
 <% } %>
-
-<!-- ── Filtros inline ── -->
-<div class="mx-auto mt-3" style="max-width:1200px; padding:0 1rem;">
-  <form id="filtro-form" method="GET" action="/guardias/mostrar"
-        class="contenedor-borde p-3 mb-3">
-
-    <div style="display:flex; flex-wrap:wrap; gap:.75rem; align-items:flex-end;">
-
-      <!-- Grupo -->
-      <div style="display:flex; flex-direction:column; gap:.25rem; flex:1 1 160px; min-width:140px;">
-        <label for="f-grupo" style="font-size:.8rem; font-weight:500;">Grupo</label>
-        <select id="f-grupo" name="grupo" class="form-select form-select-sm">
-          <option value="">Todos</option>
-          <% (grupos||[]).forEach(g => { %>
-            <option value="<%= g.id %>" <%= String(grupo||'')===String(g.id)?'selected':'' %>><%= g.nombre %></option>
-          <% }) %>
-        </select>
-      </div>
-
-      <!-- Desde -->
-      <div style="display:flex; flex-direction:column; gap:.25rem; flex:0 0 140px;">
-        <label for="f-desde" style="font-size:.8rem; font-weight:500;">Desde</label>
-        <input type="date" id="f-desde" name="desde"
-               value="<%= desde||'' %>"
-               class="form-control form-control-sm">
-      </div>
-
-      <!-- Hasta -->
-      <div style="display:flex; flex-direction:column; gap:.25rem; flex:0 0 140px;">
-        <label for="f-hasta" style="font-size:.8rem; font-weight:500;">Hasta</label>
-        <input type="date" id="f-hasta" name="hasta"
-               value="<%= hasta||'' %>"
-               class="form-control form-control-sm">
-      </div>
-
-      <!-- Chips rango rápido -->
-      <div style="display:flex; flex-direction:column; gap:.25rem;">
-        <label style="font-size:.8rem; font-weight:500;">Rango rápido</label>
-        <div style="display:flex; flex-wrap:nowrap; gap:.4rem;">
-          <span class="chip" data-range="mes" style="cursor:pointer; white-space:nowrap;">Mes</span>
-          <span class="chip" data-range="trim" style="cursor:pointer; white-space:nowrap;">Trimestre</span>
-          <span class="chip" data-range="anio" style="cursor:pointer; white-space:nowrap;">Año</span>
-        </div>
-      </div>
-
-      <!-- Botón filtrar -->
-      <div style="flex:0 0 auto; align-self:flex-end;">
-        <button type="submit" class="btn-primary-negro btn-sm" style="white-space:nowrap;">Filtrar</button>
-      </div>
-
-    </div>
-  </form>
-</div>
 
 <!-- ── Tabla ── -->
 <% if ((guardias||[]).length > 0) { %>
@@ -94,11 +41,7 @@ if (typeof mensaje !== 'undefined' && mensaje) { %>
     // label tipo guardia
     const tipoLabel = g => {
       if (!g.tipo_guardia || g.tipo_guardia === 'normal') return '';
-      const t = g.tipo_actividad || '';
-      return t === 'montaje'    ? '🔧 Montaje'
-           : t === 'desmontaje' ? '📦 Desmontaje'
-           : t === 'ambas'      ? '🔧📦 Ambas'
-           : '🎵 Actividad';
+      return g.tipo_actividad || 'Actividad';
     };
 
     // lista de músicos para la fila (cubre normal y actividad)
@@ -140,10 +83,10 @@ if (typeof mensaje !== 'undefined' && mensaje) { %>
             <td><%= g.grupo || '-' %></td>
             <td>
               <% if (esTipoActividad) { %>
-                <span class="badge-soft" style="font-size:.75rem;"><%= tipoLabel(g) %></span>
-                <% if (g.num_musicos) { %>
-                  <span class="badge-soft ms-1" style="font-size:.72rem;"><%= g.num_musicos %> mús.</span>
-                <% } %>
+                <div style="display:flex; align-items:center; gap:.3rem; flex-wrap:nowrap;">
+                  <span class="badge-soft" style="font-size:.75rem;"><%= tipoLabel(g) %></span>
+                  <% if (g.num_musicos) { %><span class="badge-soft" style="font-size:.72rem;"><%= g.num_musicos %> mús.</span><% } %>
+                </div>
               <% } else if (tieneGuardia) { %>
                 <span class="badge-soft" style="font-size:.75rem; opacity:.7;">Normal</span>
               <% } else { %>
@@ -158,9 +101,8 @@ if (typeof mensaje !== 'undefined' && mensaje) { %>
                 <form method="POST"
                       action="/guardias/eliminar/<%= g.guardia_id %>?desde=<%= encodeURIComponent(desde||'') %>&hasta=<%= encodeURIComponent(hasta||'') %>&grupo=<%= encodeURIComponent(grupo||'') %>"
                       class="form-eliminar"
-                      style="display:inline;background:transparent;">
-                  <button type="submit" class="btn btn-sm text-danger fw-bold"
-                          style="font-size:1rem;line-height:1;" title="Eliminar guardia">×</button>
+                      style="display:contents;">
+                  <button type="submit" class="btn-outline-danger-neutral btn-sm" style="font-size:.8rem; line-height:1;">Eliminar</button>
                 </form>
               <% } else { %>
                 <form method="POST" action="/guardias/generar"
@@ -238,25 +180,6 @@ if (typeof mensaje !== 'undefined' && mensaje) { %>
 
 <script>
 (() => {
-  /* ── Chips de rango rápido ── */
-  const elDesde = document.getElementById('f-desde');
-  const elHasta = document.getElementById('f-hasta');
-  const pad = n => String(n).padStart(2, '0');
-  const fmt = (y, m, d) => `${y}-${pad(m+1)}-${pad(d)}`;
-
-  const rangos = {
-    mes()  { const n=new Date(),y=n.getFullYear(),m=n.getMonth(); elDesde.value=fmt(y,m,1); elHasta.value=fmt(y,m,new Date(y,m+1,0).getDate()); },
-    trim() { const n=new Date(),y=n.getFullYear(),m=n.getMonth(),q=Math.floor(m/3),mI=q*3,mF=mI+2; elDesde.value=fmt(y,mI,1); elHasta.value=fmt(y,mF,new Date(y,mF+1,0).getDate()); },
-    anio() { const y=new Date().getFullYear(); elDesde.value=`${y}-01-01`; elHasta.value=`${y}-12-31`; }
-  };
-  document.querySelectorAll('.chip[data-range]').forEach(chip => {
-    chip.addEventListener('click', () => {
-      rangos[chip.dataset.range]?.();
-      document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
-      chip.classList.add('active');
-    });
-  });
-
   /* ── Helpers de fetch POST ── */
   const postForm = (url, form) => {
     const data = new URLSearchParams(new FormData(form));
